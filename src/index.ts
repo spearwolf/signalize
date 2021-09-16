@@ -1,2 +1,2 @@
 export {createEffect} from './createEffect';
-export {createSignal, value, touch} from './createSignal';
+export {createSignal, value, touch, isSignal} from './createSignal';
