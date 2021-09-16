@@ -1,0 +1,47 @@
+root: true
+
+parser: "@typescript-eslint/parser"
+parserOptions:
+  sourceType: module
+
+plugins:
+  - "@typescript-eslint"
+
+extends:
+  - problems
+  - "plugin:@typescript-eslint/eslint-recommended"
+  - "plugin:@typescript-eslint/recommended"
+  - plugin:import/errors
+  - plugin:import/warnings
+  - plugin:prettier/recommended
+
+env:
+  jest: true
+  browser: true
+
+settings:
+  import/resolver:
+    node:
+      extensions:
+        - .ts
+        - .js
+
+rules:
+  no-fallthrough: off
+  no-undef-init: off
+  prefer-rest-params: off
+  eqeqeq: [2, "smart"]
+  "@typescript-eslint/explicit-function-return-type": off
+  "@typescript-eslint/no-explicit-any": off
+  "@typescript-eslint/no-var-requires": off
+  "@typescript-eslint/ban-ts-ignore": off
+  "@typescript-eslint/ban-ts-comment": off
+  "@typescript-eslint/ban-types": off
+  "@typescript-eslint/interface-name-prefix": off
+  "@typescript-eslint/no-empty-interface": off
+  "@typescript-eslint/no-empty-function": off
+  "no-use-before-define": off
+  "@typescript-eslint/no-use-before-define": [2, {"functions": false}]
+  "@typescript-eslint/no-unused-vars": [2, {vars: "all", args: "after-used", argsIgnorePattern: "^_"}]
+  "@typescript-eslint/consistent-type-assertions": [2, {assertionStyle: "as", objectLiteralTypeAssertions: "allow-as-parameter"}]
+  import/order: [2, {newlines-between: "always-and-inside-groups", alphabetize: {order: "asc"}, groups: ["builtin", "external", "internal", "parent", "sibling", "index", "unknown"]}]

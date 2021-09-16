@@ -1,0 +1,27 @@
+{
+  "include": ["src"],
+
+  "compilerOptions": {
+    "lib": ["es2020", "dom"],
+    "target": "es2017",
+
+    "declaration": true,
+    "declarationDir": "build/types",
+    "stripInternal": true,
+
+    "noEmitOnError": true,
+    "noErrorTruncation": true,
+
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+
+    "strict": true,
+    "strictNullChecks": false,
+    "esModuleInterop": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitAny": true
+  }
+}
