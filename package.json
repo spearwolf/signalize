@@ -1,7 +1,8 @@
 {
-  "name": "signalize-js",
+  "name": "@spearwolf/signalize",
+  "rollupBuildName": "signalize",
   "version": "0.0.1",
-  "description": "signals and effects with eventize-js",
+  "description": "signals and effects for typescript",
   "main": "build/signalize.umd.js",
   "module": "build/signalize.js",
   "exports": "./build/signalize.js",

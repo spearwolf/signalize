@@ -5,7 +5,7 @@ import rollupConfigShared from './rollup.config.shared';
 
 export default rollupConfigShared(
   'es2017',
-  ({outputDir, packageJson: {name}}) => ({
+  ({outputDir, packageJson: {rollupBuildName: name}}) => ({
     output: {
       name,
       file: path.join(outputDir, `${name}.js`),
