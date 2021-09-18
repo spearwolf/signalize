@@ -24,12 +24,6 @@ class Batch {
   }
 
   execute() {
-    console.log(
-      'execute batch:',
-      this.id,
-      'effects:',
-      this.delayedEffects.map((s) => s.toString()).join(','),
-    );
     globalSignals.emit(this.delayedEffects);
   }
 }
@@ -40,7 +34,6 @@ export function batch(callback: BatchCallback): void {
   let currentBatch = globalBatch;
   if (!currentBatch) {
     currentBatch = globalBatch = new Batch();
-    console.log('create new batch:', currentBatch.id);
   } else {
     currentBatch = undefined;
   }
