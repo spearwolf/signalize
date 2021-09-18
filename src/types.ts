@@ -9,8 +9,12 @@ export interface Signal<Type> {
   value: Type | undefined;
 }
 
+export interface SignalCallback<Type> {
+  (value: Type): VoidCallback | void;
+}
+
 export interface SignalReader<Type> {
-  (): Type;
+  (callback?: SignalCallback<Type>): Type;
   [$signal]: Signal<Type>;
 }
 

@@ -1,8 +1,9 @@
 import {UniqIdGen} from './UniqIdGen';
 import {$signal} from './constants';
+import {createEffect} from './createEffect';
 import {getCurrentEffect} from './globalEffectStack';
 import globalSignals from './globalSignals';
-import {Signal, SignalReader, SignalWriter} from './types';
+import {Signal, SignalCallback, SignalReader, SignalWriter} from './types';
 
 const idGen = new UniqIdGen('si');
 
@@ -19,7 +20,13 @@ export function createSignal<Type = unknown>(
 ): [SignalReader<Type>, SignalWriter<Type>] {
   const signal: Signal<Type> = {id: idGen.make(), value: initialValue};
 
-  const signalReader = () => {
+  const signalReader = (callback?: SignalCallback<Type>) => {
+    if (callback) {
+      createEffect(() => {
+        readSignal(signal.id);
+        return callback(signal.value);
+      });
+    }
     readSignal(signal.id);
     return signal.value;
   };
