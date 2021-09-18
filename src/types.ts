@@ -1,6 +1,7 @@
 import {$signal} from './constants';
 
 export type EffectCallback = () => void;
+export type BatchCallback = () => void;
 
 export interface Signal<Type> {
   id: symbol;

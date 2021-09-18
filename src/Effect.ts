@@ -1,4 +1,5 @@
 import {UniqIdGen} from './UniqIdGen';
+import {getCurrentBatchId} from './batch';
 import {runWithinEffect} from './globalEffectStack';
 import globalSignals from './globalSignals';
 import {EffectCallback} from './types';
@@ -12,16 +13,24 @@ export class Effect {
   readonly signals: Set<symbol>;
   readonly childEffects: Set<Effect>;
 
+  #unsubscribeEffect: () => void;
+
   constructor(callback: EffectCallback) {
     this.id = Effect.idGen.make();
     this.callback = callback;
     this.signals = new Set();
     this.childEffects = new Set();
+    this.#unsubscribeEffect = globalSignals.on(this.id, () => this.rerun());
   }
 
   rerun(): void {
-    this.unsubscribe();
-    runWithinEffect(this, this.callback);
+    const curBatchId = getCurrentBatchId();
+    if (curBatchId) {
+      globalSignals.emit(curBatchId, this.id);
+    } else {
+      this.unsubscribe();
+      runWithinEffect(this, this.callback);
+    }
   }
 
   rerunOnSignal(signalId: symbol): void {
@@ -41,6 +50,11 @@ export class Effect {
     }
 
     this.childEffects.clear();
+  }
+
+  destroy(): void {
+    this.unsubscribe();
+    this.#unsubscribeEffect();
   }
 
   addChild(effect: Effect): void {

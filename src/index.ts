@@ -1,2 +1,3 @@
+export {batch} from './batch';
 export {createEffect} from './createEffect';
-export {createSignal, value, touch, isSignal} from './createSignal';
+export {createSignal, isSignal, touch, value} from './createSignal';
