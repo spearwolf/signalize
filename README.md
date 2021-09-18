@@ -8,6 +8,8 @@ $ npm i @spearwolf/signalize
 
 if you've tried [SolidJS](https://www.solidjs.com/) before, the concept of _signals_ and _effects_ should sound familiar &mdash; in fact `signalize` is partly based on the reactivity primitives of SolidJS [which are very well explained in this article](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf) &mdash; however, only the concepts are shared here - the implementation is fundamentally different.
 
+_PLEASE NOTE: everything in this repository here is &mdash; W O R K &ndash; I N &ndash; P R O G R E S S &mdash; and not optimized for production use - there is currently no official npm package as output either_
+
 creating a __signal__ is easy:
 
 ```js
