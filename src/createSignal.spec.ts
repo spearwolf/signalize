@@ -27,4 +27,17 @@ describe('createSignal', () => {
     expect(isSignal(set)).toBe(false);
     expect(isSignal(() => {})).toBe(false);
   });
+
+  it('signal reader has an optional effect callback as argument', () => {
+    const [signal, set] = createSignal(666);
+    const effect = jest.fn();
+
+    signal(effect);
+
+    expect(effect).toBeCalledWith(666);
+
+    set(1001);
+
+    expect(effect).toBeCalledWith(1001);
+  });
 });
