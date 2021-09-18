@@ -6,6 +6,14 @@ import {Signal, SignalReader, SignalWriter} from './types';
 
 const idGen = new UniqIdGen('si');
 
+function readSignal(signalId: symbol) {
+  getCurrentEffect()?.rerunOnSignal(signalId);
+}
+
+function writeSignal(signalId: symbol) {
+  globalSignals.emit(signalId);
+}
+
 export function createSignal<Type = unknown>(
   initialValue: Type = undefined,
 ): [SignalReader<Type>, SignalWriter<Type>] {
@@ -46,11 +54,3 @@ export const touch = <Type = unknown>(
 export const isSignal = (signalReader: Function): boolean => {
   return $signal in signalReader;
 };
-
-function readSignal(signalId: symbol) {
-  getCurrentEffect()?.rerunOnSignal(signalId);
-}
-
-function writeSignal(signalId: symbol) {
-  globalSignals.emit(signalId);
-}

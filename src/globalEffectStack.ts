@@ -8,7 +8,7 @@ export const getCurrentEffect = (): Effect | undefined => {
   return len > 0 ? globalEffectStack[len - 1] : undefined;
 };
 
-export const runWithinEffectContext = (
+export const runWithinEffect = (
   effect: Effect,
   callback: EffectCallback,
 ): void => {
