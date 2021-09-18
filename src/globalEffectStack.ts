@@ -1,5 +1,5 @@
 import {Effect} from './Effect';
-import {EffectCallback} from './types';
+import {EffectCallback, VoidCallback} from './types';
 
 const globalEffectStack: Effect[] = [];
 
@@ -11,10 +11,10 @@ export const getCurrentEffect = (): Effect | undefined => {
 export const runWithinEffect = (
   effect: Effect,
   callback: EffectCallback,
-): void => {
+): VoidCallback => {
   globalEffectStack.push(effect);
   try {
-    callback();
+    return callback() as VoidCallback;
   } finally {
     globalEffectStack.pop();
   }

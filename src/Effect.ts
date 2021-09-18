@@ -2,7 +2,7 @@ import {UniqIdGen} from './UniqIdGen';
 import {getCurrentBatchId} from './batch';
 import {runWithinEffect} from './globalEffectStack';
 import globalSignals from './globalSignals';
-import {EffectCallback} from './types';
+import {EffectCallback, VoidCallback} from './types';
 
 export class Effect {
   static idGen = new UniqIdGen('ef');
@@ -13,7 +13,8 @@ export class Effect {
   readonly signals: Set<symbol>;
   readonly childEffects: Set<Effect>;
 
-  #unsubscribeEffect: () => void;
+  #unsubscribeEffect: VoidCallback;
+  #unsubscribeCallback: VoidCallback;
 
   constructor(callback: EffectCallback) {
     this.id = Effect.idGen.make();
@@ -23,13 +24,17 @@ export class Effect {
     this.#unsubscribeEffect = globalSignals.on(this.id, () => this.rerun());
   }
 
+  run(): void {
+    this.#unsubscribeCallback = runWithinEffect(this, this.callback);
+  }
+
   rerun(): void {
     const curBatchId = getCurrentBatchId();
     if (curBatchId) {
       globalSignals.emit(curBatchId, this.id);
     } else {
       this.unsubscribe();
-      runWithinEffect(this, this.callback);
+      this.run();
     }
   }
 
@@ -50,6 +55,11 @@ export class Effect {
     }
 
     this.childEffects.clear();
+
+    if (this.#unsubscribeCallback) {
+      this.#unsubscribeCallback();
+      this.#unsubscribeCallback = undefined;
+    }
   }
 
   destroy(): void {
