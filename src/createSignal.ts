@@ -26,8 +26,9 @@ export function createSignal<Type = unknown>(
         readSignal(signal.id);
         return callback(signal.value);
       });
+    } else {
+      readSignal(signal.id);
     }
-    readSignal(signal.id);
     return signal.value;
   };
 
