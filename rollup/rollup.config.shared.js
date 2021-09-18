@@ -20,36 +20,43 @@ const packageJson = require(path.join(projectDir, 'package.json'));
 
 const extensions = ['.js', '.ts', '.json'];
 
-export default (build, buildConfig) => {
+const externals = ['eventize-js'];
+
+export default (build, rewriteExternals, buildConfig) => {
   const version = makeVersionWithBuild(build)(packageJson.version);
   const overrideConfig = buildConfig({outputDir, version, packageJson});
 
-  return {
-    input: 'src/index.ts',
-    plugins: [
-      rewriteExternalsPlugin(['eventize-js']),
-      typescript(),
-      createBannerPlugin({...packageJson, version}),
-      commonjs(),
-      resolve({
-        extensions,
-      }),
-      replace({
-        preventAssignment: true,
-        NODE_ENV: JSON.stringify('production'),
-      }),
-      terser({
-        output: {comments: /^!/},
-        ecma: 2017,
-        safari10: true,
-        compress: {
-          global_defs: {
-            DEBUG: false,
-          },
+  const plugins = [
+    typescript(),
+    createBannerPlugin({...packageJson, version}),
+    commonjs(),
+    resolve({
+      extensions,
+    }),
+    replace({
+      preventAssignment: true,
+      NODE_ENV: JSON.stringify('production'),
+    }),
+    terser({
+      output: {comments: /^!/},
+      ecma: 2017,
+      safari10: true,
+      compress: {
+        global_defs: {
+          DEBUG: false,
         },
-      }),
-      sizeSnapshot(),
-    ],
+      },
+    }),
+    sizeSnapshot(),
+  ];
+
+  if (rewriteExternals) {
+    plugins.unshift(rewriteExternalsPlugin(externals));
+  }
+
+  return {
+    plugins,
+    input: 'src/index.ts',
     ...overrideConfig,
   };
 };
