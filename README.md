@@ -13,15 +13,13 @@ creating a __signal__ is easy:
 ```js
 import {createSignal} from '@spearwolf/signalize'
 
-// Create a signal with an initial value
-const [foo, setFoo] = createSignal('bar')
+const [foo, setFoo] = createSignal('bar')     // Create a signal with an initial value
 
-console.log('foo=', foo())  // => "foo= bar"
+console.log('foo=', foo())                    // => "foo= bar"
 
-// Update the signal
-setFoo('plah!')
+setFoo('plah!')                               // Update the signal
 
-console.log('foo=', foo())  // => "foo= plah!"
+console.log('foo=', foo())                    // => "foo= plah!"
 ```
 
 an __effect__ is only a function that is called. so it is not very interesting. but it becomes more interesting when a signal is read within the function. if a signal is assigned a new value at a later time, the effect function is automatically executed _again_!
@@ -29,16 +27,14 @@ an __effect__ is only a function that is called. so it is not very interesting. 
 the following example produces the same output as the previous one:
 
 ```js
-import {createSignal} from '@spearwolf/signalize'
+import {createSignal, createEffect} from '@spearwolf/signalize'
 
 const [foo, setFoo] = createSignal('bar')
 
 createEffect(() => {
-  console.log('foo=', foo())  // => "foo= bar"
+  console.log('foo=', foo())    // => "foo= bar"
 })
 
-setFoo('plah!')
-
-// (the effect function is called again now)
-// => "foo= plah!"
+setFoo('plah!')                 // the effect function is called again now
+                                // => "foo= plah!"
 ```
