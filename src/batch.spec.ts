@@ -10,19 +10,27 @@ describe('batch', () => {
     const valA = jest.fn();
     const valB = jest.fn();
 
-    let effectCallCount = 0;
+    let effectCallCount0 = 0;
+    let effectCallCount1 = 0;
 
     createEffect(() => {
-      ++effectCallCount;
+      ++effectCallCount0;
       valA(a());
       valB(b());
     });
 
-    expect(effectCallCount).toBe(1);
+    createEffect(() => {
+      ++effectCallCount1;
+      valB(b());
+    });
+
+    expect(effectCallCount0).toBe(1);
+    expect(effectCallCount1).toBe(1);
     expect(valA).toBeCalledWith(123);
     expect(valB).toBeCalledWith('abc');
 
-    effectCallCount = 0;
+    effectCallCount0 = 0;
+    effectCallCount1 = 0;
     let batchCallCount = 0;
 
     batch(() => {
@@ -33,14 +41,16 @@ describe('batch', () => {
     });
 
     expect(batchCallCount).toBe(1);
-    expect(effectCallCount).toBe(1);
+    expect(effectCallCount0).toBe(1);
+    expect(effectCallCount1).toBe(1);
     expect(valA).toBeCalledWith(456);
     expect(valB).toBeCalledWith('def');
 
     setB('plah!');
 
     expect(batchCallCount).toBe(1);
-    expect(effectCallCount).toBe(2);
+    expect(effectCallCount0).toBe(2);
+    expect(effectCallCount1).toBe(2);
     expect(valA).toBeCalledWith(456);
     expect(valB).toBeCalledWith('plah!');
   });
