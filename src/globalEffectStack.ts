@@ -13,6 +13,9 @@ export const runWithinEffect = (
   callback: EffectCallback,
 ): void => {
   globalEffectStack.push(effect);
-  callback();
-  globalEffectStack.pop();
+  try {
+    callback();
+  } finally {
+    globalEffectStack.pop();
+  }
 };
