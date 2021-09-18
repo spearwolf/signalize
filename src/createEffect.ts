@@ -1,5 +1,5 @@
 import {Effect} from './Effect';
-import {getCurrentEffect, runWithinEffectContext} from './globalEffectStack';
+import {getCurrentEffect, runWithinEffect} from './globalEffectStack';
 import {EffectCallback} from './types';
 
 export function createEffect(callback: EffectCallback): () => void {
@@ -7,7 +7,7 @@ export function createEffect(callback: EffectCallback): () => void {
 
   getCurrentEffect()?.addChild(effect);
 
-  runWithinEffectContext(effect, callback);
+  runWithinEffect(effect, callback);
 
   return () => {
     effect.unsubscribe();

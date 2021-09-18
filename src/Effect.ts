@@ -1,5 +1,5 @@
 import {UniqIdGen} from './UniqIdGen';
-import {runWithinEffectContext} from './globalEffectStack';
+import {runWithinEffect} from './globalEffectStack';
 import globalSignals from './globalSignals';
 import {EffectCallback} from './types';
 
@@ -21,7 +21,7 @@ export class Effect {
 
   rerun(): void {
     this.unsubscribe();
-    runWithinEffectContext(this, this.callback);
+    runWithinEffect(this, this.callback);
   }
 
   rerunOnSignal(signalId: symbol): void {
