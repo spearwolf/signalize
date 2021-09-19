@@ -44,8 +44,8 @@ setFoo('plah!')                 // the effect function is called again now
 
 ### API cheat sheet
 
-| export | api | description |
-|--------|-----|-------------|
+| export | usage | description |
+|--------|-------|-------------|
 | createSignal | `[get, set] = createSignal(initialValue?)` | create a signal |
 | | `data = get()` | read the signal value |
 | | `get(fn: (data) => void)` | same as `createEffect(() => fn(get()))` |
