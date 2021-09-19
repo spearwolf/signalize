@@ -4,7 +4,10 @@
   "description": "signals and effects for typescript",
   "main": "build/signalize.umd.js",
   "module": "build/signalize.js",
-  "exports": "./build/signalize.js",
+  "exports": {
+    "import": "./build/signalize.js",
+    "require": "./build/signalize.umd.js"
+  },
   "types": "build/types/index.d.ts",
   "rollupBuild": {
     "outputDir": "build",
@@ -38,6 +41,9 @@
     "fix": "run-s --silent --print-label eslint:fix prettier:write",
     "test": "cross-env NODE_ENV=test jest",
     "cbt": "run-s clean build test"
+  },
+  "dependencies": {
+    "eventize-js": "^2.0.0-beta.2"
   },
   "devDependencies": {
     "@babel/core": "^7.15.0",
@@ -92,8 +98,5 @@
       "json",
       "html"
     ]
-  },
-  "dependencies": {
-    "eventize-js": "^2.0.0-beta"
   }
 }
