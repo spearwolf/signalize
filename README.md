@@ -42,15 +42,18 @@ setFoo('plah!')                 // the effect function is called again now
 ```
 
 
-### API
+### API cheat sheet
 
 | export | api | description |
 |--------|-----|-------------|
 | createSignal | `[get, set] = createSignal(initialValue?)` | create a signal |
+| | `data = get()` | read the signal value |
+| | `get(fn: (data) => void)` | same as `createEffect(() => fn(get()))` |
+| | `set(data)` | update the signal value |
 | touch | `touch(get)` | same as `set(get())` |
-| value | `value(get)` | read out the value without creating (side) effects |
-| createEffect | `createEffect(callback)` | create an effect |
-| createMemo | `get = createMemo(callback)` | creates an effect and returns a get function which returns the result of the effect callback |
+| value | `data = value(get)` | read out the value without creating (side) effects |
+| createEffect | `removeEffect = createEffect(callback)` | create an effect; return an unsubscribe function |
+| createMemo | `get = createMemo(callback)` | creates an effect and returns a get function which returns the result of the callback |
 | batch | `batch(callback)` | batch multiple updates (setter calls) together |
 
 _TODO: add some more descriptions_
