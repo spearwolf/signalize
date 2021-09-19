@@ -14,19 +14,19 @@ import {makeVersionWithBuild} from './makeVersionWithBuild';
 import {rewriteExternalsPlugin} from './rewriteExternalsPlugin';
 
 const projectDir = path.resolve(path.join(path.dirname(__filename), '..'));
-const outputDir = path.join(projectDir, 'build');
-
 const packageJson = require(path.join(projectDir, 'package.json'));
+const outputDir = path.join(projectDir, packageJson.rollupBuild.outputDir);
 
-const extensions = ['.js', '.ts', '.json'];
+const extensions = ['.js', '.jsx', '.ts', '.tsx', '.json'];
 
-const externals = ['eventize-js'];
+const externals = packageJson.rollupBuild?.externals ?? [];
 
-export default (build, rewriteExternals, buildConfig) => {
-  const version = makeVersionWithBuild(build)(packageJson.version);
+export default (build, buildConfig) => {
+  const version = makeVersionWithBuild(packageJson.rollupBuild[build].buildName)(packageJson.version);
   const overrideConfig = buildConfig({outputDir, version, packageJson});
 
   const plugins = [
+    rewriteExternalsPlugin(externals),
     typescript(),
     createBannerPlugin({...packageJson, version}),
     commonjs(),
@@ -49,10 +49,6 @@ export default (build, rewriteExternals, buildConfig) => {
     }),
     sizeSnapshot(),
   ];
-
-  if (rewriteExternals) {
-    plugins.unshift(rewriteExternalsPlugin(externals));
-  }
 
   return {
     plugins,
