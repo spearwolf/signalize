@@ -40,3 +40,17 @@ createEffect(() => {
 setFoo('plah!')                 // the effect function is called again now
                                 // => "foo= plah!"
 ```
+
+
+### API
+
+| export | api | description |
+|--------|-----|-------------|
+| createSignal | `[get, set] = createSignal(initialValue?)` | create a signal |
+| touch | `touch(get)` | same as `set(get())` |
+| value | `value(get)` | read out the value without creating (side) effects |
+| createEffect | `createEffect(callback)` | create an effect |
+| createMemo | `get = createMemo(callback)` | creates an effect and returns a get function which returns the result of the effect callback |
+| batch | `batch(callback)` | batch multiple updates (setter calls) together |
+
+_TODO: add some more descriptions_
