@@ -50,7 +50,7 @@ setFoo('plah!')                 // the effect function is called again now
 | | `data = get()` | read the signal value |
 | | `get(fn: (data) => void)` | same as `createEffect(() => fn(get()))` |
 | | `set(data)` | update the signal value |
-| touch | `touch(get)` | same as `set(get())` |
+| touch | `touch(get)` | same as `set(get())` &mdash; no! wait, `set(get())` will _not_ signal an update, but `touch()` will do the magic without changing the value |
 | value | `data = value(get)` | read out the value without creating (side) effects |
 | createEffect | `removeEffect = createEffect(callback)` | create an effect; return an unsubscribe function |
 | createMemo | `get = createMemo(callback)` | creates an effect and returns a get function which returns the result of the callback |
