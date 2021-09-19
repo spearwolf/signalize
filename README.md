@@ -56,4 +56,3 @@ setFoo('plah!')                 // the effect function is called again now
 | createMemo | `get = createMemo(callback)` | creates an effect and returns a get function which returns the result of the callback |
 | batch | `batch(callback)` | batch multiple updates (setter calls) together |
 
-_TODO: add some more descriptions_
