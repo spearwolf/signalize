@@ -4,14 +4,13 @@ import path from 'path';
 import rollupConfigShared from './rollup.config.shared';
 
 export default rollupConfigShared(
-  'es2017',
-  true,
-  ({outputDir, packageJson: {rollupBuildName: name}}) => ({
+  'esm',
+  ({outputDir, packageJson: {name, rollupBuild: {outputName}}}) => ({
     output: {
       name,
-      file: path.join(outputDir, `${name}.js`),
+      file: path.join(outputDir, `${outputName}.js`),
       sourcemap: true,
-      sourcemapFile: path.join(outputDir, `${name}.js.map`),
+      sourcemapFile: path.join(outputDir, `${outputName}.js.map`),
       format: 'esm',
     },
   }),
