@@ -85,6 +85,9 @@
   "bugs": {
     "url": "https://github.com/spearwolf/signalize/issues"
   },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "author": {
     "name": "Wolfger Schramm",
     "email": "wolfger@spearwolf.de",
