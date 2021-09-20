@@ -1,6 +1,7 @@
 import {SignalReader} from './types';
 
-import {createEffect, createSignal} from '.';
+import {createEffect} from './createEffect';
+import {createSignal} from './createSignal';
 
 export function createMemo<Type>(callback: () => Type): SignalReader<Type> {
   const [signal, set] = createSignal<Type>();
