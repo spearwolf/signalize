@@ -1,0 +1,12 @@
+.vscode
+rollup
+.editorconfig
+.eslintignore
+.eslintrc.yaml
+.prettierignore
+.prettierrc.yaml
+.size-snapshot.json
+jest.config.ts
+tsconfig.json
+*.spec.ts
+*.spec.d.ts
