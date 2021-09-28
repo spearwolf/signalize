@@ -1,6 +1,6 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "signals and effects for typescript",
   "main": "build/signalize.umd.js",
   "module": "build/signalize.js",
@@ -13,7 +13,7 @@
     "outputDir": "build",
     "outputName": "signalize",
     "externals": [
-      "eventize-js"
+      "@spearwolf/eventize"
     ],
     "esm": {
       "buildName": "es2017"
@@ -21,7 +21,7 @@
     "umd": {
       "buildName": "umd",
       "globals": {
-        "eventize-js": "eventize"
+        "@spearwolf/eventize": "eventize"
       }
     }
   },
@@ -41,9 +41,6 @@
     "fix": "run-s --silent --print-label eslint:fix prettier:write",
     "test": "cross-env NODE_ENV=test jest",
     "cbt": "run-s clean build test"
-  },
-  "dependencies": {
-    "eventize-js": "^2.0.0-beta.2"
   },
   "devDependencies": {
     "@babel/core": "^7.15.0",
@@ -98,5 +95,8 @@
       "json",
       "html"
     ]
+  },
+  "dependencies": {
+    "@spearwolf/eventize": "^2.0.0-beta.2"
   }
 }

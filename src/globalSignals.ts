@@ -1,4 +1,4 @@
-import eventize from 'eventize-js';
+import eventize from '@spearwolf/eventize';
 
 /**
  * The _global_ broadcaster object
