@@ -1,6 +1,6 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "signals and effects for typescript",
   "main": "build/signalize.umd.js",
   "module": "build/signalize.js",

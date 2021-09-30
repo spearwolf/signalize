@@ -15,35 +15,51 @@ function writeSignal(signalId: symbol) {
   globalSignals.emit(signalId);
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export const isSignal = (signalReader: any): boolean => {
+  return typeof signalReader === 'function' && $signal in signalReader;
+};
+
 export function createSignal<Type = unknown>(
-  initialValue: Type = undefined,
+  initialValue: Type | SignalReader<Type> = undefined,
 ): [SignalReader<Type>, SignalWriter<Type>] {
-  const signal: Signal<Type> = {id: idGen.make(), value: initialValue};
+  let signal!: Signal<Type>;
 
-  const signalReader = (callback?: SignalCallback<Type>) => {
-    if (callback) {
-      createEffect(() => {
+  if (isSignal(initialValue)) {
+    signal = (initialValue as SignalReader<Type>)[$signal];
+  } else {
+    signal = {
+      id: idGen.make(),
+      value: initialValue as Type,
+      reader: undefined,
+      writer: (nextValue: Type) => {
+        if (nextValue !== signal.value) {
+          signal.value = nextValue;
+          writeSignal(signal.id);
+        }
+      },
+    };
+
+    const signalReader = (callback?: SignalCallback<Type>) => {
+      if (callback) {
+        createEffect(() => {
+          readSignal(signal.id);
+          return callback(signal.value);
+        });
+      } else {
         readSignal(signal.id);
-        return callback(signal.value);
-      });
-    } else {
-      readSignal(signal.id);
-    }
-    return signal.value;
-  };
+      }
+      return signal.value;
+    };
 
-  Object.defineProperty(signalReader, $signal, {
-    value: signal,
-  });
+    Object.defineProperty(signalReader, $signal, {
+      value: signal,
+    });
 
-  const signalWriter = (nextValue: Type) => {
-    if (nextValue !== signal.value) {
-      signal.value = nextValue;
-      writeSignal(signal.id);
-    }
-  };
+    signal.reader = signalReader as SignalReader<Type>;
+  }
 
-  return [signalReader as SignalReader<Type>, signalWriter];
+  return [signal.reader, signal.writer];
 }
 
 export const value = <Type = unknown>(
@@ -57,8 +73,4 @@ export const touch = <Type = unknown>(
   if (signalId) {
     writeSignal(signalId);
   }
-};
-
-export const isSignal = (signalReader: Function): boolean => {
-  return $signal in signalReader;
 };
