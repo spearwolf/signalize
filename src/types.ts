@@ -7,6 +7,8 @@ export type BatchCallback = VoidCallback;
 export interface Signal<Type> {
   id: symbol;
   value: Type | undefined;
+  reader: SignalReader<Type>;
+  writer: SignalWriter<Type>;
 }
 
 export interface SignalCallback<Type> {

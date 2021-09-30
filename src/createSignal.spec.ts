@@ -40,4 +40,12 @@ describe('createSignal', () => {
 
     expect(effect).toBeCalledWith(1001);
   });
+
+  it('returns the given signal if the initialValue a signal', () => {
+    const [signal, set] = createSignal(666);
+    const [otherSignal, setOther] = createSignal(signal);
+
+    expect(signal).toBe(otherSignal);
+    expect(set).toBe(setOther);
+  });
 });
