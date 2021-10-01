@@ -53,6 +53,6 @@ setFoo('plah!')                 // the effect function is called again now
 | touch | `touch(get)` | same as `set(get())` &mdash; no! wait, `set(get())` will _not_ signal an update, but `touch()` will do the magic without changing the value |
 | value | `data = value(get)` | read out the value without creating (side) effects |
 | createEffect | `removeEffect = createEffect(callback)` | create an effect; return an unsubscribe function |
+| onCreateEffect | `unsubscribe = onCreateEffect(callback: (effect) => void)` | will be called whenever an effect is created with `createEffect()`; return an unsubscribe function |
 | createMemo | `get = createMemo(callback)` | creates an effect and returns a get function which returns the result of the callback |
 | batch | `batch(callback)` | batch multiple updates (setter calls) together |
-
