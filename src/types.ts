@@ -7,6 +7,8 @@ export type BatchCallback = VoidCallback;
 export interface Signal<Type> {
   id: symbol;
   value: Type | undefined;
+  valueFn: () => Type | undefined;
+  lazy: boolean;
   reader: SignalReader<Type>;
   writer: SignalWriter<Type>;
 }
@@ -21,5 +23,9 @@ export interface SignalReader<Type> {
 }
 
 export interface SignalWriter<Type> {
-  (value: Type): void;
+  (value: Type | (() => Type), params?: SignalParameters): void;
+}
+
+export interface SignalParameters {
+  lazy: boolean;
 }
