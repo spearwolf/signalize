@@ -1,7 +1,8 @@
+import {EffectCallback, VoidCallback} from './types';
+
 import {Effect} from './Effect';
 import {getCurrentEffect} from './globalEffectStack';
 import globalSignals from './globalSignals';
-import {EffectCallback, VoidCallback} from './types';
 
 const EVENT_CREATE_EFFECT = Symbol('createEffect');
 

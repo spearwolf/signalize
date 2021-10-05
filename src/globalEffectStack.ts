@@ -1,5 +1,6 @@
-import {Effect} from './Effect';
 import {EffectCallback, VoidCallback} from './types';
+
+import {Effect} from './Effect';
 
 const globalEffectStack: Effect[] = [];
 

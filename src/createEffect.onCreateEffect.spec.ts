@@ -1,5 +1,6 @@
-import {Effect} from './Effect';
 import {createEffect, onCreateEffect} from './createEffect';
+
+import {Effect} from './Effect';
 
 describe('onCreateEffect', () => {
   it('creating an effect triggers a on-create-effect event', () => {

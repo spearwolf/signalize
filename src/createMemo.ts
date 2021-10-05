@@ -1,5 +1,4 @@
 import {SignalReader} from './types';
-
 import {createEffect} from './createEffect';
 import {createSignal} from './createSignal';
 
