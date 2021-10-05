@@ -1,8 +1,9 @@
+import {EffectCallback, VoidCallback} from './types';
+
 import {UniqIdGen} from './UniqIdGen';
 import {getCurrentBatchId} from './batch';
-import {runWithinEffect} from './globalEffectStack';
 import globalSignals from './globalSignals';
-import {EffectCallback, VoidCallback} from './types';
+import {runWithinEffect} from './globalEffectStack';
 
 export class Effect {
   static idGen = new UniqIdGen('ef');

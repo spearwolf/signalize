@@ -1,8 +1,3 @@
-import {UniqIdGen} from './UniqIdGen';
-import {$signal} from './constants';
-import {createEffect} from './createEffect';
-import {getCurrentEffect} from './globalEffectStack';
-import globalSignals from './globalSignals';
 import {
   Signal,
   SignalCallback,
@@ -10,6 +5,12 @@ import {
   SignalReader,
   SignalWriter,
 } from './types';
+
+import {$signal} from './constants';
+import {UniqIdGen} from './UniqIdGen';
+import {createEffect} from './createEffect';
+import {getCurrentEffect} from './globalEffectStack';
+import globalSignals from './globalSignals';
 
 const idGen = new UniqIdGen('si');
 

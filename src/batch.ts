@@ -1,6 +1,6 @@
+import {BatchCallback} from './types';
 import {UniqIdGen} from './UniqIdGen';
 import globalSignals from './globalSignals';
-import {BatchCallback} from './types';
 
 let globalBatch: Batch | undefined;
 
