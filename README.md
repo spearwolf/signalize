@@ -8,7 +8,7 @@ $ npm i @spearwolf/signalize
 
 if you've tried [SolidJS](https://www.solidjs.com/) before, the concept of _signals_ and _effects_ should sound familiar &mdash; in fact _signalize_ is based on the reactivity primitives of SolidJS [which are very well explained in this article](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf) &mdash; however, only the concepts are shared here - the implementation behind is fundamentally different. so, why create a new implementation and not just use the one from SolidJS? well, actually i just wanted to understand the mechanics behind the reactivity basics in more detail and so it was obvious to build an own similar api based on _@spearwolf/eventize_ (which is another small event library from me). so, it quickly became apparent how useful such a mechanic can be, so a library of its own was created from it.
 
-_PLEASE NOTE: everything in this repository here is a &mdash; P R O O F &ndash; O F &ndash; C O N C E P T &mdash; and not optimized for production use - there is currently no official npm package as output either_ - __but apart from that this library is quite usable and ready to try out__ :rocket:
+_PLEASE NOTE: everything in this repository here is a &mdash; P R O O F &ndash; O F &ndash; C O N C E P T &mdash; and not optimized for production use_ &mdash; __but apart from that this library is quite usable and ready to try out__ :rocket:
 
 creating a __signal__ is easy:
 
