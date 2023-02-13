@@ -1,16 +1,38 @@
+# @spearwolf/signalize
+
+[![npm version](https://badge.fury.io/js/@spearwolf%2Fsignalize.svg)](https://badge.fury.io/js/@spearwolf%2Fsignalize)
+
+## Signals and Effects for Typescript
+
+This library provides a simple and intuitive way to work with _signals_ and _effects_ :rocket:
+
+**Signals** are variables that can change over time and respond to events. Signals let you model data in your application and control how it evolves over time.
+
+**Effects** are functions that respond to signals and perform a specific action when a signal changes. With effects, you can easily control behavior changes in your application without having to write complex dependency or monitoring logic.
+
+If you've ever used [SolidJS](https://www.solidjs.com/), or heard of [preactjs/signals](https://github.com/preactjs/signals), you'll probably be familiar with it &mdash; in fact, the article [A Hands-on Introduction to Fine-Grained Reactivity](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf) inspired me to create my own standalone library for it. Thank you Ryan &mdash; a fabulous article you wrote there ;)
+
+### The current state of the library
+
+- The current version of the library is in a usable state, the API is minimal but fully implemented and tested!
+- I have used this library in some smaller projects (e.g. web components), which has been fun and worked wonderfully.
+- **This library is for anyone who wants to code with signals without being tied to one of the big frameworks like react, solidjs or angular.**
+
+## Getting Started
+
+### Install
+
 ```sh
 $ npm i @spearwolf/signalize
 ````
 
-## signals and effects for typescript
+:point_right: This library has no dependency other than [@spearwolf/eventize](https://github.com/spearwolf/eventize) (which therefore does not require any further dependencies).
 
-> `signalize` is an event based library that gives your application superpowers in terms of reactivity in the form of signals and effects
+:point_right: If you only want to work with signals and effects, there is no reason to use the API of _spearwolf/eventize_ directly (that's what _spearwolf/signals_ does in the background) &mdash; on the other hand the two libraries complement each other perfectly and work hand in hand!
 
-if you've tried [SolidJS](https://www.solidjs.com/) before, the concept of _signals_ and _effects_ should sound familiar &mdash; in fact _signalize_ is based on the reactivity primitives of SolidJS [which are very well explained in this article](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf) &mdash; however, only the concepts are shared here - the implementation behind is fundamentally different. so, why create a new implementation and not just use the one from SolidJS? well, actually i just wanted to understand the mechanics behind the reactivity basics in more detail and so it was obvious to build an own similar api based on _@spearwolf/eventize_ (which is another small event library from me). it quickly became apparent how useful such a mechanic can be, so a library of its own was created from it.
+### Create a Signal
 
-_PLEASE NOTE: everything in this repository here is a &mdash; P R O O F &ndash; O F &ndash; C O N C E P T &mdash; and not optimized for production use_ &mdash; __but apart from that this library is quite usable and ready to try out__ :rocket:
-
-creating a __signal__ is easy:
+Creating a __signal__ is easy:
 
 ```js
 import {createSignal} from '@spearwolf/signalize'
@@ -24,7 +46,9 @@ setFoo('plah!')                               // Update the signal
 console.log('foo=', foo())                    // => "foo= plah!"
 ```
 
-an __effect__ is only a function that is called. so it is not very interesting. but it becomes more interesting when a signal is read within the function. if a signal is assigned a new value at a later time, the effect function is automatically executed _again_!
+### Create an Effect
+
+An __effect__ is only a function that is called. so it is not very interesting. but it becomes more interesting when a signal is read within the function. if a signal is assigned a new value at a later time, the effect function is automatically executed _again_!
 
 the following example produces the same output as the previous one:
 
@@ -42,7 +66,7 @@ setFoo('plah!')                 // the effect function is called again now
 ```
 
 
-### API cheat sheet
+## API Cheat Sheet
 
 | export | usage | description |
 |--------|-------|-------------|
@@ -56,3 +80,5 @@ setFoo('plah!')                 // the effect function is called again now
 | onCreateEffect | `unsubscribe = onCreateEffect(callback: (effect) => void)` | will be called whenever an effect is created with `createEffect()`; return an unsubscribe function |
 | createMemo | `get = createMemo(callback)` | creates an effect and returns a get function which returns the result of the callback |
 | batch | `batch(callback)` | batch multiple updates (setter calls) together |
+
+For more infos about the api and its behavior and usage, the reader is recommended to take a look at the sources, more precisely the test specs, where many partial aspects of this library are described in detail with examples.
