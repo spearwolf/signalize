@@ -10,13 +10,13 @@ This library provides a simple and intuitive way to work with _signals_ and _eff
 
 **Effects** are functions that respond to signals and perform a specific action when a signal changes. With effects, you can easily control behavior changes in your application without having to write complex dependency or monitoring logic.
 
-If you've ever used [SolidJS](https://www.solidjs.com/), or heard of [preactjs/signals](https://github.com/preactjs/signals), you'll probably be familiar with it &mdash; in fact, the article [A Hands-on Introduction to Fine-Grained Reactivity](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf) inspired me to create my own standalone library for it. Thank you Ryan &mdash; a fabulous article you wrote there ;)
+If you've ever used [SolidJS](https://www.solidjs.com/), or heard of [preactjs/signals](https://github.com/preactjs/signals), you'll probably be familiar with it &mdash; in fact, the article [A Hands-on Introduction to Fine-Grained Reactivity](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf) inspired me to create my own standalone library for it. Thank you Ryan &mdash; an amazing article you wrote there ;)
 
 ### The current state of the library
 
 - The current version of the library is in a usable state, the API is minimal but fully implemented and tested!
 - I have used this library in some smaller projects (e.g. web components), which has been fun and worked wonderfully.
-- **This library is for anyone who wants to code with signals without being tied to one of the big frameworks like react, solidjs or angular.**
+- **This library is for anyone who wants to code with signals without being tied to one of the _big_ frameworks like react, solidjs or angular.**
 
 ## Getting Started
 
