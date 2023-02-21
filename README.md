@@ -82,3 +82,11 @@ setFoo('plah!')                 // the effect function is called again now
 | batch | `batch(callback)` | batch multiple updates (setter calls) together |
 
 For more infos about the api and its behavior and usage, the reader is recommended to take a look at the sources, more precisely the test specs, where many partial aspects of this library are described in detail with examples.
+
+
+## CHANGLELOG
+
+### 0.3.2 (2023-02-23)
+
+- typescript: export all types
+
