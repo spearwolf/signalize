@@ -12,11 +12,16 @@ This library provides a simple and intuitive way to work with _signals_ and _eff
 
 If you've ever used [SolidJS](https://www.solidjs.com/), or heard of [preactjs/signals](https://github.com/preactjs/signals), you'll probably be familiar with it &mdash; in fact, the article [A Hands-on Introduction to Fine-Grained Reactivity](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf) inspired me to create my own standalone library for it. Thank you Ryan &mdash; an amazing article you wrote there ;)
 
-### The current state of the library
+:fire: _UPDATE 2023-02-22_ &rarr; in fact, there seems to be a lot of hype around this topic right now. among other things, angular also seems to be getting signals soon, here are some more links:
+- [useSignal() is the Future of Web Frameworks](https://www.builder.io/blog/usesignal-is-the-future-of-web-frameworks)
+- [Angular Signals Demo](https://angular-signals.netlify.app/)
 
-- The current version of the library is in a usable state, the API is minimal but fully implemented and tested!
-- I have used this library in some smaller projects (e.g. web components), which has been fun and worked wonderfully.
-- **This library is for anyone who wants to code with signals without being tied to one of the _big_ frameworks like react, solidjs or angular.**
+### The current state of this library
+
+> THIS LIBRARY IS FOR ANYONE WHO WANTS TO CODE WITH SIGNALS WITHOUT BEING TIED TO ONE OF THE _BIG_ FRAMEWORKS LIKE REACT, SOLIDJS OR ANGULAR &mdash; JUST YOU, VANILLA JS AND SIGNALS :rocket:
+
+- The current version of the library is in a :heavy_check_mark: __stable__ state, the API is minimal but fully implemented and tested!
+- I have used this library in some smaller projects (e.g. web components), which worked wonderfully :smile:
 
 ## Getting Started
 
@@ -77,16 +82,16 @@ setFoo('plah!')                 // the effect function is called again now
 | touch | `touch(get)` | same as `set(get())` &mdash; no! wait, `set(get())` will _not_ signal an update, but `touch()` will do the magic without changing the value |
 | value | `data = value(get)` | read out the value without creating (side) effects |
 | createEffect | `removeEffect = createEffect(callback)` | create an effect; return an unsubscribe function |
-| onCreateEffect | `unsubscribe = onCreateEffect(callback: (effect) => void)` | will be called whenever an effect is created with `createEffect()`; return an unsubscribe function |
 | createMemo | `get = createMemo(callback)` | creates an effect and returns a get function which returns the result of the callback |
 | batch | `batch(callback)` | batch multiple updates (setter calls) together |
+| onCreateEffect | `unsubscribe = onCreateEffect(callback: (effect) => void)` | will be called whenever an effect is created with `createEffect()`; return an unsubscribe function &mdash; _NOTE: this is a global hook, which probably only should be used rarely and sparingly, but it is documented here as well_ |
 
 For more infos about the api and its behavior and usage, the reader is recommended to take a look at the sources, more precisely the test specs, where many partial aspects of this library are described in detail with examples.
 
 
 ## CHANGLELOG
 
-### 0.3.2 (2023-02-23)
+### 0.3.2 (2023-02-22)
 
 - typescript: export all types
 
