@@ -25,11 +25,14 @@
       }
     }
   },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "build:esm": "cross-env NODE_ENV=production rollup -c ./rollup/rollup.config.esm.js",
-    "watch:esm": "cross-env NODE_ENV=production rollup -w -c ./rollup/rollup.config.esm.js",
-    "build:umd": "cross-env NODE_ENV=production rollup -c ./rollup/rollup.config.umd.js",
-    "watch:umd": "cross-env NODE_ENV=production rollup -w -c ./rollup/rollup.config.umd.js",
+    "build:esm": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -c ./rollup/rollup.config.esm.js",
+    "watch:esm": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -w -c ./rollup/rollup.config.esm.js",
+    "build:umd": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -c ./rollup/rollup.config.umd.js",
+    "watch:umd": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -w -c ./rollup/rollup.config.umd.js",
     "build:types": "tsc --emitDeclarationOnly",
     "watch:types": "tsc --emitDeclarationOnly --watch",
     "build": "run-s --silent build:*",
