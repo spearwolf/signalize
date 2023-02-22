@@ -21,8 +21,8 @@ If you've ever used [SolidJS](https://www.solidjs.com/), or heard of [preactjs/s
 > THIS LIBRARY IS FOR ANYONE WHO WANTS TO CODE WITH SIGNALS WITHOUT BEING TIED TO ONE OF THE _BIG_ FRAMEWORKS LIKE REACT, SOLIDJS OR ANGULAR &mdash; JUST YOU, VANILLA JS AND SIGNALS :rocket:
 
 - The current version of the library is in a :heavy_check_mark: __stable__ state, the API is minimal but fully implemented and tested!
-- I have used this library in some smaller projects (e.g. web components), which worked wonderfully :smile:
-
+- So far I have used this library in smaller projects (e.g. web components), which worked wonderfully :smile:
+- Feel free to try out &mdash; contributions of any kind are welcome :+1:
 ## Getting Started
 
 ### Install
