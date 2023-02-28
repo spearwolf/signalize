@@ -2,13 +2,12 @@
   "name": "@spearwolf/signalize",
   "version": "0.4.0-dev",
   "description": "signals and effects for typescript",
-  "main": "build/signalize.umd.js",
-  "module": "build/signalize.js",
+  "_no_main": "build/index.js",
+  "module": "build/index.js",
   "exports": {
-    "import": "./build/signalize.js",
-    "require": "./build/signalize.umd.js"
+    "import": "./build/index.js"
   },
-  "types": "build/types/index.d.ts",
+  "types": "types/index.d.ts",
   "rollupBuild": {
     "outputDir": "build",
     "outputName": "signalize",
@@ -29,16 +28,17 @@
     "node": ">=18"
   },
   "scripts": {
-    "build:esm": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -c ./rollup/rollup.config.esm.js",
-    "watch:esm": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -w -c ./rollup/rollup.config.esm.js",
-    "build:umd": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -c ./rollup/rollup.config.umd.js",
-    "watch:umd": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -w -c ./rollup/rollup.config.umd.js",
-    "build:types": "tsc --emitDeclarationOnly",
-    "watch:types": "tsc --emitDeclarationOnly --watch",
-    "build": "run-s --silent build:*",
+    "build": "tsc --project tsconfig.build.json",
+    "__build:esm": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -c ./rollup/rollup.config.esm.js",
+    "__watch:esm": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -w -c ./rollup/rollup.config.esm.js",
+    "__build:umd": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -c ./rollup/rollup.config.umd.js",
+    "__watch:umd": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -w -c ./rollup/rollup.config.umd.js",
+    "__build:types": "tsc --project tsconfig.build.json",
+    "__watch:types": "tsc --project tsconfig.build.json --emitDeclarationOnly --watch",
+    "__build": "run-s --silent build:*",
     "clean": "rimraf build types",
     "eslint": "eslint src/ --ext .js,.jsx,.ts,.tsx",
-    "eslint:fix": "eslint src/ --ext .js,.jsx,.ts,.tsx --fix",
+   "eslint:fix": "eslint src/ --ext .js,.jsx,.ts,.tsx --fix",
     "prettier:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\"",
     "prettier:write": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\"",
     "update": "npx npm-check --update",
@@ -78,7 +78,7 @@
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1",
     "tslib": "^2.5.0",
-    "typescript": "^4.9.5"
+    "typescript": "^5.0.0-beta"
   },
   "homepage": "https://github.com/spearwolf/signalize/",
   "repository": {
