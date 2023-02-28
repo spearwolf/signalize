@@ -41,6 +41,7 @@
     "eslint:fix": "eslint src/ --ext .js,.jsx,.ts,.tsx --fix",
     "prettier:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\"",
     "prettier:write": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\"",
+    "update": "npx npm-check --update",
     "fix": "run-s --silent --print-label eslint:fix prettier:write",
     "test": "cross-env NODE_ENV=test jest",
     "cbt": "run-s clean build test"
@@ -53,6 +54,7 @@
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@rollup/plugin-replace": "^5.0.2",
     "@rollup/plugin-typescript": "^11.0.0",
+    "@spearwolf/eventize": "^2.0.4",
     "@types/jest": "^29.4.0",
     "@types/node": "^18.14.2",
     "@types/sinon": "^10.0.13",
@@ -92,7 +94,7 @@
     "url": "https://www.spearwolf.de"
   },
   "license": "Apache-2.0",
-  "dependencies": {
+  "peerDependencies": {
     "@spearwolf/eventize": "^2.0.4"
   }
 }
