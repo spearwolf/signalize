@@ -43,6 +43,7 @@ export class Effect {
     if (!this.signals.has(signalId)) {
       this.signals.add(signalId);
       globalSignals.on(signalId, 'rerun', this);
+      // TODO unsubscribe?
     }
   }
 
