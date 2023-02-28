@@ -22,7 +22,6 @@ function writeSignal(signalId: symbol) {
   globalSignals.emit(signalId);
 }
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const isSignal = (signalReader: any): boolean => {
   return typeof signalReader === 'function' && $signal in signalReader;
 };
