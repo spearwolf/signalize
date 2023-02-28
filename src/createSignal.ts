@@ -33,6 +33,7 @@ const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
         readSignal(signal.id);
         return callback(signal.value);
       });
+      // TODO unsubscribe?
     } else {
       readSignal(signal.id);
     }
