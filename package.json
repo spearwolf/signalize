@@ -29,6 +29,7 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
+    "watch": "tsc --project tsconfig.build.json --watch",
     "__build:esm": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -c ./rollup/rollup.config.esm.js",
     "__watch:esm": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -w -c ./rollup/rollup.config.esm.js",
     "__build:umd": "cross-env NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" rollup -c ./rollup/rollup.config.umd.js",
