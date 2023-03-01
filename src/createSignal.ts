@@ -7,19 +7,19 @@ import {
 } from './types';
 
 import {$signal} from './constants';
-import {UniqIdGen} from './UniqIdGen';
 import {createEffect} from './createEffect';
 import {getCurrentEffect} from './globalEffectStack';
-import globalSignals from './globalSignals';
+import {globalSignalQueue} from './globalQueues';
+import {UniqIdGen} from './UniqIdGen';
 
 const idGen = new UniqIdGen('si');
 
 function readSignal(signalId: symbol) {
-  getCurrentEffect()?.rerunOnSignal(signalId);
+  getCurrentEffect()?.runAgainOnSignal(signalId);
 }
 
 function writeSignal(signalId: symbol) {
-  globalSignals.emit(signalId);
+  globalSignalQueue.emit(signalId);
 }
 
 export const isSignal = (signalReader: any): boolean => {

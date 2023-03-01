@@ -1,19 +1,19 @@
-import globalSignals from './globalSignals';
+import {globalSignalQueue} from './globalQueues';
 
 describe('globalSignals', () => {
   it('exists', () => {
-    expect(globalSignals).toBeDefined();
+    expect(globalSignalQueue).toBeDefined();
   });
 
   it('on() exists', () => {
-    expect(typeof globalSignals.on).toBe('function');
+    expect(typeof globalSignalQueue.on).toBe('function');
   });
 
   it('off() exists', () => {
-    expect(typeof globalSignals.off).toBe('function');
+    expect(typeof globalSignalQueue.off).toBe('function');
   });
 
   it('emit() exists', () => {
-    expect(typeof globalSignals.emit).toBe('function');
+    expect(typeof globalSignalQueue.emit).toBe('function');
   });
 });
