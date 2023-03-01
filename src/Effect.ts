@@ -2,7 +2,12 @@ import {EffectCallback, VoidCallback} from './types';
 
 import {getCurrentBatchId} from './batch';
 import {runWithinEffect} from './globalEffectStack';
-import {globalSignalQueue} from './globalQueues';
+import {
+  globalBatchQueue,
+  globalEffectQueue,
+  globalSignalQueue,
+  $runAgain,
+} from './globalQueues';
 import {UniqIdGen} from './UniqIdGen';
 
 export class Effect {
@@ -21,17 +26,17 @@ export class Effect {
 
     this.id = Effect.idGen.make();
 
-    globalSignalQueue.on(this.id, 'runAgain', this);
+    globalEffectQueue.on(this.id, $runAgain, this);
   }
 
   runFirstTime(): void {
     this.#unsubscribeCallback = runWithinEffect(this, this.callback);
   }
 
-  runAgain(): void {
+  [$runAgain](): void {
     const curBatchId = getCurrentBatchId();
     if (curBatchId) {
-      globalSignalQueue.emit(curBatchId, this.id);
+      globalBatchQueue.emit(curBatchId, this.id);
     } else {
       this.unsubscribe();
       this.runFirstTime();
@@ -41,12 +46,13 @@ export class Effect {
   runAgainOnSignal(signalId: symbol): void {
     if (!this.signals.has(signalId)) {
       this.signals.add(signalId);
-      globalSignalQueue.on(signalId, 'runAgain', this);
+      globalSignalQueue.on(signalId, $runAgain, this);
     }
   }
 
   unsubscribe(): void {
     globalSignalQueue.off(this);
+    globalEffectQueue.off(this);
 
     this.signals.clear();
 

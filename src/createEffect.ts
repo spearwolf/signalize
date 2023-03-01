@@ -2,16 +2,14 @@ import {EffectCallback, VoidCallback} from './types';
 
 import {Effect} from './Effect';
 import {getCurrentEffect} from './globalEffectStack';
-import {globalSignalQueue} from './globalQueues';
-
-const EVENT_CREATE_EFFECT = Symbol('createEffect');
+import {$createEffect, globalEffectQueue} from './globalQueues';
 
 export function createEffect(callback: EffectCallback): VoidCallback {
   const effect = new Effect(callback);
 
   getCurrentEffect()?.addChild(effect);
 
-  globalSignalQueue.emit(EVENT_CREATE_EFFECT, effect);
+  globalEffectQueue.emit($createEffect, effect);
 
   effect.runFirstTime();
 
@@ -22,4 +20,4 @@ export function createEffect(callback: EffectCallback): VoidCallback {
 
 export const onCreateEffect = (
   callback: (effect: Effect) => void,
-): (() => void) => globalSignalQueue.on(EVENT_CREATE_EFFECT, callback);
+): (() => void) => globalEffectQueue.on($createEffect, callback);
