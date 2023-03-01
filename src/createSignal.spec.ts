@@ -1,4 +1,5 @@
-import {createSignal, isSignal} from './createSignal';
+import {createEffect} from './createEffect';
+import {createSignal, isSignal, muteSignal, unmuteSignal} from './createSignal';
 
 describe('createSignal', () => {
   it('works as expected', () => {
@@ -47,5 +48,40 @@ describe('createSignal', () => {
 
     expect(signal).toBe(otherSignal);
     expect(set).toBe(setOther);
+  });
+
+  it('mute, unmute and unsubscribe', () => {
+    const [signal, set] = createSignal(666);
+
+    let foo = 0;
+
+    const unsubscribe = createEffect(() => {
+      foo = signal();
+    });
+
+    expect(foo).toBe(666);
+
+    set(23);
+
+    expect(foo).toBe(23);
+
+    muteSignal(signal);
+    set(44);
+
+    expect(foo).toBe(23);
+
+    unmuteSignal(signal);
+
+    expect(foo).toBe(23);
+
+    set(111);
+
+    expect(foo).toBe(111);
+
+    unsubscribe();
+
+    set(222);
+
+    expect(foo).toBe(111);
   });
 });
