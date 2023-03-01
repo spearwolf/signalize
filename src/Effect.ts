@@ -1,9 +1,9 @@
 import {EffectCallback, VoidCallback} from './types';
 
-import {UniqIdGen} from './UniqIdGen';
 import {getCurrentBatchId} from './batch';
-import globalSignals from './globalSignals';
 import {runWithinEffect} from './globalEffectStack';
+import {globalSignalQueue} from './globalQueues';
+import {UniqIdGen} from './UniqIdGen';
 
 export class Effect {
   static idGen = new UniqIdGen('ef');
@@ -11,44 +11,42 @@ export class Effect {
   readonly id: symbol;
   readonly callback: EffectCallback;
 
-  readonly signals: Set<symbol>;
-  readonly childEffects: Set<Effect>;
+  readonly signals: Set<symbol> = new Set();
+  readonly childEffects: Set<Effect> = new Set();
 
-  #unsubscribeEffect: VoidCallback;
   #unsubscribeCallback: VoidCallback;
 
   constructor(callback: EffectCallback) {
-    this.id = Effect.idGen.make();
     this.callback = callback;
-    this.signals = new Set();
-    this.childEffects = new Set();
-    this.#unsubscribeEffect = globalSignals.on(this.id, () => this.rerun());
+
+    this.id = Effect.idGen.make();
+
+    globalSignalQueue.on(this.id, 'runAgain', this);
   }
 
-  run(): void {
+  runFirstTime(): void {
     this.#unsubscribeCallback = runWithinEffect(this, this.callback);
   }
 
-  rerun(): void {
+  runAgain(): void {
     const curBatchId = getCurrentBatchId();
     if (curBatchId) {
-      globalSignals.emit(curBatchId, this.id);
+      globalSignalQueue.emit(curBatchId, this.id);
     } else {
       this.unsubscribe();
-      this.run();
+      this.runFirstTime();
     }
   }
 
-  rerunOnSignal(signalId: symbol): void {
+  runAgainOnSignal(signalId: symbol): void {
     if (!this.signals.has(signalId)) {
       this.signals.add(signalId);
-      globalSignals.on(signalId, 'rerun', this);
-      // TODO unsubscribe?
+      globalSignalQueue.on(signalId, 'runAgain', this);
     }
   }
 
   unsubscribe(): void {
-    globalSignals.off(this);
+    globalSignalQueue.off(this);
 
     this.signals.clear();
 
@@ -62,11 +60,6 @@ export class Effect {
       this.#unsubscribeCallback();
       this.#unsubscribeCallback = undefined;
     }
-  }
-
-  destroy(): void {
-    this.unsubscribe();
-    this.#unsubscribeEffect();
   }
 
   addChild(effect: Effect): void {

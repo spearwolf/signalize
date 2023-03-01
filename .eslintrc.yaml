@@ -44,4 +44,3 @@ rules:
   "@typescript-eslint/no-use-before-define": [2, {"functions": false}]
   "@typescript-eslint/no-unused-vars": [2, {vars: "all", args: "after-used", argsIgnorePattern: "^_"}]
   "@typescript-eslint/consistent-type-assertions": [2, {assertionStyle: "as", objectLiteralTypeAssertions: "allow-as-parameter"}]
-  sort-imports: [2]

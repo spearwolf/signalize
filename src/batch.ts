@@ -1,6 +1,6 @@
+import {globalSignalQueue} from './globalQueues';
 import {BatchCallback} from './types';
 import {UniqIdGen} from './UniqIdGen';
-import globalSignals from './globalSignals';
 
 let globalBatch: Batch | undefined;
 
@@ -14,7 +14,7 @@ class Batch {
 
   constructor() {
     this.id = Batch.idGen.make();
-    this.unsubscribe = globalSignals.on(this.id, 'batch', this);
+    this.unsubscribe = globalSignalQueue.on(this.id, 'batch', this);
   }
 
   batch(effectId: symbol) {
@@ -24,7 +24,7 @@ class Batch {
   }
 
   execute() {
-    globalSignals.emit(this.delayedEffects);
+    globalSignalQueue.emit(this.delayedEffects);
   }
 }
 
