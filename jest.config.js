@@ -3,7 +3,8 @@
  * https://jestjs.io/docs/en/configuration.html
  */
 
-export default {
+/** @type {import('jest').Config} */
+const config = {
   // All imported modules in your tests should be mocked automatically
   // automock: false,
 
@@ -71,7 +72,7 @@ export default {
   // ],
 
   // An array of file extensions your modules use
-  moduleFileExtensions: ['js', 'json', 'ts'],
+  moduleFileExtensions: ['js', 'json'],
 
   // A map from regular expressions to module names or to arrays of module names that allow to stub out resources with a single module
   // moduleNameMapper: {},
@@ -90,7 +91,7 @@ export default {
   // notifyMode: "failure-change",
 
   // A preset that is used as a base for Jest's configuration
-  preset: 'ts-jest',
+  // preset: 'ts-jest',
 
   // Run tests from one or more projects
   // projects: undefined,
@@ -115,6 +116,7 @@ export default {
 
   // A list of paths to directories that Jest should use to search for files in
   // roots: ['<rootDir>', './tests'],
+  roots: ['./tests'],
 
   // Allows you to use a custom runner instead of Jest's default test runner
   // runner: "jest-runner",
@@ -143,7 +145,7 @@ export default {
   // The glob patterns Jest uses to detect test files
   testMatch: [
     // "**/__tests__/**/*.[jt]s?(x)",
-    '**/?(*.)+(spec|test).[tj]s?(x)',
+    '**/?(*.)+(spec|test).js?(x)',
   ],
 
   // An array of regexp pattern strings that are matched against all test paths, matched tests are skipped
@@ -167,9 +169,9 @@ export default {
   // timers: "real",
 
   // A map from regular expressions to paths to transformers
-  transform: {
-    '\\.[jt]s$': ['ts-jest'],
-  },
+  // transform: {
+  //   '\\.[jt]s$': ['ts-jest'],
+  // },
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
   // transformIgnorePatterns: [
@@ -189,3 +191,5 @@ export default {
   // Whether to use watchman for file crawling
   // watchman: true,
 };
+
+module.exports = config;
