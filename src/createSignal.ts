@@ -50,6 +50,7 @@ const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
 class SignalImpl<Type> implements Signal<Type> {
   id: symbol;
   lazy: boolean;
+  muted = false;
 
   #value: Type | undefined = undefined;
 
@@ -89,7 +90,9 @@ class SignalImpl<Type> implements Signal<Type> {
         this.valueFn = undefined;
         this.lazy = false;
       }
-      writeSignal(this.id);
+      if (!this.muted) {
+        writeSignal(this.id);
+      }
     }
   };
 
@@ -106,6 +109,8 @@ class SignalImpl<Type> implements Signal<Type> {
     this.reader = createSignalReader(this);
   }
 }
+
+// TODO destroySignal() ?
 
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalReader<Type> | (() => Type) = undefined,
@@ -126,6 +131,24 @@ export function createSignal<Type = unknown>(
   return [signal.reader, signal.writer];
 }
 
+export const muteSignal = <Type = unknown>(
+  signalReader: SignalReader<Type>,
+): void => {
+  const signal = signalReader[$signal];
+  if (signal) {
+    signal.muted = true;
+  }
+};
+
+export const unmuteSignal = <Type = unknown>(
+  signalReader: SignalReader<Type>,
+): void => {
+  const signal = signalReader[$signal];
+  if (signal) {
+    signal.muted = false;
+  }
+};
+
 export const value = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): Type | undefined => signalReader[$signal]?.value;
@@ -133,8 +156,8 @@ export const value = <Type = unknown>(
 export const touch = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): void => {
-  const signalId = signalReader[$signal]?.id;
-  if (signalId) {
-    writeSignal(signalId);
+  const signal = signalReader[$signal];
+  if (signal && !signal.muted) {
+    writeSignal(signal.id);
   }
 };
