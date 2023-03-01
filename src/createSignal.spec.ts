@@ -1,5 +1,11 @@
 import {createEffect} from './createEffect';
-import {createSignal, isSignal, muteSignal, unmuteSignal} from './createSignal';
+import {
+  createSignal,
+  destroySignal,
+  isSignal,
+  muteSignal,
+  unmuteSignal,
+} from './createSignal';
 
 describe('createSignal', () => {
   it('works as expected', () => {
@@ -51,36 +57,69 @@ describe('createSignal', () => {
   });
 
   it('mute, unmute and unsubscribe', () => {
-    const [signal, set] = createSignal(666);
+    const [sigFoo, setFoo] = createSignal(666);
 
     let foo = 0;
 
     const unsubscribe = createEffect(() => {
-      foo = signal();
+      foo = sigFoo();
     });
 
     expect(foo).toBe(666);
 
-    set(23);
+    setFoo(23);
 
     expect(foo).toBe(23);
 
-    muteSignal(signal);
-    set(44);
+    muteSignal(sigFoo);
+    setFoo(44);
 
     expect(foo).toBe(23);
 
-    unmuteSignal(signal);
+    unmuteSignal(sigFoo);
 
     expect(foo).toBe(23);
 
-    set(111);
+    setFoo(111);
 
     expect(foo).toBe(111);
 
     unsubscribe();
+    setFoo(222);
 
-    set(222);
+    expect(foo).toBe(111);
+  });
+
+  it('mute, unmute with signal reader callback effect', () => {
+    const [sigFoo, setFoo] = createSignal(666);
+
+    let foo = 0;
+
+    sigFoo((val) => {
+      foo = val;
+    });
+
+    expect(foo).toBe(666);
+
+    setFoo(23);
+
+    expect(foo).toBe(23);
+
+    muteSignal(sigFoo);
+    setFoo(44);
+
+    expect(foo).toBe(23);
+
+    unmuteSignal(sigFoo);
+
+    expect(foo).toBe(23);
+
+    setFoo(111);
+
+    expect(foo).toBe(111);
+
+    destroySignal(sigFoo);
+    setFoo(222);
 
     expect(foo).toBe(111);
   });

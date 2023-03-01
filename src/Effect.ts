@@ -7,6 +7,8 @@ import {
   globalEffectQueue,
   globalSignalQueue,
   $runAgain,
+  $destroySignal,
+  globalDestroySignalQueue,
 } from './globalQueues';
 import {UniqIdGen} from './UniqIdGen';
 
@@ -43,16 +45,29 @@ export class Effect {
     }
   }
 
+  [$destroySignal](signalId: symbol): void {
+    if (this.signals.has(signalId)) {
+      this.signals.delete(signalId);
+      globalSignalQueue.off(signalId, this);
+      if (this.signals.size === 0) {
+        // no signals left, so nobody can trigger this effect anymore
+        this.unsubscribe();
+      }
+    }
+  }
+
   runAgainBySignal(signalId: symbol): void {
     if (!this.signals.has(signalId)) {
       this.signals.add(signalId);
       globalSignalQueue.on(signalId, $runAgain, this);
+      globalDestroySignalQueue.once(signalId, $destroySignal, this);
     }
   }
 
   unsubscribe(): void {
     globalSignalQueue.off(this);
     globalEffectQueue.off(this);
+    globalDestroySignalQueue.off(this);
 
     this.signals.clear();
 

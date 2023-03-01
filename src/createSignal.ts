@@ -9,7 +9,7 @@ import {
 import {$signal} from './constants';
 import {createEffect} from './createEffect';
 import {getCurrentEffect} from './globalEffectStack';
-import {globalSignalQueue} from './globalQueues';
+import {globalDestroySignalQueue, globalSignalQueue} from './globalQueues';
 import {UniqIdGen} from './UniqIdGen';
 
 const idCreator = new UniqIdGen('si');
@@ -30,11 +30,12 @@ const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
   const signalReader = (callback?: SignalCallback<Type>) => {
     if (callback) {
       createEffect(() => {
-        readSignal(signal.id);
+        if (!signal.destroyed) {
+          readSignal(signal.id);
+        }
         return callback(signal.value);
       });
-      // TODO unsubscribe?
-    } else {
+    } else if (!signal.destroyed) {
       readSignal(signal.id);
     }
     return signal.value;
@@ -50,7 +51,9 @@ const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
 class SignalImpl<Type> implements Signal<Type> {
   id: symbol;
   lazy: boolean;
+
   muted = false;
+  destroyed = false;
 
   #value: Type | undefined = undefined;
 
@@ -90,7 +93,7 @@ class SignalImpl<Type> implements Signal<Type> {
         this.valueFn = undefined;
         this.lazy = false;
       }
-      if (!this.muted) {
+      if (!this.muted && !this.destroyed) {
         writeSignal(this.id);
       }
     }
@@ -98,7 +101,9 @@ class SignalImpl<Type> implements Signal<Type> {
 
   constructor(lazy: boolean, initialValue?: Type | (() => Type) | undefined) {
     this.id = idCreator.make();
+
     this.lazy = lazy;
+
     if (this.lazy) {
       this.value = undefined;
       this.valueFn = initialValue as () => Type;
@@ -106,11 +111,10 @@ class SignalImpl<Type> implements Signal<Type> {
       this.value = initialValue as Type;
       this.valueFn = undefined;
     }
+
     this.reader = createSignalReader(this);
   }
 }
-
-// TODO destroySignal() ?
 
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalReader<Type> | (() => Type) = undefined,
@@ -130,6 +134,16 @@ export function createSignal<Type = unknown>(
 
   return [signal.reader, signal.writer];
 }
+
+export const destroySignal = <Type = unknown>(
+  signalReader: SignalReader<Type>,
+): void => {
+  const signal = signalReader[$signal];
+  if (signal && !signal.destroyed) {
+    signal.destroyed = true;
+    globalDestroySignalQueue.emit(signal.id, signal.id);
+  }
+};
 
 export const muteSignal = <Type = unknown>(
   signalReader: SignalReader<Type>,
@@ -157,7 +171,7 @@ export const touch = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): void => {
   const signal = signalReader[$signal];
-  if (signal && !signal.muted) {
+  if (signal && !signal.muted && !signal.destroyed) {
     writeSignal(signal.id);
   }
 };
