@@ -29,7 +29,7 @@ export class Effect {
     globalEffectQueue.on(this.id, $runAgain, this);
   }
 
-  runFirstTime(): void {
+  run(): void {
     this.#unsubscribeCallback = runWithinEffect(this, this.callback);
   }
 
@@ -39,11 +39,11 @@ export class Effect {
       globalBatchQueue.emit(curBatchId, this.id);
     } else {
       this.unsubscribe();
-      this.runFirstTime();
+      this.run();
     }
   }
 
-  runAgainOnSignal(signalId: symbol): void {
+  runAgainBySignal(signalId: symbol): void {
     if (!this.signals.has(signalId)) {
       this.signals.add(signalId);
       globalSignalQueue.on(signalId, $runAgain, this);

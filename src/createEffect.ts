@@ -11,7 +11,7 @@ export function createEffect(callback: EffectCallback): VoidCallback {
 
   globalEffectQueue.emit($createEffect, effect);
 
-  effect.runFirstTime();
+  effect.run();
 
   return () => {
     effect.unsubscribe();

@@ -12,10 +12,10 @@ import {getCurrentEffect} from './globalEffectStack';
 import {globalSignalQueue} from './globalQueues';
 import {UniqIdGen} from './UniqIdGen';
 
-const idGen = new UniqIdGen('si');
+const idCreator = new UniqIdGen('si');
 
 function readSignal(signalId: symbol) {
-  getCurrentEffect()?.runAgainOnSignal(signalId);
+  getCurrentEffect()?.runAgainBySignal(signalId);
 }
 
 function writeSignal(signalId: symbol) {
@@ -94,7 +94,7 @@ class SignalImpl<Type> implements Signal<Type> {
   };
 
   constructor(lazy: boolean, initialValue?: Type | (() => Type) | undefined) {
-    this.id = idGen.make();
+    this.id = idCreator.make();
     this.lazy = lazy;
     if (this.lazy) {
       this.value = undefined;

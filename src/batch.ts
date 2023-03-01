@@ -5,26 +5,24 @@ import {UniqIdGen} from './UniqIdGen';
 let globalBatch: Batch | undefined;
 
 class Batch {
-  static readonly idGen = new UniqIdGen('ba');
+  static readonly idCreator = new UniqIdGen('ba');
 
   readonly id: symbol;
 
-  readonly delayedEffects: symbol[] = [];
+  readonly delayedEffects = new Set<symbol>();
   readonly unsubscribe: () => void;
 
   constructor() {
-    this.id = Batch.idGen.make();
+    this.id = Batch.idCreator.make();
     this.unsubscribe = globalBatchQueue.on(this.id, $batch, this);
   }
 
   [$batch](effectId: symbol) {
-    if (this.delayedEffects.indexOf(effectId) === -1) {
-      this.delayedEffects.push(effectId);
-    }
+    this.delayedEffects.add(effectId);
   }
 
   execute() {
-    globalEffectQueue.emit(this.delayedEffects);
+    globalEffectQueue.emit(Array.from(this.delayedEffects));
   }
 }
 
