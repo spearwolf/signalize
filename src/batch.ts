@@ -1,4 +1,4 @@
-import {globalSignalQueue} from './globalQueues';
+import {$batch, globalBatchQueue, globalEffectQueue} from './globalQueues';
 import {BatchCallback} from './types';
 import {UniqIdGen} from './UniqIdGen';
 
@@ -14,17 +14,17 @@ class Batch {
 
   constructor() {
     this.id = Batch.idGen.make();
-    this.unsubscribe = globalSignalQueue.on(this.id, 'batch', this);
+    this.unsubscribe = globalBatchQueue.on(this.id, $batch, this);
   }
 
-  batch(effectId: symbol) {
+  [$batch](effectId: symbol) {
     if (this.delayedEffects.indexOf(effectId) === -1) {
       this.delayedEffects.push(effectId);
     }
   }
 
   execute() {
-    globalSignalQueue.emit(this.delayedEffects);
+    globalEffectQueue.emit(this.delayedEffects);
   }
 }
 
