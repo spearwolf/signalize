@@ -10,6 +10,7 @@ export interface Signal<Type> {
   valueFn: () => Type | undefined;
   lazy: boolean;
   muted: boolean;
+  destroyed: boolean;
   reader: SignalReader<Type>;
   writer: SignalWriter<Type>;
 }
