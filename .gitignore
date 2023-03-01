@@ -1,5 +1,5 @@
 node_modules
 .size-snapshot.json
 build
-
-types/
+types
+tests
