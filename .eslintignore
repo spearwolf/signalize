@@ -1,3 +1,5 @@
 build
+tests
+types
 node_modules
 *.html

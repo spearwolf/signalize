@@ -1,5 +1,7 @@
 .vscode
 rollup
+src
+tests
 .editorconfig
 .eslintignore
 .eslintrc.yaml
@@ -8,5 +10,7 @@ rollup
 .size-snapshot.json
 jest.config.ts
 tsconfig.json
+tsconfig.build.json
+tsconfig.test.json
 *.spec.ts
 *.spec.d.ts
