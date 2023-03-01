@@ -40,8 +40,8 @@
     "fix": "run-s --print-label eslint:fix prettier:write",
     "jest": "cross-env NODE_ENV=test jest",
     "jest:watch": "cross-env NODE_ENV=test jest --watch",
-    "test:build": "tsc --project tsconfig.test.json",
-    "test:build:watch": "tsc --project tsconfig.test.json --watch",
+    "test:build": "tsc --project tsconfig.tests.json",
+    "test:build:watch": "tsc --project tsconfig.tests.json --watch",
     "test": "run-s eslint prettier:check test:build jest",
     "cbt": "run-s clean build test"
   },
