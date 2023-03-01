@@ -2,13 +2,17 @@
   "name": "@spearwolf/signalize",
   "version": "0.4.0-dev",
   "description": "signals and effects for typescript",
-  "_no_main": "build/index.js",
+  "main": "build/index.js",
+  "type": "module",
   "module": "build/index.js",
+  "types": "types/index.d.ts",
   "exports": {
     "import": "./build/index.js"
   },
-  "types": "types/index.d.ts",
-  "rollupBuild": {
+  "engines": {
+    "node": ">=16.19"
+  },
+  "_rollupBuild": {
     "outputDir": "build",
     "outputName": "signalize",
     "externals": [
@@ -24,9 +28,6 @@
       }
     }
   },
-  "engines": {
-    "node": ">=18"
-  },
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
     "build:watch": "tsc --project tsconfig.build.json --watch",
@@ -36,13 +37,13 @@
     "prettier:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\"",
     "prettier:write": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\"",
     "update": "npx npm-check --update",
-    "fix": "run-s --silent --print-label eslint:fix prettier:write",
+    "fix": "run-s --print-label eslint:fix prettier:write",
     "jest": "cross-env NODE_ENV=test jest",
     "jest:watch": "cross-env NODE_ENV=test jest --watch",
     "test:build": "tsc --project tsconfig.test.json",
     "test:build:watch": "tsc --project tsconfig.test.json --watch",
-    "test": "run-s --silent test:build jest",
-    "cbt": "run-s --silent clean build test"
+    "test": "run-s eslint prettier:check test:build jest",
+    "cbt": "run-s clean build test"
   },
   "devDependencies": {
     "@babel/core": "^7.21.0",
