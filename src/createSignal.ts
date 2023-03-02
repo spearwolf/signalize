@@ -116,6 +116,7 @@ class SignalImpl<Type> implements Signal<Type> {
   }
 }
 
+// TODO add optional compare function to createSignal() ?
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalReader<Type> | (() => Type) = undefined,
   params?: SignalParameters,
