@@ -5,3 +5,5 @@ export {createSignal, isSignal, touch, value} from './createSignal';
 export * from './types';
 
 // TODO connect(), unconnect() signals !
+
+// TODO decorators: @signal, @effect, @memo, @asyncEffect ...
