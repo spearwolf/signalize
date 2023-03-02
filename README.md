@@ -94,11 +94,12 @@ For more infos about the api and its behavior and usage, the reader is recommend
 
 ## CHANGLELOG
 
-### 0.4.0 (2023-03-01)
+### 0.4.0 (2023-03-02)
 
 - upgrade to typescript@5
+  - refactor build pipeline
 - mute, unmute and destroy signals
-- ...
+- TODO ..
 
 ### 0.3.2 (2023-02-22)
 

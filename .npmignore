@@ -1,4 +1,5 @@
 .vscode
+build
 rollup
 src
 tests
@@ -9,6 +10,7 @@ tests
 .prettierrc.yaml
 .size-snapshot.json
 jest.config.ts
+rollup.config.js
 tsconfig.json
 tsconfig.build.json
 tsconfig.test.json

@@ -2,36 +2,21 @@
   "name": "@spearwolf/signalize",
   "version": "0.4.0-dev",
   "description": "signals and effects for typescript",
-  "main": "build/index.js",
+  "main": "dist/signalize.esm.js",
   "type": "module",
-  "module": "build/index.js",
+  "module": "dist/signalize.esm.js",
   "types": "types/index.d.ts",
   "exports": {
-    "import": "./build/index.js"
+    "import": "./dist/signalize.esm.js",
+    "require": "./dist/signalize.cjs.js"
   },
   "engines": {
     "node": ">=16.19"
   },
-  "_rollupBuild": {
-    "outputDir": "build",
-    "outputName": "signalize",
-    "externals": [
-      "@spearwolf/eventize"
-    ],
-    "esm": {
-      "buildName": "es2017"
-    },
-    "umd": {
-      "buildName": "umd",
-      "globals": {
-        "@spearwolf/eventize": "eventize"
-      }
-    }
-  },
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
     "build:watch": "tsc --project tsconfig.build.json --watch",
-    "clean": "rimraf build types tests",
+    "clean": "rimraf build types tests dist",
     "eslint": "eslint src/ --ext .js,.jsx,.ts,.tsx",
     "eslint:fix": "eslint src/ --ext .js,.jsx,.ts,.tsx --fix",
     "prettier:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\"",
@@ -43,7 +28,11 @@
     "test:build": "tsc --project tsconfig.tests.json",
     "test:build:watch": "tsc --project tsconfig.tests.json --watch",
     "test": "run-s eslint prettier:check test:build jest",
-    "cbt": "run-s clean build test"
+    "cbt": "run-s clean build test",
+    "bundle": "rollup -c",
+    "dist": "run-s clean build bundle",
+    "prepare": "run-s dist",
+    "world": "run-s clean build test bundle"
   },
   "devDependencies": {
     "@babel/core": "^7.21.0",
@@ -65,6 +54,7 @@
     "npm-run-all": "^4.1.5",
     "prettier": "^2.8.4",
     "rimraf": "^4.1.2",
+    "rollup": "^3.18.0",
     "sinon": "^15.0.1",
     "tslib": "^2.5.0",
     "typescript": "^5.0.0-beta"

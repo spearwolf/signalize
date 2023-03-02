@@ -1,5 +1,6 @@
-node_modules
-.size-snapshot.json
 build
-types
+dist
+node_modules
 tests
+types
+.size-snapshot.json
