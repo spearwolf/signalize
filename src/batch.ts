@@ -14,6 +14,7 @@ class Batch {
 
   constructor() {
     this.id = Batch.idCreator.make();
+    // TODO do we need a global queue here? maybe just a batch() method is enough?
     this.unsubscribe = globalBatchQueue.on(this.id, $batch, this);
   }
 
