@@ -3,3 +3,5 @@ export {createEffect, onCreateEffect} from './createEffect';
 export {createMemo} from './createMemo';
 export {createSignal, isSignal, touch, value} from './createSignal';
 export * from './types';
+
+// TODO connect(), unconnect() signals !
