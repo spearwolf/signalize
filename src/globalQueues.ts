@@ -4,6 +4,8 @@ export const globalSignalQueue = eventize({});
 
 export const $runAgain = Symbol('runAgain');
 
+// TODO remove globalDestroySignalQueue, use signal.on(destroy) instead
+
 export const globalDestroySignalQueue = eventize({});
 
 export const $destroySignal = Symbol('destroySignal');
