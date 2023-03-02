@@ -176,3 +176,5 @@ export const touch = <Type = unknown>(
     writeSignal(signal.id);
   }
 };
+
+// TODO getSignalsCount() => {active, muted}

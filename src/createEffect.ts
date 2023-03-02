@@ -26,3 +26,7 @@ export function createEffect(callback: EffectCallback): VoidCallback {
 export const onCreateEffect = (
   callback: (effect: Effect) => void,
 ): (() => void) => globalEffectQueue.on($createEffect, callback);
+
+// TODO onDestroyEffect()
+
+// TODO getEffectsCount()
