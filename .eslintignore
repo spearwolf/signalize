@@ -1,4 +1,5 @@
 build
+dist
 tests
 types
 node_modules
