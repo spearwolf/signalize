@@ -9,10 +9,9 @@ tests
 .prettierignore
 .prettierrc.yaml
 .size-snapshot.json
-jest.config.ts
+jest.config.js
 rollup.config.js
 tsconfig.json
-tsconfig.build.json
-tsconfig.test.json
+tsconfig.*.json
 *.spec.ts
 *.spec.d.ts
