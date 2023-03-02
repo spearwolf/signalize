@@ -1,5 +1,7 @@
 import {globalSignalQueue} from './globalQueues';
 
+// TODO refactor globalSignals tests
+//
 describe('globalSignals', () => {
   it('exists', () => {
     expect(globalSignalQueue).toBeDefined();
