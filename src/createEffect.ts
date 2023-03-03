@@ -9,6 +9,8 @@ import {$createEffect, globalEffectQueue} from './globalQueues';
 // TODO createEffect() autorun: false
 // TODO createEffect() function signature: [run, unsubscribe] = createEffect(..)
 
+// TODO createEffect((): () => void) - effect callback should return an optional unsubscribe function (like react:useEffect())
+
 export function createEffect(callback: EffectCallback): VoidCallback {
   const effect = new Effect(callback);
 
