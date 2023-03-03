@@ -15,11 +15,15 @@ import {UniqIdGen} from './UniqIdGen';
 export class Effect {
   static idGen = new UniqIdGen('ef');
 
+  static count = 0;
+
   readonly id: symbol;
   readonly callback: EffectCallback;
 
   readonly signals: Set<symbol> = new Set();
   readonly childEffects: Set<Effect> = new Set();
+
+  #destroyed = false;
 
   #unsubscribeCallback: VoidCallback;
 
@@ -29,6 +33,8 @@ export class Effect {
     this.id = Effect.idGen.make();
 
     globalEffectQueue.on(this.id, $runAgain, this);
+
+    ++Effect.count;
   }
 
   run(): void {
@@ -51,7 +57,7 @@ export class Effect {
       globalSignalQueue.off(signalId, this);
       if (this.signals.size === 0) {
         // no signals left, so nobody can trigger this effect anymore
-        this.unsubscribe();
+        this.destroy();
       }
     }
   }
@@ -81,6 +87,15 @@ export class Effect {
       this.#unsubscribeCallback();
       this.#unsubscribeCallback = undefined;
     }
+  }
+
+  destroy(): void {
+    if (this.#destroyed) return;
+
+    this.unsubscribe();
+
+    --Effect.count;
+    this.#destroyed = true;
   }
 
   addChild(effect: Effect): void {

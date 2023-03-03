@@ -82,12 +82,13 @@ setFoo('plah!')                 // the effect function is called again now
 | touch | `touch(get)` | same as `set(get())` &mdash; no! wait, `set(get())` will _not_ signal an update, but `touch()` will do the magic without changing the value |
 | value | `data = value(get)` | read out the value without creating (side) effects |
 | createEffect | `removeEffect = createEffect(callback)` | create an effect; return an unsubscribe function |
-| createMemo | `get = createMemo(callback)` | creates an effect and returns a get function which returns the result of the callback |
+| createMemo | `get = createMemo(callback)` | creates an effect and returns a signal get function which returns the result of the callback |
 | batch | `batch(callback)` | batch multiple updates (setter calls) together |
 | destroySignal | `destroySignal(get)` | destroy the signal. effects (and memos) are automatically released when all their used signals are destroyed. you can still use the getter and setter from the signal, but no effects are triggered anymore. _tidying up is good practice, otherwise everything will overflow at some point_ ;) |
 | muteSignal | `muteSignal(get)` | this is the reversible variant of `destroySignal()`. you can still use the getter and setter of the signal, but no effects are triggered in the background. in contrast to `destroySignal()`, event subscriptions of effects are not removed in the background, they remain, just in the inactive state. so _mute_ is not a replacement for _destroy_ |
 | unmuteSignal | `unmuteSignal(get)` | unmute the signal. this is the counterpart to `muteSignal()` |
 | onCreateEffect | `unsubscribe = onCreateEffect(callback: (effect) => void)` | will be called whenever an effect is created with `createEffect()`; return an unsubscribe function &mdash; _NOTE: this is a global hook, which probably only should be used rarely and sparingly, but it is documented here as well_ |
+| getEffectsCount | `getEffectsCount() => number` | return the number of active effects. _NOTE: is mainly interesting for tests_ |
 
 For more infos about the api and its behavior and usage, the reader is recommended to take a look at the sources, more precisely the test specs, where many partial aspects of this library are described in detail with examples.
 

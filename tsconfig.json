@@ -1,6 +1,8 @@
 {
   "include": ["src"],
 
+  "files": ["node_modules/jest-expect-message/types/index.d.ts"],
+
   "compilerOptions": {
     "lib": ["esnext", "dom"],
     "target": "esnext",

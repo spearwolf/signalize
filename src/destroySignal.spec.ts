@@ -1,58 +1,27 @@
-import {getSubscriptionCount} from '@spearwolf/eventize';
+import {
+  assertEffectsCount,
+  assertEffectSubscriptionsCount,
+  assertEffectSubscriptionsCountChange,
+  assertSignalDestroySubscriptionsCount,
+  assertSignalDestroySubscriptionsCountChange,
+  saveEffectSubscriptionsCount,
+  saveSignalDestroySubscriptionsCount,
+} from './assert-helpers';
 import {createEffect} from './createEffect';
 import {createMemo} from './createMemo';
 import {createSignal, destroySignal} from './createSignal';
-import {globalDestroySignalQueue, globalEffectQueue} from './globalQueues';
-
-let g_initialEffectCount = 0;
-let g_effectCount = 0;
-
-const saveEffectsCount = (initial?: boolean) => {
-  g_effectCount = getSubscriptionCount(globalEffectQueue);
-  if (initial) {
-    g_initialEffectCount = g_effectCount;
-  }
-  return g_effectCount;
-}
-
-function assertEffectsCountChange(deltaCount: number) {
-  const beforeCount = g_effectCount;
-  const count = saveEffectsCount();
-  expect(
-    count,
-    `Effects count change delta should be ${deltaCount} but is ${(beforeCount - g_initialEffectCount) - (count - g_initialEffectCount)}`
-  ).toBe(beforeCount + deltaCount);
-};
-
-function assertEffectsCount(count: number) {
-  expect(
-    saveEffectsCount() - g_initialEffectCount,
-    `Effects count should be ${count} but is ${g_effectCount - g_initialEffectCount}`
-  ).toBe(count);
-};
-
-let g_signalDestroySubscriptionsCount = 0;
-
-const saveSignalDestroySubscriptionsCount = () => {
-  g_signalDestroySubscriptionsCount = getSubscriptionCount(globalDestroySignalQueue);
-  return g_signalDestroySubscriptionsCount;
-}
-
-function assertSignalDestroySubscriptionsCountChange(deltaCount: number) {
-  const beforeCount = g_signalDestroySubscriptionsCount;
-  const count = saveSignalDestroySubscriptionsCount();
-  expect(count).toBe(beforeCount + deltaCount);
-};
 
 describe('destroySignal', () => {
   beforeEach(() => {
-    saveEffectsCount(true);
-    saveSignalDestroySubscriptionsCount();
+    assertEffectsCount(0);
+    saveEffectSubscriptionsCount(true);
+    saveSignalDestroySubscriptionsCount(true);
   });
 
   afterEach(() => {
-    // assertEffectsCount(0);
-    // assertSignalDestroySubscriptionsCount(0);
+    assertEffectsCount(0);
+    assertEffectSubscriptionsCount(0);
+    assertSignalDestroySubscriptionsCount(0);
   });
 
   it('destroy signal reader callback effect', () => {
@@ -66,7 +35,8 @@ describe('destroySignal', () => {
 
     expect(foo).toBe(666);
 
-    assertEffectsCountChange(1);
+    assertEffectsCount(1);
+    assertEffectSubscriptionsCountChange(1);
     assertSignalDestroySubscriptionsCountChange(1);
 
     setFoo(23);
@@ -78,7 +48,8 @@ describe('destroySignal', () => {
 
     expect(foo).toBe(23);
 
-    assertEffectsCountChange(-1);
+    assertEffectsCount(0);
+    assertEffectSubscriptionsCountChange(-1);
     assertSignalDestroySubscriptionsCountChange(-1);
   });
 
@@ -98,7 +69,8 @@ describe('destroySignal', () => {
       ++effectCallCount;
     });
 
-    assertEffectsCountChange(1);
+    assertEffectsCount(1);
+    assertEffectSubscriptionsCountChange(1);
     assertSignalDestroySubscriptionsCountChange(2);
 
     const plah = createMemo(() => {
@@ -106,7 +78,8 @@ describe('destroySignal', () => {
       return getFoo() + getBar();
     });
 
-    assertEffectsCountChange(1);
+    assertEffectsCount(2);
+    assertEffectSubscriptionsCountChange(1);
     assertSignalDestroySubscriptionsCountChange(3);
 
     expect(foo).toBe(1);
@@ -126,8 +99,8 @@ describe('destroySignal', () => {
 
     destroySignal(getFoo);
 
-    assertEffectsCountChange(0);
-    // assertEffectsCount(2);
+    assertEffectsCount(2);
+    assertEffectSubscriptionsCount(0);
     assertSignalDestroySubscriptionsCountChange(-2);
 
     setFoo(10);
@@ -138,6 +111,9 @@ describe('destroySignal', () => {
     expect(plah()).toBe(21);
     expect(effectCallCount).toBe(4);
     expect(memoCallCount).toBe(4);
+
+    assertEffectsCount(2);
+    assertEffectSubscriptionsCount(0);
 
     destroySignal(getBar);
 
@@ -150,10 +126,14 @@ describe('destroySignal', () => {
     expect(effectCallCount).toBe(4);
     expect(memoCallCount).toBe(4);
 
+    assertEffectsCount(0);
+    assertEffectSubscriptionsCount(0);
     assertSignalDestroySubscriptionsCountChange(-2);
 
     destroySignal(plah);
 
+    assertEffectsCount(0);
+    assertEffectSubscriptionsCount(0);
     assertSignalDestroySubscriptionsCountChange(-1);
   });
 });
