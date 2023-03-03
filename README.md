@@ -53,7 +53,7 @@ console.log('foo=', foo())                    // => "foo= plah!"
 
 ### Create an Effect
 
-An __effect__ is only a function that is called. so it is not very interesting. but it becomes more interesting when a signal is read within the function. if a signal is assigned a new value at a later time, the effect function is automatically executed _again_!
+An __effect__ is a function that is called. so it is not very interesting. but it becomes more interesting when a signal is read within the function. if a signal is assigned a new value at a later time, the effect function is automatically executed _again_!
 
 the following example produces the same output as the previous one:
 
@@ -81,7 +81,7 @@ setFoo('plah!')                 // the effect function is called again now
 | | `set(data)` | update the signal value |
 | touch | `touch(get)` | same as `set(get())` &mdash; no! wait, `set(get())` will _not_ signal an update, but `touch()` will do the magic without changing the value |
 | value | `data = value(get)` | read out the value without creating (side) effects |
-| createEffect | `removeEffect = createEffect(callback)` | create an effect; return an unsubscribe function |
+| createEffect | `removeEffect = createEffect(callback)` | create an effect; return an unsubscribe function. the callback can return an optional _cleanup_ callback function. this callback will be called before next effect run or when the effect is destroyed (e.b. using the unsubscribe function) |
 | createMemo | `get = createMemo(callback)` | creates an effect and returns a signal get function which returns the result of the callback |
 | batch | `batch(callback)` | batch multiple updates (setter calls) together |
 | destroySignal | `destroySignal(get)` | destroy the signal. effects (and memos) are automatically released when all their used signals are destroyed. you can still use the getter and setter from the signal, but no effects are triggered anymore. _tidying up is good practice, otherwise everything will overflow at some point_ ;) |

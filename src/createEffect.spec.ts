@@ -1,7 +1,37 @@
 import {createEffect} from './createEffect';
-import {createSignal} from './createSignal';
+import {createSignal, destroySignal} from './createSignal';
 
 describe('createEffect', () => {
+  it('the effect cleanup callback is called like react:useEffect', () => {
+    const [a, setA] = createSignal(123);
+
+    let valA = 0;
+
+    createEffect(() => {
+      const val = a();
+      return () => {
+        valA = val;
+      };
+    });
+
+    expect(a()).toBe(123);
+    expect(valA).toBe(0);
+
+    setA(666);
+
+    expect(a()).toBe(666);
+    expect(valA).toBe(123);
+
+    setA(42);
+
+    expect(a()).toBe(42);
+    expect(valA).toBe(666);
+
+    destroySignal(a);
+
+    expect(valA).toBe(42);
+  });
+
   it('the effect callback is called synchronously and immediately', () => {
     const [a] = createSignal(123);
     const [b] = createSignal('abc');
