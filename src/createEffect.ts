@@ -19,7 +19,7 @@ export function createEffect(callback: EffectCallback): VoidCallback {
   effect.run();
 
   return () => {
-    effect.unsubscribe();
+    effect.destroy();
   };
 }
 
@@ -29,4 +29,4 @@ export const onCreateEffect = (
 
 // TODO onDestroyEffect()
 
-// TODO getEffectsCount()
+export const getEffectsCount = (): number => Effect.count;
