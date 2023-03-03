@@ -25,7 +25,7 @@ export class Effect {
 
   #destroyed = false;
 
-  #unsubscribeCallback: VoidCallback;
+  #cleanupCallback?: VoidCallback;
 
   constructor(callback: EffectCallback) {
     this.callback = callback;
@@ -38,7 +38,8 @@ export class Effect {
   }
 
   run(): void {
-    this.#unsubscribeCallback = runWithinEffect(this, this.callback);
+    this.callCleanup();
+    this.#cleanupCallback = runWithinEffect(this, this.callback);
   }
 
   [$runAgain](): void {
@@ -83,9 +84,13 @@ export class Effect {
 
     this.childEffects.clear();
 
-    if (this.#unsubscribeCallback) {
-      this.#unsubscribeCallback();
-      this.#unsubscribeCallback = undefined;
+    this.callCleanup();
+  }
+
+  callCleanup(): void {
+    if (this.#cleanupCallback != null) {
+      this.#cleanupCallback();
+      this.#cleanupCallback = undefined;
     }
   }
 
