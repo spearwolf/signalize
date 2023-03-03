@@ -136,11 +136,15 @@ export function createSignal<Type = unknown>(
   return [signal.reader, signal.writer];
 }
 
+export const getSignal = <Type = unknown>(
+  signalReader: SignalReader<Type>,
+): Signal<Type> => signalReader?.[$signal];
+
 export const destroySignal = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): void => {
-  const signal = signalReader[$signal];
-  if (signal && !signal.destroyed) {
+  const signal = getSignal(signalReader);
+  if (signal != null && !signal.destroyed) {
     signal.destroyed = true;
     globalDestroySignalQueue.emit(signal.id, signal.id);
   }
@@ -149,8 +153,8 @@ export const destroySignal = <Type = unknown>(
 export const muteSignal = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): void => {
-  const signal = signalReader[$signal];
-  if (signal) {
+  const signal = getSignal(signalReader);
+  if (signal != null) {
     signal.muted = true;
   }
 };
@@ -158,21 +162,21 @@ export const muteSignal = <Type = unknown>(
 export const unmuteSignal = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): void => {
-  const signal = signalReader[$signal];
-  if (signal) {
+  const signal = getSignal(signalReader);
+  if (signal != null) {
     signal.muted = false;
   }
 };
 
 export const value = <Type = unknown>(
   signalReader: SignalReader<Type>,
-): Type | undefined => signalReader[$signal]?.value;
+): Type | undefined => getSignal(signalReader)?.value;
 
 export const touch = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): void => {
-  const signal = signalReader[$signal];
-  if (signal && !signal.muted && !signal.destroyed) {
+  const signal = getSignal(signalReader);
+  if (signal != null && !signal.muted && !signal.destroyed) {
     writeSignal(signal.id);
   }
 };
