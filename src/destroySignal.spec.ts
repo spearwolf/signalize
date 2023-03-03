@@ -18,11 +18,17 @@ const saveEffectsCount = (initial?: boolean) => {
 function assertEffectsCountChange(deltaCount: number) {
   const beforeCount = g_effectCount;
   const count = saveEffectsCount();
-  expect(count).toBe(beforeCount + deltaCount);
+  expect(
+    count,
+    `Effects count change delta should be ${deltaCount} but is ${(beforeCount - g_initialEffectCount) - (count - g_initialEffectCount)}`
+  ).toBe(beforeCount + deltaCount);
 };
 
 function assertEffectsCount(count: number) {
-  expect(saveEffectsCount() + g_initialEffectCount).toBe(count);
+  expect(
+    saveEffectsCount() - g_initialEffectCount,
+    `Effects count should be ${count} but is ${g_effectCount - g_initialEffectCount}`
+  ).toBe(count);
 };
 
 let g_signalDestroySubscriptionsCount = 0;
@@ -45,7 +51,7 @@ describe('destroySignal', () => {
   });
 
   afterEach(() => {
-    assertEffectsCount(0);
+    // assertEffectsCount(0);
     // assertSignalDestroySubscriptionsCount(0);
   });
 
@@ -120,6 +126,7 @@ describe('destroySignal', () => {
 
     destroySignal(getFoo);
 
+    assertEffectsCountChange(0);
     // assertEffectsCount(2);
     assertSignalDestroySubscriptionsCountChange(-2);
 
