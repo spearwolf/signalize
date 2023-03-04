@@ -100,7 +100,13 @@ For more infos about the api and its behavior and usage, the reader is recommend
 - upgrade to typescript@5
   - refactor build pipeline
 - mute, unmute and destroy signals
-- TODO ..
+  - `muteSignal(get)`
+  - `unmuteSignal(get)`
+  - `destroySignal(get)`
+- fix effect cleanup callback
+  - if an effect is executed again, the cleanup callback from the last effect is called first (the behavior is similar to the react.useEffect() cleanup function)
+- add `getEffectsCount()` helper
+- auto cleanup/unsubscribe of effects and memos when all their signals are destroyed
 
 ### 0.3.2 (2023-02-22)
 
