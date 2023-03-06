@@ -1,40 +1,37 @@
-import {$batch} from './constants';
-import {globalBatchQueue, globalEffectQueue} from './global-queues';
+import {Effect} from './Effect';
+import {globalEffectQueue} from './global-queues';
 import {BatchCallback} from './types';
 import {UniqIdGen} from './UniqIdGen';
 
-let globalBatch: Batch | undefined;
-
 class Batch {
-  static readonly idCreator = new UniqIdGen('ba');
+  static current?: Batch;
+
+  private static readonly idCreator = new UniqIdGen('ba');
 
   readonly id: symbol;
 
-  readonly delayedEffects = new Set<symbol>();
-  readonly unsubscribe: () => void;
+  readonly #delayedEffects = new Set<symbol>();
 
   constructor() {
     this.id = Batch.idCreator.make();
-    // TODO do we need a global queue here? maybe just a batch() method is enough?
-    this.unsubscribe = globalBatchQueue.on(this.id, $batch, this);
   }
 
-  [$batch](effectId: symbol) {
-    this.delayedEffects.add(effectId);
+  batch(effect: Effect) {
+    this.#delayedEffects.add(effect.id);
   }
 
   execute() {
     // TODO batch: check for child effects (if their parentEffect exists in delayedEffects we don't wanna call them multiple times)
-    globalEffectQueue.emit(Array.from(this.delayedEffects));
+    globalEffectQueue.emit(Array.from(this.#delayedEffects));
   }
 }
 
-export const getCurrentBatchId = (): symbol | undefined => globalBatch?.id;
+export const getCurrentBatch = (): Batch | undefined => Batch.current;
 
 export function batch(callback: BatchCallback): void {
-  let currentBatch = globalBatch;
+  let currentBatch = Batch.current;
   if (!currentBatch) {
-    currentBatch = globalBatch = new Batch();
+    currentBatch = Batch.current = new Batch();
   } else {
     currentBatch = undefined;
   }
@@ -42,8 +39,7 @@ export function batch(callback: BatchCallback): void {
     callback();
   } finally {
     if (currentBatch) {
-      currentBatch.unsubscribe();
-      globalBatch = undefined;
+      Batch.current = undefined;
       currentBatch.execute();
     }
   }
