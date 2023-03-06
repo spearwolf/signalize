@@ -1,14 +1,13 @@
 import {EffectCallback, VoidCallback} from './types';
 
 import {getCurrentBatchId} from './batch';
+import {$destroySignal, $runAgain} from './constants';
 import {runWithinEffect} from './globalEffectStack';
 import {
   globalBatchQueue,
+  globalDestroySignalQueue,
   globalEffectQueue,
   globalSignalQueue,
-  $runAgain,
-  $destroySignal,
-  globalDestroySignalQueue,
 } from './globalQueues';
 import {UniqIdGen} from './UniqIdGen';
 
@@ -25,7 +24,7 @@ export class Effect {
   readonly destroyedSignals: Set<symbol> = new Set();
 
   readonly callback: EffectCallback;
-  #cleanupCallback?: VoidCallback;
+  #nextCleanupCallback?: VoidCallback;
 
   readonly childEffects: Set<Effect> = new Set();
 
@@ -51,22 +50,23 @@ export class Effect {
     ++Effect.count;
   }
 
-  addChild(effect: Effect): void {
+  // TODO rethink child effects
+  addChildEffect(effect: Effect): void {
     this.childEffects.add(effect);
   }
 
   /**
-   * Executes the effect callback.
+   * Run the _effect callback_.
    *
-   * Before the effect callback is executed, the _cleanup callback_ (if any) is executed.
+   * Before the _effect callback_ is executed, the _cleanup callback_ (if any) is executed.
    *
-   * While the effect callback is being executed, the effect instance is placed on the _global effect stack_.
+   * While the _effect callback_ is being executed, the effect instance is placed on the _global effect stack_.
    *
-   * The optional return value of the effect callback is stored as the next _cleanup callback_.
+   * The optional return value of the _effect callback_ is stored as the next _cleanup callback_.
    */
   run(): void {
-    this.callCleanup();
-    this.#cleanupCallback = runWithinEffect(this, this.callback);
+    this.runCleanupCallback();
+    this.#nextCleanupCallback = runWithinEffect(this, this.callback);
   }
 
   [$runAgain](): void {
@@ -87,11 +87,9 @@ export class Effect {
   }
 
   [$destroySignal](signalId: symbol): void {
-    if (this.signals.has(signalId) && !this.destroyedSignals.has(signalId)) {
-      // this.signals.delete(signalId);
+    if (!this.destroyedSignals.has(signalId) && this.signals.has(signalId)) {
       this.destroyedSignals.add(signalId);
       globalSignalQueue.off(signalId, this);
-      // if (this.signals.size === 0) {
       const shouldDestroy = this.destroyedSignals.size === this.signals.size;
       // console.log('destroySignal', {
       //   shouldDestroy,
@@ -106,24 +104,21 @@ export class Effect {
     }
   }
 
-  private callCleanup(): void {
-    if (this.#cleanupCallback != null) {
-      this.#cleanupCallback();
-      this.#cleanupCallback = undefined;
+  private runCleanupCallback(): void {
+    if (this.#nextCleanupCallback != null) {
+      this.#nextCleanupCallback();
+      this.#nextCleanupCallback = undefined;
     }
   }
 
   destroy(): void {
     if (this.#destroyed) return;
 
-    this.callCleanup();
+    this.runCleanupCallback();
 
     globalSignalQueue.off(this);
     globalEffectQueue.off(this);
     globalDestroySignalQueue.off(this);
-
-    // TODO evaluate effect.unsubscribeChilds()
-    // this.unsubscribeChilds();
 
     this.#destroyed = true;
 
