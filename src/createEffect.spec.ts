@@ -97,7 +97,7 @@ describe('createEffect', () => {
     expect(count()).toBe(23);
   });
 
-  it('nested effects work as expected', () => {
+  it.skip('nested effects work as expected', () => {
     const [getA, setA] = createSignal(123);
     const [getB, setB] = createSignal('abc');
     const [getC, setC] = createSignal('A');

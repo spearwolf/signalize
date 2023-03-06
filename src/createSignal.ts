@@ -15,7 +15,7 @@ import {UniqIdGen} from './UniqIdGen';
 const idCreator = new UniqIdGen('si');
 
 function readSignal(signalId: symbol) {
-  getCurrentEffect()?.runAgainBySignal(signalId);
+  getCurrentEffect()?.onReadSignal(signalId);
 }
 
 function writeSignal(signalId: symbol) {

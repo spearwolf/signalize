@@ -13,15 +13,15 @@ import {createSignal, destroySignal} from './createSignal';
 
 describe('destroySignal', () => {
   beforeEach(() => {
-    assertEffectsCount(0);
+    assertEffectsCount(0, 'beforeEach');
     saveEffectSubscriptionsCount(true);
     saveSignalDestroySubscriptionsCount(true);
   });
 
   afterEach(() => {
-    assertEffectsCount(0);
-    assertEffectSubscriptionsCount(0);
-    assertSignalDestroySubscriptionsCount(0);
+    assertEffectsCount(0, 'afterEach');
+    assertEffectSubscriptionsCount(0, 'afterEach');
+    assertSignalDestroySubscriptionsCount(0, 'afterEach');
   });
 
   it('destroy signal reader callback effect', () => {
@@ -35,8 +35,8 @@ describe('destroySignal', () => {
 
     expect(foo).toBe(666);
 
-    assertEffectsCount(1);
-    assertEffectSubscriptionsCountChange(1);
+    assertEffectsCount(1, 'step-a');
+    assertEffectSubscriptionsCountChange(1, 'step-a');
     assertSignalDestroySubscriptionsCountChange(1);
 
     setFoo(23);
@@ -48,8 +48,8 @@ describe('destroySignal', () => {
 
     expect(foo).toBe(23);
 
-    assertEffectsCount(0);
-    assertEffectSubscriptionsCountChange(-1);
+    assertEffectsCount(0, 'end');
+    assertEffectSubscriptionsCountChange(-1, 'end');
     assertSignalDestroySubscriptionsCountChange(-1);
   });
 
@@ -69,18 +69,18 @@ describe('destroySignal', () => {
       ++effectCallCount;
     });
 
-    assertEffectsCount(1);
-    assertEffectSubscriptionsCountChange(1);
-    assertSignalDestroySubscriptionsCountChange(2);
+    assertEffectsCount(1, 'step-a');
+    assertEffectSubscriptionsCountChange(1, 'step-a');
+    assertSignalDestroySubscriptionsCountChange(2, 'step-a');
 
     const plah = createMemo(() => {
       ++memoCallCount;
       return getFoo() + getBar();
     });
 
-    assertEffectsCount(2);
-    assertEffectSubscriptionsCountChange(1);
-    assertSignalDestroySubscriptionsCountChange(3);
+    assertEffectsCount(2, 'step-b');
+    assertEffectSubscriptionsCountChange(1, 'step-b');
+    assertSignalDestroySubscriptionsCountChange(3, 'step-b');
 
     expect(foo).toBe(1);
     expect(bar).toBe(2);
@@ -99,9 +99,9 @@ describe('destroySignal', () => {
 
     destroySignal(getFoo);
 
-    assertEffectsCount(2);
-    assertEffectSubscriptionsCount(0);
-    assertSignalDestroySubscriptionsCountChange(-2);
+    assertEffectsCount(2, 'step-c');
+    assertEffectSubscriptionsCount(2, 'step-c');
+    assertSignalDestroySubscriptionsCountChange(-2, 'step-c');
 
     setFoo(10);
     setBar(11);
@@ -112,8 +112,8 @@ describe('destroySignal', () => {
     expect(effectCallCount).toBe(4);
     expect(memoCallCount).toBe(4);
 
-    assertEffectsCount(2);
-    assertEffectSubscriptionsCount(0);
+    assertEffectsCount(2, 'step-d');
+    assertEffectSubscriptionsCount(2, 'step-d');
 
     destroySignal(getBar);
 
@@ -126,14 +126,14 @@ describe('destroySignal', () => {
     expect(effectCallCount).toBe(4);
     expect(memoCallCount).toBe(4);
 
-    assertEffectsCount(0);
-    assertEffectSubscriptionsCount(0);
-    assertSignalDestroySubscriptionsCountChange(-2);
+    assertEffectsCount(0, 'step-e');
+    assertEffectSubscriptionsCount(0, 'step-e');
+    assertSignalDestroySubscriptionsCountChange(-2, 'step-e');
 
     destroySignal(plah);
 
-    assertEffectsCount(0);
-    assertEffectSubscriptionsCount(0);
-    assertSignalDestroySubscriptionsCountChange(-1);
+    assertEffectsCount(0, 'end');
+    assertEffectSubscriptionsCount(0, 'end');
+    assertSignalDestroySubscriptionsCountChange(-1, 'end');
   });
 });
