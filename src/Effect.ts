@@ -1,14 +1,19 @@
 import {EffectCallback, VoidCallback} from './types';
 
 import {getCurrentBatchId} from './batch';
-import {$destroySignal, $runAgain} from './constants';
-import {runWithinEffect} from './globalEffectStack';
+import {
+  $createEffect,
+  $destroyEffect,
+  $destroySignal,
+  $runAgain,
+} from './constants';
+import {getCurrentEffect, runWithinEffect} from './globalEffectStack';
 import {
   globalBatchQueue,
   globalDestroySignalQueue,
   globalEffectQueue,
   globalSignalQueue,
-} from './globalQueues';
+} from './global-queues';
 import {UniqIdGen} from './UniqIdGen';
 
 export class Effect {
@@ -31,14 +36,16 @@ export class Effect {
   #destroyed = false;
 
   /**
-   * An effect subscribes to the globalEffectQueue by its `id`.
+   * An effect subscribes to the _global effects queue_ by its `id`.
    * When triggered by its `id`, the _effect callback_ is executed.
    *
    * While the _effect callback_ is being executed, the effect instance is pushed onto the _global effect stack_.
-   * If a _signal_ is read during the execution of the _effect callback
-   * it recognises the signal and executes the `effect.onReadSignal()` method.
+   * If a _signal_ is read during the execution of the _effect callback_
+   * it recognises the effect and executes the `effect.onReadSignal()` method.
    *
-   * The effect then knows which signals are calling it and subscribes to those signal ids in the `globalSignalsQueue'.
+   * The effect then knows which signals are calling it and subscribes to those signal ids in the _global signals queue_.
+   *
+   * Please do not call this constructor directly, use `createEffect()` instead.
    */
   constructor(callback: EffectCallback) {
     this.callback = callback;
@@ -48,6 +55,20 @@ export class Effect {
     globalEffectQueue.on(this.id, $runAgain, this);
 
     ++Effect.count;
+  }
+
+  static createEffect(callback: EffectCallback): VoidCallback {
+    const effect = new Effect(callback);
+
+    getCurrentEffect()?.addChildEffect(effect);
+
+    globalEffectQueue.emit($createEffect, effect);
+
+    effect.run();
+
+    return () => {
+      effect.destroy();
+    };
   }
 
   // TODO rethink child effects
@@ -60,7 +81,7 @@ export class Effect {
    *
    * Before the _effect callback_ is executed, the _cleanup callback_ (if any) is executed.
    *
-   * While the _effect callback_ is being executed, the effect instance is placed on the _global effect stack_.
+   * While the _effect callback_ is being executed, the effect instance is placed on top of the _global effect stack_.
    *
    * The optional return value of the _effect callback_ is stored as the next _cleanup callback_.
    */
@@ -113,6 +134,8 @@ export class Effect {
 
   destroy(): void {
     if (this.#destroyed) return;
+
+    globalEffectQueue.emit($destroyEffect, this);
 
     this.runCleanupCallback();
 

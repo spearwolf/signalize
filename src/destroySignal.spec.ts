@@ -7,7 +7,7 @@ import {
   saveEffectSubscriptionsCount,
   saveSignalDestroySubscriptionsCount,
 } from './assert-helpers';
-import {createEffect} from './createEffect';
+import {createEffect} from './effects-api';
 import {createMemo} from './createMemo';
 import {createSignal, destroySignal} from './createSignal';
 

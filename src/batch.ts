@@ -1,5 +1,5 @@
 import {$batch} from './constants';
-import {globalBatchQueue, globalEffectQueue} from './globalQueues';
+import {globalBatchQueue, globalEffectQueue} from './global-queues';
 import {BatchCallback} from './types';
 import {UniqIdGen} from './UniqIdGen';
 

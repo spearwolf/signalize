@@ -1,4 +1,4 @@
-import {createEffect} from './createEffect';
+import {createEffect} from './effects-api';
 import {createSignal, destroySignal} from './createSignal';
 
 describe('createEffect', () => {
