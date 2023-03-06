@@ -102,6 +102,8 @@ export class Effect {
    * The optional return value of the _effect callback_ is stored as the next _cleanup callback_.
    */
   run(): void {
+    if (this.#destroyed) return; // TODO write tests for this
+
     const curBatchId = getCurrentBatchId();
     if (curBatchId) {
       globalBatchQueue.emit(curBatchId, this.id);

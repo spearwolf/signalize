@@ -24,6 +24,7 @@ class Batch {
   }
 
   execute() {
+    // TODO batch: check for child effects (if their parentEffect exists in delayedEffects we don't wanna call them multiple times)
     globalEffectQueue.emit(Array.from(this.delayedEffects));
   }
 }
