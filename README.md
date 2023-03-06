@@ -81,7 +81,7 @@ setFoo('plah!')                 // the effect function is called again now
 | | `set(data)` | update the signal value |
 | touch | `touch(get)` | same as `set(get())` &mdash; no! wait, `set(get())` will _not_ signal an update, but `touch()` will do the magic without changing the value |
 | value | `data = value(get)` | read out the value without creating (side) effects |
-| createEffect | `removeEffect = createEffect(callback)` | create an effect; return an unsubscribe function. the callback can return an optional _cleanup_ callback function. this callback will be called before next effect run or when the effect is destroyed (e.b. using the unsubscribe function) |
+| createEffect | `[run, unsubscribe] = createEffect(callback)` | create an effect. the _effect callback_ is executed immediately. if signals are read within the _effect callback_, the callback is automatically re-executed if the value of a signal changes later on. return a _run_ and _unsubscribe_ function. With the _run_ callback, the effect can be manually re-executed (which seems unnecessary in most cases, but is sometimes useful). the _effect callback_ can return an optional _cleanup callback_. the _cleanup callback_ will be called before next effect run or when the effect is destroyed (e.b. using the unsubscribe function).  |
 | createMemo | `get = createMemo(callback)` | creates an effect and returns a signal get function which returns the result of the callback |
 | batch | `batch(callback)` | batch multiple updates (setter calls) together |
 | destroySignal | `destroySignal(get)` | destroy the signal. effects (and memos) are automatically released when all their used signals are destroyed. you can still use the getter and setter from the signal, but no effects are triggered anymore. _tidying up is good practice, otherwise everything will overflow at some point_ ;) |
@@ -106,8 +106,9 @@ For more infos about the api and its behavior and usage, the reader is recommend
   - `destroySignal(get)`
 - fix effect cleanup callback
   - if an effect is executed again, the cleanup callback from the last effect is called first (the behavior is similar to the react.useEffect() cleanup function)
-- add `getEffectsCount()` helper
-- auto cleanup/unsubscribe of effects and memos when all their signals are destroyed
+- add `getEffectsCount()` and `onDestroyEffect()` helpers
+- auto cleanup/unsubscription of effects and memos when all their signals are destroyed
+- change signature of the `createEffect()` helper: an array with a _run_ and _unsubscribe_ function is now returned
 
 ### 0.3.2 (2023-02-22)
 

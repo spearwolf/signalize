@@ -1,4 +1,9 @@
-import {EffectCallback, VoidCallback} from './types';
+import {
+  DestroyEffectCallback,
+  EffectCallback,
+  RunEffectCallback,
+  VoidCallback,
+} from './types';
 
 import {UniqIdGen} from './UniqIdGen';
 import {getCurrentBatchId} from './batch';
@@ -52,7 +57,9 @@ export class Effect {
     ++Effect.count;
   }
 
-  static createEffect(callback: EffectCallback): VoidCallback {
+  static createEffect(
+    callback: EffectCallback,
+  ): [RunEffectCallback, DestroyEffectCallback] {
     const effect = new Effect(callback);
 
     getCurrentEffect()?.attachChildEffect(effect);
@@ -61,9 +68,12 @@ export class Effect {
 
     effect.run();
 
-    return () => {
-      effect.destroy();
-    };
+    return [
+      () => effect.run(),
+      () => {
+        effect.destroy();
+      },
+    ];
   }
 
   // TODO rethink child effects
