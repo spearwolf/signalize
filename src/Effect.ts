@@ -78,7 +78,7 @@ export class Effect {
     }
   }
 
-  onReadSignal(signalId: symbol): void {
+  whenSignalIsRead(signalId: symbol): void {
     if (!this.signals.has(signalId)) {
       this.signals.add(signalId);
       globalSignalQueue.on(signalId, $runAgain, this);
