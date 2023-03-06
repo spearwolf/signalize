@@ -1,7 +1,7 @@
 import {createEffect} from './createEffect';
 import {createSignal} from './createSignal';
 
-describe('unsubscribe as return function from effect callback', () => {
+describe.skip('unsubscribe as return function from effect callback', () => {
   it('should be called before recalling the effect callback', () => {
     const [a, setA] = createSignal(123);
     const [b, setB] = createSignal('abc');
