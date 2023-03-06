@@ -70,6 +70,10 @@ setFoo('plah!')                 // the effect function is called again now
                                 // => "foo= plah!"
 ```
 
+> TODO: rewrite this section !!!
+
+> TODO: explain child effects: destroy effect will destroy all child effects, child effects need to be in same order ..
+
 
 ## API Cheat Sheet
 
@@ -109,6 +113,7 @@ For more infos about the api and its behavior and usage, the reader is recommend
 - add `getEffectsCount()` and `onDestroyEffect()` helpers
 - auto cleanup/unsubscription of effects and memos when all their signals are destroyed
 - change signature of the `createEffect()` helper: an array with a _run_ and _unsubscribe_ function is now returned
+- refactor child effects
 
 ### 0.3.2 (2023-02-22)
 

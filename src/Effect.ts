@@ -17,7 +17,7 @@ import {
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack';
 
 export class Effect {
-  static idGen = new UniqIdGen('ef');
+  private static idGen = new UniqIdGen('ef');
 
   /** global effect counter */
   static count = 0;
@@ -25,13 +25,16 @@ export class Effect {
   /** unique effect id */
   readonly id: symbol;
 
-  readonly signals: Set<symbol> = new Set();
-  readonly destroyedSignals: Set<symbol> = new Set();
-
+  /** the effect callback */
   readonly callback: EffectCallback;
+
   #nextCleanupCallback?: VoidCallback;
 
-  readonly childEffects: Set<Effect> = new Set();
+  readonly #signals: Set<symbol> = new Set();
+  readonly #destroyedSignals: Set<symbol> = new Set();
+
+  private readonly childEffects: Effect[] = [];
+  private curChildEffectSlot = 0;
 
   #destroyed = false;
 
@@ -60,25 +63,33 @@ export class Effect {
   static createEffect(
     callback: EffectCallback,
   ): [RunEffectCallback, DestroyEffectCallback] {
-    const effect = new Effect(callback);
+    let effect: Effect | undefined;
 
-    getCurrentEffect()?.attachChildEffect(effect);
-
-    globalEffectQueue.emit($createEffect, effect);
+    const parentEffect = getCurrentEffect();
+    if (parentEffect != null) {
+      effect = parentEffect.getCurrentChildEffect();
+      if (effect == null) {
+        effect = new Effect(callback);
+        parentEffect.attachChildEffect(effect);
+        globalEffectQueue.emit($createEffect, effect);
+      }
+      parentEffect.curChildEffectSlot++;
+    } else {
+      effect = new Effect(callback);
+      globalEffectQueue.emit($createEffect, effect);
+    }
 
     effect.run();
 
-    return [
-      () => effect.run(),
-      () => {
-        effect.destroy();
-      },
-    ];
+    return [effect.run.bind(effect), effect.destroy.bind(effect)];
   }
 
-  // TODO rethink child effects
-  attachChildEffect(effect: Effect): void {
-    this.childEffects.add(effect);
+  private getCurrentChildEffect(): Effect | undefined {
+    return this.childEffects[this.curChildEffectSlot];
+  }
+
+  private attachChildEffect(effect: Effect): void {
+    this.childEffects.push(effect);
   }
 
   /**
@@ -96,23 +107,24 @@ export class Effect {
       globalBatchQueue.emit(curBatchId, this.id);
     } else {
       this.runCleanupCallback();
+      this.curChildEffectSlot = 0;
       this.#nextCleanupCallback = runWithinEffect(this, this.callback);
     }
   }
 
   whenSignalIsRead(signalId: symbol): void {
-    if (!this.signals.has(signalId)) {
-      this.signals.add(signalId);
+    if (!this.#signals.has(signalId)) {
+      this.#signals.add(signalId);
       globalSignalQueue.on(signalId, 'run', this);
       globalDestroySignalQueue.once(signalId, $destroySignal, this);
     }
   }
 
   [$destroySignal](signalId: symbol): void {
-    if (!this.destroyedSignals.has(signalId) && this.signals.has(signalId)) {
-      this.destroyedSignals.add(signalId);
+    if (!this.#destroyedSignals.has(signalId) && this.#signals.has(signalId)) {
+      this.#destroyedSignals.add(signalId);
       globalSignalQueue.off(signalId, this);
-      const shouldDestroy = this.destroyedSignals.size === this.signals.size;
+      const shouldDestroy = this.#destroyedSignals.size === this.#signals.size;
       // console.log('destroySignal', {
       //   shouldDestroy,
       //   signals: Array.from(this.signals),
@@ -146,9 +158,13 @@ export class Effect {
 
     this.#destroyed = true;
 
-    this.signals.clear();
-    this.destroyedSignals.clear();
-    this.childEffects.clear();
+    this.#signals.clear();
+    this.#destroyedSignals.clear();
+
+    this.childEffects.forEach((effect) => {
+      effect.destroy();
+    });
+    this.childEffects.length = 0;
 
     --Effect.count;
   }

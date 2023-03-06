@@ -1,7 +1,7 @@
 import {createEffect} from './effects-api';
 import {createSignal} from './createSignal';
 
-describe.skip('unsubscribe as return function from effect callback', () => {
+describe('unsubscribe as return function from effect callback', () => {
   it('should be called before recalling the effect callback', () => {
     const [a, setA] = createSignal(123);
     const [b, setB] = createSignal('abc');
@@ -82,6 +82,6 @@ describe.skip('unsubscribe as return function from effect callback', () => {
     expect(unsubscribeA).toBeCalledWith(123);
     expect(unsubscribeB).toBeCalledWith('foo');
 
-    expect(subscriptionOrder).toEqual(['foo', 123]);
+    expect(subscriptionOrder).toEqual([123, 'foo']);
   });
 });
