@@ -7,9 +7,9 @@ import {
 } from './types';
 
 import {$signal} from './constants';
-import {createEffect} from './createEffect';
+import {createEffect} from './effects-api';
 import {getCurrentEffect} from './globalEffectStack';
-import {globalDestroySignalQueue, globalSignalQueue} from './globalQueues';
+import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
 import {UniqIdGen} from './UniqIdGen';
 
 const idCreator = new UniqIdGen('si');

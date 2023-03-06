@@ -1,5 +1,5 @@
 import {batch} from './batch';
-import {createEffect} from './createEffect';
+import {createEffect} from './effects-api';
 import {createSignal} from './createSignal';
 
 describe('batch', () => {

@@ -1,4 +1,4 @@
-import {createEffect} from './createEffect';
+import {createEffect} from './effects-api';
 import {createSignal} from './createSignal';
 
 describe.skip('unsubscribe as return function from effect callback', () => {
