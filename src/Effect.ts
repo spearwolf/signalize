@@ -6,10 +6,9 @@ import {
 } from './types';
 
 import {UniqIdGen} from './UniqIdGen';
-import {getCurrentBatchId} from './batch';
+import {getCurrentBatch} from './batch';
 import {$createEffect, $destroyEffect, $destroySignal} from './constants';
 import {
-  globalBatchQueue,
   globalDestroySignalQueue,
   globalEffectQueue,
   globalSignalQueue,
@@ -104,9 +103,9 @@ export class Effect {
   run(): void {
     if (this.#destroyed) return; // TODO write tests for this
 
-    const curBatchId = getCurrentBatchId();
-    if (curBatchId) {
-      globalBatchQueue.emit(curBatchId, this.id);
+    const curBatch = getCurrentBatch();
+    if (curBatch) {
+      curBatch.batch(this);
     } else {
       this.runCleanupCallback();
       this.curChildEffectSlot = 0;
