@@ -1,20 +1,15 @@
 import {EffectCallback, VoidCallback} from './types';
 
+import {UniqIdGen} from './UniqIdGen';
 import {getCurrentBatchId} from './batch';
-import {
-  $createEffect,
-  $destroyEffect,
-  $destroySignal,
-  $runAgain,
-} from './constants';
-import {getCurrentEffect, runWithinEffect} from './globalEffectStack';
+import {$createEffect, $destroyEffect, $destroySignal} from './constants';
 import {
   globalBatchQueue,
   globalDestroySignalQueue,
   globalEffectQueue,
   globalSignalQueue,
 } from './global-queues';
-import {UniqIdGen} from './UniqIdGen';
+import {getCurrentEffect, runWithinEffect} from './globalEffectStack';
 
 export class Effect {
   static idGen = new UniqIdGen('ef');
@@ -52,7 +47,7 @@ export class Effect {
 
     this.id = Effect.idGen.make();
 
-    globalEffectQueue.on(this.id, $runAgain, this);
+    globalEffectQueue.on(this.id, 'run', this);
 
     ++Effect.count;
   }
@@ -60,7 +55,7 @@ export class Effect {
   static createEffect(callback: EffectCallback): VoidCallback {
     const effect = new Effect(callback);
 
-    getCurrentEffect()?.addChildEffect(effect);
+    getCurrentEffect()?.attachChildEffect(effect);
 
     globalEffectQueue.emit($createEffect, effect);
 
@@ -72,7 +67,7 @@ export class Effect {
   }
 
   // TODO rethink child effects
-  addChildEffect(effect: Effect): void {
+  attachChildEffect(effect: Effect): void {
     this.childEffects.add(effect);
   }
 
@@ -86,23 +81,19 @@ export class Effect {
    * The optional return value of the _effect callback_ is stored as the next _cleanup callback_.
    */
   run(): void {
-    this.runCleanupCallback();
-    this.#nextCleanupCallback = runWithinEffect(this, this.callback);
-  }
-
-  [$runAgain](): void {
     const curBatchId = getCurrentBatchId();
     if (curBatchId) {
       globalBatchQueue.emit(curBatchId, this.id);
     } else {
-      this.run();
+      this.runCleanupCallback();
+      this.#nextCleanupCallback = runWithinEffect(this, this.callback);
     }
   }
 
   whenSignalIsRead(signalId: symbol): void {
     if (!this.signals.has(signalId)) {
       this.signals.add(signalId);
-      globalSignalQueue.on(signalId, $runAgain, this);
+      globalSignalQueue.on(signalId, 'run', this);
       globalDestroySignalQueue.once(signalId, $destroySignal, this);
     }
   }
