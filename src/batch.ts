@@ -10,6 +10,7 @@ class Batch {
 
   readonly id: symbol;
 
+  readonly #effects = new Map<symbol, Effect>();
   readonly #delayedEffects = new Set<symbol>();
 
   constructor() {
@@ -17,12 +18,27 @@ class Batch {
   }
 
   batch(effect: Effect) {
+    this.#effects.set(effect.id, effect);
     this.#delayedEffects.add(effect.id);
   }
 
   execute() {
-    // TODO batch: check for child effects (if their parentEffect exists in delayedEffects we don't wanna call them multiple times)
-    globalEffectQueue.emit(Array.from(this.#delayedEffects));
+    const runEffects: symbol[] = [];
+
+    for (const effectId of this.#delayedEffects) {
+      const effect = this.#effects.get(effectId);
+      if (
+        effect.parentEffect == null ||
+        !this.#delayedEffects.has(effect.parentEffect.id)
+      ) {
+        runEffects.push(effectId);
+      }
+    }
+
+    this.#effects.clear();
+    this.#delayedEffects.clear();
+
+    globalEffectQueue.emit(runEffects);
   }
 }
 

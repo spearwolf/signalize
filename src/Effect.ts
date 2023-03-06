@@ -32,6 +32,8 @@ export class Effect {
   readonly #signals: Set<symbol> = new Set();
   readonly #destroyedSignals: Set<symbol> = new Set();
 
+  parentEffect?: Effect;
+
   private readonly childEffects: Effect[] = [];
   private curChildEffectSlot = 0;
 
@@ -89,6 +91,7 @@ export class Effect {
 
   private attachChildEffect(effect: Effect): void {
     this.childEffects.push(effect);
+    this.parentEffect = this;
   }
 
   /**
@@ -166,6 +169,8 @@ export class Effect {
       effect.destroy();
     });
     this.childEffects.length = 0;
+
+    this.parentEffect = undefined;
 
     --Effect.count;
   }
