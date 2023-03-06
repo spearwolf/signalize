@@ -3,6 +3,8 @@ import {$signal} from './constants';
 export type VoidCallback = () => void;
 export type EffectCallback = VoidCallback | (() => VoidCallback);
 export type BatchCallback = VoidCallback;
+export type RunEffectCallback = VoidCallback;
+export type DestroyEffectCallback = VoidCallback;
 
 export interface Signal<Type> {
   id: symbol;

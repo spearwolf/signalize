@@ -61,7 +61,7 @@ describe('createSignal', () => {
 
     let foo = 0;
 
-    const unsubscribe = createEffect(() => {
+    const [, unsubscribe] = createEffect(() => {
       foo = sigFoo();
     });
 

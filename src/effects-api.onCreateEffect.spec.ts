@@ -19,7 +19,7 @@ describe('onCreateEffect', () => {
     const unsubscribeCreateEffect = onCreateEffect(effectCreated);
     const unsubscribeDestroyEffect = onDestroyEffect(effectDestroyed);
 
-    const unsubscribeEffect = createEffect(() => {});
+    const [, unsubscribeEffect] = createEffect(() => {});
 
     expect(effectCreated).toBeCalledTimes(1);
     expect(effectDestroyed).toBeCalledTimes(0);
