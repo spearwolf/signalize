@@ -1,8 +1,9 @@
 import {EffectCallback, VoidCallback} from './types';
 
+import {$createEffect} from './constants';
 import {Effect} from './Effect';
 import {getCurrentEffect} from './globalEffectStack';
-import {$createEffect, globalEffectQueue} from './globalQueues';
+import {globalEffectQueue} from './globalQueues';
 
 // TODO createAsyncEffect() with trigger hook/function/signal: setTimeout, requestAnimationFrame, requestIdleCallback, IntersectionObserver, ResizeObserver, MutationObserver, etc.
 
@@ -12,7 +13,7 @@ import {$createEffect, globalEffectQueue} from './globalQueues';
 export function createEffect(callback: EffectCallback): VoidCallback {
   const effect = new Effect(callback);
 
-  getCurrentEffect()?.addChild(effect);
+  getCurrentEffect()?.addChildEffect(effect);
 
   globalEffectQueue.emit($createEffect, effect);
 
