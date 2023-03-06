@@ -74,6 +74,8 @@ setFoo('plah!')                 // the effect function is called again now
 
 > TODO: explain child effects: destroy effect will destroy all child effects, child effects need to be in same order ..
 
+> TODO: more hints: don't call the same signal multiple times inside effects ...
+
 
 ## API Cheat Sheet
 
