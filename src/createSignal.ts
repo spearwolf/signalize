@@ -1,4 +1,5 @@
 import {
+  CompareFunc,
   Signal,
   SignalCallback,
   SignalParams,
@@ -50,7 +51,9 @@ const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
 
 class SignalImpl<Type> implements Signal<Type> {
   id: symbol;
+
   lazy: boolean;
+  compareFn?: CompareFunc<Type>;
 
   muted = false;
   destroyed = false;
@@ -76,13 +79,18 @@ class SignalImpl<Type> implements Signal<Type> {
 
   writer: SignalWriter<Type> = (
     nextValue: Type | (() => Type),
-    params?: SignalParams,
+    params?: SignalParams<Type>,
   ) => {
     const lazy = params?.lazy ?? false;
+
+    const compareFn = params?.compareFn ?? this.compareFn;
+    const equals: CompareFunc<Type> =
+      compareFn ?? ((a: Type, b: Type) => a === b);
+
     if (
       lazy !== this.lazy ||
       (lazy && nextValue !== this.valueFn) ||
-      (!lazy && nextValue !== this.#value)
+      (!lazy && !equals(nextValue as Type, this.#value))
     ) {
       if (lazy) {
         this.#value = undefined;
@@ -116,29 +124,28 @@ class SignalImpl<Type> implements Signal<Type> {
   }
 }
 
-// TODO add optional compare function to createSignal() ?
+export const getSignal = <Type = unknown>(
+  signalReader: SignalReader<Type>,
+): Signal<Type> => signalReader?.[$signal];
+
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalReader<Type> | (() => Type) = undefined,
-  params?: SignalParams,
+  params?: SignalParams<Type>,
 ): [SignalReader<Type>, SignalWriter<Type>] {
   let signal!: Signal<Type>;
 
   if (isSignal(initialValue)) {
-    // reuse signal
-    signal = (initialValue as SignalReader<Type>)[$signal];
-    // or
+    // -- reuse signal
+    signal = getSignal(initialValue as SignalReader<Type>);
   } else {
-    // create new signal
+    // -- or create new signal
     const lazy = params?.lazy ?? false;
     signal = new SignalImpl(lazy, initialValue) as Signal<Type>;
+    signal.compareFn = params?.compareFn;
   }
 
   return [signal.reader, signal.writer];
 }
-
-export const getSignal = <Type = unknown>(
-  signalReader: SignalReader<Type>,
-): Signal<Type> => signalReader?.[$signal];
 
 export const destroySignal = <Type = unknown>(
   signalReader: SignalReader<Type>,

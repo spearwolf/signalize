@@ -5,12 +5,14 @@ export type EffectCallback = VoidCallback | (() => VoidCallback);
 export type BatchCallback = VoidCallback;
 export type RunEffectCallback = VoidCallback;
 export type DestroyEffectCallback = VoidCallback;
+export type CompareFunc<Type> = (a: Type, b: Type) => boolean;
 
 export interface Signal<Type> {
   id: symbol;
   value: Type | undefined;
   valueFn: () => Type | undefined;
   lazy: boolean;
+  compareFn?: CompareFunc<Type>;
   muted: boolean;
   destroyed: boolean;
   reader: SignalReader<Type>;
@@ -27,9 +29,10 @@ export interface SignalReader<Type> {
 }
 
 export interface SignalWriter<Type> {
-  (value: Type | (() => Type), params?: SignalParams): void;
+  (value: Type | (() => Type), params?: SignalParams<Type>): void;
 }
 
-export interface SignalParams {
-  lazy: boolean;
+export interface SignalParams<Type> {
+  lazy?: boolean;
+  compareFn?: CompareFunc<Type>;
 }
