@@ -15,6 +15,10 @@ import {
 } from './global-queues';
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack';
 
+export interface EffectParams {
+  autorun?: boolean;
+}
+
 export class Effect {
   private static idGen = new UniqIdGen('ef');
 
@@ -37,6 +41,9 @@ export class Effect {
   private readonly childEffects: Effect[] = [];
   private curChildEffectSlot = 0;
 
+  autorun = true;
+  shouldRun = true;
+
   #destroyed = false;
 
   /**
@@ -51,36 +58,49 @@ export class Effect {
    *
    * Please do not call this constructor directly, use `createEffect()` instead.
    */
-  constructor(callback: EffectCallback) {
+  constructor(callback: EffectCallback, options?: EffectParams) {
     this.callback = callback;
+
+    this.autorun = options?.autorun ?? true;
 
     this.id = Effect.idGen.make();
 
-    globalEffectQueue.on(this.id, 'run', this);
+    /** a batch will call the effect by id to run the effect */
+    globalEffectQueue.on(this.id, 'recall', this);
 
     ++Effect.count;
   }
 
+  // TODO write tests for autorun: false
   static createEffect(
-    callback: EffectCallback,
+    ...args:
+      | [callback: EffectCallback]
+      | [callback: EffectCallback, options: EffectParams]
+      | [options: EffectParams, callback: EffectCallback]
   ): [RunEffectCallback, DestroyEffectCallback] {
+    const [callback, options] = (
+      typeof args[0] === 'function' ? args : [args[1], args[0]]
+    ) as [EffectCallback, EffectParams | undefined];
+
     let effect: Effect | undefined;
 
     const parentEffect = getCurrentEffect();
     if (parentEffect != null) {
       effect = parentEffect.getCurrentChildEffect();
       if (effect == null) {
-        effect = new Effect(callback);
+        effect = new Effect(callback, options);
         parentEffect.attachChildEffect(effect);
         globalEffectQueue.emit($createEffect, effect);
       }
       parentEffect.curChildEffectSlot++;
     } else {
-      effect = new Effect(callback);
+      effect = new Effect(callback, options);
       globalEffectQueue.emit($createEffect, effect);
     }
 
-    effect.run();
+    if (effect.autorun) {
+      effect.run();
+    }
 
     return [effect.run.bind(effect), effect.destroy.bind(effect)];
   }
@@ -105,6 +125,7 @@ export class Effect {
    */
   run(): void {
     if (this.#destroyed) return; // TODO write tests for this
+    if (!this.autorun && !this.shouldRun) return;
 
     const curBatch = getCurrentBatch();
     if (curBatch) {
@@ -112,14 +133,22 @@ export class Effect {
     } else {
       this.runCleanupCallback();
       this.curChildEffectSlot = 0;
+      this.shouldRun = false;
       this.#nextCleanupCallback = runWithinEffect(this, this.callback);
+    }
+  }
+
+  recall() {
+    this.shouldRun = true;
+    if (this.autorun) {
+      this.run();
     }
   }
 
   whenSignalIsRead(signalId: symbol): void {
     if (!this.#signals.has(signalId)) {
       this.#signals.add(signalId);
-      globalSignalQueue.on(signalId, 'run', this);
+      globalSignalQueue.on(signalId, 'recall', this);
       globalDestroySignalQueue.once(signalId, $destroySignal, this);
     }
   }
@@ -129,12 +158,6 @@ export class Effect {
       this.#destroyedSignals.add(signalId);
       globalSignalQueue.off(signalId, this);
       const shouldDestroy = this.#destroyedSignals.size === this.#signals.size;
-      // console.log('destroySignal', {
-      //   shouldDestroy,
-      //   signals: Array.from(this.signals),
-      //   effectId: this.id,
-      //   destroyedSignals: Array.from(this.destroyedSignals),
-      // });
       if (shouldDestroy) {
         // no signals left, so nobody can trigger this effect anymore
         this.destroy();
