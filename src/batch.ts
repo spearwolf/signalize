@@ -11,27 +11,28 @@ class Batch {
     this.#delayedEffects.add(effect.id);
   }
 
-  execute() {
+  run() {
     globalEffectQueue.emit(Array.from(this.#delayedEffects));
-    this.#delayedEffects.clear();
   }
 }
 
 export const getCurrentBatch = (): Batch | undefined => Batch.current;
 
 export function batch(callback: BatchCallback): void {
-  let currentBatch = Batch.current;
-  if (!currentBatch) {
-    currentBatch = Batch.current = new Batch();
+  // if there is a current batch context, we use it, otherwise we just create a new one.
+  // the batch is executed after the callback, but only if we have created the batch ourselves.
+  let curBatch = Batch.current;
+  if (!curBatch) {
+    curBatch = Batch.current = new Batch();
   } else {
-    currentBatch = undefined;
+    curBatch = undefined;
   }
   try {
     callback();
   } finally {
-    if (currentBatch) {
+    if (curBatch) {
       Batch.current = undefined;
-      currentBatch.execute();
+      curBatch.run();
     }
   }
 }
