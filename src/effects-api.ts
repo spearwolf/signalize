@@ -5,16 +5,17 @@ import {
 } from './types';
 
 import {$createEffect, $destroyEffect} from './constants';
-import {Effect} from './Effect';
+import {Effect, EffectParams} from './Effect';
 import {globalEffectQueue} from './global-queues';
 
 // TODO createAsyncEffect() with trigger hook/function/signal: setTimeout, requestAnimationFrame, requestIdleCallback, IntersectionObserver, ResizeObserver, MutationObserver, etc.
 
-// TODO createEffect() autorun: false
-
 export const createEffect = (
-  callback: EffectCallback,
-): [RunEffectCallback, DestroyEffectCallback] => Effect.createEffect(callback);
+  ...args:
+    | [callback: EffectCallback]
+    | [callback: EffectCallback, options: EffectParams]
+    | [options: EffectParams, callback: EffectCallback]
+): [RunEffectCallback, DestroyEffectCallback] => Effect.createEffect(...args);
 
 export const onCreateEffect = (...args: unknown[]) =>
   // @ts-ignore
