@@ -25,6 +25,7 @@ class Batch {
   execute() {
     const runEffects: symbol[] = [];
 
+    // TODO write tests for this
     for (const effectId of this.#delayedEffects) {
       const effect = this.#effects.get(effectId);
       if (

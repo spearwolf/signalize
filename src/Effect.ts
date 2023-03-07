@@ -125,7 +125,8 @@ export class Effect {
    */
   run(): void {
     if (this.#destroyed) return; // TODO write tests for this
-    if (!this.autorun && !this.shouldRun) return;
+    // TODO eventually remove the autorun check here!
+    if (!this.autorun && !this.shouldRun) return; // TODO write tests for this
 
     const curBatch = getCurrentBatch();
     if (curBatch) {
@@ -138,7 +139,18 @@ export class Effect {
     }
   }
 
+  /**
+   * Eventually run the _effect callback_
+   *
+   * If the _autorun_ flag is activated, then the effect is executed immediately in any case.
+   * Otherwise the effect is only executed if it is necessary.
+   *
+   * The necessity is given if
+   * - the effect has been initialized but has not yet run
+   * - a signal used in the effect has changed
+   */
   recall() {
+    // TODO write tests for this
     this.shouldRun = true;
     if (this.autorun) {
       this.run();
@@ -193,6 +205,7 @@ export class Effect {
     });
     this.childEffects.length = 0;
 
+    // TODO removeFromParent() ?
     this.parentEffect = undefined;
 
     --Effect.count;
