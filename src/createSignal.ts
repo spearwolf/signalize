@@ -1,7 +1,7 @@
 import {
   Signal,
   SignalCallback,
-  SignalParameters,
+  SignalParams,
   SignalReader,
   SignalWriter,
 } from './types';
@@ -76,7 +76,7 @@ class SignalImpl<Type> implements Signal<Type> {
 
   writer: SignalWriter<Type> = (
     nextValue: Type | (() => Type),
-    params?: SignalParameters,
+    params?: SignalParams,
   ) => {
     const lazy = params?.lazy ?? false;
     if (
@@ -119,7 +119,7 @@ class SignalImpl<Type> implements Signal<Type> {
 // TODO add optional compare function to createSignal() ?
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalReader<Type> | (() => Type) = undefined,
-  params?: SignalParameters,
+  params?: SignalParams,
 ): [SignalReader<Type>, SignalWriter<Type>] {
   let signal!: Signal<Type>;
 
