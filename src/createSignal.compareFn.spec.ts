@@ -1,0 +1,36 @@
+import {createSignal} from './createSignal';
+
+describe('create signal with custom compare function', () => {
+  it('works as expected', () => {
+    const mock = jest.fn();
+
+    const [signal, setSignal] = createSignal([0, 0, 0], {
+      compareFn: (a, b) => a.every((v, i) => v === b[i]),
+    });
+
+    signal(mock);
+
+    expect(mock).toBeCalledTimes(1);
+    expect(mock).toBeCalledWith([0, 0, 0]);
+
+    setSignal([0, 0, 0]);
+
+    expect(mock).toBeCalledTimes(1);
+    expect(mock).toBeCalledWith([0, 0, 0]);
+
+    setSignal([1, 2, 3]);
+
+    expect(mock).toBeCalledTimes(2);
+    expect(mock).toBeCalledWith([1, 2, 3]);
+
+    setSignal([4, 5, 6], {compareFn: () => true});
+
+    expect(mock).toBeCalledTimes(2);
+    expect(mock).toBeCalledWith([1, 2, 3]);
+
+    setSignal(null, {compareFn: () => true});
+
+    expect(mock).toBeCalledTimes(2);
+    expect(mock).toBeCalledWith([1, 2, 3]);
+  });
+});
