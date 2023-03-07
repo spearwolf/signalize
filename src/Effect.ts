@@ -71,7 +71,6 @@ export class Effect {
     ++Effect.count;
   }
 
-  // TODO write tests for autorun: false
   static createEffect(
     ...args:
       | [callback: EffectCallback]
@@ -124,9 +123,8 @@ export class Effect {
    * The optional return value of the _effect callback_ is stored as the next _cleanup callback_.
    */
   run(): void {
-    if (this.#destroyed) return; // TODO write tests for this
-    // TODO eventually remove the autorun check here!
-    if (!this.autorun && !this.shouldRun) return; // TODO write tests for this
+    if (this.#destroyed) return;
+    if (!this.shouldRun) return;
 
     const curBatch = getCurrentBatch();
     if (curBatch) {
@@ -150,7 +148,6 @@ export class Effect {
    * - a signal used in the effect has changed
    */
   recall() {
-    // TODO write tests for this
     this.shouldRun = true;
     if (this.autorun) {
       this.run();
@@ -204,9 +201,6 @@ export class Effect {
       effect.destroy();
     });
     this.childEffects.length = 0;
-
-    // TODO removeFromParent() ?
-    this.parentEffect = undefined;
 
     --Effect.count;
   }

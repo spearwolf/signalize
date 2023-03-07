@@ -5,32 +5,15 @@ import {BatchCallback} from './types';
 class Batch {
   static current?: Batch;
 
-  readonly #effects = new Map<symbol, Effect>();
   readonly #delayedEffects = new Set<symbol>();
 
   batch(effect: Effect) {
-    this.#effects.set(effect.id, effect);
     this.#delayedEffects.add(effect.id);
   }
 
   execute() {
-    const runEffectIds: symbol[] = [];
-
-    // TODO write tests for this
-    for (const effectId of this.#delayedEffects) {
-      const effect = this.#effects.get(effectId);
-      if (
-        effect?.parentEffect == null ||
-        !this.#delayedEffects.has(effect.parentEffect.id)
-      ) {
-        runEffectIds.push(effectId);
-      }
-    }
-
-    this.#effects.clear();
+    globalEffectQueue.emit(Array.from(this.#delayedEffects));
     this.#delayedEffects.clear();
-
-    globalEffectQueue.emit(runEffectIds);
   }
 }
 
