@@ -27,9 +27,9 @@ export interface SignalReader<Type> {
 }
 
 export interface SignalWriter<Type> {
-  (value: Type | (() => Type), params?: SignalParameters): void;
+  (value: Type | (() => Type), params?: SignalParams): void;
 }
 
-export interface SignalParameters {
+export interface SignalParams {
   lazy: boolean;
 }
