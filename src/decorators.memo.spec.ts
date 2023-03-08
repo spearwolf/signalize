@@ -28,10 +28,16 @@ describe('@memo is a class method decorator', () => {
     foo.foo = 2;
 
     expect(foo.foo).toBe(2);
-    expect(foo.bar()).toBe(102);
+    expect(foo.barCallCount).toBe(1);
+    expect(value(barSignal)).toBe(101);
+
+    foo.foo = 3;
+
+    expect(foo.foo).toBe(3);
+    expect(foo.bar()).toBe(103);
     expect(foo.barCallCount).toBe(2);
 
-    foo.foo = 2;
+    foo.foo = 4;
 
     expect(foo.barCallCount).toBe(2);
 
