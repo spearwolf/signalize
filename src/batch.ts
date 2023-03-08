@@ -1,4 +1,3 @@
-import {Effect} from './Effect';
 import {globalEffectQueue} from './global-queues';
 import {BatchCallback} from './types';
 
@@ -7,8 +6,8 @@ class Batch {
 
   readonly #delayedEffects = new Set<symbol>();
 
-  batch(effect: Effect) {
-    this.#delayedEffects.add(effect.id);
+  batch(effectId: symbol) {
+    this.#delayedEffects.add(effectId);
   }
 
   run() {
