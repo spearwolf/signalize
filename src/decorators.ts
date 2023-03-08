@@ -1,10 +1,14 @@
+import {createEffect} from '.';
 import {createMemo} from './createMemo';
 import {createSignal, value as signalValue} from './createSignal';
-import {queryObjectSignal, saveObjectSignal} from './object-signals';
+import {
+  queryObjectEffect,
+  queryObjectSignal,
+  saveObjectEffect,
+  saveObjectSignal,
+} from './object-signals-and-effects';
 
-// TODO add class method decorator: @effect
-// TODO add destroyObjectEffects(foo)
-
+// https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820
 
 export function signal<C, T>(
@@ -37,9 +41,38 @@ export function memo<T, A extends any[], R>(
   return function (this: T, ...args: A): R {
     let signalReader = queryObjectSignal(this, context.name);
     if (signalReader == null) {
+      // signalReader = createMemo<R>(() => target.call(this, ...args));
       signalReader = createMemo<R>(() => target.call(this, ...args));
       saveObjectSignal(this, context.name, signalReader);
     }
     return signalReader();
+  };
+}
+
+export function effect<T, A extends any[]>(
+  target: (this: T, ...args: A) => void,
+  {name}: ClassMethodDecoratorContext<T, (this: T, ...args: A) => void>,
+) {
+  return function (this: T, ...args: A): void {
+    let effect = queryObjectEffect(this, name);
+    if (effect == null) {
+      effect = createEffect(() => target.call(this, ...args));
+      saveObjectEffect(this, name, effect);
+    }
+    return effect[0]();
+  };
+}
+
+export function asyncEffect<T, A extends any[]>(
+  target: (this: T, ...args: A) => void,
+  {name}: ClassMethodDecoratorContext<T, (this: T, ...args: A) => void>,
+) {
+  return function (this: T, ...args: A): void {
+    let effect = queryObjectEffect(this, name);
+    if (effect == null) {
+      effect = createEffect({autorun: false}, () => target.call(this, ...args));
+      saveObjectEffect(this, name, effect);
+    }
+    return effect[0]();
   };
 }
