@@ -49,7 +49,7 @@ export const saveObjectEffect = (
   }
 };
 
-export function destroyObjectSignals(obj: any): void {
+export function destroySignals(obj: any): void {
   if (globalObjectSignalsAndEffects.has(obj)) {
     const signalsAndEffects = globalObjectSignalsAndEffects.get(obj);
     for (const sig of Object.values(signalsAndEffects.signals)) {
@@ -59,7 +59,7 @@ export function destroyObjectSignals(obj: any): void {
   }
 }
 
-export function destroyObjectEffects(obj: any): void {
+export function destroyEffects(obj: any): void {
   if (globalObjectSignalsAndEffects.has(obj)) {
     const signalsAndEffects = globalObjectSignalsAndEffects.get(obj);
     for (const [, destroyEffect] of Object.values(signalsAndEffects.effects)) {

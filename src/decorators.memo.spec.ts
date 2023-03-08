@@ -1,4 +1,4 @@
-import {destroyObjectSignals, memo, queryObjectSignal, signal, value} from '.';
+import {destroySignals, memo, queryObjectSignal, signal, value} from '.';
 
 describe('@memo is a class method decorator', () => {
   it('works as expected', () => {
@@ -41,6 +41,6 @@ describe('@memo is a class method decorator', () => {
 
     expect(foo.barCallCount).toBe(2);
 
-    destroyObjectSignals(foo);
+    destroySignals(foo);
   });
 });

@@ -1,6 +1,6 @@
-import {createEffect} from '.';
 import {createMemo} from './createMemo';
 import {createSignal, value as signalValue} from './createSignal';
+import {createEffect} from './effects-api';
 import {
   queryObjectEffect,
   queryObjectSignal,
