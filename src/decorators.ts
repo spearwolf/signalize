@@ -41,7 +41,6 @@ export function memo<T, A extends any[], R>(
   return function (this: T, ...args: A): R {
     let signalReader = queryObjectSignal(this, context.name);
     if (signalReader == null) {
-      // signalReader = createMemo<R>(() => target.call(this, ...args));
       signalReader = createMemo<R>(() => target.call(this, ...args));
       saveObjectSignal(this, context.name, signalReader);
     }
@@ -49,30 +48,27 @@ export function memo<T, A extends any[], R>(
   };
 }
 
-export function effect<T, A extends any[]>(
-  target: (this: T, ...args: A) => void,
-  {name}: ClassMethodDecoratorContext<T, (this: T, ...args: A) => void>,
-) {
-  return function (this: T, ...args: A): void {
-    let effect = queryObjectEffect(this, name);
-    if (effect == null) {
-      effect = createEffect(() => target.call(this, ...args));
-      saveObjectEffect(this, name, effect);
-    }
-    return effect[0]();
+interface MakeEffectOptions {
+  autorun?: boolean;
+}
+
+function makeEffect(options?: MakeEffectOptions) {
+  return function <T, A extends any[]>(
+    target: (this: T, ...args: A) => void,
+    {name}: ClassMethodDecoratorContext<T, (this: T, ...args: A) => void>,
+  ) {
+    return function (this: T, ...args: A): void {
+      let effect = queryObjectEffect(this, name);
+      if (effect == null) {
+        effect = createEffect({autorun: options?.autorun ?? true}, () =>
+          target.call(this, ...args),
+        );
+        saveObjectEffect(this, name, effect);
+      }
+      return effect[0]();
+    };
   };
 }
 
-export function asyncEffect<T, A extends any[]>(
-  target: (this: T, ...args: A) => void,
-  {name}: ClassMethodDecoratorContext<T, (this: T, ...args: A) => void>,
-) {
-  return function (this: T, ...args: A): void {
-    let effect = queryObjectEffect(this, name);
-    if (effect == null) {
-      effect = createEffect({autorun: false}, () => target.call(this, ...args));
-      saveObjectEffect(this, name, effect);
-    }
-    return effect[0]();
-  };
-}
+export const effect = makeEffect({autorun: true});
+export const asyncEffect = makeEffect({autorun: false});
