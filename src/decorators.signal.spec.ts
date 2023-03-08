@@ -1,13 +1,23 @@
-import {signal} from '.';
+import {signal, value, queryObjectSignal} from '.';
 
-describe('@signal class field decorator', () => {
+describe('@signal is a class accessor decorator', () => {
   it('works as expected', () => {
     class Foo {
-      @signal foo = 1;
+      @signal accessor foo = 1;
     }
 
     const foo = new Foo();
 
     expect(foo.foo).toBe(1);
+
+    const fooSignal = queryObjectSignal(foo, 'foo');
+
+    expect(fooSignal).toBeDefined();
+    expect(value(fooSignal)).toBe(1);
+
+    foo.foo = 2;
+
+    expect(foo.foo).toBe(2);
+    expect(value(fooSignal)).toBe(2);
   });
 });
