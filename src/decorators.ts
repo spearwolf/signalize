@@ -11,6 +11,8 @@ import {
 // https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820
 
+// TODO add support for @signal({compare: (a, b) => boolean}) decorator option
+
 export function signal<C, T>(
   _target: ClassAccessorDecoratorTarget<C, T>,
   context: ClassAccessorDecoratorContext<C, T>,
@@ -33,6 +35,8 @@ export function signal<C, T>(
     },
   };
 }
+
+// TODO change syntax to @memo() to be more consistent with @signal() and @effect() decorators
 
 export function memo<T, A extends any[], R>(
   target: (this: T, ...args: A) => R,
@@ -70,5 +74,10 @@ function makeEffect(options?: MakeEffectOptions) {
   };
 }
 
+// TODO add support for @effect({autorun: true}) decorator option
+
 export const effect = makeEffect({autorun: true});
+
+// TODO remove support for @asyncEffect, use @effect({autorun: false}) instead
+
 export const asyncEffect = makeEffect({autorun: false});
