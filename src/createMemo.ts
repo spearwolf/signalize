@@ -1,13 +1,15 @@
-import {SignalReader} from './types';
-import {createEffect} from './effects-api';
 import {createSignal, getSignal} from './createSignal';
+import {createEffect} from './effects-api';
 import {globalDestroySignalQueue} from './global-queues';
-
-// TODO memo -> autorun: false by default ?
+import {SignalReader} from './types';
 
 export function createMemo<Type>(callback: () => Type): SignalReader<Type> {
-  const [signal, set] = createSignal<Type>();
-  const [, unsubscribe] = createEffect(() => set(callback()));
-  globalDestroySignalQueue.once(getSignal(signal).id, unsubscribe);
-  return signal;
+  const [get, set] = createSignal<Type>();
+  const [compute, unsubscribe] = createEffect({autorun: false}, () =>
+    set(callback()),
+  );
+  const signal = getSignal(get);
+  signal.beforeReadFn = compute;
+  globalDestroySignalQueue.once(signal.id, unsubscribe);
+  return get;
 }
