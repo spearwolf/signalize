@@ -1,6 +1,6 @@
 import {
   batch,
-  destroyObjectEffects,
+  destroyEffects,
   destroySignalsAndEffects,
   effect,
   signal,
@@ -55,7 +55,7 @@ describe('@effect is a class method decorator', () => {
 
     expect(foo.plahCallCount).toBe(4);
 
-    destroyObjectEffects(foo);
+    destroyEffects(foo);
 
     foo.foo = 4;
 

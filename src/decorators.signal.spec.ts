@@ -1,11 +1,11 @@
 import {
+  createMemo,
+  destroySignal,
+  destroySignals,
+  queryObjectSignal,
   signal,
   value,
-  queryObjectSignal,
-  destroyObjectSignals,
-  createMemo,
 } from '.';
-import {destroySignal} from './createSignal';
 
 describe('@signal is a class accessor decorator', () => {
   it('works as expected', () => {
@@ -30,7 +30,7 @@ describe('@signal is a class accessor decorator', () => {
     expect(value(fooSignal)).toBe(2);
     expect(computedFoo()).toBe(102);
 
-    destroyObjectSignals(foo);
+    destroySignals(foo);
     destroySignal(computedFoo);
   });
 });
