@@ -1,3 +1,4 @@
+import {destroySignal} from './createSignal';
 import {SignalReader} from './types';
 
 export type SignalsObjectMapping = Record<string | symbol, SignalReader<any>>;
@@ -20,4 +21,12 @@ export const saveObjectSignal = (
   }
 };
 
-// TODO destroyObjectSignals(obj) !
+export function destroyObjectSignals(obj: any): void {
+  if (globalObjectSignals.has(obj)) {
+    const signals = globalObjectSignals.get(obj);
+    for (const sig of Object.values(signals)) {
+      destroySignal(sig);
+    }
+    globalObjectSignals.delete(obj);
+  }
+}
