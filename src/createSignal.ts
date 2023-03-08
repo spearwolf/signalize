@@ -1,4 +1,5 @@
 import {
+  BeforeReadFunc,
   CompareFunc,
   Signal,
   SignalCallback,
@@ -37,6 +38,7 @@ const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
         return callback(signal.value);
       });
     } else if (!signal.destroyed) {
+      signal.beforeReadFn?.(signal.id);
       readSignal(signal.id);
     }
     return signal.value;
@@ -53,7 +55,9 @@ class SignalImpl<Type> implements Signal<Type> {
   id: symbol;
 
   lazy: boolean;
+
   compareFn?: CompareFunc<Type>;
+  beforeReadFn?: BeforeReadFunc;
 
   muted = false;
   destroyed = false;
@@ -141,6 +145,7 @@ export function createSignal<Type = unknown>(
     // -- or create new signal
     const lazy = params?.lazy ?? false;
     signal = new SignalImpl(lazy, initialValue) as Signal<Type>;
+    signal.beforeReadFn = params?.beforeReadFn;
     signal.compareFn = params?.compareFn;
   }
 
@@ -153,6 +158,7 @@ export const destroySignal = <Type = unknown>(
   const signal = getSignal(signalReader);
   if (signal != null && !signal.destroyed) {
     signal.destroyed = true;
+    signal.beforeReadFn = undefined;
     globalDestroySignalQueue.emit(signal.id, signal.id);
   }
 };
@@ -188,4 +194,4 @@ export const touch = <Type = unknown>(
   }
 };
 
-// TODO getSignalsCount() => {active, muted}
+// TODO getSignalsCount()
