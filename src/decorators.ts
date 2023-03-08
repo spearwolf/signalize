@@ -1,4 +1,5 @@
-import {createSignal, value as signalValue, saveObjectSignal} from '.';
+import {createSignal, value as signalValue} from './createSignal';
+import {saveObjectSignal} from './object-signals';
 
 // TODO decorators: @signal, @effect, @memo, ...
 
