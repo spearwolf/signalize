@@ -128,7 +128,7 @@ export class Effect {
 
     const curBatch = getCurrentBatch();
     if (curBatch) {
-      curBatch.batch(this);
+      curBatch.batch(this.id);
     } else {
       this.runCleanupCallback();
       this.curChildEffectSlot = 0;
