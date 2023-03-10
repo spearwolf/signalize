@@ -7,7 +7,7 @@ describe('@memo is a class method decorator', () => {
 
       barCallCount = 0;
 
-      @memo bar() {
+      @memo() bar() {
         ++this.barCallCount;
         return this.foo + 100;
       }
