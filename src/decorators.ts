@@ -12,10 +12,8 @@ import {
 // https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820
 
-// TODO add support for @signal({compare: (a, b) => boolean}) decorator option
-
 export function signal<T>(params?: Omit<SignalParams<T>, 'lazy'>) {
-  return function <C, T>(
+  return function <C>(
     _target: ClassAccessorDecoratorTarget<C, T>,
     context: ClassAccessorDecoratorContext<C, T>,
   ): ClassAccessorDecoratorResult<C, T> {
@@ -39,19 +37,19 @@ export function signal<T>(params?: Omit<SignalParams<T>, 'lazy'>) {
   };
 }
 
-// TODO change syntax to @memo() to be more consistent with @signal() and @effect() decorators
-
-export function memo<T, A extends any[], R>(
-  target: (this: T, ...args: A) => R,
-  context: ClassMethodDecoratorContext<T, (this: T, ...args: A) => R>,
-) {
-  return function (this: T, ...args: A): R {
-    let signalReader = queryObjectSignal(this, context.name);
-    if (signalReader == null) {
-      signalReader = createMemo<R>(() => target.call(this, ...args));
-      saveObjectSignal(this, context.name, signalReader);
-    }
-    return signalReader();
+export function memo() {
+  return function <T, A extends any[], R>(
+    target: (this: T, ...args: A) => R,
+    context: ClassMethodDecoratorContext<T, (this: T, ...args: A) => R>,
+  ) {
+    return function (this: T, ...args: A): R {
+      let signalReader = queryObjectSignal(this, context.name);
+      if (signalReader == null) {
+        signalReader = createMemo<R>(() => target.call(this, ...args));
+        saveObjectSignal(this, context.name, signalReader);
+      }
+      return signalReader();
+    };
   };
 }
 

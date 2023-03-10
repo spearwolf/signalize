@@ -42,7 +42,7 @@ describe('@signal is a class accessor decorator', () => {
     class Foo {
       @signal({compareFn: equals}) accessor foo = 1;
 
-      @memo bar() {
+      @memo() bar() {
         return this.foo + 100;
       }
     }
