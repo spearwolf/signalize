@@ -7,7 +7,7 @@ import {
 } from '.';
 
 describe('@effect is a class method decorator', () => {
-  it('works as expected', () => {
+  it('autorun by default', () => {
     class Foo {
       @signal() accessor foo = 1;
       @signal() accessor bar = 10;
