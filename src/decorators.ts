@@ -1,13 +1,13 @@
 import {createMemo} from './createMemo';
 import {createSignal, value as signalValue} from './createSignal';
 import {createEffect} from './effects-api';
-import {SignalParams} from './types';
 import {
   queryObjectEffect,
   queryObjectSignal,
   saveObjectEffect,
   saveObjectSignal,
 } from './object-signals-and-effects';
+import {SignalParams} from './types';
 
 // https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820
@@ -60,6 +60,8 @@ export interface EffectDecoratorOptions {
 }
 
 export function effect(options?: EffectDecoratorOptions) {
+  const autorun = options?.autorun ?? true;
+
   return function <T, A extends any[]>(
     target: (this: T, ...args: A) => void,
     {name}: ClassMethodDecoratorContext<T, (this: T, ...args: A) => void>,
@@ -67,9 +69,7 @@ export function effect(options?: EffectDecoratorOptions) {
     return function (this: T, ...args: A): void {
       let effect = queryObjectEffect(this, name);
       if (effect == null) {
-        effect = createEffect({autorun: options?.autorun ?? true}, () =>
-          target.call(this, ...args),
-        );
+        effect = createEffect({autorun}, () => target.call(this, ...args));
         saveObjectEffect(this, name, effect);
       }
       return effect[0]();
