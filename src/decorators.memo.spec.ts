@@ -3,7 +3,7 @@ import {destroySignals, memo, queryObjectSignal, signal, value} from '.';
 describe('@memo is a class method decorator', () => {
   it('works as expected', () => {
     class Foo {
-      @signal accessor foo = 1;
+      @signal() accessor foo = 1;
 
       barCallCount = 0;
 
