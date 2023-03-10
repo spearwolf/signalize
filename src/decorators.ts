@@ -12,12 +12,14 @@ import {
 // https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820
 
-export function signal<T>(params?: Omit<SignalParams<T>, 'lazy'>) {
+export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'>;
+
+export function signal<T>(options?: SignalDecoratorOptions<T>) {
   return function <C>(
     _target: ClassAccessorDecoratorTarget<C, T>,
     context: ClassAccessorDecoratorContext<C, T>,
   ): ClassAccessorDecoratorResult<C, T> {
-    const [getSignal, setSignal] = createSignal<T>(undefined, params as any);
+    const [getSignal, setSignal] = createSignal<T>(undefined, options as any);
 
     return {
       get(this: C) {
@@ -53,11 +55,11 @@ export function memo() {
   };
 }
 
-interface MakeEffectOptions {
+export interface EffectDecoratorOptions {
   autorun?: boolean;
 }
 
-function makeEffect(options?: MakeEffectOptions) {
+export function effect(options?: EffectDecoratorOptions) {
   return function <T, A extends any[]>(
     target: (this: T, ...args: A) => void,
     {name}: ClassMethodDecoratorContext<T, (this: T, ...args: A) => void>,
@@ -74,11 +76,3 @@ function makeEffect(options?: MakeEffectOptions) {
     };
   };
 }
-
-// TODO add support for @effect({autorun: true}) decorator option
-
-export const effect = makeEffect({autorun: true});
-
-// TODO remove support for @asyncEffect, use @effect({autorun: false}) instead
-
-export const asyncEffect = makeEffect({autorun: false});
