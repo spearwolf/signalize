@@ -3,8 +3,8 @@ import {asyncEffect, destroySignalsAndEffects, signal} from '.';
 describe('@asyncEffect is a class method decorator', () => {
   it('works as expected', () => {
     class Foo {
-      @signal accessor foo = 1;
-      @signal accessor bar = 10;
+      @signal() accessor foo = 1;
+      @signal() accessor bar = 10;
 
       plahValue = 0;
       plahCallCount = 0;

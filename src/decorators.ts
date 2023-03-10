@@ -1,6 +1,7 @@
 import {createMemo} from './createMemo';
 import {createSignal, value as signalValue} from './createSignal';
 import {createEffect} from './effects-api';
+import {SignalParams} from './types';
 import {
   queryObjectEffect,
   queryObjectSignal,
@@ -13,26 +14,28 @@ import {
 
 // TODO add support for @signal({compare: (a, b) => boolean}) decorator option
 
-export function signal<C, T>(
-  _target: ClassAccessorDecoratorTarget<C, T>,
-  context: ClassAccessorDecoratorContext<C, T>,
-): ClassAccessorDecoratorResult<C, T> {
-  const [signal, setSignal] = createSignal<T>();
+export function signal<T>(params?: Omit<SignalParams<T>, 'lazy'>) {
+  return function <C, T>(
+    _target: ClassAccessorDecoratorTarget<C, T>,
+    context: ClassAccessorDecoratorContext<C, T>,
+  ): ClassAccessorDecoratorResult<C, T> {
+    const [getSignal, setSignal] = createSignal<T>(undefined, params as any);
 
-  return {
-    get(this: C) {
-      return signal();
-    },
+    return {
+      get(this: C) {
+        return getSignal();
+      },
 
-    set(this: C, value: T) {
-      setSignal(value);
-    },
+      set(this: C, value: T) {
+        setSignal(value);
+      },
 
-    init(this: C, value: T): T {
-      saveObjectSignal(this, context.name, signal);
-      setSignal(value);
-      return signalValue(signal);
-    },
+      init(this: C, value: T): T {
+        saveObjectSignal(this, context.name, getSignal);
+        setSignal(value);
+        return signalValue(getSignal);
+      },
+    };
   };
 }
 
