@@ -49,35 +49,43 @@ export const saveObjectEffect = (
   }
 };
 
-export function destroySignals(obj: any): void {
-  if (globalObjectSignalsAndEffects.has(obj)) {
-    const signalsAndEffects = globalObjectSignalsAndEffects.get(obj);
-    for (const sig of Object.values(signalsAndEffects.signals)) {
-      destroySignal(sig);
+export function destroySignals(...objects: any[]): void {
+  for (const obj of objects) {
+    if (globalObjectSignalsAndEffects.has(obj)) {
+      const signalsAndEffects = globalObjectSignalsAndEffects.get(obj);
+      for (const sig of Object.values(signalsAndEffects.signals)) {
+        destroySignal(sig);
+      }
+      signalsAndEffects.signals = {};
     }
-    signalsAndEffects.signals = {};
   }
 }
 
-export function destroyEffects(obj: any): void {
-  if (globalObjectSignalsAndEffects.has(obj)) {
-    const signalsAndEffects = globalObjectSignalsAndEffects.get(obj);
-    for (const [, destroyEffect] of Object.values(signalsAndEffects.effects)) {
-      destroyEffect();
+export function destroyEffects(...objects: any[]): void {
+  for (const obj of objects) {
+    if (globalObjectSignalsAndEffects.has(obj)) {
+      const signalsAndEffects = globalObjectSignalsAndEffects.get(obj);
+      for (const [, destroyEffect] of Object.values(
+        signalsAndEffects.effects,
+      )) {
+        destroyEffect();
+      }
+      signalsAndEffects.effects = {};
     }
-    signalsAndEffects.effects = {};
   }
 }
 
-export function destroySignalsAndEffects(obj: any): void {
-  if (globalObjectSignalsAndEffects.has(obj)) {
-    const {signals, effects} = globalObjectSignalsAndEffects.get(obj);
-    for (const sig of Object.values(signals)) {
-      destroySignal(sig);
+export function destroySignalsAndEffects(...objects: any[]): void {
+  for (const obj of objects) {
+    if (globalObjectSignalsAndEffects.has(obj)) {
+      const {signals, effects} = globalObjectSignalsAndEffects.get(obj);
+      for (const sig of Object.values(signals)) {
+        destroySignal(sig);
+      }
+      for (const [, destroyEffect] of Object.values(effects)) {
+        destroyEffect();
+      }
+      globalObjectSignalsAndEffects.delete(obj);
     }
-    for (const [, destroyEffect] of Object.values(effects)) {
-      destroyEffect();
-    }
-    globalObjectSignalsAndEffects.delete(obj);
   }
 }
