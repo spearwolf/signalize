@@ -8,8 +8,6 @@ import {$createEffect, $destroyEffect} from './constants';
 import {Effect, EffectParams} from './Effect';
 import {globalEffectQueue} from './global-queues';
 
-// TODO createAsyncEffect() with trigger hook/function/signal: setTimeout, requestAnimationFrame, requestIdleCallback, IntersectionObserver, ResizeObserver, MutationObserver, etc.
-
 export const createEffect = (
   ...args:
     | [callback: EffectCallback]

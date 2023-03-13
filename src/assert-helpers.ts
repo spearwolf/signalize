@@ -2,6 +2,7 @@ import {getSubscriptionCount} from '@spearwolf/eventize';
 
 import {getEffectsCount} from './effects-api';
 
+import {getSignalsCount} from '.';
 import {globalDestroySignalQueue, globalEffectQueue} from './global-queues';
 
 const namespacePrefix = (namespace?: string) =>
@@ -13,6 +14,15 @@ export function assertEffectsCount(count: number, namespace?: string) {
     `${namespacePrefix(
       namespace,
     )}Number of active effects should be ${count} but is ${getEffectsCount()}`,
+  ).toBe(count);
+}
+
+export function assertSignalsCount(count: number, namespace?: string) {
+  expect(
+    getSignalsCount(),
+    `${namespacePrefix(
+      namespace,
+    )}Number of active signals should be ${count} but is ${getSignalsCount()}`,
   ).toBe(count);
 }
 
