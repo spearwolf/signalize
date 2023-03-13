@@ -52,6 +52,8 @@ const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
 };
 
 class SignalImpl<Type> implements Signal<Type> {
+  static instanceCount = 0;
+
   id: symbol;
 
   lazy: boolean;
@@ -114,6 +116,8 @@ class SignalImpl<Type> implements Signal<Type> {
   constructor(lazy: boolean, initialValue?: Type | (() => Type) | undefined) {
     this.id = idCreator.make();
 
+    ++SignalImpl.instanceCount;
+
     this.lazy = lazy;
 
     if (this.lazy) {
@@ -152,14 +156,15 @@ export function createSignal<Type = unknown>(
   return [signal.reader, signal.writer];
 }
 
-export const destroySignal = <Type = unknown>(
-  signalReader: SignalReader<Type>,
-): void => {
-  const signal = getSignal(signalReader);
-  if (signal != null && !signal.destroyed) {
-    signal.destroyed = true;
-    signal.beforeReadFn = undefined;
-    globalDestroySignalQueue.emit(signal.id, signal.id);
+export const destroySignal = (...signalReaders: SignalReader<any>[]): void => {
+  for (const signalReader of signalReaders) {
+    const signal = getSignal(signalReader);
+    if (signal != null && !signal.destroyed) {
+      signal.destroyed = true;
+      signal.beforeReadFn = undefined;
+      --SignalImpl.instanceCount;
+      globalDestroySignalQueue.emit(signal.id, signal.id);
+    }
   }
 };
 
@@ -194,4 +199,4 @@ export const touch = <Type = unknown>(
   }
 };
 
-// TODO getSignalsCount()
+export const getSignalsCount = () => SignalImpl.instanceCount;

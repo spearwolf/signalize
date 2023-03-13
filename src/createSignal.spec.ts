@@ -1,4 +1,4 @@
-import {createEffect} from './effects-api';
+import {assertEffectsCount, assertSignalsCount} from './assert-helpers';
 import {
   createSignal,
   destroySignal,
@@ -6,8 +6,19 @@ import {
   muteSignal,
   unmuteSignal,
 } from './createSignal';
+import {createEffect} from './effects-api';
 
 describe('createSignal', () => {
+  beforeEach(() => {
+    assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+  });
+
+  afterEach(() => {
+    assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+  });
+
   it('works as expected', () => {
     const [num, setNum] = createSignal(1);
     const [str, setStr] = createSignal('foo');
@@ -26,6 +37,8 @@ describe('createSignal', () => {
     expect(num()).toBe(666);
     expect(str()).toBe('bar');
     expect(obj()).toBe(myObj);
+
+    destroySignal(num, str, obj);
   });
 
   it('isSignal', () => {
@@ -33,6 +46,7 @@ describe('createSignal', () => {
     expect(isSignal(signal)).toBe(true);
     expect(isSignal(set)).toBe(false);
     expect(isSignal(() => {})).toBe(false);
+    destroySignal(signal);
   });
 
   it('signal reader has an optional effect callback as argument', () => {
@@ -46,6 +60,8 @@ describe('createSignal', () => {
     set(1001);
 
     expect(effect).toBeCalledWith(1001);
+
+    destroySignal(signal);
   });
 
   it('returns the given signal if the initialValue a signal', () => {
@@ -54,6 +70,10 @@ describe('createSignal', () => {
 
     expect(signal).toBe(otherSignal);
     expect(set).toBe(setOther);
+
+    // TODO add more tests for this specific case -> signal links/aliases
+
+    destroySignal(signal, otherSignal);
   });
 
   it('mute, unmute and unsubscribe', () => {
@@ -88,6 +108,8 @@ describe('createSignal', () => {
     setFoo(222);
 
     expect(foo).toBe(111);
+
+    destroySignal(sigFoo);
   });
 
   it('mute, unmute with signal reader callback effect', () => {

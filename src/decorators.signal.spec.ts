@@ -7,8 +7,19 @@ import {
   signal,
   value,
 } from '.';
+import {assertEffectsCount, assertSignalsCount} from './assert-helpers';
 
 describe('@signal is a class accessor decorator', () => {
+  beforeEach(() => {
+    assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+  });
+
+  afterEach(() => {
+    assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+  });
+
   it('works as expected', () => {
     class Foo {
       @signal() accessor foo = 1;
@@ -17,6 +28,7 @@ describe('@signal is a class accessor decorator', () => {
     const foo = new Foo();
 
     expect(foo.foo).toBe(1);
+    assertSignalsCount(1, 'after new Foo');
 
     const fooSignal = queryObjectSignal(foo, 'foo');
 
@@ -30,6 +42,7 @@ describe('@signal is a class accessor decorator', () => {
     expect(foo.foo).toBe(2);
     expect(value(fooSignal)).toBe(2);
     expect(computedFoo()).toBe(102);
+    assertSignalsCount(2, 'after createMemo()');
 
     destroySignals(foo);
     destroySignal(computedFoo);
