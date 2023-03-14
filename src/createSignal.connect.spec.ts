@@ -49,3 +49,7 @@ describe('connect signals', () => {
 // TODO The target (another signal, function ..) of a signal connection should be dynamically changeable
 
 // TODO A signal connection should be pausable (mute/unmute)
+
+// TODO A signal connection should be able to optionally _filter_ and _map_ the signal values
+
+// TODO A signal connection should have a touch() feature just like signal does
