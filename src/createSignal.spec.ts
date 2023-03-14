@@ -64,16 +64,19 @@ describe('createSignal', () => {
     destroySignal(signal);
   });
 
-  it('returns the given signal if the initialValue a signal', () => {
+  it('createSignal(otherSigal) should return otherSignal and NOT create a new signal', () => {
     const [signal, set] = createSignal(666);
+
+    assertSignalsCount(1, 'createSignal(666)');
+
     const [otherSignal, setOther] = createSignal(signal);
+
+    assertSignalsCount(1, 'createSignal(otherSignal)');
 
     expect(signal).toBe(otherSignal);
     expect(set).toBe(setOther);
 
-    // TODO add more tests for this specific case -> signal links/aliases
-
-    destroySignal(signal, otherSignal);
+    destroySignal(signal);
   });
 
   it('mute, unmute and unsubscribe', () => {
