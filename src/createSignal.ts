@@ -143,10 +143,10 @@ export function createSignal<Type = unknown>(
   let signal!: Signal<Type>;
 
   if (isSignal(initialValue)) {
-    // -- reuse signal
+    // NOTE createSignal(otherSignal) returns otherSignal and does NOT create a new signal
     signal = getSignal(initialValue as SignalReader<Type>);
   } else {
-    // -- or create new signal
+    // === Create a new signal ===
     const lazy = params?.lazy ?? false;
     signal = new SignalImpl(lazy, initialValue) as Signal<Type>;
     signal.beforeReadFn = params?.beforeReadFn;
