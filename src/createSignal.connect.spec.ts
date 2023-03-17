@@ -1,5 +1,5 @@
+import {connect, createSignal, destroySignal} from '.';
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers';
-import {createSignal, destroySignal} from './createSignal';
 
 describe('connect signals', () => {
   beforeEach(() => {
@@ -36,11 +36,46 @@ describe('connect signals', () => {
 
     destroySignal(sigA, sigB, sigC);
   });
+
+  it('connect a signal with another signal (with connect())', () => {
+    const [sigA, setA] = createSignal(1);
+    const [sigB, setB] = createSignal(-1);
+
+    expect(sigA()).toBe(1);
+    expect(sigB()).toBe(-1);
+
+    const conn = connect(sigA, sigB);
+
+    expect(sigA()).toBe(1);
+    expect(sigB()).toBe(-1);
+
+    setB(100);
+
+    expect(sigB()).toBe(100);
+
+    setA(2);
+
+    expect(sigA()).toBe(2);
+    expect(sigB()).toBe(2);
+
+    conn.destroy();
+
+    setA(3);
+
+    expect(sigA()).toBe(3);
+    expect(sigB()).toBe(2);
+
+    setB(101);
+
+    expect(sigB()).toBe(101);
+
+    destroySignal(sigA, sigB);
+  });
 });
 
 // TODO I would like to make a connection from a signal to ..
-// - another signal
-// - a function
+// - [x] another signal
+// - [ ] a function
 
 // TODO I would like to disconnect a signal connection without destroying the signal
 

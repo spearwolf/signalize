@@ -6,6 +6,7 @@ export * from './createSignal';
 export * from './decorators';
 export * from './effects-api';
 export * from './object-signals-and-effects';
+export * from './Connection';
 
 // TODO docs: update README (missing decorators docs, rewrite introduction, add ts@5 / decorators stage-3 notes ...)
 
