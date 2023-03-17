@@ -20,8 +20,8 @@ function readSignal(signalId: symbol) {
   getCurrentEffect()?.whenSignalIsRead(signalId);
 }
 
-function writeSignal(signalId: symbol) {
-  globalSignalQueue.emit(signalId);
+function writeSignal(signalId: symbol, value: unknown) {
+  globalSignalQueue.emit(signalId, value);
 }
 
 export const isSignal = (signalReader: any): boolean => {
@@ -108,7 +108,7 @@ class SignalImpl<Type> implements Signal<Type> {
         this.lazy = false;
       }
       if (!this.muted && !this.destroyed) {
-        writeSignal(this.id);
+        writeSignal(this.id, this.#value);
       }
     }
   };
@@ -195,7 +195,7 @@ export const touch = <Type = unknown>(
 ): void => {
   const signal = getSignal(signalReader);
   if (signal != null && !signal.muted && !signal.destroyed) {
-    writeSignal(signal.id);
+    writeSignal(signal.id, signal.value);
   }
 };
 
