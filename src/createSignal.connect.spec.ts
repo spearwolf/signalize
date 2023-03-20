@@ -1,4 +1,4 @@
-import {connect, createSignal, destroySignal} from '.';
+import {connect, createSignal, destroySignal, unconnect} from '.';
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers';
 
 describe('connect signals', () => {
@@ -71,19 +71,79 @@ describe('connect signals', () => {
 
     destroySignal(sigA, sigB);
   });
+
+  it('it should not be possible to connect two signals to each other more than once', () => {
+    const [sigA, setA] = createSignal(1);
+    const [sigB] = createSignal(-1);
+
+    expect(sigA()).toBe(1);
+    expect(sigB()).toBe(-1);
+
+    const con0 = connect(sigA, sigB);
+    const con1 = connect(sigA, sigB);
+
+    expect(con0).toBe(con1);
+
+    setA(666);
+
+    expect(sigB()).toBe(666);
+
+    unconnect(sigA, sigB);
+
+    setA(42);
+
+    expect(sigA()).toBe(42);
+    expect(sigB()).toBe(666);
+
+    destroySignal(sigA, sigB);
+  });
+
+  it('a signal connection should be pausable (mute/unmute)', () => {
+    const [sigA, setA] = createSignal(1);
+    const [sigB] = createSignal(-1);
+
+    expect(sigA()).toBe(1);
+    expect(sigB()).toBe(-1);
+
+    const con = connect(sigA, sigB);
+
+    expect(con.isMuted).toBe(false);
+
+    setA(666);
+
+    expect(sigB()).toBe(666);
+
+    con.mute();
+
+    setA(42);
+
+    expect(sigA()).toBe(42);
+    expect(sigB()).toBe(666);
+
+    con.unmute();
+
+    setA(123);
+
+    expect(sigA()).toBe(123);
+    expect(sigB()).toBe(123);
+
+    con.toggle();
+
+    setA(7);
+
+    expect(sigA()).toBe(7);
+    expect(sigB()).toBe(123);
+
+    unconnect(sigA, sigB);
+    destroySignal(sigA, sigB);
+  });
 });
 
 // TODO I would like to make a connection from a signal to ..
 // - [x] another signal
 // - [ ] a function
 
-// TODO I would like to disconnect a signal connection without destroying the signal
-
 // TODO If the signal is destroyed, all signal connections from this signal should be disconnected automatically
-
-// TODO The target (another signal, function ..) of a signal connection should be dynamically changeable
-
-// TODO A signal connection should be pausable (mute/unmute)
 
 // TODO A signal connection should be able to optionally _filter_ and _map_ the signal values
 
