@@ -1,4 +1,4 @@
-import {connect, createSignal, destroySignal, unconnect} from '.';
+import {connect, createSignal, destroySignal, touch, unconnect} from '.';
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers';
 
 describe('connect signals', () => {
@@ -32,7 +32,7 @@ describe('connect signals', () => {
     expect(sigB()).toBe('foo:2');
     expect(sigC()).toBe(2);
 
-    // XXX works great, but how can you disconnect these connections without destroying the signal?
+    // works great, but how can you disconnect these connections without destroying the signal?
 
     destroySignal(sigA, sigB, sigC);
   });
@@ -44,7 +44,7 @@ describe('connect signals', () => {
     expect(sigA()).toBe(1);
     expect(sigB()).toBe(-1);
 
-    const conn = connect(sigA, sigB);
+    const con = connect(sigA, sigB);
 
     expect(sigA()).toBe(1);
     expect(sigB()).toBe(-1);
@@ -58,7 +58,7 @@ describe('connect signals', () => {
     expect(sigA()).toBe(2);
     expect(sigB()).toBe(2);
 
-    conn.destroy();
+    con.destroy();
 
     setA(3);
 
@@ -165,16 +165,82 @@ describe('connect signals', () => {
 
     destroySignal(sigB, sigC);
   });
+
+  it('a signal connection should have a touch() feature just like signal does', () => {
+    const [sigA, setA] = createSignal(1);
+    const [sigB] = createSignal(-1);
+
+    const callingB = jest.fn();
+    sigB(callingB);
+
+    expect(callingB).toHaveBeenCalledTimes(1);
+    expect(callingB).toBeCalledWith(-1);
+
+    const con = connect(sigA, sigB);
+
+    setA(666);
+
+    expect(sigA()).toBe(666);
+    expect(sigB()).toBe(666);
+    expect(callingB).toHaveBeenCalledTimes(2);
+    expect(callingB).toBeCalledWith(666);
+
+    setA(666);
+
+    expect(callingB).toHaveBeenCalledTimes(2);
+
+    con.touch();
+
+    expect(sigB()).toBe(666);
+    expect(callingB).toHaveBeenCalledTimes(3);
+
+    destroySignal(sigA, sigB);
+  });
+
+  it('if a signal is touched, then all connections should also be touched', () => {
+    const [sigA, setA] = createSignal(1);
+    const [sigB] = createSignal(-1);
+    const [sigC] = createSignal(-1);
+
+    const callingB = jest.fn();
+    const callingC = jest.fn();
+
+    sigB(callingB);
+    sigB(callingC);
+
+    expect(callingB).toHaveBeenCalledTimes(1);
+    expect(callingC).toHaveBeenCalledTimes(1);
+    expect(callingB).toBeCalledWith(-1);
+    expect(callingC).toBeCalledWith(-1);
+
+    connect(sigA, sigB);
+    connect(sigA, sigC);
+
+    setA(666);
+
+    expect(sigA()).toBe(666);
+    expect(sigB()).toBe(666);
+    expect(sigC()).toBe(666);
+
+    expect(callingB).toHaveBeenCalledTimes(2);
+    expect(callingB).toBeCalledWith(666);
+
+    expect(callingC).toHaveBeenCalledTimes(2);
+    expect(callingC).toBeCalledWith(666);
+
+    setA(666);
+
+    expect(callingB).toHaveBeenCalledTimes(2);
+    expect(callingC).toHaveBeenCalledTimes(2);
+
+    touch(sigA);
+
+    expect(sigB()).toBe(666);
+    expect(callingB).toHaveBeenCalledTimes(3);
+
+    expect(sigC()).toBe(666);
+    expect(callingC).toHaveBeenCalledTimes(3);
+
+    destroySignal(sigA, sigB, sigC);
+  });
 });
-
-// TODO I would like to make a connection from a signal to ..
-// - [x] another signal
-// - [ ] a function ? use-case ?
-
-// TODO A signal connection should be able to optionally _filter_ and _map_ the signal values ? use-case ?
-
-// TODO A signal connection should have a touch() feature just like signal does
-
-// TODO A signal connection should have an optionally _queued_ mode, like the autorun:false feature of effects
-
-// see also: https://doc.qt.io/qt-6/signalsandslots.html
