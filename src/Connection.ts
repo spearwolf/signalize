@@ -40,6 +40,9 @@ export class Connection<T> {
     }
   }
 
+  // TODO findConnectionsByObject()
+  // TODO findConnectionsBetween(source, target)
+
   static findConnectionsBySignal(
     signalReader: SignalReader<any>,
   ): Connection<unknown>[] | undefined {
