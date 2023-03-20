@@ -45,7 +45,7 @@ export function memo() {
     context: ClassMethodDecoratorContext<T, (this: T, ...args: A) => R>,
   ) {
     return function (this: T, ...args: A): R {
-      let signalReader = queryObjectSignal(this, context.name);
+      let signalReader = queryObjectSignal<R>(this, context.name);
       if (signalReader == null) {
         signalReader = createMemo<R>(() => target.call(this, ...args));
         saveObjectSignal(this, context.name, signalReader);

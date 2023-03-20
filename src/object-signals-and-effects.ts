@@ -11,7 +11,10 @@ interface SignalsAndEffects {
 
 const globalObjectSignalsAndEffects = new WeakMap<any, SignalsAndEffects>();
 
-export const queryObjectSignal = (obj: any, name: string | symbol) =>
+export const queryObjectSignal = <T = unknown>(
+  obj: any,
+  name: string | symbol,
+): SignalReader<T> | undefined =>
   globalObjectSignalsAndEffects.get(obj)?.signals[name];
 
 export const saveObjectSignal = (
