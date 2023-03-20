@@ -137,15 +137,41 @@ describe('connect signals', () => {
     unconnect(sigA, sigB);
     destroySignal(sigA, sigB);
   });
+
+  it('if the signal is destroyed, all signal connections from this signal should be disconnected automatically', () => {
+    const [sigA, setA] = createSignal(1);
+    const [sigB] = createSignal(-1);
+    const [sigC] = createSignal(-1);
+
+    const con0 = connect(sigA, sigB);
+    const con1 = connect(sigA, sigC);
+
+    setA(666);
+
+    expect(sigA()).toBe(666);
+    expect(sigB()).toBe(666);
+    expect(sigC()).toBe(666);
+
+    destroySignal(sigA);
+
+    expect(con0.isDestroyed).toBe(true);
+    expect(con1.isDestroyed).toBe(true);
+
+    setA(42);
+
+    expect(sigA()).toBe(42);
+    expect(sigB()).toBe(666);
+    expect(sigC()).toBe(666);
+
+    destroySignal(sigB, sigC);
+  });
 });
 
 // TODO I would like to make a connection from a signal to ..
 // - [x] another signal
-// - [ ] a function
+// - [ ] a function ? use-case ?
 
-// TODO If the signal is destroyed, all signal connections from this signal should be disconnected automatically
-
-// TODO A signal connection should be able to optionally _filter_ and _map_ the signal values
+// TODO A signal connection should be able to optionally _filter_ and _map_ the signal values ? use-case ?
 
 // TODO A signal connection should have a touch() feature just like signal does
 
