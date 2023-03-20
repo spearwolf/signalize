@@ -5,14 +5,16 @@ import {
   SignalCallback,
   SignalParams,
   SignalReader,
+  SignalValueParams,
   SignalWriter,
+  SignalWriterParams,
 } from './types';
 
+import {UniqIdGen} from './UniqIdGen';
 import {$signal} from './constants';
 import {createEffect} from './effects-api';
-import {getCurrentEffect} from './globalEffectStack';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
-import {UniqIdGen} from './UniqIdGen';
+import {getCurrentEffect} from './globalEffectStack';
 
 const idCreator = new UniqIdGen('si');
 
@@ -20,8 +22,12 @@ function readSignal(signalId: symbol) {
   getCurrentEffect()?.whenSignalIsRead(signalId);
 }
 
-function writeSignal(signalId: symbol, value: unknown) {
-  globalSignalQueue.emit(signalId, value);
+function writeSignal(
+  signalId: symbol,
+  value: unknown,
+  params?: SignalValueParams,
+) {
+  globalSignalQueue.emit(signalId, value, params);
 }
 
 export const isSignal = (signalReader: any): boolean => {
@@ -85,7 +91,7 @@ class SignalImpl<Type> implements Signal<Type> {
 
   writer: SignalWriter<Type> = (
     nextValue: Type | (() => Type),
-    params?: SignalParams<Type>,
+    params?: SignalWriterParams<Type>,
   ) => {
     const lazy = params?.lazy ?? false;
 
@@ -109,7 +115,14 @@ class SignalImpl<Type> implements Signal<Type> {
       }
       if (!this.muted && !this.destroyed) {
         writeSignal(this.id, this.#value);
+        return;
       }
+    }
+
+    const touch = params?.touch ?? false;
+
+    if (touch) {
+      writeSignal(this.id, this.#value, {touch: true});
     }
   };
 
@@ -195,7 +208,7 @@ export const touch = <Type = unknown>(
 ): void => {
   const signal = getSignal(signalReader);
   if (signal != null && !signal.muted && !signal.destroyed) {
-    writeSignal(signal.id, signal.value);
+    writeSignal(signal.id, signal.value, {touch: true});
   }
 };
 

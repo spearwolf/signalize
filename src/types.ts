@@ -31,11 +31,19 @@ export interface SignalReader<Type> {
 }
 
 export interface SignalWriter<Type> {
-  (value: Type | (() => Type), params?: SignalParams<Type>): void;
+  (value: Type | (() => Type), params?: SignalWriterParams<Type>): void;
 }
 
 export interface SignalParams<Type> {
   lazy?: boolean;
   compareFn?: CompareFunc<Type>;
   beforeReadFn?: BeforeReadFunc;
+}
+
+export interface SignalWriterParams<Type> extends SignalParams<Type> {
+  touch?: boolean;
+}
+
+export interface SignalValueParams {
+  touch?: boolean;
 }
