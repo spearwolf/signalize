@@ -44,20 +44,20 @@ With effects, you can easily control behavior changes in your application withou
 <table>
   <tbody>
     <tr>
-      <th>A class with an effect</th>
-      <th>A standalone effect</th>
+      <th>A class with an effect method</th>
+      <th>A standalone effect function</th>
     </tr>
     <tr>
       <td valign="top">
         <img
           src="https://github.com/spearwolf/signalize/raw/dev/docs/images/Create_Effects--A_class_with_an_effect.png"
-          alt=A class with an effect"
+          alt=A class with an effect method"
         />
       </td>
       <td valign="top">
         <img
           src="https://github.com/spearwolf/signalize/raw/dev/docs/images/Create_Effects--A_standalone_effect.png"
-          alt="A standalone effect"
+          alt="A standalone effect function"
         />
       </td>
     </tr>
