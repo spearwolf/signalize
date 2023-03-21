@@ -181,6 +181,8 @@ export const destroySignal = (...signalReaders: SignalReader<any>[]): void => {
   }
 };
 
+// TODO rethink mute() and unmute() signatures -> how to toggle ?
+
 export const muteSignal = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): void => {
@@ -199,9 +201,13 @@ export const unmuteSignal = <Type = unknown>(
   }
 };
 
+// TODO value([obj, propKey])
+
 export const value = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): Type | undefined => getSignal(signalReader)?.value;
+
+// TODO touch(...(signalReader|[obj, propKey]))
 
 export const touch = <Type = unknown>(
   signalReader: SignalReader<Type>,
