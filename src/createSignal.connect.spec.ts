@@ -46,8 +46,10 @@ describe('connect signals', () => {
 
     const con = connect(sigA, sigB);
 
+    // when we create a connection between two signals, the value of the source signal is written to the target signal
+
     expect(sigA()).toBe(1);
-    expect(sigB()).toBe(-1);
+    expect(sigB()).toBe(1);
 
     setB(100);
 
@@ -178,21 +180,23 @@ describe('connect signals', () => {
 
     const con = connect(sigA, sigB);
 
+    expect(callingB).toHaveBeenCalledTimes(2);
+
     setA(666);
 
     expect(sigA()).toBe(666);
     expect(sigB()).toBe(666);
-    expect(callingB).toHaveBeenCalledTimes(2);
+    expect(callingB).toHaveBeenCalledTimes(3);
     expect(callingB).toBeCalledWith(666);
 
     setA(666);
 
-    expect(callingB).toHaveBeenCalledTimes(2);
+    expect(callingB).toHaveBeenCalledTimes(3);
 
     con.touch();
 
     expect(sigB()).toBe(666);
-    expect(callingB).toHaveBeenCalledTimes(3);
+    expect(callingB).toHaveBeenCalledTimes(4);
 
     destroySignal(sigA, sigB);
   });
@@ -216,30 +220,33 @@ describe('connect signals', () => {
     connect(sigA, sigB);
     connect(sigA, sigC);
 
+    expect(callingB).toHaveBeenCalledTimes(2);
+    expect(callingC).toHaveBeenCalledTimes(2);
+
     setA(666);
 
     expect(sigA()).toBe(666);
     expect(sigB()).toBe(666);
     expect(sigC()).toBe(666);
 
-    expect(callingB).toHaveBeenCalledTimes(2);
+    expect(callingB).toHaveBeenCalledTimes(3);
     expect(callingB).toBeCalledWith(666);
 
-    expect(callingC).toHaveBeenCalledTimes(2);
+    expect(callingC).toHaveBeenCalledTimes(3);
     expect(callingC).toBeCalledWith(666);
 
     setA(666);
 
-    expect(callingB).toHaveBeenCalledTimes(2);
-    expect(callingC).toHaveBeenCalledTimes(2);
+    expect(callingB).toHaveBeenCalledTimes(3);
+    expect(callingC).toHaveBeenCalledTimes(3);
 
     touch(sigA);
 
     expect(sigB()).toBe(666);
-    expect(callingB).toHaveBeenCalledTimes(3);
+    expect(callingB).toHaveBeenCalledTimes(4);
 
     expect(sigC()).toBe(666);
-    expect(callingC).toHaveBeenCalledTimes(3);
+    expect(callingC).toHaveBeenCalledTimes(4);
 
     destroySignal(sigA, sigB, sigC);
   });
