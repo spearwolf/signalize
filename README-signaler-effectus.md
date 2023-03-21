@@ -17,16 +17,26 @@ Signals are mutable states that can trigger effects when changed.
     </tr>
     <tr>
       <td valign="top">
-        <img
-          src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/Create_Signals--A_class_with_a_signal.png"
-          alt="A class with a signal"
-        />
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--light.png">
+          <img
+            src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--light.png"
+            alt="A class with a signal"
+            style="max-width: 100%;"
+          />
+        </picture>
       </td>
       <td valign="top">
-        <img
-          src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/Create_Signals--A_standalone_signal.png"
-          alt="A standalone signal"
-        />
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--light.png">
+          <img
+            src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--light.png"
+            alt="A standalone signal"
+            style="max-width: 100%;"
+          />
+        </picture>
       </td>
     </tr>
   </tbody>
@@ -49,22 +59,32 @@ With effects, you can easily control behavior changes in your application withou
     </tr>
     <tr>
       <td valign="top">
-        <img
-          src="https://github.com/spearwolf/signalize/raw/dev/docs/images/Create_Effects--A_class_with_an_effect.png"
-          alt=A class with an effect method"
-        />
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_an_effect_method--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_an_effect_method--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/a_class_with_an_effect_method--light.png"
+            alt="A class with an effect method"
+            style="max-width: 100%;"
+          />
+        </picture>
       </td>
       <td valign="top">
-        <img
-          src="https://github.com/spearwolf/signalize/raw/dev/docs/images/Create_Effects--A_standalone_effect.png"
-          alt="A standalone effect function"
-        />
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_effect_function--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_effect_function--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/a_standalone_effect_function--light.png"
+            alt="A standalone effect function"
+            style="max-width: 100%;"
+          />
+        </picture>
       </td>
     </tr>
   </tbody>
 </table>
 
-                                   
+
 ---
 
 _...TBD..._
