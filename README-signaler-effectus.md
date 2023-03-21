@@ -9,13 +9,28 @@ The library for signals and effects on the web
 
 Signals are mutable states that can trigger effects when changed.
 
-### A class with a signal
-
-![A class with a signal](docs/images/Create_Signals--A_class_with_a_signal.png)
-
-### A standalone signal
-
-![A standalone signal](docs/images/Create_Signals--A_standalone_signal.png)
+<table>
+  <tbody>
+    <tr>
+      <th>A class with a signal</th>
+      <th>A standalone signal</th>
+    </tr>
+    <tr>
+      <td valign="top">
+        <img
+          src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/Create_Signals--A_class_with_a_signal.png"
+          alt="A class with a signal"
+        />
+      </td>
+      <td valign="top">
+        <img
+          src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/Create_Signals--A_standalone_signal.png"
+          alt="A standalone signal"
+        />
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 
 ## Create Effects
@@ -26,11 +41,30 @@ _Without_ effects, signals are nothing more than ordinary variables.
 
 With effects, you can easily control behavior changes in your application without having to write complex dependency or monitoring logic.
 
-### A class with an effect
+<table>
+  <tbody>
+    <tr>
+      <th>A class with an effect</th>
+      <th>A standalone effect</th>
+    </tr>
+    <tr>
+      <td valign="top">
+        <img
+          src="https://github.com/spearwolf/signalize/raw/dev/docs/images/Create_Effects--A_class_with_an_effect.png"
+          alt=A class with an effect"
+        />
+      </td>
+      <td valign="top">
+        <img
+          src="https://github.com/spearwolf/signalize/raw/dev/docs/images/Create_Effects--A_standalone_effect.png"
+          alt="A standalone effect"
+        />
+      </td>
+    </tr>
+  </tbody>
+</table>
 
-![A class with an effect](docs/images/Create_Effects--A_class_with_an_effect.png)
-
-![A standalone effect](docs/images/Create_Effects--A_standalone_effect.png)
-
+                                   
+---
 
 _...TBD..._
