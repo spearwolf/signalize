@@ -103,6 +103,8 @@ export class Connection<T> {
     globalDestroySignalQueue.once(this.#source.id, 'destroy', this);
 
     Connection.#addToGlobalStore(this);
+
+    this.touch();
   }
 
   #write(touch: boolean): Connection<T> {
