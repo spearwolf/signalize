@@ -146,7 +146,7 @@ export class Connection<T> {
   }
 }
 
-// TODO connect(sourceObject, 'sourceProp', targetObject, 'targetProp')
+// TODO connect([sourceObject, 'sourceProp'], [targetObject, 'targetProp'])
 
 export function connect<T = unknown>(
   source: SignalReader<T>,
@@ -157,6 +157,7 @@ export function connect<T = unknown>(
 
 // TODO unconnect(sourceObject)
 // TODO unconnect(sourceObject, targetObject)
+// TODO unconnect([sourceObject, 'sourceProp'], [targetObject, 'targetProp'])
 
 export function unconnect<T = unknown>(
   ...args:
