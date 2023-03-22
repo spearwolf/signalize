@@ -40,10 +40,10 @@ export interface SignalParams<Type> {
   beforeReadFn?: BeforeReadFunc;
 }
 
-export interface SignalWriterParams<Type> extends SignalParams<Type> {
-  touch?: boolean;
-}
-
 export interface SignalValueParams {
   touch?: boolean;
 }
+
+export interface SignalWriterParams<Type>
+  extends SignalParams<Type>,
+    SignalValueParams {}
