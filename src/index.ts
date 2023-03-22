@@ -1,12 +1,13 @@
 export * from './types';
 
+export * from './Connection';
 export {batch} from './batch';
 export * from './createMemo';
 export * from './createSignal';
 export * from './decorators';
 export * from './effects-api';
 export * from './object-signals-and-effects';
-export * from './Connection';
+export * from './value';
 
 // TODO docs: update README (missing decorators docs, rewrite introduction, add ts@5 / decorators stage-3 notes ...)
 
