@@ -201,12 +201,6 @@ export const unmuteSignal = <Type = unknown>(
   }
 };
 
-// TODO value([obj, propKey])
-
-export const value = <Type = unknown>(
-  signalReader: SignalReader<Type>,
-): Type | undefined => getSignal(signalReader)?.value;
-
 // TODO touch(...(signalReader|[obj, propKey]))
 
 export const touch = <Type = unknown>(

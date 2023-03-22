@@ -1,5 +1,5 @@
 import {createMemo} from './createMemo';
-import {createSignal, value as signalValue} from './createSignal';
+import {createSignal} from './createSignal';
 import {createEffect} from './effects-api';
 import {
   queryObjectEffect,
@@ -8,6 +8,7 @@ import {
   saveObjectSignal,
 } from './object-signals-and-effects';
 import {SignalParams} from './types';
+import {value as signalValue} from './value';
 
 // https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820
