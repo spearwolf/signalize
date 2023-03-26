@@ -146,7 +146,7 @@ class SignalImpl<Type> implements Signal<Type> {
   }
 }
 
-export const getSignal = <Type = unknown>(
+export const getSignalInstance = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): Signal<Type> => signalReader?.[$signal];
 
@@ -158,7 +158,7 @@ export function createSignal<Type = unknown>(
 
   if (isSignal(initialValue)) {
     // NOTE createSignal(otherSignal) returns otherSignal and does NOT create a new signal
-    signal = getSignal(initialValue as SignalReader<Type>);
+    signal = getSignalInstance(initialValue as SignalReader<Type>);
   } else {
     // === Create a new signal ===
     const lazy = params?.lazy ?? false;
@@ -172,7 +172,7 @@ export function createSignal<Type = unknown>(
 
 export const destroySignal = (...signalReaders: SignalReader<any>[]): void => {
   for (const signalReader of signalReaders) {
-    const signal = getSignal(signalReader);
+    const signal = getSignalInstance(signalReader);
     if (signal != null && !signal.destroyed) {
       signal.destroyed = true;
       signal.beforeReadFn = undefined;
@@ -187,7 +187,7 @@ export const destroySignal = (...signalReaders: SignalReader<any>[]): void => {
 export const muteSignal = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): void => {
-  const signal = getSignal(signalReader);
+  const signal = getSignalInstance(signalReader);
   if (signal != null) {
     signal.muted = true;
   }
@@ -196,7 +196,7 @@ export const muteSignal = <Type = unknown>(
 export const unmuteSignal = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): void => {
-  const signal = getSignal(signalReader);
+  const signal = getSignalInstance(signalReader);
   if (signal != null) {
     signal.muted = false;
   }
@@ -207,7 +207,7 @@ export const unmuteSignal = <Type = unknown>(
 export const touch = <Type = unknown>(
   signalReader: SignalReader<Type>,
 ): void => {
-  const signal = getSignal(signalReader);
+  const signal = getSignalInstance(signalReader);
   if (signal != null && !signal.muted && !signal.destroyed) {
     writeSignal(signal.id, signal.value, {touch: true});
   }
