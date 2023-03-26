@@ -1,4 +1,5 @@
 import {
+  Connection,
   connect,
   createSignal,
   destroySignal,
@@ -49,26 +50,46 @@ describe('connect signals', () => {
     const [sigA, setA] = createSignal(1);
     const [sigB, setB] = createSignal(-1);
 
+    const valueMock = jest.fn();
+    const destroyMock = jest.fn();
+
     expect(sigA()).toBe(1);
     expect(sigB()).toBe(-1);
 
     const con = connect(sigA, sigB);
+
+    con.on({
+      [Connection.Value]: valueMock,
+      [Connection.Destroy]: destroyMock,
+    });
 
     // when we create a connection between two signals, the value of the source signal is written to the target signal
 
     expect(sigA()).toBe(1);
     expect(sigB()).toBe(1);
 
+    expect(valueMock).toHaveBeenCalledTimes(1);
+    expect(valueMock).toHaveBeenCalledWith(1);
+    valueMock.mockClear();
+
     setB(100);
 
     expect(sigB()).toBe(100);
+    expect(valueMock).toHaveBeenCalledTimes(0);
 
     setA(2);
 
     expect(sigA()).toBe(2);
     expect(sigB()).toBe(2);
 
+    expect(valueMock).toHaveBeenCalledTimes(1);
+    expect(valueMock).toHaveBeenCalledWith(2);
+    expect(destroyMock).toHaveBeenCalledTimes(0);
+
     con.destroy();
+
+    expect(con.isDestroyed).toBe(true);
+    expect(destroyMock).toHaveBeenCalledTimes(1);
 
     setA(3);
 
@@ -125,6 +146,7 @@ describe('connect signals', () => {
     expect(b()).toBe(-1);
 
     connect([foo, 'a'], b);
+    // const con = connect([foo, 'a'], b);
 
     expect(foo.a).toBe(1);
     expect(b()).toBe(1);
@@ -133,6 +155,8 @@ describe('connect signals', () => {
 
     expect(foo.a).toBe(2);
     expect(b()).toBe(2);
+
+    // unconnect([foo, 'a'], b);
 
     destroySignal(b);
     destroySignals(foo);
@@ -192,10 +216,18 @@ describe('connect signals', () => {
     const [sigA, setA] = createSignal(1);
     const [sigB] = createSignal(-1);
 
+    const muteMock = jest.fn();
+    const unmuteMock = jest.fn();
+
     expect(sigA()).toBe(1);
     expect(sigB()).toBe(-1);
 
     const con = connect(sigA, sigB);
+
+    con.on({
+      [Connection.Mute]: muteMock,
+      [Connection.Unmute]: unmuteMock,
+    });
 
     expect(con.isMuted).toBe(false);
 
@@ -210,6 +242,9 @@ describe('connect signals', () => {
     expect(sigA()).toBe(42);
     expect(sigB()).toBe(666);
 
+    expect(muteMock).toHaveBeenCalledTimes(1);
+    expect(unmuteMock).toHaveBeenCalledTimes(0);
+
     con.unmute();
 
     setA(123);
@@ -217,12 +252,18 @@ describe('connect signals', () => {
     expect(sigA()).toBe(123);
     expect(sigB()).toBe(123);
 
+    expect(muteMock).toHaveBeenCalledTimes(1);
+    expect(unmuteMock).toHaveBeenCalledTimes(1);
+
     con.toggle();
 
     setA(7);
 
     expect(sigA()).toBe(7);
     expect(sigB()).toBe(123);
+
+    expect(muteMock).toHaveBeenCalledTimes(2);
+    expect(unmuteMock).toHaveBeenCalledTimes(1);
 
     unconnect(sigA, sigB);
     destroySignal(sigA, sigB);
@@ -235,6 +276,11 @@ describe('connect signals', () => {
 
     const con0 = connect(sigA, sigB);
     const con1 = connect(sigA, sigC);
+
+    const destroyMock = jest.fn();
+
+    con0.on(Connection.Destroy, destroyMock);
+    con1.on(Connection.Destroy, destroyMock);
 
     setA(666);
 
@@ -254,11 +300,15 @@ describe('connect signals', () => {
     expect(sigC()).toBe(666);
 
     destroySignal(sigB, sigC);
+
+    expect(destroyMock).toHaveBeenCalledTimes(2);
   });
 
   it('a signal connection should have a touch() feature just like signal does', () => {
     const [sigA, setA] = createSignal(1);
     const [sigB] = createSignal(-1);
+
+    const valueMock = jest.fn();
 
     const callingB = jest.fn();
     sigB(callingB);
@@ -268,7 +318,10 @@ describe('connect signals', () => {
 
     const con = connect(sigA, sigB);
 
+    con.on(Connection.Value, valueMock);
+
     expect(callingB).toHaveBeenCalledTimes(2);
+    expect(valueMock).toHaveBeenCalledTimes(1);
 
     setA(666);
 
@@ -276,15 +329,19 @@ describe('connect signals', () => {
     expect(sigB()).toBe(666);
     expect(callingB).toHaveBeenCalledTimes(3);
     expect(callingB).toBeCalledWith(666);
+    expect(valueMock).toHaveBeenCalledTimes(2);
+    expect(valueMock).toBeCalledWith(666);
 
     setA(666);
 
     expect(callingB).toHaveBeenCalledTimes(3);
+    expect(valueMock).toHaveBeenCalledTimes(2);
 
     con.touch();
 
     expect(sigB()).toBe(666);
     expect(callingB).toHaveBeenCalledTimes(4);
+    expect(valueMock).toHaveBeenCalledTimes(3);
 
     destroySignal(sigA, sigB);
   });
