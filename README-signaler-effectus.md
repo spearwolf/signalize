@@ -88,6 +88,35 @@ Effects are always executed automatically immediately if a signal that is read o
 
 Sometimes, however, this is a little more often than you actually need: If you change a and then b in the example above, the result will be announced by the effect each time. If you only want to get the final result after changing both signals, you can use the `batch(callback)` function. Within the batch callback, all signals are written, but the dependent effects are not executed until the end of the batch function.
 
+<table>
+  <tbody>
+    <tr>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_object--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_object--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/signal_batch_object--light.png"
+            alt="A class with an effect method"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_func--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_func--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/signal_batch_func--light.png"
+            alt="A standalone effect function"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 ---
 
 _...TBD..._
