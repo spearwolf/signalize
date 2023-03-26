@@ -117,6 +117,10 @@ Sometimes, however, this is a little more often than you actually need: If you c
   </tbody>
 </table>
 
+The difference between the standard behavior of effects and the use of batch is clearly shown on a timeline:
+
+![A timeline with two signals with an effect](./docs/images/timeline-a-b-e.png)
+
 ---
 
 _...TBD..._
