@@ -1,4 +1,12 @@
-import {connect, createSignal, destroySignal, touch, unconnect} from '.';
+import {
+  connect,
+  createSignal,
+  destroySignal,
+  destroySignals,
+  signal,
+  touch,
+  unconnect,
+} from '.';
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers';
 
 describe('connect signals', () => {
@@ -72,6 +80,86 @@ describe('connect signals', () => {
     expect(sigB()).toBe(101);
 
     destroySignal(sigA, sigB);
+  });
+
+  it('connect a signal with another object signal', () => {
+    const [sigA, setA] = createSignal(1);
+
+    class Foo {
+      @signal() accessor b = -1;
+    }
+
+    const foo = new Foo();
+
+    expect(sigA()).toBe(1);
+    expect(foo.b).toBe(-1);
+
+    connect(sigA, [foo, 'b']);
+
+    expect(sigA()).toBe(1);
+    expect(foo.b).toBe(1);
+
+    foo.b = 100;
+
+    expect(foo.b).toBe(100);
+
+    setA(2);
+
+    expect(sigA()).toBe(2);
+    expect(foo.b).toBe(2);
+
+    destroySignal(sigA);
+    destroySignals(foo);
+  });
+
+  it('connect a object signal with another signal', () => {
+    class Foo {
+      @signal() accessor a = 1;
+    }
+
+    const foo = new Foo();
+
+    const [b] = createSignal(-1);
+
+    expect(foo.a).toBe(1);
+    expect(b()).toBe(-1);
+
+    connect([foo, 'a'], b);
+
+    expect(foo.a).toBe(1);
+    expect(b()).toBe(1);
+
+    foo.a = 2;
+
+    expect(foo.a).toBe(2);
+    expect(b()).toBe(2);
+
+    destroySignal(b);
+    destroySignals(foo);
+  });
+
+  it('connect a object signal with another object signal', () => {
+    class Foo {
+      @signal() accessor a = 1;
+      @signal() accessor b = -1;
+    }
+
+    const foo = new Foo();
+
+    expect(foo.a).toBe(1);
+    expect(foo.b).toBe(-1);
+
+    connect([foo, 'a'], [foo, 'b']);
+
+    expect(foo.a).toBe(1);
+    expect(foo.b).toBe(1);
+
+    foo.a = 2;
+
+    expect(foo.a).toBe(2);
+    expect(foo.b).toBe(2);
+
+    destroySignals(foo);
   });
 
   it('it should not be possible to connect two signals to each other more than once', () => {
