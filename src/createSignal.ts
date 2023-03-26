@@ -22,7 +22,7 @@ function readSignal(signalId: symbol) {
   getCurrentEffect()?.whenSignalIsRead(signalId);
 }
 
-function writeSignal(
+export function writeSignal(
   signalId: symbol,
   value: unknown,
   params?: SignalValueParams,
@@ -199,17 +199,6 @@ export const unmuteSignal = <Type = unknown>(
   const signal = getSignalInstance(signalReader);
   if (signal != null) {
     signal.muted = false;
-  }
-};
-
-// TODO touch(...(signalReader|[obj, propKey]))
-
-export const touch = <Type = unknown>(
-  signalReader: SignalReader<Type>,
-): void => {
-  const signal = getSignalInstance(signalReader);
-  if (signal != null && !signal.muted && !signal.destroyed) {
-    writeSignal(signal.id, signal.value, {touch: true});
   }
 };
 

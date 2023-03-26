@@ -4,10 +4,12 @@ export * from './Connection';
 export {batch} from './batch';
 export * from './createMemo';
 export * from './createSignal';
+// TODO export only the public API
 export * from './decorators';
 export * from './effects-api';
 export * from './object-signals-and-effects';
 export * from './value';
+export * from './touch';
 
 // TODO docs: update README (missing decorators docs, rewrite introduction, add ts@5 / decorators stage-3 notes ...)
 
