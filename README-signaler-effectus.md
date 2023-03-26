@@ -123,7 +123,14 @@ Sometimes, however, this is a little more often than you actually need: If you c
 
 The difference between the standard behavior of effects and the use of batch is clearly shown on a timeline:
 
-![A timeline with two signals with an effect](./docs/images/timeline-a-b-e.png)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/timeline-a-b-e.png">
+  <img
+    src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/timeline-a-b-e.png"
+    alt="A timeline with two signals with an effect"
+    style="max-width: 100%;"
+  />
+</picture>
 
 ---
 
