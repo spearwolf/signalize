@@ -1,4 +1,4 @@
-import {UnsubscribeFunc} from '@spearwolf/eventize';
+import {Eventize, UnsubscribeFunc} from '@spearwolf/eventize';
 import {queryObjectSignal} from '.';
 import {getSignal} from './createSignal';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
@@ -9,7 +9,12 @@ const globalSignalConnections = new WeakMap<
   Connection<unknown>[]
 >();
 
-export class Connection<T> {
+export class Connection<T> extends Eventize {
+  static Value = 'value';
+  static Mute = 'mute';
+  static Unmute = 'unmute';
+  static Destroy = 'destroy';
+
   static #addToGlobalStore(conn: Connection<any>): void {
     if (!conn.isDestroyed) {
       const signal = conn.#source;
@@ -87,6 +92,10 @@ export class Connection<T> {
       return conn;
     }
 
+    super();
+
+    this.retain(Connection.Value);
+
     this.#source = getSignal(source);
     this.#target = getSignal(target);
 
@@ -110,7 +119,9 @@ export class Connection<T> {
 
   #write(touch: boolean): Connection<T> {
     if (!this.#muted && !this.isDestroyed) {
-      this.#target.writer(this.#source.value, touch ? {touch} : undefined);
+      const {value} = this.#source;
+      this.#target.writer(value, touch ? {touch} : undefined);
+      this.emit(Connection.Value, value);
     }
     return this;
   }
@@ -120,22 +131,31 @@ export class Connection<T> {
   }
 
   mute(): Connection<T> {
-    this.#muted = true;
+    if (!this.#muted) {
+      this.#muted = true;
+      this.emit(Connection.Mute, this);
+    }
     return this;
   }
 
   unmute(): Connection<T> {
-    this.#muted = false;
+    if (this.#muted) {
+      this.#muted = false;
+      this.emit(Connection.Unmute, this);
+    }
     return this;
   }
 
   toggle(): boolean {
     this.#muted = !this.#muted;
+    this.emit(this.#muted ? Connection.Mute : Connection.Unmute, this);
     return this.#muted;
   }
 
   destroy(): void {
     if (!this.isDestroyed) {
+      this.emit(Connection.Destroy, this);
+      this.off();
       Connection.#removeFromGlobalStore(this);
       this.#unsubscribe?.();
       this.#unsubscribe = undefined;
