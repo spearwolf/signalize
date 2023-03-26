@@ -7,7 +7,7 @@ import {
   saveObjectEffect,
   saveObjectSignal,
 } from './object-signals-and-effects';
-import {SignalParams} from './types';
+import {SignalParams, SignalReader} from './types';
 import {value as signalValue} from './value';
 
 // https://github.com/tc39/proposal-decorators
@@ -46,7 +46,10 @@ export function memo() {
     context: ClassMethodDecoratorContext<T, (this: T, ...args: A) => R>,
   ) {
     return function (this: T, ...args: A): R {
-      let signalReader = queryObjectSignal<R>(this, context.name);
+      let signalReader: SignalReader<R> = queryObjectSignal(
+        this,
+        context.name as any,
+      ) as any;
       if (signalReader == null) {
         signalReader = createMemo<R>(() => target.call(this, ...args));
         saveObjectSignal(this, context.name, signalReader);
