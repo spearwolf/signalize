@@ -1,4 +1,5 @@
 import {UnsubscribeFunc} from '@spearwolf/eventize';
+import {queryObjectSignal} from '.';
 import {getSignal} from './createSignal';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
 import {Signal, SignalReader} from './types';
@@ -148,13 +149,39 @@ export class Connection<T> {
   }
 }
 
-// TODO connect([sourceObject, 'sourceProp'], [targetObject, 'targetProp'])
-
-export function connect<T = unknown>(
-  source: SignalReader<T>,
-  target: SignalReader<T>,
-): Connection<T> {
-  return new Connection(source, target);
+export function connect<Type>(
+  source: SignalReader<Type>,
+  target: SignalReader<Type>,
+): Connection<Type>;
+export function connect<
+  Object,
+  Key extends keyof Object,
+  Type extends Object[Key],
+>(source: [Object, Key], target: SignalReader<Type>): Connection<Type>;
+export function connect<
+  Object,
+  Key extends keyof Object,
+  Type extends Object[Key],
+>(source: SignalReader<Type>, target: [Object, Key]): Connection<Type>;
+export function connect<
+  SourceObject,
+  TargetObject,
+  SourceKey extends keyof SourceObject,
+  TargetKey extends keyof TargetObject,
+  Type extends SourceObject[SourceKey] & TargetObject[TargetKey],
+>(
+  source: [SourceObject, SourceKey],
+  target: [TargetObject, TargetKey],
+): Connection<Type>;
+export function connect(source: any, target: any) {
+  return new Connection(
+    Array.isArray(source)
+      ? queryObjectSignal(...(source as [any, any]))
+      : source,
+    Array.isArray(target)
+      ? queryObjectSignal(...(target as [any, any]))
+      : target,
+  );
 }
 
 // TODO unconnect(sourceObject)
