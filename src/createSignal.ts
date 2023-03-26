@@ -30,9 +30,10 @@ function writeSignal(
   globalSignalQueue.emit(signalId, value, params);
 }
 
-export const isSignal = (signalReader: any): boolean => {
-  return typeof signalReader === 'function' && $signal in signalReader;
-};
+export const isSignal = (
+  signalReader: any,
+): signalReader is SignalReader<unknown> =>
+  typeof signalReader === 'function' && $signal in signalReader;
 
 const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
   const signalReader = (callback?: SignalCallback<Type>) => {

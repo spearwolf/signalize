@@ -2,7 +2,7 @@ import {createMemo} from './createMemo';
 import {createSignal} from './createSignal';
 
 describe('createMemo', () => {
-  it('works as expected', () => {
+  it('works as expected (lazy by default)', () => {
     const [firstName, setFirstName] = createSignal<string>();
     const [lastName, setLastName] = createSignal<string>();
 

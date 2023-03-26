@@ -34,6 +34,7 @@ describe('@signal is a class accessor decorator', () => {
 
     expect(fooSignal).toBeDefined();
     expect(value(fooSignal)).toBe(1);
+    expect(value([foo, 'foo'])).toBe(1);
 
     const computedFoo = createMemo(() => foo.foo + 100);
 

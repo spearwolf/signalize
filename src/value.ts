@@ -1,17 +1,13 @@
-import {SignalReader} from './types';
-import {getSignal} from './createSignal';
+import {getSignal, isSignal} from './createSignal';
 import {queryObjectSignal} from './object-signals-and-effects';
+import {SignalReader} from './types';
 
-// TODO value([obj, propKey])
+function value<Type>(source: SignalReader<Type>): Type;
+function value<O, K extends keyof O>(source: [O, K]): O[K];
+function value(source: any) {
+  return isSignal(source)
+    ? (getSignal(source)?.value as any)
+    : (getSignal(queryObjectSignal(...(source as [any, any])))?.value as any);
+}
 
-// export const value = <Type = unknown>(
-//   signalReader: SignalReader<Type>,
-// ): Type | undefined => getSignal(signalReader)?.value;
-
-export const value = <Type = unknown>(
-  ...args: [SignalReader<Type>] | [object, string | symbol]
-): Type | undefined =>
-  args.length === 1
-    ? getSignal(...args)?.value
-    : getSignal(queryObjectSignal(...args) as SignalReader<any> | undefined)
-        ?.value;
+export {value};
