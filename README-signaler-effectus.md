@@ -86,10 +86,14 @@ With effects, you can easily control behavior changes in your application withou
 
 Effects are always executed automatically immediately if a signal that is read out within the effect is changed afterwards.
 
-Sometimes, however, this is a little more often than you actually need: If you change a and then b in the example above, the result will be announced by the effect each time. If you only want to get the final result after changing both signals, you can use the `batch(callback)` function. Within the batch callback, all signals are written, but the dependent effects are not executed until the end of the batch function.
+Sometimes, however, this is a little more often than you actually need: If you change a and then b in the example above, the result will be announced by the effect each time. If you only want to get the final result after changing both signals, you can use the `batch(callback)` function. Within the batch callback, all signals are written, but the dependent effects are not executed until the end of the batch function:
 
 <table>
   <tbody>
+    <tr>
+      <th></th>
+      <th></th>
+    </tr>
     <tr>
       <td valign="top">
         <picture>
