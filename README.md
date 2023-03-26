@@ -1,122 +1,139 @@
-# @spearwolf/signalize
+> NOTE: formerly known as `@spearwolf/signalize` this library is now in the process of renaming itself `signaler-effectus`. so when `signaler-effectus` is referred to in the following documentation, it is intentional and if `@spearwolf/signalize` is still used, it is probably deprecated and will be adapted in the future.
 
-[![npm version](https://badge.fury.io/js/@spearwolf%2Fsignalize.svg)](https://badge.fury.io/js/@spearwolf%2Fsignalize)
+# signaler-effectus
 
-## Signals and Effects for Typescript
-
-This library provides a simple and intuitive way to work with _signals_ and _effects_ :rocket:
-
-**Signals** are variables that can change over time and respond to events. Signals let you model data in your application and control how it evolves over time.
-
-**Effects** are functions that respond to signals and perform a specific action when a signal changes. With effects, you can easily control behavior changes in your application without having to write complex dependency or monitoring logic.
-
-If you've ever used [SolidJS](https://www.solidjs.com/), or heard of [preactjs/signals](https://github.com/preactjs/signals), you'll probably be familiar with it &mdash; in fact, the article [A Hands-on Introduction to Fine-Grained Reactivity](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf) inspired me to create my own standalone library for it. Thank you Ryan &mdash; an amazing article you wrote there ;)
-
-:fire: _UPDATE 2023-02-22_ &rarr; in fact, there seems to be a lot of hype around this topic right now. among other things, angular also seems to be getting signals soon, here are some more links:
-- [useSignal() is the Future of Web Frameworks](https://www.builder.io/blog/usesignal-is-the-future-of-web-frameworks)
-- [Angular Signals Demo](https://angular-signals.netlify.app/)
-
-### The current state of this library
-
-> THIS LIBRARY IS FOR ANYONE WHO WANTS TO CODE WITH SIGNALS WITHOUT BEING TIED TO ONE OF THE _BIG_ FRAMEWORKS LIKE REACT, SOLIDJS OR ANGULAR &mdash; JUST YOU, VANILLA JS AND SIGNALS :rocket:
-
-- The current version of the library is in a :heavy_check_mark: __stable__ state, the API is minimal but fully implemented and tested!
-- So far I have used this library in smaller projects (e.g. web components), which worked wonderfully :smile:
-- Feel free to try out &mdash; contributions of any kind are welcome :+1:
-## Getting Started
-
-### Install
-
-```sh
-$ npm i @spearwolf/signalize
-````
-
-:point_right: This library has no dependency other than [@spearwolf/eventize](https://github.com/spearwolf/eventize) (which therefore does not require any further dependencies).
-
-:point_right: If you only want to work with signals and effects, there is no reason to use the API of _spearwolf/eventize_ directly (that's what _spearwolf/signals_ does in the background) &mdash; on the other hand the two libraries complement each other perfectly and work hand in hand!
-
-### Create a Signal
-
-Creating a __signal__ is easy:
-
-```js
-import {createSignal} from '@spearwolf/signalize'
-
-const [foo, setFoo] = createSignal('bar')     // Create a signal with an initial value
-
-console.log('foo=', foo())                    // => "foo= bar"
-
-setFoo('plah!')                               // Update the signal
-
-console.log('foo=', foo())                    // => "foo= plah!"
-```
-
-### Create an Effect
-
-An __effect__ is a function that is called. so it is not very interesting. but it becomes more interesting when a signal is read within the function. if a signal is assigned a new value at a later time, the effect function is automatically executed _again_!
-
-the following example produces the same output as the previous one:
-
-```js
-import {createSignal, createEffect} from '@spearwolf/signalize'
-
-const [foo, setFoo] = createSignal('bar')
-
-createEffect(() => {
-  console.log('foo=', foo())    // => "foo= bar"
-})
-
-setFoo('plah!')                 // the effect function is called again now
-                                // => "foo= plah!"
-```
-
-> TODO: rewrite this section !!!
-
-> TODO: explain child effects: destroy effect will destroy all child effects, child effects need to be in same order ..
-
-> TODO: more hints: don't call the same signal multiple times inside effects ...
+The library for signals and effects on the web
 
 
-## API Cheat Sheet
+## Create Signals
 
-| export | usage | description |
-|--------|-------|-------------|
-| createSignal | `[get, set] = createSignal(initialValue?)` | create a signal |
-| | `data = get()` | read the signal value |
-| | `get(fn: (data) => void)` | same as `createEffect(() => fn(get()))` |
-| | `set(data)` | update the signal value |
-| touch | `touch(get)` | same as `set(get())` &mdash; no! wait, `set(get())` will _not_ signal an update, but `touch()` will do the magic without changing the value |
-| value | `data = value(get)` | read out the value without creating (side) effects |
-| createEffect | `[run, unsubscribe] = createEffect(callback)` | create an effect. the _effect callback_ is executed immediately. if signals are read within the _effect callback_, the callback is automatically re-executed if the value of a signal changes later on. return a _run_ and _unsubscribe_ function. With the _run_ callback, the effect can be manually re-executed (which seems unnecessary in most cases, but is sometimes useful). the _effect callback_ can return an optional _cleanup callback_. the _cleanup callback_ will be called before next effect run or when the effect is destroyed (e.b. using the unsubscribe function).  |
-| createMemo | `get = createMemo(callback)` | creates an effect and returns a signal get function which returns the result of the callback |
-| batch | `batch(callback)` | batch multiple updates (setter calls) together |
-| destroySignal | `destroySignal(get)` | destroy the signal. effects (and memos) are automatically released when all their used signals are destroyed. you can still use the getter and setter from the signal, but no effects are triggered anymore. _tidying up is good practice, otherwise everything will overflow at some point_ ;) |
-| muteSignal | `muteSignal(get)` | this is the reversible variant of `destroySignal()`. you can still use the getter and setter of the signal, but no effects are triggered in the background. in contrast to `destroySignal()`, event subscriptions of effects are not removed in the background, they remain, just in the inactive state. so _mute_ is not a replacement for _destroy_ |
-| unmuteSignal | `unmuteSignal(get)` | unmute the signal. this is the counterpart to `muteSignal()` |
-| onCreateEffect | `unsubscribe = onCreateEffect(callback: (effect) => void)` | will be called whenever an effect is created with `createEffect()`; return an unsubscribe function &mdash; _NOTE: this is a global hook, which probably only should be used rarely and sparingly, but it is documented here as well_ |
-| onDestroyEffect | `unsubscribe = onCreateEffect(callback: (effect) => void)` | will be called whenever an effect is destroyed; return an unsubscribe function &mdash; _NOTE: this is a global hook, which probably only should be used rarely and sparingly, but it is documented here as well_ |
-| getEffectsCount | `getEffectsCount() => number` | return the number of active effects. _NOTE: is mainly interesting for tests_ |
+Signals are mutable states that can trigger effects when changed.
 
-For more infos about the api and its behavior and usage, the reader is recommended to take a look at the sources, more precisely the test specs, where many partial aspects of this library are described in detail with examples.
+<table>
+  <tbody>
+    <tr>
+      <th>A class with a signal</th>
+      <th>A standalone signal</th>
+    </tr>
+    <tr>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--light.png">
+          <img
+            src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--light.png"
+            alt="A class with a signal"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--light.png">
+          <img
+            src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--light.png"
+            alt="A standalone signal"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 
-## CHANGLELOG
+## Create Effects
 
-### 0.4.0 (2023-03-02)
+Effects are functions that react to changes in signals and are executed automatically.
 
-- upgrade to typescript@5
-  - refactor build pipeline
-- mute, unmute and destroy signals
-  - `muteSignal(get)`
-  - `unmuteSignal(get)`
-  - `destroySignal(get)`
-- fix effect cleanup callback
-  - if an effect is executed again, the cleanup callback from the last effect is called first (the behavior is similar to the react.useEffect() cleanup function)
-- add `getEffectsCount()` and `onDestroyEffect()` helpers
-- auto cleanup/unsubscription of effects and memos when all their signals are destroyed
-- change signature of the `createEffect()` helper: an array with a _run_ and _unsubscribe_ function is now returned
-- refactor child effects
+_Without_ effects, signals are nothing more than ordinary variables.
 
-### 0.3.2 (2023-02-22)
+With effects, you can easily control behavior changes in your application without having to write complex dependency or monitoring logic.
 
-- typescript: export all types
+<table>
+  <tbody>
+    <tr>
+      <th>A class with an effect method</th>
+      <th>A standalone effect function</th>
+    </tr>
+    <tr>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_an_effect_method--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_an_effect_method--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/a_class_with_an_effect_method--light.png"
+            alt="A class with an effect method"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_effect_function--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_effect_function--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/a_standalone_effect_function--light.png"
+            alt="A standalone effect function"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Effects are always executed automatically immediately if a signal that is read out within the effect is changed afterwards.
+
+Sometimes, however, this is a little more often than you actually need: If you change a and then b in the example above, the result will be announced by the effect each time. If you only want to get the final result after changing both signals, you can use the `batch(callback)` function. Within the batch callback, all signals are written, but the dependent effects are not executed until the end of the batch function:
+
+<table>
+  <tbody>
+    <tr>
+      <th></th>
+      <th></th>
+    </tr>
+    <tr>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_object--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_object--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/signal_batch_object--light.png"
+            alt="A class with an effect method"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_func--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_func--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/signal_batch_func--light.png"
+            alt="A standalone effect function"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+The difference between the standard behavior of effects and the use of batch is clearly shown on a timeline:
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/timeline-a-b-e.png">
+  <img
+    src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/timeline-a-b-e.png"
+    alt="A timeline with two signals with an effect"
+    style="max-width: 100%;"
+  />
+</picture>
+
+---
+
+_...TBD..._
+
+[see old README for more infos](./README-legacy.md)
