@@ -1,6 +1,6 @@
 import {Eventize, UnsubscribeFunc} from '@spearwolf/eventize';
 import {queryObjectSignal} from '.';
-import {getSignal} from './createSignal';
+import {getSignalInstance} from './createSignal';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
 import {Signal, SignalReader} from './types';
 
@@ -52,7 +52,9 @@ export class Connection<T> extends Eventize {
   static findConnectionsBySignal(
     signalReader: SignalReader<any>,
   ): Connection<unknown>[] | undefined {
-    return globalSignalConnections.get(getSignal(signalReader))?.slice();
+    return globalSignalConnections
+      .get(getSignalInstance(signalReader))
+      ?.slice();
   }
 
   static findConnection<C>(
@@ -60,10 +62,10 @@ export class Connection<T> extends Eventize {
     target: SignalReader<C>,
   ): Connection<C> | undefined {
     const connections = globalSignalConnections.get(
-      getSignal(source) as Signal<unknown>,
+      getSignalInstance(source) as Signal<unknown>,
     );
     if (connections != null) {
-      const targetSignal = getSignal(target);
+      const targetSignal = getSignalInstance(target);
       const index = connections.findIndex(
         (conn) => conn.#target === targetSignal,
       );
@@ -96,8 +98,8 @@ export class Connection<T> extends Eventize {
 
     this.retain(Connection.Value);
 
-    this.#source = getSignal(source);
-    this.#target = getSignal(target);
+    this.#source = getSignalInstance(source);
+    this.#target = getSignalInstance(target);
 
     this.#unsubscribe = globalSignalQueue.on(
       this.#source.id,
