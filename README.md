@@ -121,7 +121,7 @@ Sometimes, however, this is a little more often than you actually need: If you c
   </tbody>
 </table>
 
-The difference between the standard behavior of effects and the use of batch is clearly shown on a timeline:
+The difference between the standard behavior of effects and the use of batch is clearly visible on a timeline:
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/timeline-a-b-e.png">
