@@ -80,3 +80,7 @@ export function effect(options?: EffectDecoratorOptions) {
     };
   };
 }
+
+// TODO create a slot() class method decorator!
+// - slots are regulary methods that emit an event (signal value) to the eventize(object-instance) when called
+// - slots should be able to be used as connection target

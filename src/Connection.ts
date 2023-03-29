@@ -87,6 +87,8 @@ export class Connection<T> extends Eventize {
   #source?: Signal<T>;
   #target?: Signal<T>;
 
+  // TODO Connection: allow to pass a function (or object plus method tuple) as target
+
   constructor(source: SignalReader<T>, target: SignalReader<T>) {
     const conn = Connection.findConnection(source, target);
     if (conn != null) {
@@ -118,6 +120,8 @@ export class Connection<T> extends Eventize {
 
     this.touch();
   }
+
+  // TODO Connection<T>.nextValue(): Promise<T> - returns a promise that resolves with the next value
 
   #write(touch: boolean): Connection<T> {
     if (!this.#muted && !this.isDestroyed) {
