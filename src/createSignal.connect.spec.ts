@@ -133,6 +133,58 @@ describe('connect signals', () => {
     destroySignals(foo);
   });
 
+  it('connect a signal with an object method', () => {
+    const [sigA, setA] = createSignal(1);
+
+    class Foo {
+      b: (val: number) => void = jest.fn();
+    }
+
+    const foo = new Foo();
+
+    expect(sigA()).toBe(1);
+    expect(foo.b).toHaveBeenCalledTimes(0);
+
+    connect(sigA, [foo, 'b']);
+
+    expect(sigA()).toBe(1);
+    expect(foo.b).toHaveBeenCalledWith(1);
+    expect(foo.b).toHaveBeenCalledTimes(1);
+
+    expect(connect(sigA, [foo, 'b'])).toBe(connect(sigA, [foo, 'b']));
+    expect(foo.b).toHaveBeenCalledTimes(1);
+
+    setA(2);
+
+    expect(sigA()).toBe(2);
+    expect(foo.b).toHaveBeenCalledTimes(2);
+    expect(foo.b).toHaveBeenCalledWith(2);
+
+    destroySignal(sigA);
+  });
+
+  it('connect a signal with a function', () => {
+    const [sigA, setA] = createSignal(1);
+
+    const bMock = jest.fn();
+
+    expect(sigA()).toBe(1);
+    expect(bMock).toHaveBeenCalledTimes(0);
+
+    connect(sigA, bMock);
+    expect(bMock).toHaveBeenCalledWith(1);
+
+    expect(connect(sigA, bMock)).toBe(connect(sigA, bMock));
+    expect(bMock).toHaveBeenCalledTimes(1);
+
+    setA(2);
+
+    expect(sigA()).toBe(2);
+    expect(bMock).toHaveBeenCalledWith(2);
+
+    destroySignal(sigA);
+  });
+
   it('connect a object signal with another signal', () => {
     class Foo {
       @signal() accessor a = 1;
@@ -146,7 +198,6 @@ describe('connect signals', () => {
     expect(b()).toBe(-1);
 
     connect([foo, 'a'], b);
-    // const con = connect([foo, 'a'], b);
 
     expect(foo.a).toBe(1);
     expect(b()).toBe(1);
@@ -155,8 +206,6 @@ describe('connect signals', () => {
 
     expect(foo.a).toBe(2);
     expect(b()).toBe(2);
-
-    // unconnect([foo, 'a'], b);
 
     destroySignal(b);
     destroySignals(foo);
