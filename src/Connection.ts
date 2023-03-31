@@ -1,5 +1,5 @@
 import {Eventize, UnsubscribeFunc} from '@spearwolf/eventize';
-import {getSignalInstance} from './createSignal';
+import {getSignalInstance, isSignal} from './createSignal';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
 import {queryObjectSignal} from './object-signals-and-effects';
 import {Signal, SignalReader} from './types';
@@ -8,6 +8,23 @@ const globalSignalConnections = new WeakMap<
   Signal<unknown>,
   Connection<unknown>[]
 >();
+
+export type ConnectionFunction<T = unknown> = (val: T) => void;
+export type ConnectionProperty<O = any, K extends keyof O = any> = [O, K];
+
+export type ConnectionTarget<T> =
+  | SignalReader<T>
+  | ConnectionFunction<T>
+  | ConnectionProperty;
+
+const isFunction = (value: unknown): value is Function =>
+  typeof value === 'function';
+
+export enum ConnectionType {
+  Signal = 'signal',
+  Function = 'function',
+  Property = 'property',
+}
 
 export class Connection<T> extends Eventize {
   static Value = 'value';
@@ -59,16 +76,29 @@ export class Connection<T> extends Eventize {
 
   static findConnection<C>(
     source: SignalReader<C>,
-    target: SignalReader<C>,
+    target: ConnectionTarget<C>,
   ): Connection<C> | undefined {
     const connections = globalSignalConnections.get(
       getSignalInstance(source) as Signal<unknown>,
     );
     if (connections != null) {
-      const targetSignal = getSignalInstance(target);
-      const index = connections.findIndex(
-        (conn) => conn.#target === targetSignal,
-      );
+      let index = -1;
+      if (isSignal(target)) {
+        const targetSignal = getSignalInstance(target);
+        index = connections.findIndex((conn) => conn.#target === targetSignal);
+      } else if (isFunction(target)) {
+        index = connections.findIndex((conn) => conn.#target === target);
+      } else {
+        index = connections.findIndex((conn) => {
+          if (conn.#type === ConnectionType.Property) {
+            return (
+              (conn.#target as ConnectionProperty)[0] === target[0] &&
+              (conn.#target as ConnectionProperty)[1] === target[1]
+            );
+          }
+          return false;
+        });
+      }
       if (index >= 0) {
         return connections[index] as Connection<C>;
       }
@@ -85,11 +115,11 @@ export class Connection<T> extends Eventize {
   }
 
   #source?: Signal<T>;
-  #target?: Signal<T>;
 
-  // TODO Connection: allow to pass a function (or object plus method tuple) as target
+  #target?: Signal<T> | ConnectionFunction<T> | ConnectionProperty;
+  #type: ConnectionType;
 
-  constructor(source: SignalReader<T>, target: SignalReader<T>) {
+  constructor(source: SignalReader<T>, target: ConnectionTarget<T>) {
     const conn = Connection.findConnection(source, target);
     if (conn != null) {
       // eslint-disable-next-line no-constructor-return
@@ -101,7 +131,17 @@ export class Connection<T> extends Eventize {
     this.retain(Connection.Value);
 
     this.#source = getSignalInstance(source);
-    this.#target = getSignalInstance(target);
+
+    if (isSignal(target)) {
+      this.#target = getSignalInstance(target) as Signal<T>;
+      this.#type = ConnectionType.Signal;
+    } else if (isFunction(target)) {
+      this.#target = target as () => void;
+      this.#type = ConnectionType.Function;
+    } else {
+      this.#target = target;
+      this.#type = ConnectionType.Property;
+    }
 
     this.#unsubscribe = globalSignalQueue.on(
       this.#source.id,
@@ -126,7 +166,16 @@ export class Connection<T> extends Eventize {
   #write(touch: boolean): Connection<T> {
     if (!this.#muted && !this.isDestroyed) {
       const {value} = this.#source;
-      this.#target.writer(value, touch ? {touch} : undefined);
+
+      if (this.#type === ConnectionType.Signal) {
+        (this.#target as Signal<T>).writer(value, touch ? {touch} : undefined);
+      } else if (this.#type === ConnectionType.Function) {
+        (this.#target as (val: T) => void)(value);
+      } else {
+        const [obj, key] = this.#target as ConnectionProperty;
+        (obj[key] as (val: T) => void)(value);
+      }
+
       this.emit(Connection.Value, value);
     }
     return this;
@@ -175,9 +224,23 @@ export class Connection<T> extends Eventize {
   }
 }
 
+// XXX in time these types should be revised
+
+type ObjectProp<ObjectType, TargetType> = {
+  [Property in keyof ObjectType]: TargetType;
+};
+
+type ObjectMethods<ObjectType, TargetType> = {
+  [Property in keyof ObjectType]: (val?: TargetType) => void;
+};
+
 export function connect<Type>(
   source: SignalReader<Type>,
   target: SignalReader<Type>,
+): Connection<Type>;
+export function connect<Type>(
+  source: SignalReader<Type>,
+  target: (val?: Type) => void,
 ): Connection<Type>;
 export function connect<
   Object,
@@ -186,8 +249,13 @@ export function connect<
 >(source: [Object, Key], target: SignalReader<Type>): Connection<Type>;
 export function connect<
   Object,
-  Key extends keyof Object,
+  Key extends keyof ObjectProp<Object, Type>,
   Type extends Object[Key],
+>(source: SignalReader<Type>, target: [Object, Key]): Connection<Type>;
+export function connect<
+  Object,
+  Type,
+  Key extends keyof ObjectMethods<Object, Type>,
 >(source: SignalReader<Type>, target: [Object, Key]): Connection<Type>;
 export function connect<
   SourceObject,
@@ -205,7 +273,7 @@ export function connect(source: any, target: any) {
       ? queryObjectSignal(...(source as [any, any]))
       : source,
     Array.isArray(target)
-      ? queryObjectSignal(...(target as [any, any]))
+      ? queryObjectSignal(...(target as [any, any])) ?? target
       : target,
   );
 }
