@@ -3,7 +3,9 @@ import {queryObjectSignal} from './object-signals-and-effects';
 import {SignalReader} from './types';
 
 function value<Type>(source: SignalReader<Type>): Type;
-function value<O, K extends keyof O>(source: [O, K]): O[K];
+
+function value<O extends object, K extends keyof O>(source: [O, K]): O[K];
+
 function value(source: any) {
   return isSignal(source)
     ? (getSignalInstance(source)?.value as any)

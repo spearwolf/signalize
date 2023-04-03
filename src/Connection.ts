@@ -1,7 +1,6 @@
 import {Eventize, UnsubscribeFunc} from '@spearwolf/eventize';
 import {getSignalInstance, isSignal} from './createSignal';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
-import {queryObjectSignal} from './object-signals-and-effects';
 import {Signal, SignalReader} from './types';
 
 const globalSignalConnections = new WeakMap<
@@ -222,60 +221,6 @@ export class Connection<T> extends Eventize {
   get isDestroyed(): boolean {
     return this.#unsubscribe == null;
   }
-}
-
-// XXX in time these types should be revised
-
-type ObjectProp<ObjectType, TargetType> = {
-  [Property in keyof ObjectType]: TargetType;
-};
-
-type ObjectMethods<ObjectType, TargetType> = {
-  [Property in keyof ObjectType]: (val?: TargetType) => void;
-};
-
-export function connect<Type>(
-  source: SignalReader<Type>,
-  target: SignalReader<Type>,
-): Connection<Type>;
-export function connect<Type>(
-  source: SignalReader<Type>,
-  target: (val?: Type) => void,
-): Connection<Type>;
-export function connect<
-  Object,
-  Key extends keyof Object,
-  Type extends Object[Key],
->(source: [Object, Key], target: SignalReader<Type>): Connection<Type>;
-export function connect<
-  Object,
-  Key extends keyof ObjectProp<Object, Type>,
-  Type extends Object[Key],
->(source: SignalReader<Type>, target: [Object, Key]): Connection<Type>;
-export function connect<
-  Object,
-  Type,
-  Key extends keyof ObjectMethods<Object, Type>,
->(source: SignalReader<Type>, target: [Object, Key]): Connection<Type>;
-export function connect<
-  SourceObject,
-  TargetObject,
-  SourceKey extends keyof SourceObject,
-  TargetKey extends keyof TargetObject,
-  Type extends SourceObject[SourceKey] & TargetObject[TargetKey],
->(
-  source: [SourceObject, SourceKey],
-  target: [TargetObject, TargetKey],
-): Connection<Type>;
-export function connect(source: any, target: any) {
-  return new Connection(
-    Array.isArray(source)
-      ? queryObjectSignal(...(source as [any, any]))
-      : source,
-    Array.isArray(target)
-      ? queryObjectSignal(...(target as [any, any])) ?? target
-      : target,
-  );
 }
 
 // TODO unconnect(sourceObject)
