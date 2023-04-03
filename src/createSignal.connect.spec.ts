@@ -138,6 +138,7 @@ describe('connect signals', () => {
 
     class Foo {
       b: (val: number) => void = jest.fn();
+      c: (val: string) => void = jest.fn();
     }
 
     const foo = new Foo();
@@ -146,6 +147,7 @@ describe('connect signals', () => {
     expect(foo.b).toHaveBeenCalledTimes(0);
 
     connect(sigA, [foo, 'b']);
+    // connect(sigA, [foo, 'c']);
 
     expect(sigA()).toBe(1);
     expect(foo.b).toHaveBeenCalledWith(1);

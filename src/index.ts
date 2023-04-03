@@ -1,15 +1,20 @@
-export * from './types';
-
 export * from './Connection';
 export {batch} from './batch';
+export {connect} from './connect';
 export * from './createMemo';
 export * from './createSignal';
-// TODO export only the public API
 export * from './decorators';
 export * from './effects-api';
-export * from './object-signals-and-effects';
-export * from './value';
+export {
+  destroyEffects,
+  destroySignals,
+  destroySignalsAndEffects,
+  queryObjectEffect,
+  queryObjectSignal,
+} from './object-signals-and-effects';
 export * from './touch';
+export * from './types';
+export * from './value';
 
 // TODO docs: update README (missing decorators docs, rewrite introduction, add ts@5 / decorators stage-3 notes ...)
 

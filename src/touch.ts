@@ -3,7 +3,9 @@ import {queryObjectSignal} from './object-signals-and-effects';
 import {SignalReader} from './types';
 
 function touch<Type>(source: SignalReader<Type>): void;
-function touch<O, K extends keyof O>(source: [O, K]): void;
+
+function touch<O extends object, K extends keyof O>(source: [O, K]): void;
+
 function touch(source: any) {
   const signal = getSignalInstance(
     isSignal(source) ? source : queryObjectSignal(...(source as [any, any])),
