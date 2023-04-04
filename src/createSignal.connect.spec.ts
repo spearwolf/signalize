@@ -63,7 +63,7 @@ describe('connect signals', () => {
       [Connection.Destroy]: destroyMock,
     });
 
-    // when we create a connection between two signals, the value of the source signal is written to the target signal
+    // when we create a connection between two signals, the value of the source signal is immediately written to the target signal !!
 
     expect(sigA()).toBe(1);
     expect(sigB()).toBe(1);
@@ -237,7 +237,7 @@ describe('connect signals', () => {
     destroySignals(foo);
   });
 
-  it('it should not be possible to connect two signals to each other more than once', () => {
+  it('a connection between two points is a singleton and cannot be created more than once', () => {
     const [sigA, setA] = createSignal(1);
     const [sigB] = createSignal(-1);
 
@@ -263,7 +263,7 @@ describe('connect signals', () => {
     destroySignal(sigA, sigB);
   });
 
-  it('a signal connection should be pausable (mute/unmute)', () => {
+  it('a connection should be pausable (mute/unmute)', () => {
     const [sigA, setA] = createSignal(1);
     const [sigB] = createSignal(-1);
 
@@ -320,7 +320,7 @@ describe('connect signals', () => {
     destroySignal(sigA, sigB);
   });
 
-  it('if the signal is destroyed, all signal connections from this signal should be disconnected automatically', () => {
+  it('if the signal is destroyed, all connections from this signal should be disconnected automatically', () => {
     const [sigA, setA] = createSignal(1);
     const [sigB] = createSignal(-1);
     const [sigC] = createSignal(-1);
@@ -355,7 +355,7 @@ describe('connect signals', () => {
     expect(destroyMock).toHaveBeenCalledTimes(2);
   });
 
-  it('a signal connection should have a touch() feature just like signal does', () => {
+  it('a connection should have a touch() feature just like signal does', () => {
     const [sigA, setA] = createSignal(1);
     const [sigB] = createSignal(-1);
 
