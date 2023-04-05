@@ -2,6 +2,7 @@ import {Eventize, UnsubscribeFunc} from '@spearwolf/eventize';
 import {getSignalInstance, isSignal} from './createSignal';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
 import {Signal, SignalReader} from './types';
+import {queryObjectSignals} from './object-signals-and-effects';
 
 const globalSignalConnections = new WeakMap<
   Signal<unknown>,
@@ -62,8 +63,35 @@ export class Connection<T> extends Eventize {
     }
   }
 
-  // TODO findConnectionsByObject()
+  static findConnectionsByObject<O extends object>(
+    source: O,
+  ): Connection<unknown>[] | undefined {
+    const signals = queryObjectSignals(source);
+    if (signals) {
+      const connections = new Set<Connection<unknown>>();
+      for (const con of signals.flatMap(
+        (sig) => Connection.findConnectionsBySignal(sig) ?? [],
+      )) {
+        connections.add(con);
+      }
+      return Array.from(connections);
+    }
+    return undefined;
+  }
+
   // TODO findConnectionsBetween(source, target)
+  //
+  // static findConnectionsBetween<S extends object, T extends object>(
+  //   source: S,
+  //   target: T,
+  // ): Connection<unknown>[] | undefined {
+  //   const sourceConnections = Connection.findConnectionsByObject(source);
+  //   const sourceSignals = queryObjectSignals(source);
+  //   const targetConnections = Connection.findConnectionsByObject(target);
+  //   const targetSignals = queryObjectSignals(target);
+  //   if (sourceConnections) {
+  //   }
+  // }
 
   static findConnectionsBySignal(
     signalReader: SignalReader<any>,
