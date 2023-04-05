@@ -41,7 +41,7 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
 }
 
 export function memo() {
-  return function <T, A extends any[], R>(
+  return function <T extends object, A extends any[], R>(
     target: (this: T, ...args: A) => R,
     context: ClassMethodDecoratorContext<T, (this: T, ...args: A) => R>,
   ) {
