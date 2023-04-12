@@ -87,20 +87,44 @@ export class Connection<T> extends Eventize {
     }
   }
 
+  static findConnectionsBySignal(
+    signalReader: SignalReader<any>,
+  ): Connection<unknown>[] | undefined {
+    const connections = globalSignalConnections.get(
+      getSignalInstance(signalReader),
+    );
+    return connections ? Array.from(connections) : undefined;
+  }
+
+  static findConnectionsByTarget(
+    objectTarget: object,
+  ): Connection<unknown>[] | undefined {
+    const connections = globalConnectionTargets.get(objectTarget);
+    return connections ? Array.from(connections) : undefined;
+  }
+
   static findConnectionsByObject<O extends object>(
     source: O,
   ): Connection<unknown>[] | undefined {
+    const connections = new Set<Connection<unknown>>();
+
     const signals = queryObjectSignals(source);
     if (signals) {
-      const connections = new Set<Connection<unknown>>();
       for (const con of signals.flatMap(
         (sig) => Connection.findConnectionsBySignal(sig) ?? [],
       )) {
         connections.add(con);
       }
-      return Array.from(connections);
     }
-    return undefined;
+
+    const targetConnections = Connection.findConnectionsByTarget(source);
+    if (targetConnections) {
+      for (const con of targetConnections) {
+        connections.add(con);
+      }
+    }
+
+    return connections.size > 0 ? Array.from(connections) : undefined;
   }
 
   // TODO findConnectionsBetween(source, target)
@@ -116,15 +140,6 @@ export class Connection<T> extends Eventize {
   //   if (sourceConnections) {
   //   }
   // }
-
-  static findConnectionsBySignal(
-    signalReader: SignalReader<any>,
-  ): Connection<unknown>[] | undefined {
-    const connections = globalSignalConnections.get(
-      getSignalInstance(signalReader),
-    );
-    return connections ? Array.from(connections) : undefined;
-  }
 
   static findConnection<C>(
     source: SignalReader<C>,
