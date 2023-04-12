@@ -1,8 +1,8 @@
 import {Eventize, UnsubscribeFunc} from '@spearwolf/eventize';
 import {getSignalInstance, isSignal} from './createSignal';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
-import {Signal, SignalReader} from './types';
 import {queryObjectSignals} from './object-signals-and-effects';
+import {Signal, SignalReader} from './types';
 
 const globalSignalConnections = new WeakMap<
   Signal<unknown>,
@@ -305,23 +305,5 @@ export class Connection<T> extends Eventize {
 
   get isDestroyed(): boolean {
     return this.#unsubscribe == null;
-  }
-}
-
-// TODO unconnect(sourceObject)
-// TODO unconnect(sourceObject, targetObject)
-// TODO unconnect([sourceObject, 'sourceProp'], [targetObject, 'targetProp'])
-
-export function unconnect<T = unknown>(
-  ...args:
-    | [source: SignalReader<T>]
-    | [source: SignalReader<T>, target: SignalReader<T>]
-): void {
-  if (args.length === 1) {
-    Connection.findConnectionsBySignal(args[0])?.forEach((conn) => {
-      conn.destroy();
-    });
-  } else {
-    Connection.findConnection(...args)?.destroy();
   }
 }
