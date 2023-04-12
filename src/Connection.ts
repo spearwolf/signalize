@@ -6,7 +6,7 @@ import {queryObjectSignals} from './object-signals-and-effects';
 
 const globalSignalConnections = new WeakMap<
   Signal<unknown>,
-  Connection<unknown>[]
+  Set<Connection<unknown>>
 >();
 
 export type ConnectionFunction<T = unknown> = (val: T) => void;
@@ -32,32 +32,27 @@ export class Connection<T> extends Eventize {
   static Unmute = 'unmute';
   static Destroy = 'destroy';
 
-  static #addToGlobalStore(conn: Connection<any>): void {
+  static #addToSignalStore(conn: Connection<any>): void {
     if (!conn.isDestroyed) {
       const signal = conn.#source;
-      const connections = globalSignalConnections.get(signal) ?? [];
-      const index = connections.indexOf(conn);
-      if (index < 0) {
-        connections.push(conn);
-        if (connections.length === 1) {
-          globalSignalConnections.set(signal, connections);
-        }
+      let connections = globalSignalConnections.get(signal);
+      if (connections) {
+        connections.add(conn);
+      } else {
+        connections = new Set([conn]);
+        globalSignalConnections.set(signal, connections);
       }
     }
   }
 
-  static #removeFromGlobalStore(conn: Connection<any>): void {
+  static #removeFromSignalStore(conn: Connection<any>): void {
     if (!conn.isDestroyed) {
       const signal = conn.#source;
       const connections = globalSignalConnections.get(signal);
       if (connections) {
-        const index = connections.indexOf(conn);
-        if (index >= 0) {
-          if (connections.length === 1) {
-            globalSignalConnections.delete(signal);
-          } else {
-            connections.splice(index, 1);
-          }
+        connections.delete(conn);
+        if (connections.size === 0) {
+          globalSignalConnections.delete(signal);
         }
       }
     }
@@ -96,19 +91,21 @@ export class Connection<T> extends Eventize {
   static findConnectionsBySignal(
     signalReader: SignalReader<any>,
   ): Connection<unknown>[] | undefined {
-    return globalSignalConnections
-      .get(getSignalInstance(signalReader))
-      ?.slice();
+    const connections = globalSignalConnections.get(
+      getSignalInstance(signalReader),
+    );
+    return connections ? Array.from(connections) : undefined;
   }
 
   static findConnection<C>(
     source: SignalReader<C>,
     target: ConnectionTarget<C>,
   ): Connection<C> | undefined {
-    const connections = globalSignalConnections.get(
+    const conSet = globalSignalConnections.get(
       getSignalInstance(source) as Signal<unknown>,
     );
-    if (connections != null) {
+    if (conSet != null) {
+      const connections = Array.from(conSet);
       let index = -1;
       if (isSignal(target)) {
         const targetSignal = getSignalInstance(target);
@@ -183,7 +180,7 @@ export class Connection<T> extends Eventize {
 
     globalDestroySignalQueue.once(this.#source.id, 'destroy', this);
 
-    Connection.#addToGlobalStore(this);
+    Connection.#addToSignalStore(this);
 
     this.touch();
   }
@@ -238,7 +235,7 @@ export class Connection<T> extends Eventize {
     if (!this.isDestroyed) {
       this.emit(Connection.Destroy, this);
       this.off();
-      Connection.#removeFromGlobalStore(this);
+      Connection.#removeFromSignalStore(this);
       this.#unsubscribe?.();
       this.#unsubscribe = undefined;
       this.#source = undefined;
