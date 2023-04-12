@@ -9,6 +9,8 @@ const globalSignalConnections = new WeakMap<
   Set<Connection<unknown>>
 >();
 
+const globalConnectionTargets = new WeakMap<object, Set<Connection<unknown>>>();
+
 export type ConnectionFunction<T = unknown> = (val: T) => void;
 export type ConnectionProperty<O = any, K extends keyof O = any> = [O, K];
 
@@ -53,6 +55,33 @@ export class Connection<T> extends Eventize {
         connections.delete(conn);
         if (connections.size === 0) {
           globalSignalConnections.delete(signal);
+        }
+      }
+    }
+  }
+
+  static #addToTargetStore(objectTarget: object, conn: Connection<any>): void {
+    if (!conn.isDestroyed) {
+      let connections = globalConnectionTargets.get(objectTarget);
+      if (connections) {
+        connections.add(conn);
+      } else {
+        connections = new Set([conn]);
+        globalConnectionTargets.set(objectTarget, connections);
+      }
+    }
+  }
+
+  static #removeFromTargetStore(
+    objectTarget: object,
+    conn: Connection<any>,
+  ): void {
+    if (!conn.isDestroyed) {
+      const connections = globalConnectionTargets.get(objectTarget);
+      if (connections) {
+        connections.delete(conn);
+        if (connections.size === 0) {
+          globalConnectionTargets.delete(objectTarget);
         }
       }
     }
@@ -141,9 +170,15 @@ export class Connection<T> extends Eventize {
   #source?: Signal<T>;
 
   #target?: Signal<T> | ConnectionFunction<T> | ConnectionProperty;
+  #objectTarget?: object;
+
   #type: ConnectionType;
 
-  constructor(source: SignalReader<T>, target: ConnectionTarget<T>) {
+  constructor(
+    source: SignalReader<T>,
+    target: ConnectionTarget<T>,
+    objectTarget?: object,
+  ) {
     const conn = Connection.findConnection(source, target);
     if (conn != null) {
       // eslint-disable-next-line no-constructor-return
@@ -167,6 +202,8 @@ export class Connection<T> extends Eventize {
       this.#type = ConnectionType.Property;
     }
 
+    this.#objectTarget = objectTarget;
+
     this.#unsubscribe = globalSignalQueue.on(
       this.#source.id,
       (_value, params) => {
@@ -181,6 +218,10 @@ export class Connection<T> extends Eventize {
     globalDestroySignalQueue.once(this.#source.id, 'destroy', this);
 
     Connection.#addToSignalStore(this);
+
+    if (objectTarget != null) {
+      Connection.#addToTargetStore(objectTarget, this);
+    }
 
     this.touch();
   }
@@ -240,6 +281,10 @@ export class Connection<T> extends Eventize {
       this.#unsubscribe = undefined;
       this.#source = undefined;
       this.#target = undefined;
+      if (this.#objectTarget != null) {
+        Connection.#removeFromTargetStore(this.#objectTarget, this);
+        this.#objectTarget = undefined;
+      }
     }
   }
 

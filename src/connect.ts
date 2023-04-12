@@ -50,12 +50,14 @@ export function connect<
 ): Connection<Type>;
 
 export function connect(source: any, target: any) {
+  const isObjectTarget = Array.isArray(target);
   return new Connection(
     Array.isArray(source)
       ? queryObjectSignal(...(source as [any, any]))
       : source,
-    Array.isArray(target)
+    isObjectTarget
       ? queryObjectSignal(...(target as [any, any])) ?? target
       : target,
+    isObjectTarget ? (target as [any, any])[0] : undefined,
   );
 }
