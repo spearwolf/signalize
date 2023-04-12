@@ -14,6 +14,7 @@ export {
 } from './object-signals-and-effects';
 export * from './touch';
 export * from './types';
+export {unconnect} from './unconnect';
 export * from './value';
 
 // TODO docs: update README (missing decorators docs, rewrite introduction, add ts@5 / decorators stage-3 notes ...)
