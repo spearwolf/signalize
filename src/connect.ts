@@ -67,6 +67,6 @@ export function connect(source: any, target: any) {
     isObjectTarget
       ? queryObjectSignal(...(target as [any, any])) ?? target
       : target,
-    isObjectTarget ? (target as [any, any])[0] : target,
+    isObjectTarget ? (target as [object, any])[0] : target,
   );
 }
