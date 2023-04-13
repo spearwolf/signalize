@@ -9,16 +9,29 @@ const globalSignalConnections = new WeakMap<
   Set<Connection<unknown>>
 >();
 
-const globalConnectionTargets = new WeakMap<object, Set<Connection<unknown>>>();
+export type ConnectionTargetType = object | Function;
+
+const globalConnectionTargets = new WeakMap<
+  ConnectionTargetType,
+  Set<Connection<unknown>>
+>();
 
 export type ConnectionFunction<T = unknown> = (val: T) => void;
-// TODO improve types?
-export type ConnectionProperty<O = any, K extends keyof O = any> = [O, K];
+
+type ObjectProps<Obj, PropType> = {
+  [Key in keyof Obj as Obj[Key] extends PropType ? Key : never]: unknown;
+};
+
+export type ConnectionProperty<
+  T,
+  O extends object = never,
+  K extends keyof ObjectProps<O, T> = never,
+> = [O, K];
 
 export type ConnectionTarget<T> =
   | SignalReader<T>
   | ConnectionFunction<T>
-  | ConnectionProperty;
+  | ConnectionProperty<T>;
 
 const isFunction = (value: unknown): value is Function =>
   typeof value === 'function';
@@ -35,25 +48,25 @@ export class Connection<T> extends Eventize {
   static Unmute = 'unmute';
   static Destroy = 'destroy';
 
-  static #addToSignalStore(conn: Connection<any>): void {
-    if (!conn.isDestroyed) {
-      const signal = conn.#source;
+  static #attachToSignal(connection: Connection<any>): void {
+    if (!connection.isDestroyed) {
+      const signal = connection.#source;
       let connections = globalSignalConnections.get(signal);
       if (connections) {
-        connections.add(conn);
+        connections.add(connection);
       } else {
-        connections = new Set([conn]);
+        connections = new Set([connection]);
         globalSignalConnections.set(signal, connections);
       }
     }
   }
 
-  static #removeFromSignalStore(conn: Connection<any>): void {
-    if (!conn.isDestroyed) {
-      const signal = conn.#source;
+  static #detachFromSignal(connection: Connection<any>): void {
+    if (!connection.isDestroyed) {
+      const signal = connection.#source;
       const connections = globalSignalConnections.get(signal);
       if (connections) {
-        connections.delete(conn);
+        connections.delete(connection);
         if (connections.size === 0) {
           globalSignalConnections.delete(signal);
         }
@@ -61,28 +74,31 @@ export class Connection<T> extends Eventize {
     }
   }
 
-  static #addToTargetStore(objectTarget: object, conn: Connection<any>): void {
-    if (!conn.isDestroyed) {
-      let connections = globalConnectionTargets.get(objectTarget);
+  static #attachToTarget(
+    target: ConnectionTargetType,
+    connection: Connection<any>,
+  ): void {
+    if (!connection.isDestroyed) {
+      let connections = globalConnectionTargets.get(target);
       if (connections) {
-        connections.add(conn);
+        connections.add(connection);
       } else {
-        connections = new Set([conn]);
-        globalConnectionTargets.set(objectTarget, connections);
+        connections = new Set([connection]);
+        globalConnectionTargets.set(target, connections);
       }
     }
   }
 
-  static #removeFromTargetStore(
-    objectTarget: object,
-    conn: Connection<any>,
+  static #detachFromTarget(
+    target: ConnectionTargetType,
+    connection: Connection<any>,
   ): void {
-    if (!conn.isDestroyed) {
-      const connections = globalConnectionTargets.get(objectTarget);
+    if (!connection.isDestroyed) {
+      const connections = globalConnectionTargets.get(target);
       if (connections) {
-        connections.delete(conn);
+        connections.delete(connection);
         if (connections.size === 0) {
-          globalConnectionTargets.delete(objectTarget);
+          globalConnectionTargets.delete(target);
         }
       }
     }
@@ -98,9 +114,9 @@ export class Connection<T> extends Eventize {
   }
 
   static findConnectionsByTarget(
-    objectTarget: object,
+    target: ConnectionTargetType,
   ): Connection<unknown>[] | undefined {
-    const connections = globalConnectionTargets.get(objectTarget);
+    const connections = globalConnectionTargets.get(target);
     return connections ? Array.from(connections) : undefined;
   }
 
@@ -118,9 +134,9 @@ export class Connection<T> extends Eventize {
       }
     }
 
-    const targetConnections = Connection.findConnectionsByTarget(source);
-    if (targetConnections) {
-      for (const con of targetConnections) {
+    const connectionsByTarget = Connection.findConnectionsByTarget(source);
+    if (connectionsByTarget) {
+      for (const con of connectionsByTarget) {
         connections.add(con);
       }
     }
@@ -160,10 +176,8 @@ export class Connection<T> extends Eventize {
       } else {
         index = connections.findIndex((conn) => {
           if (conn.#type === ConnectionType.Property) {
-            return (
-              (conn.#target as ConnectionProperty)[0] === target[0] &&
-              (conn.#target as ConnectionProperty)[1] === target[1]
-            );
+            const connTarget = conn.#target as ConnectionProperty<C>;
+            return connTarget[0] === target[0] && connTarget[1] === target[1];
           }
           return false;
         });
@@ -185,15 +199,15 @@ export class Connection<T> extends Eventize {
 
   #source?: Signal<T>;
 
-  #target?: Signal<T> | ConnectionFunction<T> | ConnectionProperty;
-  #objectTarget?: object;
+  #target?: Signal<T> | ConnectionFunction<T> | ConnectionProperty<T>;
+  #connectionTarget?: ConnectionTargetType;
 
   #type: ConnectionType;
 
   constructor(
     source: SignalReader<T>,
     target: ConnectionTarget<T>,
-    objectTarget?: object,
+    connectionTarget?: ConnectionTargetType,
   ) {
     const conn = Connection.findConnection(source, target);
     if (conn != null) {
@@ -218,7 +232,7 @@ export class Connection<T> extends Eventize {
       this.#type = ConnectionType.Property;
     }
 
-    this.#objectTarget = objectTarget;
+    this.#connectionTarget = connectionTarget;
 
     this.#unsubscribe = globalSignalQueue.on(
       this.#source.id,
@@ -233,10 +247,10 @@ export class Connection<T> extends Eventize {
 
     globalDestroySignalQueue.once(this.#source.id, 'destroy', this);
 
-    Connection.#addToSignalStore(this);
+    Connection.#attachToSignal(this);
 
-    if (objectTarget != null) {
-      Connection.#addToTargetStore(objectTarget, this);
+    if (connectionTarget != null) {
+      Connection.#attachToTarget(connectionTarget, this);
     }
 
     this.touch();
@@ -253,7 +267,7 @@ export class Connection<T> extends Eventize {
       } else if (this.#type === ConnectionType.Function) {
         (this.#target as (val: T) => void)(value);
       } else {
-        const [obj, key] = this.#target as ConnectionProperty;
+        const [obj, key] = this.#target as ConnectionProperty<T>;
         (obj[key] as (val: T) => void)(value);
       }
 
@@ -292,14 +306,14 @@ export class Connection<T> extends Eventize {
     if (!this.isDestroyed) {
       this.emit(Connection.Destroy, this);
       this.off();
-      Connection.#removeFromSignalStore(this);
+      Connection.#detachFromSignal(this);
       this.#unsubscribe?.();
       this.#unsubscribe = undefined;
       this.#source = undefined;
       this.#target = undefined;
-      if (this.#objectTarget != null) {
-        Connection.#removeFromTargetStore(this.#objectTarget, this);
-        this.#objectTarget = undefined;
+      if (this.#connectionTarget != null) {
+        Connection.#detachFromTarget(this.#connectionTarget, this);
+        this.#connectionTarget = undefined;
       }
     }
   }
