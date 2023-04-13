@@ -106,11 +106,8 @@ export class Connection<T> extends Eventize {
 
   static findConnectionsBySignal(
     signalReader: SignalReader<any>,
-  ): Connection<unknown>[] | undefined {
-    const connections = globalSignalConnections.get(
-      getSignalInstance(signalReader),
-    );
-    return connections ? Array.from(connections) : undefined;
+  ): Set<Connection<unknown>> | undefined {
+    return globalSignalConnections.get(getSignalInstance(signalReader));
   }
 
   static findConnectionsByTarget(
@@ -127,9 +124,10 @@ export class Connection<T> extends Eventize {
 
     const signals = queryObjectSignals(source);
     if (signals) {
-      for (const con of signals.flatMap(
-        (sig) => Connection.findConnectionsBySignal(sig) ?? [],
-      )) {
+      for (const con of signals.flatMap((sig) => {
+        const connectionsBySignal = Connection.findConnectionsBySignal(sig);
+        return connectionsBySignal ? Array.from(connectionsBySignal) : [];
+      })) {
         connections.add(con);
       }
     }
@@ -162,11 +160,11 @@ export class Connection<T> extends Eventize {
     source: SignalReader<C>,
     target: ConnectionTarget<C>,
   ): Connection<C> | undefined {
-    const conSet = globalSignalConnections.get(
+    const connectionsBySignal = globalSignalConnections.get(
       getSignalInstance(source) as Signal<unknown>,
     );
-    if (conSet != null) {
-      const connections = Array.from(conSet);
+    if (connectionsBySignal != null) {
+      const connections = Array.from(connectionsBySignal);
       let index = -1;
       if (isSignal(target)) {
         const targetSignal = getSignalInstance(target);
@@ -320,5 +318,9 @@ export class Connection<T> extends Eventize {
 
   get isDestroyed(): boolean {
     return this.#unsubscribe == null;
+  }
+
+  hasTarget(target: ConnectionTargetType): boolean {
+    return this.#connectionTarget === target;
   }
 }

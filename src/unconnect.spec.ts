@@ -154,7 +154,7 @@ describe('unconnect', () => {
     destroySignals(foo);
   });
 
-  it.skip('signal -> function', () => {
+  it('signal -> function', () => {
     const [sig, setSig] = createSignal(23);
 
     const mockFn = jest.fn();
