@@ -135,12 +135,14 @@ describe('unconnect', () => {
 
     destroySignal(sig);
 
-    // ------------------------------------
+    // ---
 
     expect(c0.isDestroyed).toBe(true);
     expect(c1.isDestroyed).toBe(true);
     expect(c2.isDestroyed).toBe(true);
     expect(c3.isDestroyed).toBe(true);
+
+    // ------------------------------------
 
     setSig(666);
 
@@ -207,12 +209,14 @@ describe('unconnect', () => {
 
     unconnect(sig, mockFn);
 
-    // ------------------------------------
+    // ---
 
     expect(c0.isDestroyed).toBe(true);
     expect(c1.isDestroyed).toBe(false);
     expect(c2.isDestroyed).toBe(false);
     expect(c3.isDestroyed).toBe(false);
+
+    // ------------------------------------
 
     setSig(666);
 

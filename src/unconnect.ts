@@ -82,9 +82,10 @@ export function unconnect(source: any, target?: any): void {
           }
         }
       }
-      // else: target is object
     }
     // else: source is object
+    // --> recursive solution..
   }
   // else source is [object, prop]
+  // --> if object.prop is signal then recursive solution
 }
