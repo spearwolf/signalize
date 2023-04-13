@@ -64,11 +64,23 @@ export function unconnect(source: any, target?: any): void {
   if (!Array.isArray(source)) {
     if (isSignal(source)) {
       if (target == null) {
-        Connection.findConnectionsBySignal(source)?.forEach((con) => {
-          con.destroy();
-        });
+        const connectionsBySignal = Connection.findConnectionsBySignal(source);
+        if (connectionsBySignal) {
+          for (const con of connectionsBySignal) {
+            con.destroy();
+          }
+        }
       } else if (Array.isArray(target) || isSignal(target)) {
         Connection.findConnection(source, target as any)?.destroy();
+      } else {
+        const connectionsBySignal = Connection.findConnectionsBySignal(source);
+        if (connectionsBySignal) {
+          for (const con of connectionsBySignal) {
+            if (con.hasTarget(target)) {
+              con.destroy();
+            }
+          }
+        }
       }
       // else: target is object
     }
