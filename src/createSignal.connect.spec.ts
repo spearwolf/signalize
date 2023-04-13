@@ -46,7 +46,7 @@ describe('connect signals', () => {
     destroySignal(sigA, sigB, sigC);
   });
 
-  it('connect a signal with another signal (with connect())', () => {
+  it('connect a signal with another signal (this time with the connect() api)', () => {
     const [sigA, setA] = createSignal(1);
     const [sigB, setB] = createSignal(-1);
 
@@ -187,7 +187,7 @@ describe('connect signals', () => {
     destroySignal(sigA);
   });
 
-  it('connect a object signal with another signal', () => {
+  it('connect an object signal with another signal', () => {
     class Foo {
       @signal() accessor a = 1;
     }
@@ -213,7 +213,7 @@ describe('connect signals', () => {
     destroySignals(foo);
   });
 
-  it('connect a object signal with another object signal', () => {
+  it('connect an object signal with another object signal', () => {
     class Foo {
       @signal() accessor a = 1;
       @signal() accessor b = -1;
@@ -233,6 +233,63 @@ describe('connect signals', () => {
 
     expect(foo.a).toBe(2);
     expect(foo.b).toBe(2);
+
+    destroySignals(foo);
+  });
+
+  it('connect an object signal with an object method', () => {
+    class Foo {
+      @signal() accessor a = 1;
+
+      b: (val: number) => void = jest.fn();
+    }
+
+    const foo = new Foo();
+
+    expect(foo.a).toBe(1);
+    expect(foo.b).toHaveBeenCalledTimes(0);
+
+    connect([foo, 'a'], [foo, 'b']);
+
+    expect(foo.b).toHaveBeenCalledWith(1);
+    expect(foo.b).toHaveBeenCalledTimes(1);
+
+    expect(connect([foo, 'a'], [foo, 'b'])).toBe(
+      connect([foo, 'a'], [foo, 'b']),
+    );
+    expect(foo.b).toHaveBeenCalledTimes(1);
+
+    foo.a = 2;
+
+    expect(foo.a).toBe(2);
+    expect(foo.b).toHaveBeenCalledTimes(2);
+    expect(foo.b).toHaveBeenCalledWith(2);
+
+    destroySignals(foo);
+  });
+
+  it('connect an object signal with a function', () => {
+    class Foo {
+      @signal() accessor a = 1;
+    }
+
+    const foo = new Foo();
+
+    const bMock = jest.fn();
+
+    expect(foo.a).toBe(1);
+    expect(bMock).toHaveBeenCalledTimes(0);
+
+    connect([foo, 'a'], bMock);
+    expect(bMock).toHaveBeenCalledWith(1);
+
+    expect(connect([foo, 'a'], bMock)).toBe(connect([foo, 'a'], bMock));
+    expect(bMock).toHaveBeenCalledTimes(1);
+
+    foo.a = 2;
+
+    expect(foo.a).toBe(2);
+    expect(bMock).toHaveBeenCalledWith(2);
 
     destroySignals(foo);
   });
