@@ -49,6 +49,15 @@ export function connect<
   target: [TargetObject, TargetKey],
 ): Connection<Type>;
 
+export function connect<
+  Type,
+  SourceObject extends object,
+  SourceKey extends keyof ObjectProps<SourceObject, Type>,
+>(
+  source: [SourceObject, SourceKey],
+  target: (val?: Type) => void,
+): Connection<Type>;
+
 export function connect(source: any, target: any) {
   const isObjectTarget = Array.isArray(target);
   return new Connection(
