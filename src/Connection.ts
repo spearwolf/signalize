@@ -12,6 +12,7 @@ const globalSignalConnections = new WeakMap<
 const globalConnectionTargets = new WeakMap<object, Set<Connection<unknown>>>();
 
 export type ConnectionFunction<T = unknown> = (val: T) => void;
+// TODO improve types?
 export type ConnectionProperty<O = any, K extends keyof O = any> = [O, K];
 
 export type ConnectionTarget<T> =
