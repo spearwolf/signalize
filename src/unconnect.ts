@@ -1,3 +1,4 @@
+import {queryObjectSignal} from '.';
 import {Connection} from './Connection';
 import {isSignal} from './createSignal';
 import {SignalReader} from './types';
@@ -70,8 +71,14 @@ export function unconnect(source: any, target?: any): void {
             con.destroy();
           }
         }
-      } else if (Array.isArray(target) || isSignal(target)) {
+      } else if (isSignal(target)) {
         Connection.findConnection(source, target as any)?.destroy();
+      } else if (Array.isArray(target)) {
+        Connection.findConnection(
+          source,
+          queryObjectSignal(...(target as [object, keyof object])) ??
+            (target as any),
+        )?.destroy();
       } else {
         const connectionsBySignal = Connection.findConnectionsBySignal(source);
         if (connectionsBySignal) {

@@ -402,9 +402,153 @@ describe('unconnect', () => {
     destroySignals(bar);
   });
 
-  it.skip('signal -> object.signal', () => {});
+  it('signal -> object.signal', () => {
+    const [sig, setSig] = createSignal(23);
 
-  it.skip('signal -> object.method', () => {});
+    const mockFn = jest.fn();
+
+    const [otherSignal] = createSignal(-1);
+
+    class Foo {
+      @signal() accessor bar = -1;
+
+      plah = jest.fn();
+    }
+
+    const foo = new Foo();
+
+    expect(mockFn).not.toHaveBeenCalled();
+    expect(otherSignal()).toBe(-1);
+    expect(foo.bar).toBe(-1);
+    expect(foo.plah).not.toHaveBeenCalled();
+
+    const c0 = connect(sig, mockFn);
+
+    expect(mockFn).toHaveBeenCalled();
+    expect(mockFn).toHaveBeenCalledWith(23);
+    mockFn.mockClear();
+
+    const c1 = connect(sig, otherSignal);
+
+    expect(otherSignal()).toBe(23);
+
+    const c2 = connect(sig, [foo, 'bar']);
+
+    expect(foo.bar).toBe(23);
+
+    const c3 = connect(sig, [foo, 'plah']);
+
+    expect(foo.plah).toHaveBeenCalledWith(23);
+    foo.plah.mockClear();
+
+    setSig(42);
+
+    expect(foo.bar).toBe(42);
+    expect(otherSignal()).toBe(42);
+    expect(mockFn).toHaveBeenCalledTimes(1);
+    expect(mockFn).toHaveBeenCalledWith(42);
+    mockFn.mockClear();
+    expect(foo.plah).toHaveBeenCalledWith(42);
+    foo.plah.mockClear();
+
+    // --- this is what we want to test ---
+
+    unconnect(sig, [foo, 'bar']);
+
+    // ---
+
+    expect(c0.isDestroyed).toBe(false);
+    expect(c1.isDestroyed).toBe(false);
+    expect(c2.isDestroyed).toBe(true);
+    expect(c3.isDestroyed).toBe(false);
+
+    // ------------------------------------
+
+    setSig(666);
+
+    expect(sig()).toBe(666);
+    expect(foo.bar).toBe(42);
+    expect(otherSignal()).toBe(666);
+    expect(mockFn).toHaveBeenCalledWith(666);
+    expect(foo.plah).toHaveBeenCalledWith(666);
+
+    destroySignal(sig, otherSignal);
+    destroySignals(foo);
+  });
+
+  it('signal -> object.method', () => {
+    const [sig, setSig] = createSignal(23);
+
+    const mockFn = jest.fn();
+
+    const [otherSignal] = createSignal(-1);
+
+    class Foo {
+      @signal() accessor bar = -1;
+
+      plah = jest.fn();
+    }
+
+    const foo = new Foo();
+
+    expect(mockFn).not.toHaveBeenCalled();
+    expect(otherSignal()).toBe(-1);
+    expect(foo.bar).toBe(-1);
+    expect(foo.plah).not.toHaveBeenCalled();
+
+    const c0 = connect(sig, mockFn);
+
+    expect(mockFn).toHaveBeenCalled();
+    expect(mockFn).toHaveBeenCalledWith(23);
+    mockFn.mockClear();
+
+    const c1 = connect(sig, otherSignal);
+
+    expect(otherSignal()).toBe(23);
+
+    const c2 = connect(sig, [foo, 'bar']);
+
+    expect(foo.bar).toBe(23);
+
+    const c3 = connect(sig, [foo, 'plah']);
+
+    expect(foo.plah).toHaveBeenCalledWith(23);
+    foo.plah.mockClear();
+
+    setSig(42);
+
+    expect(foo.bar).toBe(42);
+    expect(otherSignal()).toBe(42);
+    expect(mockFn).toHaveBeenCalledTimes(1);
+    expect(mockFn).toHaveBeenCalledWith(42);
+    mockFn.mockClear();
+    expect(foo.plah).toHaveBeenCalledWith(42);
+    foo.plah.mockClear();
+
+    // --- this is what we want to test ---
+
+    unconnect(sig, [foo, 'plah']);
+
+    // ---
+
+    expect(c0.isDestroyed).toBe(false);
+    expect(c1.isDestroyed).toBe(false);
+    expect(c2.isDestroyed).toBe(false);
+    expect(c3.isDestroyed).toBe(true);
+
+    // ------------------------------------
+
+    setSig(666);
+
+    expect(sig()).toBe(666);
+    expect(foo.bar).toBe(666);
+    expect(otherSignal()).toBe(666);
+    expect(mockFn).toHaveBeenCalledWith(666);
+    expect(foo.plah).not.toHaveBeenCalled();
+
+    destroySignal(sig, otherSignal);
+    destroySignals(foo);
+  });
 
   it.skip('object.signal', () => {});
 
