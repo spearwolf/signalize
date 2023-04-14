@@ -2,9 +2,9 @@ import {
   connect,
   createSignal,
   destroySignal,
-  unconnect,
-  signal,
   destroySignals,
+  signal,
+  unconnect,
 } from '.';
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers';
 
@@ -230,7 +230,79 @@ describe('unconnect', () => {
     destroySignals(foo);
   });
 
-  it.skip('signal -> signal', () => {});
+  it('signal -> signal', () => {
+    const [sig, setSig] = createSignal(23);
+
+    const mockFn = jest.fn();
+
+    const [otherSignal] = createSignal(-1);
+
+    class Foo {
+      @signal() accessor bar = -1;
+
+      plah = jest.fn();
+    }
+
+    const foo = new Foo();
+
+    expect(mockFn).not.toHaveBeenCalled();
+    expect(otherSignal()).toBe(-1);
+    expect(foo.bar).toBe(-1);
+    expect(foo.plah).not.toHaveBeenCalled();
+
+    const c0 = connect(sig, mockFn);
+
+    expect(mockFn).toHaveBeenCalled();
+    expect(mockFn).toHaveBeenCalledWith(23);
+    mockFn.mockClear();
+
+    const c1 = connect(sig, otherSignal);
+
+    expect(otherSignal()).toBe(23);
+
+    const c2 = connect(sig, [foo, 'bar']);
+
+    expect(foo.bar).toBe(23);
+
+    const c3 = connect(sig, [foo, 'plah']);
+
+    expect(foo.plah).toHaveBeenCalledWith(23);
+    foo.plah.mockClear();
+
+    setSig(42);
+
+    expect(foo.bar).toBe(42);
+    expect(otherSignal()).toBe(42);
+    expect(mockFn).toHaveBeenCalledTimes(1);
+    expect(mockFn).toHaveBeenCalledWith(42);
+    mockFn.mockClear();
+    expect(foo.plah).toHaveBeenCalledWith(42);
+    foo.plah.mockClear();
+
+    // --- this is what we want to test ---
+
+    unconnect(sig, otherSignal);
+
+    // ---
+
+    expect(c0.isDestroyed).toBe(false);
+    expect(c1.isDestroyed).toBe(true);
+    expect(c2.isDestroyed).toBe(false);
+    expect(c3.isDestroyed).toBe(false);
+
+    // ------------------------------------
+
+    setSig(666);
+
+    expect(sig()).toBe(666);
+    expect(foo.bar).toBe(666);
+    expect(otherSignal()).toBe(42);
+    expect(mockFn).toHaveBeenCalledWith(666);
+    expect(foo.plah).toHaveBeenCalledWith(666);
+
+    destroySignal(sig, otherSignal);
+    destroySignals(foo);
+  });
 
   it.skip('signal -> object', () => {});
 
