@@ -24,6 +24,7 @@
     "update": "npx npm-check --update",
     "fix": "run-s --print-label eslint:fix prettier:write",
     "jest": "cross-env NODE_ENV=test jest",
+    "jest:debug": "cross-env NODE_ENV=test node --nolazy --inspect-brk ./node_modules/jest/bin/jest.js --runInBand --colors --verbose",
     "jest:watch": "cross-env NODE_ENV=test jest --watch",
     "test:build": "tsc --project tsconfig.tests.json",
     "test:build:watch": "tsc --project tsconfig.tests.json --watch",
