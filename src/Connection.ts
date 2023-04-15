@@ -196,11 +196,10 @@ export class Connection<T> extends Eventize {
   }
 
   #source?: Signal<T>;
-
   #target?: Signal<T> | ConnectionFunction<T> | ConnectionProperty<T>;
-  #connectionTarget?: ConnectionTargetType;
 
   #type: ConnectionType;
+  #connectionTarget?: ConnectionTargetType;
 
   constructor(
     source: SignalReader<T>,
@@ -279,7 +278,7 @@ export class Connection<T> extends Eventize {
   }
 
   mute(): Connection<T> {
-    if (!this.#muted) {
+    if (!this.isDestroyed && !this.#muted) {
       this.#muted = true;
       this.emit(Connection.Mute, this);
     }
@@ -287,7 +286,7 @@ export class Connection<T> extends Eventize {
   }
 
   unmute(): Connection<T> {
-    if (this.#muted) {
+    if (!this.isDestroyed && this.#muted) {
       this.#muted = false;
       this.emit(Connection.Unmute, this);
     }
@@ -295,8 +294,10 @@ export class Connection<T> extends Eventize {
   }
 
   toggle(): boolean {
-    this.#muted = !this.#muted;
-    this.emit(this.#muted ? Connection.Mute : Connection.Unmute, this);
+    if (!this.isDestroyed) {
+      this.#muted = !this.#muted;
+      this.emit(this.#muted ? Connection.Mute : Connection.Unmute, this);
+    }
     return this.#muted;
   }
 

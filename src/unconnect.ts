@@ -1,6 +1,7 @@
 import {queryObjectSignal} from '.';
 import {Connection} from './Connection';
 import {isSignal} from './createSignal';
+import {queryObjectSignals} from './object-signals-and-effects';
 import {SignalReader} from './types';
 
 // TODO unconnect(sourceObject)
@@ -22,6 +23,14 @@ type ObjectMethods<Obj, MethodFirstArgType> = {
 //
 export function unconnect<Type>(
   source: SignalReader<Type>,
+  target?: SignalReader<Type> | ((val?: Type) => void) | object,
+): void;
+
+// obj
+// obj -> sig | fn | obj
+//
+export function unconnect<Type>(
+  source: object,
   target?: SignalReader<Type> | ((val?: Type) => void) | object,
 ): void;
 
@@ -65,21 +74,39 @@ export function unconnect(source: any, target?: any): void {
   if (!Array.isArray(source)) {
     if (isSignal(source)) {
       if (target == null) {
+        // --------------------------------------------------
+        // unconnect( signal )
+        // --------------------------------------------------
         const connectionsBySignal = Connection.findConnectionsBySignal(source);
         if (connectionsBySignal) {
           for (const con of connectionsBySignal) {
             con.destroy();
           }
         }
+        const connectionsByTarget = Connection.findConnectionsByTarget(source);
+        if (connectionsByTarget) {
+          for (const con of connectionsByTarget) {
+            con.destroy();
+          }
+        }
       } else if (isSignal(target)) {
+        // --------------------------------------------------
+        // unconnect( signal, signal )
+        // --------------------------------------------------
         Connection.findConnection(source, target as any)?.destroy();
       } else if (Array.isArray(target)) {
+        // --------------------------------------------------
+        // unconnect( signal, [object, property] )
+        // --------------------------------------------------
         Connection.findConnection(
           source,
           queryObjectSignal(...(target as [object, keyof object])) ??
             (target as any),
         )?.destroy();
       } else {
+        // --------------------------------------------------
+        // unconnect( signal, object | function )
+        // --------------------------------------------------
         const connectionsBySignal = Connection.findConnectionsBySignal(source);
         if (connectionsBySignal) {
           for (const con of connectionsBySignal) {
@@ -89,9 +116,23 @@ export function unconnect(source: any, target?: any): void {
           }
         }
       }
+    } else {
+      // --------------------------------------------------
+      // unconnect( object )
+      // --------------------------------------------------
+      const objectSignals = queryObjectSignals(source);
+      if (objectSignals) {
+        for (const sig of objectSignals) {
+          unconnect(sig, target);
+        }
+      }
+      const connectionsByTarget = Connection.findConnectionsByTarget(source);
+      if (connectionsByTarget) {
+        for (const con of connectionsByTarget) {
+          con.destroy();
+        }
+      }
     }
-    // else: source is object
-    // --> recursive solution..
   }
   // else source is [object, prop]
   // --> if object.prop is signal then recursive solution
