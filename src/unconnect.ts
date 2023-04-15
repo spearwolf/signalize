@@ -1,5 +1,5 @@
 import {queryObjectSignal} from '.';
-import {Connection} from './Connection';
+import {Connection, ConnectionTargetType} from './Connection';
 import {isSignal} from './createSignal';
 import {queryObjectSignals} from './object-signals-and-effects';
 import {SignalReader} from './types';
@@ -83,12 +83,7 @@ export function unconnect(source: any, target?: any): void {
             con.destroy();
           }
         }
-        const connectionsByTarget = Connection.findConnectionsByTarget(source);
-        if (connectionsByTarget) {
-          for (const con of connectionsByTarget) {
-            con.destroy();
-          }
-        }
+        destroyConnectionsByTarget(source);
       } else if (isSignal(target)) {
         // --------------------------------------------------
         // unconnect( signal, signal )
@@ -118,7 +113,7 @@ export function unconnect(source: any, target?: any): void {
       }
     } else {
       // --------------------------------------------------
-      // unconnect( object )
+      // unconnect( object[, ...] )
       // --------------------------------------------------
       const objectSignals = queryObjectSignals(source);
       if (objectSignals) {
@@ -126,14 +121,27 @@ export function unconnect(source: any, target?: any): void {
           unconnect(sig, target);
         }
       }
-      const connectionsByTarget = Connection.findConnectionsByTarget(source);
-      if (connectionsByTarget) {
-        for (const con of connectionsByTarget) {
-          con.destroy();
-        }
+      // --------------------------------------------------
+      // unconnect( object )
+      // --------------------------------------------------
+      if (target == null) {
+        destroyConnectionsByTarget(source);
       }
     }
+  } else {
+    // source is [object, prop]
+    const signal = queryObjectSignal(source[0], source[1]);
+    if (signal != null) {
+      unconnect(signal, target);
+    }
   }
-  // else source is [object, prop]
-  // --> if object.prop is signal then recursive solution
+}
+
+function destroyConnectionsByTarget(target: ConnectionTargetType) {
+  const connectionsByTarget = Connection.findConnectionsByTarget(target);
+  if (connectionsByTarget) {
+    for (const con of connectionsByTarget) {
+      con.destroy();
+    }
+  }
 }
