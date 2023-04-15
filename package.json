@@ -28,7 +28,7 @@
     "jest:watch": "cross-env NODE_ENV=test jest --watch",
     "test:build": "tsc --project tsconfig.tests.json",
     "test:build:watch": "tsc --project tsconfig.tests.json --watch",
-    "test:watch": "run-s clean test:build test:build:watch",
+    "dev": "run-s clean test:build test:build:watch",
     "test": "run-s eslint prettier:check test:build jest",
     "cbt": "run-s clean build test",
     "bundle": "rollup -c",
