@@ -5,17 +5,33 @@
 _Signaler-effectus_ targets modern browsers and javascript based environments.
 It is written in **Typescript v5** and uses the new [ecmascript decorators](https://github.com/tc39/proposal-decorators).
 
-`esnext` is currently used as [typescript target](https://www.typescriptlang.org/tsconfig#target) (but that may change in the future).
-To achieve interoperability with older javascript environments you might have to use an additional transpile pipeline of your own.
-
-_Signaler-effectus_ is a standalone package with only one dependency [spearwolf/eventize](https://github.com/spearwolf/eventize) (which does not need any dependencies to other packages)
-
-
 # Install
 
 ```shell
 npm install signaler-effectus
 ```
+
+`ESNext` is currently used as [typescript compile target](https://www.typescriptlang.org/tsconfig#target) (but that may change in the future).
+To achieve interoperability with older javascript environments you might have to use an additional transpile pipeline of your own.
+
+_Signaler-effectus_ is a standalone package with only one dependency [spearwolf/eventize](https://github.com/spearwolf/eventize) (which does not need any dependencies to other packages)
+
+# Overview
+
+The API of _signaler-effectus_ basically centers around these three main concepts:
+
+- __signals__
+- __effects__
+- __connections__ (which are basically links between signals..)
+
+A __functional api__ is provided, as well as a __class-based api that uses decorators__.
+
+:bangbang: You could think of signals as a kind of alternative callbacks or as an event-based programming technique.
+
+Under the hood the event library [spearwolf/eventize](https://github.com/spearwolf/eventize) is used &rarr; In fact, *__signals__ and __events__ can complement each other very well*.
+
+It has no dependencies on other frameworks and can therefore be used standalone or in addition to other frameworks (such as react, angular or _insert-your-favorite-framework-here_)
+
 
 # Usage
 
