@@ -1,9 +1,23 @@
-> NOTE: formerly known as `@spearwolf/signalize` this library is now in the process of renaming itself `signaler-effectus`. so when `signaler-effectus` is referred to in the following documentation, it is intentional and if `@spearwolf/signalize` is still used, it is probably deprecated and will be adapted in the future.
+![signaler-effectus hero](./signaler-effectus-hero.png)
 
-# signaler-effectus
+> The library for signals and effects on the web
 
-The library for signals and effects on the web
+_Signaler-effectus_ targets modern browsers and javascript based environments.
+It is written in **Typescript v5** and uses the new [ecmascript decorators](https://github.com/tc39/proposal-decorators).
 
+`esnext` is currently used as [typescript target](https://www.typescriptlang.org/tsconfig#target) (but that may change in the future).
+To achieve interoperability with older javascript environments you might have to use an additional transpile pipeline of your own.
+
+_Signaler-effectus_ is a standalone package with only one dependency [spearwolf/eventize](https://github.com/spearwolf/eventize) (which does not need any dependencies to other packages)
+
+
+# Install
+
+```shell
+npm install signaler-effectus
+```
+
+# Usage
 
 ## Create Signals
 
