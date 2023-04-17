@@ -20,9 +20,9 @@ _Signaler-effectus_ is a standalone package with only one dependency [spearwolf/
 
 The API of _signaler-effectus_ basically centers around these three main concepts:
 
-- __signals__
-- __effects__
-- __connections__ (which are basically links between signals..)
+- __signals__ &mdash; like state variables with hidden superpowers
+- __effects__ &mdash; just think of it as a standalone `useEffect()` hook (but without react ;)
+- __connections__ &mdash; which are basically links between signals and functions.. like the geometry node connections in blender or the node connections in blueprints of the unreal engine
 
 A __functional api__ is provided, as well as a __class-based api that uses decorators__.
 
