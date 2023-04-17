@@ -151,17 +151,65 @@ Sometimes, however, this is a little more often than you actually need: If you c
   </tbody>
 </table>
 
-<details>
-  <summary>The difference between the standard behavior of effects and the use of batch is clearly visible on a timeline</summary>
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/timeline-a-b-e.png">
-    <img
-      src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/timeline-a-b-e.png"
-      alt="A timeline with two signals with an effect"
-      style="max-width: 100%;"
-    />
-  </picture>
-</details>
+### The difference between the standard behavior of effects and the use of batching
+
+#### Run effect by updating signals
+
+```mermaid
+sequenceDiagram
+    actor U as user
+    participant A as signal A
+    participant B as signal B
+    participant E as effect calc()
+
+    U->>+E: run
+    E-->>-U: "Sum of A and B is X"
+
+    U-)+A: set A
+    activate A
+    A->>E: run if value is changed
+    deactivate A
+    activate E
+    E-->>U: "Sum of A and B is X"
+    deactivate E
+
+    U-)+B: set B
+    activate B
+    B->>E: run if changed
+    deactivate B
+    activate E
+    E-->>U: "Sum of A and B is X"
+    deactivate E
+
+```
+
+#### Delay effect by batching
+
+```mermaid
+sequenceDiagram
+    actor U as user
+    participant batch
+    participant A as signal A
+    participant B as signal B
+    participant E as effect calc()
+
+    U->>+E: run
+    E-->>-U: "Sum of A and B is X"
+
+    U->>batch: open batch
+    activate batch
+    U-)A: set A
+    U-)B: set B
+    U--xbatch: close batch
+    batch->>+E: run only if A or B changed
+    deactivate batch
+
+    A--)E: A
+    B--)E: B
+
+    E-->>-U: "Sum of A and B is X"
+
+```
 
 ---
 
