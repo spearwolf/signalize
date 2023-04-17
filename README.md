@@ -26,7 +26,7 @@ The API of _signaler-effectus_ basically centers around these three main concept
 
 A __functional api__ is provided, as well as a __class-based api that uses decorators__.
 
-:bangbang: You could think of signals as a kind of alternative callbacks or as an event-based programming technique.
+> :bangbang: You could think of signals as a kind of alternative callbacks or as an event-based programming technique
 
 Under the hood the event library [spearwolf/eventize](https://github.com/spearwolf/eventize) is used &rarr; In fact, *__signals__ and __events__ can complement each other very well*.
 
