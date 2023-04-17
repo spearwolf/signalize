@@ -30,7 +30,7 @@ A __functional api__ is provided, as well as a __class-based api that uses decor
 
 Under the hood the event library [spearwolf/eventize](https://github.com/spearwolf/eventize) is used &rarr; In fact, *__signals__ and __events__ can complement each other very well*.
 
-It has no dependencies on other frameworks and can therefore be used standalone or in addition to other frameworks (such as react, angular or _insert-your-favorite-framework-here_)
+It has no dependencies on other packages and can therefore be used standalone or in addition to other frameworks (such as react, angular or _insert-your-favorite-framework-here_)
 
 
 # Usage
