@@ -38,6 +38,9 @@ As soon as we change one of the signals, the new result is output immediately:
 cheekyCalc.a = 1;
 // => "Sum of 1 and 1 is 2"
 
+cheekyCalc.b = 1;
+// nothing happens here because b has been 1 before and so it is not a change
+
 cheekyCalc.b = 2;
 // => "Sum of 1 and 2 is 3"
 ```
@@ -74,7 +77,10 @@ sequenceDiagram
 
 ### Delay effect by batching
 
-By _batching_ we can control this behavior:
+By _batching_ we can control this behavior.
+Within a batch context, no effect is executed until the batch is closed.
+This also applies to nested batches, of course.
+After the batch, all affected effects will be called again - but of course only if their signals have changed!
 
 ```ts
 import { batch } from 'signaler-effectus';
