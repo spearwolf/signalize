@@ -1,7 +1,9 @@
-import {queryObjectSignal} from '.';
 import {Connection, ConnectionTargetType} from './Connection';
 import {isSignal} from './createSignal';
-import {queryObjectSignals} from './object-signals-and-effects';
+import {
+  queryObjectSignal,
+  queryObjectSignals,
+} from './object-signals-and-effects';
 import {SignalReader} from './types';
 
 // TODO unconnect(sourceObject)
