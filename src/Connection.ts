@@ -142,20 +142,6 @@ export class Connection<T> extends Eventize {
     return connections.size > 0 ? Array.from(connections) : undefined;
   }
 
-  // TODO findConnectionsBetween(source, target)
-  //
-  // static findConnectionsBetween<S extends object, T extends object>(
-  //   source: S,
-  //   target: T,
-  // ): Connection<unknown>[] | undefined {
-  //   const sourceConnections = Connection.findConnectionsByObject(source);
-  //   const sourceSignals = queryObjectSignals(source);
-  //   const targetConnections = Connection.findConnectionsByObject(target);
-  //   const targetSignals = queryObjectSignals(target);
-  //   if (sourceConnections) {
-  //   }
-  // }
-
   static findConnection<C>(
     source: SignalReader<C>,
     target: ConnectionTarget<C>,
