@@ -240,17 +240,27 @@ export class Connection<T> extends Eventize {
   }
 
   nextValue(): Promise<T> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       // we can not just use 'once' here because the value is retained
       let valEmitCount = 0;
-      const unsubscribe = this.on(Connection.Value, (val) => {
-        if (valEmitCount === 1) {
-          unsubscribe();
-          resolve(val);
-        } else {
-          ++valEmitCount;
-        }
-      });
+      const unsubscribe = [
+        this.on(Connection.Value, (val) => {
+          if (valEmitCount === 1) {
+            unsubscribe.forEach((unsub) => {
+              unsub();
+            });
+            resolve(val);
+          } else {
+            ++valEmitCount;
+          }
+        }),
+        this.on(Connection.Destroy, () => {
+          unsubscribe.forEach((unsub) => {
+            unsub();
+          });
+          reject();
+        }),
+      ];
     });
   }
 
