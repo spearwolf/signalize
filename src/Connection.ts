@@ -239,7 +239,20 @@ export class Connection<T> extends Eventize {
     this.touch();
   }
 
-  // TODO Connection<T>.nextValue(): Promise<T> - returns a promise that resolves with the next value
+  nextValue(): Promise<T> {
+    return new Promise((resolve) => {
+      // we can not just use 'once' here because the value is retained
+      let valEmitCount = 0;
+      const unsubscribe = this.on(Connection.Value, (val) => {
+        if (valEmitCount === 1) {
+          unsubscribe();
+          resolve(val);
+        } else {
+          ++valEmitCount;
+        }
+      });
+    });
+  }
 
   #write(touch: boolean): Connection<T> {
     if (!this.#muted && !this.isDestroyed) {

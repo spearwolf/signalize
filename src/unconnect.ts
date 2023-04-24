@@ -6,10 +6,6 @@ import {
 } from './object-signals-and-effects';
 import {SignalReader} from './types';
 
-// TODO unconnect(sourceObject)
-// TODO unconnect(sourceObject, targetObject)
-// TODO unconnect([sourceObject, 'sourceProp'], [targetObject, 'targetProp'])
-
 type ObjectProps<Obj, PropType> = {
   [Key in keyof Obj as Obj[Key] extends PropType ? Key : never]: unknown;
 };
