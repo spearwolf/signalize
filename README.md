@@ -1,5 +1,7 @@
 # @spearwolf/signalize
 
+[![npm version](https://badge.fury.io/js/@spearwolf%2Fsignalize.svg)](https://badge.fury.io/js/@spearwolf%2Fsignalize)
+
 > The library for signals and effects on the web
 
 _@spearwolf/signalize_ targets modern browsers and javascript based environments.
