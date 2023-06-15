@@ -1,24 +1,24 @@
-![signaler-effectus hero](./signaler-effectus-hero.png)
+# @spearwolf/signalize
 
 > The library for signals and effects on the web
 
-_Signaler-effectus_ targets modern browsers and javascript based environments.
+_@spearwolf/signalize_ targets modern browsers and javascript based environments.
 It is written in **Typescript v5** and uses the new [ecmascript decorators](https://github.com/tc39/proposal-decorators).
 
 # Install
 
 ```shell
-npm install signaler-effectus
+npm install @spearwolf/signalize
 ```
 
 `ESNext` is currently used as [typescript compile target](https://www.typescriptlang.org/tsconfig#target) (but that may change in the future).
 To achieve interoperability with older javascript environments you might have to use an additional transpile pipeline of your own.
 
-_Signaler-effectus_ is a standalone package with only one dependency [spearwolf/eventize](https://github.com/spearwolf/eventize) (which does not need any dependencies to other packages)
+_@spearwolf/signalize_ is a standalone package with only one dependency [@spearwolf/eventize](https://github.com/spearwolf/eventize) (which does not need any dependencies to other packages)
 
 # Overview
 
-The API of _signaler-effectus_ basically centers around these three main concepts:
+The API of _@spearwolf/signalize_ basically centers around these three main concepts:
 
 - __signals__ &mdash; like state variables with hidden superpowers
 - __effects__ &mdash; just think of it as a standalone `useEffect()` hook (but without react ;)
@@ -28,7 +28,7 @@ A __functional api__ is provided, as well as a __class-based api that uses decor
 
 > :bangbang: You could think of signals as a kind of alternative callbacks/promises or as an event-based programming technique
 
-Under the hood the event library [spearwolf/eventize](https://github.com/spearwolf/eventize) is used &rarr; In fact, *__signals__ and __events__ can complement each other very well*.
+Under the hood the event library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used &rarr; In fact, *__signals__ and __events__ can complement each other very well*.
 
 It has no dependencies on other packages and can therefore be used standalone or in addition to other frameworks (such as react, angular or _insert-your-favorite-framework-here_)
 
