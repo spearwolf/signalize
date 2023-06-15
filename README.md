@@ -2,96 +2,163 @@
 
 [![npm version](https://badge.fury.io/js/@spearwolf%2Fsignalize.svg)](https://badge.fury.io/js/@spearwolf%2Fsignalize)
 
-## Signals and Effects for Typescript
+> The library for signals and effects on the web
 
-This library provides a simple and intuitive way to work with _signals_ and _effects_ :rocket:
+_@spearwolf/signalize_ targets modern browsers and javascript based environments.
+It is written in **Typescript v5** and uses the new [ecmascript decorators](https://github.com/tc39/proposal-decorators).
 
-**Signals** are variables that can change over time and respond to events. Signals let you model data in your application and control how it evolves over time.
+# Install
 
-**Effects** are functions that respond to signals and perform a specific action when a signal changes. With effects, you can easily control behavior changes in your application without having to write complex dependency or monitoring logic.
-
-If you've ever used [SolidJS](https://www.solidjs.com/), or heard of [preactjs/signals](https://github.com/preactjs/signals), you'll probably be familiar with it &mdash; in fact, the article [A Hands-on Introduction to Fine-Grained Reactivity](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf) inspired me to create my own standalone library for it. Thank you Ryan &mdash; an amazing article you wrote there ;)
-
-:fire: _UPDATE 2023-02-22_ &rarr; in fact, there seems to be a lot of hype around this topic right now. among other things, angular also seems to be getting signals soon, here are some more links:
-- [useSignal() is the Future of Web Frameworks](https://www.builder.io/blog/usesignal-is-the-future-of-web-frameworks)
-- [Angular Signals Demo](https://angular-signals.netlify.app/)
-
-### The current state of this library
-
-> THIS LIBRARY IS FOR ANYONE WHO WANTS TO CODE WITH SIGNALS WITHOUT BEING TIED TO ONE OF THE _BIG_ FRAMEWORKS LIKE REACT, SOLIDJS OR ANGULAR &mdash; JUST YOU, VANILLA JS AND SIGNALS :rocket:
-
-- The current version of the library is in a :heavy_check_mark: __stable__ state, the API is minimal but fully implemented and tested!
-- So far I have used this library in smaller projects (e.g. web components), which worked wonderfully :smile:
-- Feel free to try out &mdash; contributions of any kind are welcome :+1:
-## Getting Started
-
-### Install
-
-```sh
-$ npm i @spearwolf/signalize
-````
-
-:point_right: This library has no dependency other than [@spearwolf/eventize](https://github.com/spearwolf/eventize) (which therefore does not require any further dependencies).
-
-:point_right: If you only want to work with signals and effects, there is no reason to use the API of _spearwolf/eventize_ directly (that's what _spearwolf/signals_ does in the background) &mdash; on the other hand the two libraries complement each other perfectly and work hand in hand!
-
-### Create a Signal
-
-Creating a __signal__ is easy:
-
-```js
-import {createSignal} from '@spearwolf/signalize'
-
-const [foo, setFoo] = createSignal('bar')     // Create a signal with an initial value
-
-console.log('foo=', foo())                    // => "foo= bar"
-
-setFoo('plah!')                               // Update the signal
-
-console.log('foo=', foo())                    // => "foo= plah!"
+```shell
+npm install @spearwolf/signalize
 ```
 
-### Create an Effect
+`ESNext` is currently used as [typescript compile target](https://www.typescriptlang.org/tsconfig#target) (but that may change in the future).
+To achieve interoperability with older javascript environments you might have to use an additional transpile pipeline of your own.
 
-An __effect__ is only a function that is called. so it is not very interesting. but it becomes more interesting when a signal is read within the function. if a signal is assigned a new value at a later time, the effect function is automatically executed _again_!
+_@spearwolf/signalize_ is a standalone package with only one dependency [@spearwolf/eventize](https://github.com/spearwolf/eventize) (which does not need any dependencies to other packages)
 
-the following example produces the same output as the previous one:
+# Overview
 
-```js
-import {createSignal, createEffect} from '@spearwolf/signalize'
+The API of _@spearwolf/signalize_ basically centers around these three main concepts:
 
-const [foo, setFoo] = createSignal('bar')
+- __signals__ &mdash; like state variables with hidden superpowers
+- __effects__ &mdash; just think of it as a standalone `useEffect()` hook (but without react ;)
+- __connections__ &mdash; which are basically links between signals and functions.. like the geometry node connections in blender or the node connections in blueprints of the unreal engine
 
-createEffect(() => {
-  console.log('foo=', foo())    // => "foo= bar"
-})
+A __functional api__ is provided, as well as a __class-based api that uses decorators__.
 
-setFoo('plah!')                 // the effect function is called again now
-                                // => "foo= plah!"
-```
+> :bangbang: You could think of signals as a kind of alternative callbacks/promises or as an event-based programming technique
 
+Under the hood the event library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used &rarr; In fact, *__signals__ and __events__ can complement each other very well*.
 
-## API Cheat Sheet
-
-| export | usage | description |
-|--------|-------|-------------|
-| createSignal | `[get, set] = createSignal(initialValue?)` | create a signal |
-| | `data = get()` | read the signal value |
-| | `get(fn: (data) => void)` | same as `createEffect(() => fn(get()))` |
-| | `set(data)` | update the signal value |
-| touch | `touch(get)` | same as `set(get())` &mdash; no! wait, `set(get())` will _not_ signal an update, but `touch()` will do the magic without changing the value |
-| value | `data = value(get)` | read out the value without creating (side) effects |
-| createEffect | `removeEffect = createEffect(callback)` | create an effect; return an unsubscribe function |
-| createMemo | `get = createMemo(callback)` | creates an effect and returns a get function which returns the result of the callback |
-| batch | `batch(callback)` | batch multiple updates (setter calls) together |
-| onCreateEffect | `unsubscribe = onCreateEffect(callback: (effect) => void)` | will be called whenever an effect is created with `createEffect()`; return an unsubscribe function &mdash; _NOTE: this is a global hook, which probably only should be used rarely and sparingly, but it is documented here as well_ |
-
-For more infos about the api and its behavior and usage, the reader is recommended to take a look at the sources, more precisely the test specs, where many partial aspects of this library are described in detail with examples.
+It has no dependencies on other packages and can therefore be used standalone or in addition to other frameworks (such as react, angular or _insert-your-favorite-framework-here_)
 
 
-## CHANGLELOG
+# Usage
 
-### 0.3.2 (2023-02-22)
+## Create Signals
 
-- typescript: export all types
+Signals are mutable states that can trigger effects when changed.
 
+<table>
+  <tbody>
+    <tr>
+      <th>A class with a signal</th>
+      <th>A standalone signal</th>
+    </tr>
+    <tr>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--light.png">
+          <img
+            src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--light.png"
+            alt="A class with a signal"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--light.png">
+          <img
+            src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--light.png"
+            alt="A standalone signal"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+## Create Effects
+
+Effects are functions that react to changes in signals and are executed automatically.
+
+_Without_ effects, signals are nothing more than ordinary variables.
+
+With effects, you can easily control behavior changes in your application without having to write complex dependency or monitoring logic.
+
+<table>
+  <tbody>
+    <tr>
+      <th>A class with an effect method</th>
+      <th>A standalone effect function</th>
+    </tr>
+    <tr>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_an_effect_method--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_an_effect_method--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/a_class_with_an_effect_method--light.png"
+            alt="A class with an effect method"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_effect_function--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_effect_function--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/a_standalone_effect_function--light.png"
+            alt="A standalone effect function"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Effects are always executed automatically immediately if a signal that is read out within the effect is changed afterwards.
+
+Sometimes, however, this is a little more often than you actually need: If you change a and then b in the example above, the result will be announced by the effect each time. If you only want to get the final result after changing both signals, you can use the `batch(callback)` function. Within the batch callback, all signals are written, but the dependent effects are not executed until the end of the batch function:
+
+<table>
+  <tbody>
+    <tr>
+      <th></th>
+      <th></th>
+    </tr>
+    <tr>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_object--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_object--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/signal_batch_object--light.png"
+            alt="A class with an effect method"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_func--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_func--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/signal_batch_func--light.png"
+            alt="A standalone effect function"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+See [The difference between the standard behavior of effects and the use of batching](./docs/AdvancedGuide.md#the-difference-between-the-standard-behavior-of-effects-and-the-use-of-batching) for more informations on this.
+
+
+---
+
+
+_...TBD..._
+
+[see old README for more infos](./README-legacy.md)

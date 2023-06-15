@@ -1,7 +1,46 @@
-import {createEffect} from './createEffect';
-import {createSignal} from './createSignal';
+import {createEffect, onDestroyEffect} from './effects-api';
+import {createSignal, destroySignal} from './createSignal';
+import {assertEffectsCount} from './assert-helpers';
 
 describe('createEffect', () => {
+  beforeEach(() => {
+    assertEffectsCount(0, 'beforeEach');
+  });
+
+  afterEach(() => {
+    assertEffectsCount(0, 'afterEach');
+  });
+
+  it('the effect cleanup callback is called like react:useEffect', () => {
+    const [a, setA] = createSignal(123);
+
+    let valA = 0;
+
+    createEffect(() => {
+      const val = a();
+      return () => {
+        valA = val;
+      };
+    });
+
+    expect(a()).toBe(123);
+    expect(valA).toBe(0);
+
+    setA(666);
+
+    expect(a()).toBe(666);
+    expect(valA).toBe(123);
+
+    setA(42);
+
+    expect(a()).toBe(42);
+    expect(valA).toBe(666);
+
+    destroySignal(a);
+
+    expect(valA).toBe(42);
+  });
+
   it('the effect callback is called synchronously and immediately', () => {
     const [a] = createSignal(123);
     const [b] = createSignal('abc');
@@ -9,13 +48,15 @@ describe('createEffect', () => {
     let valA: number;
     let valB: string;
 
-    createEffect(() => {
+    const [, unsubscribe] = createEffect(() => {
       valA = a();
       valB = b();
     });
 
     expect(valA).toBe(123);
     expect(valB).toBe('abc');
+
+    unsubscribe();
   });
 
   it('the effect callback is called again after calling a setter function', () => {
@@ -27,7 +68,7 @@ describe('createEffect', () => {
 
     let effectCallCount = 0;
 
-    createEffect(() => {
+    const [, unsubscribe] = createEffect(() => {
       ++effectCallCount;
       valA(a());
       a(); // yes, sure why not
@@ -53,18 +94,22 @@ describe('createEffect', () => {
     setB('def'); // no change: no effect should be called here
 
     expect(effectCallCount).toBe(3);
+
+    unsubscribe();
   });
 
   it('calling a setter from within an affect callback', () => {
     const [count, setCount] = createSignal(0);
 
-    createEffect(() => {
+    const [, unsubscribe] = createEffect(() => {
       if (count() < 23) {
         setCount(count() + 1);
       }
     });
 
     expect(count()).toBe(23);
+
+    unsubscribe();
   });
 
   it('nested effects work as expected', () => {
@@ -80,6 +125,10 @@ describe('createEffect', () => {
     const d = jest.fn(getD);
     const e = jest.fn(getE);
 
+    const destroyEffectMock = jest.fn();
+
+    onDestroyEffect(destroyEffectMock);
+
     let firstEffectCallCount = 0;
     let secondEffectCallCount = 0;
     let thirdEffectCallCount = 0;
@@ -91,7 +140,7 @@ describe('createEffect', () => {
       thirdEffectCallCount = 0;
     };
 
-    createEffect(() => {
+    const [, unsubscribe] = createEffect(() => {
       ++firstEffectCallCount;
       a();
       a();
@@ -112,6 +161,9 @@ describe('createEffect', () => {
       });
     });
 
+    assertEffectsCount(3, 'after first effect run');
+    expect(destroyEffectMock).toBeCalledTimes(0);
+
     expect(firstEffectCallCount).toBe(1);
     expect(secondEffectCallCount).toBe(1);
     expect(thirdEffectCallCount).toBe(1);
@@ -124,13 +176,16 @@ describe('createEffect', () => {
 
     setA(456);
 
+    assertEffectsCount(3, 'after second effect run');
+    expect(destroyEffectMock).toBeCalledTimes(0);
+
     expect(firstEffectCallCount).toBe(1);
-    expect(secondEffectCallCount).toBe(1);
+    expect(secondEffectCallCount).toBe(0);
     expect(thirdEffectCallCount).toBe(1);
     expect(a).toBeCalledTimes(3);
-    expect(b).toBeCalledTimes(2);
+    expect(b).toBeCalledTimes(1);
     expect(c).toBeCalledTimes(2);
-    expect(d).toBeCalledTimes(1);
+    expect(d).toBeCalledTimes(0);
     expect(e).toBeCalledTimes(1);
     clearAllMocks();
 
@@ -138,23 +193,23 @@ describe('createEffect', () => {
 
     expect(firstEffectCallCount).toBe(1);
     expect(secondEffectCallCount).toBe(1);
-    expect(thirdEffectCallCount).toBe(1);
-    expect(a).toBeCalledTimes(3);
+    expect(thirdEffectCallCount).toBe(0);
+    expect(a).toBeCalledTimes(2);
     expect(b).toBeCalledTimes(2);
-    expect(c).toBeCalledTimes(2);
+    expect(c).toBeCalledTimes(1);
     expect(d).toBeCalledTimes(1);
-    expect(e).toBeCalledTimes(1);
+    expect(e).toBeCalledTimes(0);
     clearAllMocks();
 
     setC('B');
 
     expect(firstEffectCallCount).toBe(1);
-    expect(secondEffectCallCount).toBe(1);
+    expect(secondEffectCallCount).toBe(0);
     expect(thirdEffectCallCount).toBe(1);
     expect(a).toBeCalledTimes(3);
-    expect(b).toBeCalledTimes(2);
+    expect(b).toBeCalledTimes(1);
     expect(c).toBeCalledTimes(2);
-    expect(d).toBeCalledTimes(1);
+    expect(d).toBeCalledTimes(0);
     expect(e).toBeCalledTimes(1);
     clearAllMocks();
 
@@ -162,12 +217,12 @@ describe('createEffect', () => {
 
     expect(firstEffectCallCount).toBe(0);
     expect(secondEffectCallCount).toBe(1);
-    expect(thirdEffectCallCount).toBe(1);
-    expect(a).toBeCalledTimes(1);
+    expect(thirdEffectCallCount).toBe(0);
+    expect(a).toBeCalledTimes(0);
     expect(b).toBeCalledTimes(1);
-    expect(c).toBeCalledTimes(1);
+    expect(c).toBeCalledTimes(0);
     expect(d).toBeCalledTimes(1);
-    expect(e).toBeCalledTimes(1);
+    expect(e).toBeCalledTimes(0);
     clearAllMocks();
 
     setE(false);
@@ -180,5 +235,9 @@ describe('createEffect', () => {
     expect(c).toBeCalledTimes(1);
     expect(d).toBeCalledTimes(0);
     expect(e).toBeCalledTimes(1);
+
+    unsubscribe();
+
+    expect(destroyEffectMock).toBeCalledTimes(3);
   });
 });

@@ -1,49 +1,37 @@
+import {globalEffectQueue} from './global-queues';
 import {BatchCallback} from './types';
-import {UniqIdGen} from './UniqIdGen';
-import globalSignals from './globalSignals';
-
-let globalBatch: Batch | undefined;
 
 class Batch {
-  static readonly idGen = new UniqIdGen('ba');
+  static current?: Batch;
 
-  readonly id: symbol;
-
-  readonly delayedEffects: symbol[] = [];
-  readonly unsubscribe: () => void;
-
-  constructor() {
-    this.id = Batch.idGen.make();
-    this.unsubscribe = globalSignals.on(this.id, 'batch', this);
-  }
+  readonly #delayedEffects = new Set<symbol>();
 
   batch(effectId: symbol) {
-    if (this.delayedEffects.indexOf(effectId) === -1) {
-      this.delayedEffects.push(effectId);
-    }
+    this.#delayedEffects.add(effectId);
   }
 
-  execute() {
-    globalSignals.emit(this.delayedEffects);
+  run() {
+    globalEffectQueue.emit(Array.from(this.#delayedEffects));
   }
 }
 
-export const getCurrentBatchId = (): symbol | undefined => globalBatch?.id;
+export const getCurrentBatch = (): Batch | undefined => Batch.current;
 
 export function batch(callback: BatchCallback): void {
-  let currentBatch = globalBatch;
-  if (!currentBatch) {
-    currentBatch = globalBatch = new Batch();
+  // if there is a current batch context, we use it, otherwise we just create a new one.
+  // the batch is executed after the callback, but only if we have created the batch ourselves.
+  let curBatch = Batch.current;
+  if (!curBatch) {
+    curBatch = Batch.current = new Batch();
   } else {
-    currentBatch = undefined;
+    curBatch = undefined;
   }
   try {
     callback();
   } finally {
-    if (currentBatch) {
-      currentBatch.unsubscribe();
-      globalBatch = undefined;
-      currentBatch.execute();
+    if (curBatch) {
+      Batch.current = undefined;
+      curBatch.run();
     }
   }
 }
