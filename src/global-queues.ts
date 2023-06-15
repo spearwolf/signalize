@@ -1,4 +1,4 @@
-import eventize from '@spearwolf/eventize';
+import {eventize} from '@spearwolf/eventize';
 
 export const globalSignalQueue = eventize({});
 export const globalDestroySignalQueue = eventize({});
