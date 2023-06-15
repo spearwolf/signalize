@@ -1,6 +1,6 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.4.0-dev",
+  "version": "0.4.0",
   "description": "signals and effects for typescript",
   "main": "dist/signalize.esm.js",
   "type": "module",
