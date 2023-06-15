@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+
+  "compilerOptions": {
+    "outDir": "tests",
+
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "resolvePackageJsonImports": false
+  }
+}

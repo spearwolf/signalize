@@ -1,40 +1,51 @@
 import {
+  BeforeReadFunc,
+  CompareFunc,
   Signal,
   SignalCallback,
-  SignalParameters,
+  SignalParams,
   SignalReader,
+  SignalValueParams,
   SignalWriter,
+  SignalWriterParams,
 } from './types';
 
-import {$signal} from './constants';
 import {UniqIdGen} from './UniqIdGen';
-import {createEffect} from './createEffect';
+import {$signal} from './constants';
+import {createEffect} from './effects-api';
+import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
 import {getCurrentEffect} from './globalEffectStack';
-import globalSignals from './globalSignals';
 
-const idGen = new UniqIdGen('si');
+const idCreator = new UniqIdGen('si');
 
 function readSignal(signalId: symbol) {
-  getCurrentEffect()?.rerunOnSignal(signalId);
+  getCurrentEffect()?.whenSignalIsRead(signalId);
 }
 
-function writeSignal(signalId: symbol) {
-  globalSignals.emit(signalId);
+export function writeSignal(
+  signalId: symbol,
+  value: unknown,
+  params?: SignalValueParams,
+) {
+  globalSignalQueue.emit(signalId, value, params);
 }
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const isSignal = (signalReader: any): boolean => {
-  return typeof signalReader === 'function' && $signal in signalReader;
-};
+export const isSignal = (
+  signalReader: any,
+): signalReader is SignalReader<unknown> =>
+  typeof signalReader === 'function' && $signal in signalReader;
 
 const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
   const signalReader = (callback?: SignalCallback<Type>) => {
     if (callback) {
       createEffect(() => {
-        readSignal(signal.id);
+        if (!signal.destroyed) {
+          readSignal(signal.id);
+        }
         return callback(signal.value);
       });
-    } else {
+    } else if (!signal.destroyed) {
+      signal.beforeReadFn?.(signal.id);
       readSignal(signal.id);
     }
     return signal.value;
@@ -48,8 +59,17 @@ const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
 };
 
 class SignalImpl<Type> implements Signal<Type> {
+  static instanceCount = 0;
+
   id: symbol;
+
   lazy: boolean;
+
+  compareFn?: CompareFunc<Type>;
+  beforeReadFn?: BeforeReadFunc;
+
+  muted = false;
+  destroyed = false;
 
   #value: Type | undefined = undefined;
 
@@ -72,13 +92,18 @@ class SignalImpl<Type> implements Signal<Type> {
 
   writer: SignalWriter<Type> = (
     nextValue: Type | (() => Type),
-    params?: SignalParameters,
+    params?: SignalWriterParams<Type>,
   ) => {
     const lazy = params?.lazy ?? false;
+
+    const compareFn = params?.compareFn ?? this.compareFn;
+    const equals: CompareFunc<Type> =
+      compareFn ?? ((a: Type, b: Type) => a === b);
+
     if (
       lazy !== this.lazy ||
       (lazy && nextValue !== this.valueFn) ||
-      (!lazy && nextValue !== this.#value)
+      (!lazy && !equals(nextValue as Type, this.#value))
     ) {
       if (lazy) {
         this.#value = undefined;
@@ -89,13 +114,26 @@ class SignalImpl<Type> implements Signal<Type> {
         this.valueFn = undefined;
         this.lazy = false;
       }
-      writeSignal(this.id);
+      if (!this.muted && !this.destroyed) {
+        writeSignal(this.id, this.#value);
+        return;
+      }
+    }
+
+    const touch = params?.touch ?? false;
+
+    if (touch) {
+      writeSignal(this.id, this.#value, {touch: true});
     }
   };
 
   constructor(lazy: boolean, initialValue?: Type | (() => Type) | undefined) {
-    this.id = idGen.make();
+    this.id = idCreator.make();
+
+    ++SignalImpl.instanceCount;
+
     this.lazy = lazy;
+
     if (this.lazy) {
       this.value = undefined;
       this.valueFn = initialValue as () => Type;
@@ -103,38 +141,65 @@ class SignalImpl<Type> implements Signal<Type> {
       this.value = initialValue as Type;
       this.valueFn = undefined;
     }
+
     this.reader = createSignalReader(this);
   }
 }
 
+export const getSignalInstance = <Type = unknown>(
+  signalReader: SignalReader<Type>,
+): Signal<Type> => signalReader?.[$signal];
+
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalReader<Type> | (() => Type) = undefined,
-  params?: SignalParameters,
+  params?: SignalParams<Type>,
 ): [SignalReader<Type>, SignalWriter<Type>] {
   let signal!: Signal<Type>;
 
   if (isSignal(initialValue)) {
-    // reuse signal
-    signal = (initialValue as SignalReader<Type>)[$signal];
-    // or
+    // NOTE createSignal(otherSignal) returns otherSignal and does NOT create a new signal
+    signal = getSignalInstance(initialValue as SignalReader<Type>);
   } else {
-    // create new signal
+    // === Create a new signal ===
     const lazy = params?.lazy ?? false;
     signal = new SignalImpl(lazy, initialValue) as Signal<Type>;
+    signal.beforeReadFn = params?.beforeReadFn;
+    signal.compareFn = params?.compareFn;
   }
 
   return [signal.reader, signal.writer];
 }
 
-export const value = <Type = unknown>(
-  signalReader: SignalReader<Type>,
-): Type | undefined => signalReader[$signal]?.value;
-
-export const touch = <Type = unknown>(
-  signalReader: SignalReader<Type>,
-): void => {
-  const signalId = signalReader[$signal]?.id;
-  if (signalId) {
-    writeSignal(signalId);
+export const destroySignal = (...signalReaders: SignalReader<any>[]): void => {
+  for (const signalReader of signalReaders) {
+    const signal = getSignalInstance(signalReader);
+    if (signal != null && !signal.destroyed) {
+      signal.destroyed = true;
+      signal.beforeReadFn = undefined;
+      --SignalImpl.instanceCount;
+      globalDestroySignalQueue.emit(signal.id, signal.id);
+    }
   }
 };
+
+// TODO rethink mute() and unmute() signatures -> how to toggle ?
+
+export const muteSignal = <Type = unknown>(
+  signalReader: SignalReader<Type>,
+): void => {
+  const signal = getSignalInstance(signalReader);
+  if (signal != null) {
+    signal.muted = true;
+  }
+};
+
+export const unmuteSignal = <Type = unknown>(
+  signalReader: SignalReader<Type>,
+): void => {
+  const signal = getSignalInstance(signalReader);
+  if (signal != null) {
+    signal.muted = false;
+  }
+};
+
+export const getSignalsCount = () => SignalImpl.instanceCount;

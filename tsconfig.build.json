@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+
+  "exclude": ["src/**/*.spec.ts"],
+
+  "compilerOptions": {
+    "outDir": "build",
+
+    "declaration": true,
+    "declarationDir": "types"
+  }
+}

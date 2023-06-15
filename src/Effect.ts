@@ -1,74 +1,207 @@
-import {EffectCallback, VoidCallback} from './types';
+import {
+  DestroyEffectCallback,
+  EffectCallback,
+  RunEffectCallback,
+  VoidCallback,
+} from './types';
 
 import {UniqIdGen} from './UniqIdGen';
-import {getCurrentBatchId} from './batch';
-import globalSignals from './globalSignals';
-import {runWithinEffect} from './globalEffectStack';
+import {getCurrentBatch} from './batch';
+import {$createEffect, $destroyEffect, $destroySignal} from './constants';
+import {
+  globalDestroySignalQueue,
+  globalEffectQueue,
+  globalSignalQueue,
+} from './global-queues';
+import {getCurrentEffect, runWithinEffect} from './globalEffectStack';
+
+export interface EffectParams {
+  autorun?: boolean;
+}
 
 export class Effect {
-  static idGen = new UniqIdGen('ef');
+  private static idGen = new UniqIdGen('ef');
 
+  /** global effect counter */
+  static count = 0;
+
+  /** unique effect id */
   readonly id: symbol;
+
+  /** the effect callback */
   readonly callback: EffectCallback;
 
-  readonly signals: Set<symbol>;
-  readonly childEffects: Set<Effect>;
+  #nextCleanupCallback?: VoidCallback;
 
-  #unsubscribeEffect: VoidCallback;
-  #unsubscribeCallback: VoidCallback;
+  readonly #signals: Set<symbol> = new Set();
+  readonly #destroyedSignals: Set<symbol> = new Set();
 
-  constructor(callback: EffectCallback) {
-    this.id = Effect.idGen.make();
+  parentEffect?: Effect;
+
+  private readonly childEffects: Effect[] = [];
+  private curChildEffectSlot = 0;
+
+  autorun = true;
+  shouldRun = true;
+
+  #destroyed = false;
+
+  /**
+   * An effect subscribes to the _global effects queue_ by its `id`.
+   * When triggered by its `id`, the _effect callback_ is executed.
+   *
+   * While the _effect callback_ is being executed, the effect instance is pushed onto the _global effect stack_.
+   * If a _signal_ is read during the execution of the _effect callback_
+   * it recognises the effect and executes the `effect.onReadSignal()` method.
+   *
+   * The effect then knows which signals are calling it and subscribes to those signal ids in the _global signals queue_.
+   *
+   * Please do not call this constructor directly, use `createEffect()` instead.
+   */
+  constructor(callback: EffectCallback, options?: EffectParams) {
     this.callback = callback;
-    this.signals = new Set();
-    this.childEffects = new Set();
-    this.#unsubscribeEffect = globalSignals.on(this.id, () => this.rerun());
+
+    this.autorun = options?.autorun ?? true;
+
+    this.id = Effect.idGen.make();
+
+    /** a batch will call the effect by id to run the effect */
+    globalEffectQueue.on(this.id, 'recall', this);
+
+    ++Effect.count;
   }
 
-  run(): void {
-    this.#unsubscribeCallback = runWithinEffect(this, this.callback);
-  }
+  static createEffect(
+    ...args:
+      | [callback: EffectCallback]
+      | [callback: EffectCallback, options: EffectParams]
+      | [options: EffectParams, callback: EffectCallback]
+  ): [RunEffectCallback, DestroyEffectCallback] {
+    const [callback, options] = (
+      typeof args[0] === 'function' ? args : [args[1], args[0]]
+    ) as [EffectCallback, EffectParams | undefined];
 
-  rerun(): void {
-    const curBatchId = getCurrentBatchId();
-    if (curBatchId) {
-      globalSignals.emit(curBatchId, this.id);
+    let effect: Effect | undefined;
+
+    const parentEffect = getCurrentEffect();
+    if (parentEffect != null) {
+      effect = parentEffect.getCurrentChildEffect();
+      if (effect == null) {
+        effect = new Effect(callback, options);
+        parentEffect.attachChildEffect(effect);
+        globalEffectQueue.emit($createEffect, effect);
+      }
+      parentEffect.curChildEffectSlot++;
     } else {
-      this.unsubscribe();
+      effect = new Effect(callback, options);
+      globalEffectQueue.emit($createEffect, effect);
+    }
+
+    if (effect.autorun) {
+      effect.run();
+    }
+
+    return [effect.run.bind(effect), effect.destroy.bind(effect)];
+  }
+
+  private getCurrentChildEffect(): Effect | undefined {
+    return this.childEffects[this.curChildEffectSlot];
+  }
+
+  private attachChildEffect(effect: Effect): void {
+    this.childEffects.push(effect);
+    this.parentEffect = this;
+  }
+
+  /**
+   * Run the _effect callback_.
+   *
+   * Before the _effect callback_ is executed, the _cleanup callback_ (if any) is executed.
+   *
+   * While the _effect callback_ is being executed, the effect instance is placed on top of the _global effect stack_.
+   *
+   * The optional return value of the _effect callback_ is stored as the next _cleanup callback_.
+   */
+  run(): void {
+    if (this.#destroyed) return;
+    if (!this.shouldRun) return;
+
+    const curBatch = getCurrentBatch();
+    if (curBatch) {
+      curBatch.batch(this.id);
+    } else {
+      this.runCleanupCallback();
+      this.curChildEffectSlot = 0;
+      this.shouldRun = false;
+      this.#nextCleanupCallback = runWithinEffect(this, this.callback);
+    }
+  }
+
+  /**
+   * Eventually run the _effect callback_
+   *
+   * If the _autorun_ flag is activated, then the effect is executed immediately in any case.
+   * Otherwise the effect is only executed if it is necessary.
+   *
+   * The necessity is given if
+   * - the effect has been initialized but has not yet run
+   * - a signal used in the effect has changed
+   */
+  recall() {
+    this.shouldRun = true;
+    if (this.autorun) {
       this.run();
     }
   }
 
-  rerunOnSignal(signalId: symbol): void {
-    if (!this.signals.has(signalId)) {
-      this.signals.add(signalId);
-      globalSignals.on(signalId, 'rerun', this);
+  whenSignalIsRead(signalId: symbol): void {
+    if (!this.#signals.has(signalId)) {
+      this.#signals.add(signalId);
+      globalSignalQueue.on(signalId, 'recall', this);
+      globalDestroySignalQueue.once(signalId, $destroySignal, this);
     }
   }
 
-  unsubscribe(): void {
-    globalSignals.off(this);
-
-    this.signals.clear();
-
-    for (const effect of this.childEffects.values()) {
-      effect.unsubscribe();
+  [$destroySignal](signalId: symbol): void {
+    if (!this.#destroyedSignals.has(signalId) && this.#signals.has(signalId)) {
+      this.#destroyedSignals.add(signalId);
+      globalSignalQueue.off(signalId, this);
+      const shouldDestroy = this.#destroyedSignals.size === this.#signals.size;
+      if (shouldDestroy) {
+        // no signals left, so nobody can trigger this effect anymore
+        this.destroy();
+      }
     }
+  }
 
-    this.childEffects.clear();
-
-    if (this.#unsubscribeCallback) {
-      this.#unsubscribeCallback();
-      this.#unsubscribeCallback = undefined;
+  private runCleanupCallback(): void {
+    if (this.#nextCleanupCallback != null) {
+      this.#nextCleanupCallback();
+      this.#nextCleanupCallback = undefined;
     }
   }
 
   destroy(): void {
-    this.unsubscribe();
-    this.#unsubscribeEffect();
-  }
+    if (this.#destroyed) return;
 
-  addChild(effect: Effect): void {
-    this.childEffects.add(effect);
+    globalEffectQueue.emit($destroyEffect, this);
+
+    this.runCleanupCallback();
+
+    globalSignalQueue.off(this);
+    globalEffectQueue.off(this);
+    globalDestroySignalQueue.off(this);
+
+    this.#destroyed = true;
+
+    this.#signals.clear();
+    this.#destroyedSignals.clear();
+
+    this.childEffects.forEach((effect) => {
+      effect.destroy();
+    });
+    this.childEffects.length = 0;
+
+    --Effect.count;
   }
 }
