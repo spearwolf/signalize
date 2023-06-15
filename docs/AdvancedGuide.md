@@ -1,4 +1,4 @@
-# signaler-effectus
+# @spearwolf/signalize
 
 ## Advanced Guide/Documentation
 
@@ -8,7 +8,7 @@ Suppose we have written a basic but cheeky calculator that prints the result of 
 
 
 ```ts
-import { signal, effect } from 'signaler-effectus';
+import { signal, effect } from '@spearwolf/signalize';
 
 class CheekyCalculator {
 	@signal() accessor a = 0;
@@ -83,7 +83,7 @@ This also applies to nested batches, of course.
 After the batch, all affected effects will be called again - but of course only if their signals have changed!
 
 ```ts
-import { batch } from 'signaler-effectus';
+import { batch } from '@spearwolf/signalize';
 
 batch(() => {
 	cheekyCalc.a = 1;
