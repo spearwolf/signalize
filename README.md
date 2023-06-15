@@ -37,6 +37,8 @@ It has no dependencies on other packages and can therefore be used standalone or
 
 # Usage
 
+> ⚠️ While the library/api is already quite stable and almost completely tested, this documentation is still in an early and catastrophic state ... if you want to get an exact picture of the functionality of the library, you currently have no choice but to inspect the tests and the source code! You are welcome to ask directly/start a [discussion](https://github.com/spearwolf/signalize/discussions) if you want support :)
+
 ## Create Signals
 
 Signals are mutable states that can trigger effects when changed.
