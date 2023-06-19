@@ -52,10 +52,10 @@ Signals are mutable states that can trigger effects when changed.
     <tr>
       <td valign="top">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--light.png">
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/a_class_with_a_signal--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/a_class_with_a_signal--light.png">
           <img
-            src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_a_signal--light.png"
+            src="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/a_class_with_a_signal--light.png"
             alt="A class with a signal"
             style="max-width: 100%;"
           />
@@ -63,10 +63,10 @@ Signals are mutable states that can trigger effects when changed.
       </td>
       <td valign="top">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--light.png">
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/a_standalone_signal--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/a_standalone_signal--light.png">
           <img
-            src="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_signal--light.png"
+            src="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/a_standalone_signal--light.png"
             alt="A standalone signal"
             style="max-width: 100%;"
           />
@@ -94,10 +94,10 @@ With effects, you can easily control behavior changes in your application withou
     <tr>
       <td valign="top">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_an_effect_method--dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_class_with_an_effect_method--light.png">
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/a_class_with_an_effect_method--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/a_class_with_an_effect_method--light.png">
           <img
-            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/a_class_with_an_effect_method--light.png"
+            src="https://github.com/spearwolf/signalize/raw/main/docs/images/a_class_with_an_effect_method--light.png"
             alt="A class with an effect method"
             style="max-width: 100%;"
           />
@@ -105,10 +105,10 @@ With effects, you can easily control behavior changes in your application withou
       </td>
       <td valign="top">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_effect_function--dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/a_standalone_effect_function--light.png">
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/a_standalone_effect_function--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/a_standalone_effect_function--light.png">
           <img
-            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/a_standalone_effect_function--light.png"
+            src="https://github.com/spearwolf/signalize/raw/main/docs/images/a_standalone_effect_function--light.png"
             alt="A standalone effect function"
             style="max-width: 100%;"
           />
@@ -131,10 +131,10 @@ Sometimes, however, this is a little more often than you actually need: If you c
     <tr>
       <td valign="top">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_object--dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_object--light.png">
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/signal_batch_object--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/signal_batch_object--light.png">
           <img
-            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/signal_batch_object--light.png"
+            src="https://github.com/spearwolf/signalize/raw/main/docs/images/signal_batch_object--light.png"
             alt="A class with an effect method"
             style="max-width: 100%;"
           />
@@ -142,10 +142,10 @@ Sometimes, however, this is a little more often than you actually need: If you c
       </td>
       <td valign="top">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_func--dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/dev/docs/images/signal_batch_func--light.png">
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/signal_batch_func--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/signal_batch_func--light.png">
           <img
-            src="https://github.com/spearwolf/signalize/raw/dev/docs/images/signal_batch_func--light.png"
+            src="https://github.com/spearwolf/signalize/raw/main/docs/images/signal_batch_func--light.png"
             alt="A standalone effect function"
             style="max-width: 100%;"
           />
