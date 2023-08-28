@@ -4,13 +4,15 @@
 
 > The library for signals and effects on the web
 
+![signalize hero image](hero.png)
+
 _@spearwolf/signalize_ targets modern browsers and javascript based environments.
 It is written in **Typescript v5** and uses the new [ecmascript decorators](https://github.com/tc39/proposal-decorators).
 
 # Install
 
 ```shell
-npm install @spearwolf/signalize
+npm i @spearwolf/signalize
 ```
 
 `ESNext` is currently used as [typescript compile target](https://www.typescriptlang.org/tsconfig#target) (but that may change in the future).
