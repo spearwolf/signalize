@@ -9,7 +9,7 @@
 _@spearwolf/signalize_ targets modern browsers and javascript based environments.
 It is written in **Typescript v5** and uses the new [ecmascript decorators](https://github.com/tc39/proposal-decorators).
 
-# Install
+# ⚙️ Install
 
 ```shell
 npm i @spearwolf/signalize
@@ -20,7 +20,7 @@ To achieve interoperability with older javascript environments you might have to
 
 _@spearwolf/signalize_ is a standalone package with only one dependency [@spearwolf/eventize](https://github.com/spearwolf/eventize) (which does not need any dependencies to other packages)
 
-# Overview
+# Overview 👀
 
 The API of _@spearwolf/signalize_ basically centers around these three main concepts:
 
@@ -32,12 +32,12 @@ A __functional api__ is provided, as well as a __class-based api that uses decor
 
 > :bangbang: You could think of signals as a kind of alternative callbacks/promises or as an event-based programming technique
 
-Under the hood the event library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used &rarr; In fact, *__signals__ and __events__ can complement each other very well*.
+> 🔎 Under the hood the event library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used &rarr; In fact, *__signals__ and __events__ can complement each other very well*.
 
-It has no dependencies on other packages and can therefore be used standalone or in addition to other frameworks (such as react, angular or _insert-your-favorite-framework-here_)
+> 🔎 It has no dependencies on other packages and can therefore be used standalone or in addition to other frameworks (such as react, angular or _insert-your-favorite-framework-here_)
 
 
-# Usage
+# 📖 Usage
 
 > ⚠️ While the library/api is already quite stable and almost completely tested, this documentation is still in an early and catastrophic state ... if you want to get an exact picture of the functionality of the library, you currently have no choice but to inspect the tests and the source code! You are welcome to ask directly/start a [discussion](https://github.com/spearwolf/signalize/discussions) if you want support :)
 
