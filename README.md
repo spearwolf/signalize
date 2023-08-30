@@ -135,7 +135,7 @@ Sometimes, however, this is a little more often than you actually need: If you c
 
 ## Batching
 
-Within the batch callback, all signals are written, but the dependent effects are not executed until the end of the batch function:
+Within the `batch` _callback_, all signals are written, but the dependent effects are deferred until the end of the batch function:
 
 <table>
   <tbody>
