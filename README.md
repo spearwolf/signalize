@@ -131,7 +131,11 @@ With effects, you can easily control behavior changes in your application withou
 
 Effects are always executed the first time and automatically immediately if a signal that is read out within the effect is changed afterwards.
 
-Sometimes, however, this is a little more often than you actually need: If you change a and then b in the example above, the result will be announced by the effect each time. If you only want to get the final result after changing both signals, you can use the `batch(callback)` function. Within the batch callback, all signals are written, but the dependent effects are not executed until the end of the batch function:
+Sometimes, however, this is a little more often than you actually need: If you change a and then b in the example above, the result will be announced by the effect each time. If you only want to get the final result after changing both signals, you can use the `batch(callback)` function.
+
+## Batching
+
+Within the batch callback, all signals are written, but the dependent effects are not executed until the end of the batch function:
 
 <table>
   <tbody>
@@ -146,7 +150,7 @@ Sometimes, however, this is a little more often than you actually need: If you c
           <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/signal-batch-object--light.png">
           <img
             src="https://github.com/spearwolf/signalize/raw/main/docs/images/gists/signal-batch-object--light.png"
-            alt="A class with an effect method"
+            alt="Batch signals"
             style="max-width: 100%;"
           />
         </picture>
@@ -157,7 +161,7 @@ Sometimes, however, this is a little more often than you actually need: If you c
           <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/signal-batch-func--light.png">
           <img
             src="https://github.com/spearwolf/signalize/raw/main/docs/images/gists/signal-batch-func--light.png"
-            alt="A standalone effect function"
+            alt="Batch signals"
             style="max-width: 100%;"
           />
         </picture>
