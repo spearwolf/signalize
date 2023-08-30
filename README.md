@@ -2,12 +2,17 @@
 
 [![npm version](https://badge.fury.io/js/@spearwolf%2Fsignalize.svg)](https://badge.fury.io/js/@spearwolf%2Fsignalize)
 
-> The library for signals and effects on the web
+> __Signals__ and __effects__ for all❗
 
 ![signalize hero image](hero.png)
 
-_@spearwolf/signalize_ targets modern browsers and javascript based environments.
-It is written in **Typescript v5** and uses the new [ecmascript decorators](https://github.com/tc39/proposal-decorators).
+_@spearwolf/signalize_ is a library for creating __signals__, __effects__ and __connections__.
+
+It is a standalone library and has no dependencies to other frameworks like react, angular, etc.
+Since it is a pure javascript library without side effects or special environment requirements, it can be mixed and used together with other librariers / frameworks without conflict.
+
+The library targets modern browsers and javascript based environments.
+It is written in **typescript v5** and uses the new [ecmascript decorators](https://github.com/tc39/proposal-decorators).
 
 # ⚙️ Install
 
@@ -18,23 +23,27 @@ npm i @spearwolf/signalize
 `ESNext` is currently used as [typescript compile target](https://www.typescriptlang.org/tsconfig#target) (but that may change in the future).
 To achieve interoperability with older javascript environments you might have to use an additional transpile pipeline of your own.
 
-_@spearwolf/signalize_ is a standalone package with only one dependency [@spearwolf/eventize](https://github.com/spearwolf/eventize) (which does not need any dependencies to other packages)
 
 # Overview 👀
 
-The API of _@spearwolf/signalize_ basically centers around these three main concepts:
+The whole API of _@spearwolf/signalize_ is about these three concepts:
 
-- __signals__ &mdash; like state variables with hidden superpowers
-- __effects__ &mdash; just think of it as a standalone `useEffect()` hook (but without react ;)
-- __connections__ &mdash; which are basically links between signals and functions.. like the geometry node connections in blender or the node connections in blueprints of the unreal engine
+- __signals__
+  - like state variables with hidden superpowers
+  - when the value of a signal changes, all subscribers are automatically informed
+- __effects__
+  - are callback functions that are automatically executed when one or more signals &mdash; _which are read within the effect function_ &mdash; change
+  - just think of it as a standalone `useEffect()` hook (but without react :wink:)
+- __connections__
+  - which are basically _links_ between signals and functions
+  - like the geometry node connections in blender or the node connections in blueprints of the unreal engine
+
 
 A __functional api__ is provided, as well as a __class-based api that uses decorators__.
 
 > :bangbang: You could think of signals as a kind of alternative callbacks/promises or as an event-based programming technique
 
-> 🔎 Under the hood the event library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used &rarr; In fact, *__signals__ and __events__ can complement each other very well*.
-
-> 🔎 It has no dependencies on other packages and can therefore be used standalone or in addition to other frameworks (such as react, angular or _insert-your-favorite-framework-here_)
+> 🔎 Under the hood the event-driven library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used &rarr; in fact, *__signals__ and __events__ can complement each other very well!*
 
 
 # 📖 Usage
