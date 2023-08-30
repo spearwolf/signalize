@@ -2,7 +2,7 @@ import {signal, effect} from '@spearwolf/signalize';
 
 class CheekyCalc {
   @signal() accessor a = 0;
-  @signal() accessor b = 0;
+  @signal() accessor b = 1;
 
   @effect() calc() {
     const sum = this.a + this.b;
