@@ -34,6 +34,8 @@
     "bundle": "rollup -c",
     "dist": "run-s clean build bundle",
     "prepare": "run-s dist",
+    "prepack": "run-s clean build bundle",
+    "publish:pkg": "node scripts/publishPackage.cjs",
     "world": "run-s clean build test bundle"
   },
   "devDependencies": {

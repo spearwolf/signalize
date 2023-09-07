@@ -16,3 +16,8 @@ tsconfig.*.json
 *.spec.ts
 *.spec.d.ts
 signaler-effectus-hero.png
+docs/gists
+docs/images
+scripts
+rollup.config.*
+jest.config.*
