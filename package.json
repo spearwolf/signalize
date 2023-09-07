@@ -1,14 +1,13 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.4.0",
-  "description": "signals and effects for typescript",
-  "main": "dist/signalize.esm.js",
-  "type": "module",
-  "module": "dist/signalize.esm.js",
+  "version": "0.5.0",
+  "description": "signals and effects for all",
+  "main": "dist/signalize.js",
+  "module": "dist/signalize.mjs",
   "types": "types/index.d.ts",
   "exports": {
-    "import": "./dist/signalize.esm.js",
-    "require": "./dist/signalize.cjs.js"
+    "import": "./dist/signalize.mjs",
+    "require": "./dist/signalize.js"
   },
   "engines": {
     "node": ">=16.19"
@@ -40,7 +39,7 @@
   "devDependencies": {
     "@babel/core": "^7.22.5",
     "@babel/preset-typescript": "^7.22.5",
-    "@spearwolf/eventize": "^2.2.0",
+    "@spearwolf/eventize": "^3.0.0",
     "@types/jest": "^29.5.2",
     "@types/node": "^20.3.1",
     "@types/sinon": "^10.0.15",
@@ -80,6 +79,6 @@
   },
   "license": "Apache-2.0",
   "peerDependencies": {
-    "@spearwolf/eventize": "^2.2.0"
+    "@spearwolf/eventize": "^3.0.0"
   }
 }
