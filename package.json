@@ -10,7 +10,7 @@
     "require": "./dist/signalize.js"
   },
   "engines": {
-    "node": ">=16.19"
+    "node": ">=18.16"
   },
   "scripts": {
     "docs:gists": "node scripts/createGistImages.cjs",
