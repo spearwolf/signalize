@@ -23,6 +23,7 @@ npm i @spearwolf/signalize
 `ESNext` is currently used as [typescript compile target](https://www.typescriptlang.org/tsconfig#target) (but that may change in the future).
 To achieve interoperability with older javascript environments you might have to use an additional transpile pipeline of your own.
 
+| 🔎 Since version 0.5.0 there is also a [CHANGELOG](./CHANGELOG.md)
 
 # Overview 👀
 
