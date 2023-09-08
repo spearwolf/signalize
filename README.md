@@ -1,6 +1,6 @@
 # @spearwolf/signalize
 
-[![npm version](https://badge.fury.io/js/@spearwolf%2Fsignalize.svg)](https://badge.fury.io/js/@spearwolf%2Fsignalize)
+![npm (scoped)](https://img.shields.io/npm/v/%40spearwolf/eventize)
 
 > __Signals__ and __effects__ for all❗
 
