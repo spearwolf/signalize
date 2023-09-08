@@ -1,6 +1,9 @@
 # @spearwolf/signalize
 
 ![npm (scoped)](https://img.shields.io/npm/v/%40spearwolf/signalize)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/spearwolf/signalize/main.yml)
+![GitHub](https://img.shields.io/github/license/spearwolf/signalize)
+
 
 > __Signals__ and __effects__ for all❗
 
