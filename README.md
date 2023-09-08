@@ -1,6 +1,6 @@
 # @spearwolf/signalize
 
-![npm (scoped)](https://img.shields.io/npm/v/%40spearwolf/eventize)
+![npm (scoped)](https://img.shields.io/npm/v/%40spearwolf/signalize)
 
 > __Signals__ and __effects__ for all❗
 
