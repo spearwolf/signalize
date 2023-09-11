@@ -176,9 +176,52 @@ Within the `batch` _callback_, all signals are written, but the dependent effect
 
 See [The difference between the standard behavior of effects and the use of batching](./docs/AdvancedGuide.md#the-difference-between-the-standard-behavior-of-effects-and-the-use-of-batching) for more informations on this.
 
+## Create Memos
+
+When an effect is created, the effect callback is executed immediately (and then automatically when the values of the dependent signals change).
+
+A _memo_, on the other hand, allows you to explicitly control when the callback is executed. The _memo_ also returns a result.
+
+On the first call the _memo_ callback is always executed, on subsequent calls the callback is only executed if the dependent signals have changed in the meantime. if not, the previous cached result value is returned.
+
+<table>
+  <tbody>
+    <tr>
+      <th></th>
+      <th></th>
+    </tr>
+    <tr>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/signal-memo-class--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/signal-memo-class--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/main/docs/images/gists/signal-memo-class--light.png"
+            alt="Batch signals"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/signal-memo-func--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/signal-memo-func--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/main/docs/images/gists/signal-memo-func--light.png"
+            alt="Batch signals"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+| NOTE: The _memo_ callback `fullName()` is executed _only_ on the first call, __after that only if one or both signals have changed.__
 
 ---
 
+_more docs coming!!_
 
 _...TBD..._
 
