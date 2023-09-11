@@ -13,6 +13,8 @@ const gists = [
   'a-standalone-effect-function.js',
   'signal-batch-object.js',
   'signal-batch-func.js',
+  'signal-memo-func.ts',
+  'signal-memo-class.ts',
 ];
 
 async function makeGistImages(presets) {
