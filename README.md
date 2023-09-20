@@ -43,7 +43,7 @@ The whole API of _@spearwolf/signalize_ is about these three concepts:
   - like the geometry node connections in blender or the node connections in blueprints of the unreal engine
 
 
-A __functional api__ is provided, as well as a __class-based api that uses decorators__.
+A __functional API__ is provided, as well as a __class-based API that uses decorators__.
 
 > :bangbang: You could think of signals as a kind of alternative callbacks/promises or as an event-based programming technique
 
@@ -52,7 +52,7 @@ A __functional api__ is provided, as well as a __class-based api that uses decor
 
 # 📖 Usage
 
-> ⚠️ While the library/api is already quite stable and almost completely tested, this documentation is still in an early and catastrophic state ... if you want to get an exact picture of the functionality of the library, you currently have no choice but to inspect the tests and the source code! You are welcome to ask directly/start a [discussion](https://github.com/spearwolf/signalize/discussions) if you want support :)
+> ⚠️ While the library / API is already quite stable and almost completely tested, this documentation is still in an early and catastrophic state ... if you want to get an exact picture of the functionality of the library, you currently have no choice but to inspect the tests and the source code! You are welcome to ask directly/start a [discussion](https://github.com/spearwolf/signalize/discussions) if you want support :)
 
 ## Create Signals
 
@@ -137,16 +137,58 @@ Effects are always executed the first time and automatically immediately if a si
 
 Sometimes, however, this is a little more often than you actually need: If you change a and then b in the example above, the result will be announced by the effect each time. If you only want to get the final result after changing both signals, you can use the `batch(callback)` function.
 
+<details>
+<summary>Advanced use of the createEffect API</summary>
+
+### The full signature of createEffect
+
+The `createEffect()` API returns an array with two functions:
+
+```ts
+const [run, destroy] = createEffect(myEffectCallback);
+```
+
+Optionally you can specify an options object as a parameter:
+
+```ts
+const [run, destroy] = createEffect(myEffectCallback, { autorun: true });
+```
+
+In which order the options and the effect callback are passed doesn't really matter. both variants are ok ..
+
+```ts
+const [run, destroy] = createEffect({ autorun: false }, myEffectCallback);
+```
+_(currently `autorun` is the only supported option)_
+
+### The run function
+
+With the _run_ function you can call the effect directly.
+Normally you don't need to do this yourself, because it happens automatically.
+
+In combination with the `autorun: false` option &mdash; which prevents the effect from being called automatically &mdash; you can specify exactly the right time for the effect to be executed.
+This is  useful if you want it to happen in a `setInterval()` or `requestAnimationFrame()`, for example.
+
+### The destroy function
+
+... is quickly explained: if you don't want to use the effect anymore, you can simply remove it by calling the _destroy_ function (if there is a _cleanup_ function, then of course it will be called finally)
+
+### The effect callback can optionally return a cleanup function
+
+Your _effect callback_ (which is your function that you pass to the effect as parameter) may also optionally return a _cleanup_ function.
+
+Before calling an _effect callback_, a previously returned _cleanup_ function (if you provided it) is executed.
+
+> 🔎 Does this behaviour look familiar? probably because this feature was inspired by [react's useEffect hook](https://react.dev/reference/react/useEffect)
+
+</details>
+
 ## Batching
 
 Within the `batch` _callback_, all signals are written, but the dependent effects are deferred until the end of the batch function:
 
 <table>
   <tbody>
-    <tr>
-      <th></th>
-      <th></th>
-    </tr>
     <tr>
       <td valign="top">
         <picture>
@@ -187,10 +229,6 @@ On the first call the _memo_ callback is always executed, on subsequent calls th
 <table>
   <tbody>
     <tr>
-      <th></th>
-      <th></th>
-    </tr>
-    <tr>
       <td valign="top">
         <picture>
           <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/signal-memo-class--dark.png">
@@ -217,7 +255,7 @@ On the first call the _memo_ callback is always executed, on subsequent calls th
   </tbody>
 </table>
 
-| NOTE: The _memo_ callback `fullName()` is executed _only_ on the first call, __after that only if one or both signals have changed.__
+| ‼️ The _memo_ callback `fullName()` is executed _only_ on the first call, __after that only if one or both signals have changed.__
 
 ---
 
