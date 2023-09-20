@@ -159,7 +159,7 @@ In which order the options and the effect callback are passed doesn't really mat
 ```ts
 const [run, destroy] = createEffect({ autorun: false }, myEffectCallback);
 ```
-_(currently `autorun` is the only supported option)_
+_(currently `autorun` is the only supported option and is `true` by default)_
 
 ### The run function
 
