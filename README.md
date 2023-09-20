@@ -181,6 +181,31 @@ Before calling an _effect callback_, a previously returned _cleanup_ function (i
 
 > 🔎 Does this behaviour look familiar? probably because this feature was inspired by [react's useEffect hook](https://react.dev/reference/react/useEffect)
 
+#### An example of using a cleanup function
+
+```js
+const [getSelector, makeInteractive] = createSignal();
+
+function onClick(event) {
+  console.log('click! selector=', getSelector(), 'element=', event.target);
+}
+
+createEffect(() => {
+  if (getSelector()) {
+    const el = document.querySelector(getSelector());
+
+    el.addEventListener('click', onClick, false);
+
+    return () => {
+      el.removeEventListener('click', onClick, false);
+    };
+  }
+})
+
+makeInteractive('#foo');  // foo is now interactive
+makeInteractive('.bar');  // bar is now interactive, but foo is not
+```
+
 </details>
 
 ## Batching
