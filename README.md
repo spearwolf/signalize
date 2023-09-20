@@ -138,7 +138,7 @@ Effects are always executed the first time and automatically immediately if a si
 Sometimes, however, this is a little more often than you actually need: If you change a and then b in the example above, the result will be announced by the effect each time. If you only want to get the final result after changing both signals, you can use the `batch(callback)` function.
 
 <details>
-<summary>Advanced use of the createEffect API</summary>
+<summary><b>Advanced use of the createEffect API</b></summary>
 
 ### The full signature of createEffect
 
