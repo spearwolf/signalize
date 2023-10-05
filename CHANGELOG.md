@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## `v0.5.2`
+
+- mark package as side effects free
+- update (mainly dev) dependencies
+
 ## `v0.5.1`
 
 - upgrade dev depenedencies
