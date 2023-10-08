@@ -17,7 +17,7 @@ const makeBanner = (build) => {
 
 export default {
   input: {
-    signalize: 'build/index.js',
+    index: 'build/index.js',
   },
   output: [
     {
@@ -25,12 +25,6 @@ export default {
       dir: 'dist',
       entryFileNames: '[name].js',
       format: 'es',
-    },
-    {
-      banner: makeBanner('cjs'),
-      dir: 'dist',
-      entryFileNames: '[name].cjs.js',
-      format: 'commonjs',
     },
   ],
   external: ['@spearwolf/eventize'],

@@ -2,7 +2,7 @@ import {getSubscriptionCount} from '@spearwolf/eventize';
 
 import {getEffectsCount} from './effects-api';
 
-import {getSignalsCount} from '.';
+import {getSignalsCount} from './createSignal';
 import {globalDestroySignalQueue, globalEffectQueue} from './global-queues';
 
 const namespacePrefix = (namespace?: string) =>

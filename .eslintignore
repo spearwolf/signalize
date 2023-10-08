@@ -4,3 +4,4 @@ tests
 types
 node_modules
 *.html
+lib

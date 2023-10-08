@@ -4,3 +4,4 @@ node_modules
 tests
 types
 .size-snapshot.json
+lib

@@ -21,3 +21,4 @@ docs/images
 scripts
 rollup.config.*
 jest.config.*
+types

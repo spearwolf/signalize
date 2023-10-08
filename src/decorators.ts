@@ -7,7 +7,7 @@ import {
   saveObjectEffect,
   saveObjectSignal,
 } from './object-signals-and-effects';
-import {SignalParams, SignalReader} from './types';
+import type {SignalParams, SignalReader} from './types';
 import {value as signalValue} from './value';
 
 // https://github.com/tc39/proposal-decorators

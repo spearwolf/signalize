@@ -1,4 +1,4 @@
-import {EffectCallback, VoidCallback} from './types';
+import type {EffectCallback, VoidCallback} from './types';
 
 import {Effect} from './Effect';
 

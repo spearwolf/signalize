@@ -1,7 +1,7 @@
 import {createSignal, getSignalInstance} from './createSignal';
 import {createEffect} from './effects-api';
 import {globalDestroySignalQueue} from './global-queues';
-import {SignalReader} from './types';
+import type {SignalReader} from './types';
 
 export function createMemo<Type>(callback: () => Type): SignalReader<Type> {
   const [get, set] = createSignal<Type>();

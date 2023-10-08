@@ -2,7 +2,7 @@ import {Eventize, UnsubscribeFunc} from '@spearwolf/eventize';
 import {getSignalInstance, isSignal} from './createSignal';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
 import {queryObjectSignals} from './object-signals-and-effects';
-import {Signal, SignalReader} from './types';
+import type {Signal, SignalReader} from './types';
 
 const globalSignalConnections = new WeakMap<
   Signal<unknown>,

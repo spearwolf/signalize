@@ -1,6 +1,6 @@
 import {getSignalInstance, isSignal, writeSignal} from './createSignal';
 import {queryObjectSignal} from './object-signals-and-effects';
-import {SignalReader} from './types';
+import type {SignalReader} from './types';
 
 function touch<Type>(source: SignalReader<Type>): void;
 

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## `v0.6.1`
+
+- no _commonjs_ format is delivered anymore
+- the _esm_ format is no longer bundled
+- use `import type ..` syntax
+
 ## `v0.6.0`
 
 - switch package to `type: module`

@@ -1,5 +1,9 @@
 import {destroySignal} from './createSignal';
-import {DestroyEffectCallback, RunEffectCallback, SignalReader} from './types';
+import type {
+  DestroyEffectCallback,
+  RunEffectCallback,
+  SignalReader,
+} from './types';
 
 interface SignalsAndEffects {
   signals: Record<string | symbol, SignalReader<any>>;
