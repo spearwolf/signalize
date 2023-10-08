@@ -1,8 +1,9 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "signals and effects for all",
-  "main": "dist/signalize.cjs.js",
+  "type": "module",
+  "main": "dist/signalize.js",
   "module": "dist/signalize.js",
   "types": "types/index.d.ts",
   "exports": {
