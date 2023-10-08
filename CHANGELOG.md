@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## `v0.6.0`
+
+- switch package to `type: module`
+  - this hopefully solves the problem that typescript cannot resolve the types correctly when `signalize.mjs` is loaded 😵
+  - the final package output will now completely omit `.mjs` file endings
+
 ## `v0.5.2`
 
 - mark package as side effects free
