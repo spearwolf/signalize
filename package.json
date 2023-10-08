@@ -1,15 +1,11 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "signals and effects for all",
   "type": "module",
-  "main": "dist/signalize.js",
-  "module": "dist/signalize.js",
-  "types": "types/index.d.ts",
-  "exports": {
-    "import": "./dist/signalize.js",
-    "require": "./dist/signalize.cjs.js"
-  },
+  "main": "lib/index.js",
+  "module": "lib/index.js",
+  "types": "lib/index.d.ts",
   "sideEffects": false,
   "engines": {
     "node": ">=18.16"
@@ -18,7 +14,7 @@
     "docs:gists": "node scripts/createGistImages.cjs",
     "build": "tsc --project tsconfig.build.json",
     "build:watch": "tsc --project tsconfig.build.json --watch",
-    "clean": "rimraf build types tests dist",
+    "clean": "rimraf build types tests dist lib",
     "eslint": "eslint src/ --ext .js,.jsx,.ts,.tsx",
     "eslint:fix": "eslint src/ --ext .js,.jsx,.ts,.tsx --fix",
     "prettier:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\"",
@@ -34,11 +30,11 @@
     "test": "run-s eslint prettier:check test:build jest",
     "cbt": "run-s clean build test",
     "bundle": "rollup -c",
-    "dist": "run-s clean build bundle",
+    "dist": "run-s clean build",
     "prepare": "run-s dist",
-    "prepack": "run-s clean build bundle",
+    "prepack": "run-s clean build",
     "publish:pkg": "node scripts/publishPackage.cjs",
-    "world": "run-s clean build test bundle"
+    "world": "run-s clean build test"
   },
   "devDependencies": {
     "@babel/core": "^7.23.0",

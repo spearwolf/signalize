@@ -13,7 +13,7 @@ export {
   queryObjectSignal,
 } from './object-signals-and-effects';
 export * from './touch';
-export * from './types';
+export type * from './types';
 export {unconnect} from './unconnect';
 export * from './value';
 

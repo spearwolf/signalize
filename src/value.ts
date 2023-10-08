@@ -1,6 +1,6 @@
 import {getSignalInstance, isSignal} from './createSignal';
 import {queryObjectSignal} from './object-signals-and-effects';
-import {SignalReader} from './types';
+import type {SignalReader} from './types';
 
 function value<Type>(source: SignalReader<Type>): Type;
 
