@@ -23,13 +23,13 @@ export default {
     {
       banner: makeBanner('esm'),
       dir: 'dist',
-      entryFileNames: '[name].mjs',
+      entryFileNames: '[name].js',
       format: 'es',
     },
     {
       banner: makeBanner('cjs'),
       dir: 'dist',
-      entryFileNames: '[name].js',
+      entryFileNames: '[name].cjs.js',
       format: 'commonjs',
     },
   ],

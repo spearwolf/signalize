@@ -4,9 +4,10 @@
   "compilerOptions": {
     "outDir": "tests",
 
-    "target": "es2022",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+
     "resolvePackageJsonImports": false
   }
 }

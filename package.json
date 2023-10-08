@@ -2,12 +2,12 @@
   "name": "@spearwolf/signalize",
   "version": "0.5.2",
   "description": "signals and effects for all",
-  "main": "dist/signalize.js",
-  "module": "dist/signalize.mjs",
+  "main": "dist/signalize.cjs.js",
+  "module": "dist/signalize.js",
   "types": "types/index.d.ts",
   "exports": {
-    "import": "./dist/signalize.mjs",
-    "require": "./dist/signalize.js"
+    "import": "./dist/signalize.js",
+    "require": "./dist/signalize.cjs.js"
   },
   "sideEffects": false,
   "engines": {

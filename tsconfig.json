@@ -4,13 +4,14 @@
   "files": ["node_modules/jest-expect-message/types/index.d.ts"],
 
   "compilerOptions": {
-    "lib": ["esnext", "dom"],
-    "target": "esnext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "target": "ESNext",
 
     "declaration": false,
 
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+
     "resolvePackageJsonExports": false,
     "resolvePackageJsonImports": true,
     "allowSyntheticDefaultImports": true,
