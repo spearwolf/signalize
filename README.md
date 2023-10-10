@@ -23,8 +23,10 @@ It is written in **typescript v5** and uses the new [ecmascript decorators](http
 npm i @spearwolf/signalize
 ```
 
-`ESNext` is currently used as [typescript compile target](https://www.typescriptlang.org/tsconfig#target) (but that may change in the future).
-To achieve interoperability with older javascript environments you might have to use an additional transpile pipeline of your own.
+The package is now published as ES2022 and exported as unbundled ESM javascript modules
+(with type definitions also included).
+
+Note: as no more exported commonjs modules are delivered, cjs consumers will need to use a dynamic import
 
 | 🔎 Since version 0.5.0 there is also a [CHANGELOG](./CHANGELOG.md)
 
