@@ -4,11 +4,11 @@ import {
   createSignal,
   destroySignal,
   destroySignals,
-  signal,
   touch,
   unconnect,
-} from '.';
-import {assertEffectsCount, assertSignalsCount} from './assert-helpers';
+} from './index.js';
+import {signal} from './decorators.js';
+import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 
 describe('connect signals', () => {
   beforeEach(() => {

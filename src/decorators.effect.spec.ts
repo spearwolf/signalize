@@ -1,10 +1,5 @@
-import {
-  batch,
-  destroyEffects,
-  destroySignalsAndEffects,
-  effect,
-  signal,
-} from '.';
+import {batch, destroyEffects, destroySignalsAndEffects} from './index.js';
+import {effect, signal} from './decorators.js';
 
 describe('@effect is a class method decorator', () => {
   it('autorun by default', () => {

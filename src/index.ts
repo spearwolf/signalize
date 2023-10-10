@@ -1,21 +1,20 @@
-export * from './Connection';
-export {batch} from './batch';
-export {connect} from './connect';
-export * from './createMemo';
-export * from './createSignal';
-export * from './decorators';
-export * from './effects-api';
+export * from './Connection.js';
+export {batch} from './batch.js';
+export {connect} from './connect.js';
+export * from './createMemo.js';
+export * from './createSignal.js';
+export * from './effects-api.js';
 export {
   destroyEffects,
   destroySignals,
   destroySignalsAndEffects,
   queryObjectEffect,
   queryObjectSignal,
-} from './object-signals-and-effects';
-export * from './touch';
-export type * from './types';
-export {unconnect} from './unconnect';
-export * from './value';
+} from './object-signals-and-effects.js';
+export * from './touch.js';
+export type * from './types.js';
+export {unconnect} from './unconnect.js';
+export * from './value.js';
 
 // TODO docs: update README (missing decorators docs, rewrite introduction, add ts@5 / decorators stage-3 notes ...)
 

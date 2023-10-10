@@ -8,13 +8,13 @@ import type {
   SignalValueParams,
   SignalWriter,
   SignalWriterParams,
-} from './types';
+} from './types.js';
 
-import {UniqIdGen} from './UniqIdGen';
-import {$signal} from './constants';
-import {createEffect} from './effects-api';
-import {globalDestroySignalQueue, globalSignalQueue} from './global-queues';
-import {getCurrentEffect} from './globalEffectStack';
+import {UniqIdGen} from './UniqIdGen.js';
+import {$signal} from './constants.js';
+import {createEffect} from './effects-api.js';
+import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
+import {getCurrentEffect} from './globalEffectStack.js';
 
 const idCreator = new UniqIdGen('si');
 

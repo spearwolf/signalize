@@ -3,17 +3,17 @@ import type {
   EffectCallback,
   RunEffectCallback,
   VoidCallback,
-} from './types';
+} from './types.js';
 
-import {UniqIdGen} from './UniqIdGen';
-import {getCurrentBatch} from './batch';
-import {$createEffect, $destroyEffect, $destroySignal} from './constants';
+import {UniqIdGen} from './UniqIdGen.js';
+import {getCurrentBatch} from './batch.js';
+import {$createEffect, $destroyEffect, $destroySignal} from './constants.js';
 import {
   globalDestroySignalQueue,
   globalEffectQueue,
   globalSignalQueue,
-} from './global-queues';
-import {getCurrentEffect, runWithinEffect} from './globalEffectStack';
+} from './global-queues.js';
+import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 
 export interface EffectParams {
   autorun?: boolean;

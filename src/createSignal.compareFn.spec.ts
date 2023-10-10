@@ -1,11 +1,11 @@
-import {createSignal} from './createSignal';
+import {createSignal} from './createSignal.js';
 
 describe('create signal with custom compare function', () => {
   it('works as expected', () => {
     const mock = jest.fn();
 
     const [signal, setSignal] = createSignal([0, 0, 0], {
-      compareFn: (a, b) => a.every((v, i) => v === b[i]),
+      compareFn: (a: number[], b: number[]) => a.every((v, i) => v === b[i]),
     });
 
     signal(mock);

@@ -1,4 +1,4 @@
-import {createSignal} from './createSignal';
+import {createSignal} from './createSignal.js';
 
 describe('create lazy signal', () => {
   it('works as expected', () => {

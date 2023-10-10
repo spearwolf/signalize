@@ -5,6 +5,7 @@ parserOptions:
   sourceType: module
 
 plugins:
+  - import
   - "@typescript-eslint"
 
 extends:
@@ -20,11 +21,13 @@ env:
   browser: true
 
 settings:
+  import/parsers:
+    "@typescript-eslint/parser":
+      - .ts
+
   import/resolver:
-    node:
-      extensions:
-        - .ts
-        - .js
+    typescript:
+      alwaysTryTypes: true
 
 rules:
   no-fallthrough: off

@@ -1,5 +1,5 @@
-import {createMemo} from './createMemo';
-import {createSignal} from './createSignal';
+import {createMemo} from './createMemo.js';
+import {createSignal} from './createSignal.js';
 
 describe('createMemo', () => {
   it('works as expected (lazy by default)', () => {

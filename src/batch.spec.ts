@@ -1,6 +1,6 @@
-import {batch} from './batch';
-import {createEffect} from './effects-api';
-import {createSignal} from './createSignal';
+import {batch} from './batch.js';
+import {createEffect} from './effects-api.js';
+import {createSignal} from './createSignal.js';
 
 describe('batch', () => {
   it('delay the effect callback execution until the batch callback finished', () => {
