@@ -16,7 +16,7 @@ jobs:
           node-version: 18
           cache: 'npm'
 
-      - run: npm ci
+      - run: npm i --omit=optional
         name: Install dependencies
 
       - run: npm run cbt
@@ -35,7 +35,7 @@ jobs:
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
-      - run: npm ci
+      - run: npm i --omit=optional
         name: Install dependencies
 
       - run: npm run prepack
