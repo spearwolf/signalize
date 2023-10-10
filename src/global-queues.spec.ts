@@ -4,7 +4,7 @@ import {
   globalDestroySignalQueue,
   globalEffectQueue,
   globalSignalQueue,
-} from './global-queues';
+} from './global-queues.js';
 
 describe('global queues', () => {
   it('has eventized signal queue', () => {

@@ -1,4 +1,4 @@
-import {$signal} from './constants';
+import {$signal} from './constants.js';
 
 export type VoidCallback = () => void;
 export type EffectCallback = VoidCallback | (() => VoidCallback);

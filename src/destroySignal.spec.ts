@@ -6,10 +6,10 @@ import {
   assertSignalDestroySubscriptionsCountChange,
   saveEffectSubscriptionsCount,
   saveSignalDestroySubscriptionsCount,
-} from './assert-helpers';
-import {createEffect} from './effects-api';
-import {createMemo} from './createMemo';
-import {createSignal, destroySignal} from './createSignal';
+} from './assert-helpers.js';
+import {createEffect} from './effects-api.js';
+import {createMemo} from './createMemo.js';
+import {createSignal, destroySignal} from './createSignal.js';
 
 describe('destroySignal', () => {
   beforeEach(() => {

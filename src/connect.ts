@@ -1,6 +1,6 @@
-import {Connection} from './Connection';
-import {queryObjectSignal} from './object-signals-and-effects';
-import type {SignalReader} from './types';
+import {Connection} from './Connection.js';
+import {queryObjectSignal} from './object-signals-and-effects.js';
+import type {SignalReader} from './types.js';
 
 type ObjectProps<Obj, PropType> = {
   [Key in keyof Obj as Obj[Key] extends PropType ? Key : never]: unknown;

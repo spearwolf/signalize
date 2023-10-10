@@ -1,4 +1,4 @@
-import {connect, createSignal, destroySignal} from '.';
+import {connect, createSignal, destroySignal} from './index.js';
 
 describe('Connection.nextValue', () => {
   it("we don't wanna the retained value - we want the next value update", async () => {

@@ -1,6 +1,6 @@
-import {createEffect, onDestroyEffect} from './effects-api';
-import {createSignal, destroySignal} from './createSignal';
-import {assertEffectsCount} from './assert-helpers';
+import {createEffect, onDestroyEffect} from './effects-api.js';
+import {createSignal, destroySignal} from './createSignal.js';
+import {assertEffectsCount} from './assert-helpers.js';
 
 describe('createEffect', () => {
   beforeEach(() => {

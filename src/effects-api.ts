@@ -2,11 +2,11 @@ import type {
   DestroyEffectCallback,
   EffectCallback,
   RunEffectCallback,
-} from './types';
+} from './types.js';
 
-import {$createEffect, $destroyEffect} from './constants';
-import {Effect, EffectParams} from './Effect';
-import {globalEffectQueue} from './global-queues';
+import {$createEffect, $destroyEffect} from './constants.js';
+import {Effect, EffectParams} from './Effect.js';
+import {globalEffectQueue} from './global-queues.js';
 
 export const createEffect = (
   ...args:

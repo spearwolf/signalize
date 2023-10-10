@@ -1,7 +1,7 @@
-import {createSignal} from '.';
-import {assertEffectsCount} from './assert-helpers';
-import {destroySignal} from './createSignal';
-import {createEffect} from './effects-api';
+import {createSignal} from './index.js';
+import {assertEffectsCount} from './assert-helpers.js';
+import {destroySignal} from './createSignal.js';
+import {createEffect} from './effects-api.js';
 
 describe('Effect -> autorun: false', () => {
   beforeEach(() => {

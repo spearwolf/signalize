@@ -1,10 +1,10 @@
-import {Connection, type ConnectionTargetType} from './Connection';
-import {isSignal} from './createSignal';
+import {Connection, type ConnectionTargetType} from './Connection.js';
+import {isSignal} from './createSignal.js';
 import {
   queryObjectSignal,
   queryObjectSignals,
-} from './object-signals-and-effects';
-import type {SignalReader} from './types';
+} from './object-signals-and-effects.js';
+import type {SignalReader} from './types.js';
 
 type ObjectProps<Obj, PropType> = {
   [Key in keyof Obj as Obj[Key] extends PropType ? Key : never]: unknown;

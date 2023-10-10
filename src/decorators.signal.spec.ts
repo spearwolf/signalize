@@ -2,12 +2,11 @@ import {
   createMemo,
   destroySignal,
   destroySignals,
-  memo,
   queryObjectSignal,
-  signal,
   value,
-} from '.';
-import {assertEffectsCount, assertSignalsCount} from './assert-helpers';
+} from './index.js';
+import {memo, signal} from './decorators.js';
+import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 
 describe('@signal is a class accessor decorator', () => {
   beforeEach(() => {

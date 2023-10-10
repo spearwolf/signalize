@@ -1,12 +1,12 @@
-import {assertEffectsCount, assertSignalsCount} from './assert-helpers';
+import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 import {
   createSignal,
   destroySignal,
   isSignal,
   muteSignal,
   unmuteSignal,
-} from './createSignal';
-import {createEffect} from './effects-api';
+} from './createSignal.js';
+import {createEffect} from './effects-api.js';
 
 describe('createSignal', () => {
   beforeEach(() => {

@@ -1,14 +1,14 @@
-import {createMemo} from './createMemo';
-import {createSignal} from './createSignal';
-import {createEffect} from './effects-api';
+import {createMemo} from './createMemo.js';
+import {createSignal} from './createSignal.js';
+import {createEffect} from './effects-api.js';
 import {
   queryObjectEffect,
   queryObjectSignal,
   saveObjectEffect,
   saveObjectSignal,
-} from './object-signals-and-effects';
-import type {SignalParams, SignalReader} from './types';
-import {value as signalValue} from './value';
+} from './object-signals-and-effects.js';
+import type {SignalParams, SignalReader} from './types.js';
+import {value as signalValue} from './value.js';
 
 // https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820

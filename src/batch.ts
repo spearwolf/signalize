@@ -1,5 +1,5 @@
-import {globalEffectQueue} from './global-queues';
-import type {BatchCallback} from './types';
+import {globalEffectQueue} from './global-queues.js';
+import type {BatchCallback} from './types.js';
 
 class Batch {
   static current?: Batch;

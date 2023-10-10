@@ -1,7 +1,7 @@
-import {assertEffectsCount} from './assert-helpers';
-import {createEffect, onCreateEffect, onDestroyEffect} from './effects-api';
+import {assertEffectsCount} from './assert-helpers.js';
+import {createEffect, onCreateEffect, onDestroyEffect} from './effects-api.js';
 
-import {Effect} from './Effect';
+import {Effect} from './Effect.js';
 
 describe('onCreateEffect', () => {
   beforeEach(() => {

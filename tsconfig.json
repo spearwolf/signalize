@@ -1,20 +1,15 @@
 {
-  "include": ["src"],
-
+  "include": ["src/**/*.ts"],
   "files": ["node_modules/jest-expect-message/types/index.d.ts"],
 
   "compilerOptions": {
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "target": "ESNext",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
 
-    "declaration": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
 
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-
-    "resolvePackageJsonExports": false,
-    "resolvePackageJsonImports": true,
-    "allowSyntheticDefaultImports": true,
+    "removeComments": true,
 
     "strict": true,
     "strictNullChecks": false,

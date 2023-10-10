@@ -19,7 +19,13 @@ jobs:
       - run: npm i --omit=optional
         name: Install dependencies
 
-      - run: npm run cbt
+      - run: npm run lint
+        name: Run lintings
+
+      - run: npm run prettier
+        name: Run prettier checks
+
+      - run: npm test
         name: Run tests
 
   deploy:
@@ -38,7 +44,7 @@ jobs:
       - run: npm i --omit=optional
         name: Install dependencies
 
-      - run: npm run prepack
+      - run: npm run dist
         name: Build package
 
       - run: npm run publish:pkg
