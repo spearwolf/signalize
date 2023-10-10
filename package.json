@@ -9,11 +9,11 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "default": "./lib/index.js",
+      "import": "./lib/index.js",
       "types": "./lib/index.d.ts"
     },
-    "decorators": {
-      "default": "./lib/decorators.js",
+    "./decorators": {
+      "import": "./lib/decorators.js",
       "types": "./lib/decorators.d.ts"
     }
   },
@@ -24,6 +24,7 @@
     "update": "npx npm-check --update",
     "docs:gists": "node scripts/createGistImages.cjs",
     "publish:pkg": "node scripts/publishPackage.cjs",
+    "checkPkgTypes": "attw --pack",
     "compile": "tsc --project tsconfig.lib.json",
     "clean": "rimraf build types tests dist lib",
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx",
@@ -44,6 +45,7 @@
     "world": "run-s -sn clean lint prettier:check compile test"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.12.1",
     "@babel/core": "^7.23.0",
     "@babel/preset-typescript": "^7.23.0",
     "@spearwolf/eventize": "^3.0.2",

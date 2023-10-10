@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## `v0.7.0`
+
+- the decorators are no longer included in the default export (index.js)
+  - to use the decorators, the user must import them from `@spearwolf/signalize/decorators'
+- fix package type definitions
+
 ## `v0.6.1`
 
 - no _commonjs_ format is delivered anymore
