@@ -28,7 +28,7 @@
     "test:build:watch": "tsc --project tsconfig.tests.json --watch",
     "dev": "run-s clean test:build test:build:watch",
     "test": "run-s eslint prettier:check test:build jest",
-    "cbt": "run-s clean build test",
+    "cbt": "run-s -sn clean build test",
     "bundle": "rollup -c",
     "dist": "run-s clean build",
     "prepare": "run-s dist",
@@ -45,7 +45,6 @@
     "@types/sinon": "^10.0.18",
     "@typescript-eslint/eslint-plugin": "^6.7.4",
     "@typescript-eslint/parser": "^6.7.4",
-    "carbon-now-cli": "^2.0.0",
     "core-js": "^3.33.0",
     "cross-env": "^7.0.3",
     "eslint": "^8.50.0",
@@ -64,7 +63,14 @@
     "tslib": "^2.6.2",
     "typescript": "^5.2.2"
   },
+  "optionalDependencies": {
+    "carbon-now-cli": "^2.0.0"
+  },
+  "peerDependencies": {
+    "@spearwolf/eventize": "^3.0.0"
+  },
   "homepage": "https://github.com/spearwolf/signalize/",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/spearwolf/signalize.git"
@@ -76,9 +82,5 @@
     "name": "Wolfger Schramm",
     "email": "wolfger@spearwolf.de",
     "url": "https://www.spearwolf.de"
-  },
-  "license": "Apache-2.0",
-  "peerDependencies": {
-    "@spearwolf/eventize": "^3.0.0"
   }
 }
