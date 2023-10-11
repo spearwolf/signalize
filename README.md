@@ -1,11 +1,10 @@
 # @spearwolf/signalize
 
+signals and effects for all ❗
+
 ![npm (scoped)](https://img.shields.io/npm/v/%40spearwolf/signalize)
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/spearwolf/signalize/main.yml)
 ![GitHub](https://img.shields.io/github/license/spearwolf/signalize)
-
-
-> __Signals__ and __effects__ for all❗
 
 ![signalize hero image](hero.png)
 
@@ -14,19 +13,19 @@ _@spearwolf/signalize_ is a library for creating __signals__, __effects__ and __
 It is a standalone library and has no dependencies to other frameworks like react, angular, etc.
 Since it is a pure javascript library without side effects or special environment requirements, it can be mixed and used together with other librariers / frameworks without conflict.
 
-The library targets modern browsers and javascript based environments.
-It is written in **typescript v5** and uses the new [ecmascript decorators](https://github.com/tc39/proposal-decorators).
+The library targets modern browsers and other javascript based environments.
+It is written in __typescript v5+__ and uses the new [tc39 ecmascript decorators](https://github.com/tc39/proposal-decorators) :rocket:
 
 # ⚙️ Install
 
 ```shell
-npm i @spearwolf/signalize
+npm install @spearwolf/signalize
 ```
 
-The package is now published as ES2022 and exported as unbundled ESM javascript modules
-(with type definitions also included).
+The package is now published as `ES2022` and exported as _unbundled_ `ESM`-_only_ javascript modules
+(with _type definitions_ and _source maps_ also included)
 
-Note: as no more exported commonjs modules are delivered, cjs consumers will need to use a dynamic import
+> ⚠️ Since version 0.7.0 _commonjs_ modules are no longer exported!
 
 | 🔎 Since version 0.5.0 there is also a [CHANGELOG](./CHANGELOG.md)
 
