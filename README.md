@@ -23,12 +23,12 @@ signals and effects for all ❗
 npm install @spearwolf/signalize
 ```
 
-The package is published as `ES2022` and exported as _unbundled_ `ESM`-_only_ javascript modules
-(with _type definitions_ and _source maps_ also included)
-
-> ⚠️ Since v0.7 _commonjs_ modules are no longer exported!
+Packaged as `ES2022` and exported as _unbundled_ ESM-only javascript modules.
+Type definitions and source maps also included.
 
 > 🔎 Since v0.5 there is also a [CHANGELOG](./CHANGELOG.md)
+
+> Since v0.7 _commonjs_ modules are no longer exported ❗
 
 # Overview 👀
 
