@@ -2,13 +2,13 @@
 
 signals and effects for all ❗
 
+![signalize hero image](hero.png)
+
 ![npm (scoped)](https://img.shields.io/npm/v/%40spearwolf/signalize)
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/spearwolf/signalize/main.yml)
 ![GitHub](https://img.shields.io/github/license/spearwolf/signalize)
 
-![signalize hero image](hero.png)
-
-_@spearwolf/signalize_ is a library for creating __signals__, __effects__ and __connections__.
+_@spearwolf/signalize_ is a javascript library for creating __signals__, __effects__ and __connections__.
 
 It is a standalone library and has no dependencies to other frameworks like react, angular, etc.
 Since it is a pure javascript library without side effects or special environment requirements, it can be mixed and used together with other librariers / frameworks without conflict.
@@ -25,9 +25,9 @@ npm install @spearwolf/signalize
 The package is now published as `ES2022` and exported as _unbundled_ `ESM`-_only_ javascript modules
 (with _type definitions_ and _source maps_ also included)
 
-> ⚠️ Since version 0.7.0 _commonjs_ modules are no longer exported!
+> ⚠️ Since v0.7 _commonjs_ modules are no longer exported!
 
-| 🔎 Since version 0.5.0 there is also a [CHANGELOG](./CHANGELOG.md)
+> 🔎 Since v0.5 there is also a [CHANGELOG](./CHANGELOG.md)
 
 # Overview 👀
 
