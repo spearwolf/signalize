@@ -32,7 +32,7 @@ Type definitions and source maps also included.
 
 # Overview 👀
 
-The whole API of _@spearwolf/signalize_ is about these three concepts:
+The whole API of `@spearwolf/signalize` is about ..
 
 - __signals__
   - like state variables with hidden superpowers
@@ -44,17 +44,14 @@ The whole API of _@spearwolf/signalize_ is about these three concepts:
   - which are basically _links_ between signals and functions
   - like the geometry node connections in blender or the node connections in blueprints of the unreal engine
 
-
 A __functional API__ is provided, as well as a __class-based API that uses decorators__.
 
-> :bangbang: You could think of signals as a kind of alternative callbacks/promises or as an event-based programming technique
-
-> 🔎 Under the hood the event-driven library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used &rarr; in fact, *__signals__ and __events__ can complement each other very well!*
+> 🔎 Under the hood the event-driven library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used!
 
 
 # 📖 Usage
 
-> ⚠️ While the library / API is already quite stable and almost completely tested, this documentation is still in an early and catastrophic state ... if you want to get an exact picture of the functionality of the library, you currently have no choice but to inspect the tests and the source code! You are welcome to ask directly/start a [discussion](https://github.com/spearwolf/signalize/discussions) if you want support :)
+> ⚠️ While the library / API is already quite stable and almost completely tested, this documentation is still in an early state ... if you want to get an exact picture of the functionality of the library, you currently have no choice but to inspect the tests and the source code! You are welcome to ask directly/start a [discussion](https://github.com/spearwolf/signalize/discussions) if you want :)
 
 ## Create Signals
 
