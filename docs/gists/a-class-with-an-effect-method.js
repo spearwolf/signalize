@@ -1,4 +1,4 @@
-import {signal, effect} from '@spearwolf/signalize';
+import {signal, effect} from '@spearwolf/signalize/decorators';
 
 class CheekyCalc {
   @signal() accessor a = 0;

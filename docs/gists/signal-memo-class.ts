@@ -1,4 +1,4 @@
-import {signal, memo} from '@spearwolf/signalize';
+import {signal, memo} from '@spearwolf/signalize/decorators';
 
 class Name {
   @signal() accessor firstName = '';
