@@ -1,4 +1,4 @@
-import {signal} from '@spearwolf/signalize';
+import {signal} from '@spearwolf/signalize/decorators';
 
 class App {
   @signal() accessor foo = 123;
