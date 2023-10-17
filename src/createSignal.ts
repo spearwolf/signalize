@@ -3,6 +3,7 @@ import type {
   CompareFunc,
   Signal,
   SignalCallback,
+  SignalFuncs,
   SignalParams,
   SignalReader,
   SignalValueParams,
@@ -153,7 +154,7 @@ export const getSignalInstance = <Type = unknown>(
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalReader<Type> | (() => Type) = undefined,
   params?: SignalParams<Type>,
-): [SignalReader<Type>, SignalWriter<Type>] {
+): SignalFuncs<Type> {
   let signal!: Signal<Type>;
 
   if (isSignal(initialValue)) {

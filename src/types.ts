@@ -47,3 +47,8 @@ export interface SignalValueParams {
 export interface SignalWriterParams<Type>
   extends SignalParams<Type>,
     SignalValueParams {}
+
+export type SignalFuncs<Type = unknown> = [
+  get: SignalReader<Type>,
+  set: SignalWriter<Type>,
+];
