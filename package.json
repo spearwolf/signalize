@@ -36,7 +36,7 @@
     "jest": "cross-env NODE_ENV=test jest",
     "jest:watch": "npm run jest -- --watch",
     "jest:debug": "cross-env NODE_ENV=test node --nolazy --inspect-brk ./node_modules/jest/bin/jest.js --runInBand --colors --verbose",
-    "test:compile": "tsc --project tsconfig.tests.json",
+    "test:compile": "rimraf tests && tsc --project tsconfig.tests.json",
     "test:compile:watch": "tsc --project tsconfig.tests.json --watch",
     "dev": "run-s -s clean test:compile test:compile:watch",
     "test": "run-s -sn test:compile jest",
