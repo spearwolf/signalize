@@ -2,12 +2,14 @@ import type {
   DestroyEffectCallback,
   EffectCallback,
   RunEffectCallback,
+  SignalReader,
   VoidCallback,
 } from './types.js';
 
 import {UniqIdGen} from './UniqIdGen.js';
 import {getCurrentBatch} from './batch.js';
 import {$createEffect, $destroyEffect, $destroySignal} from './constants.js';
+import {getSignalInstance} from './createSignal.js';
 import {
   globalDestroySignalQueue,
   globalEffectQueue,
@@ -17,6 +19,7 @@ import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 
 export interface EffectParams {
   autorun?: boolean;
+  dependencies?: SignalReader<any>[];
 }
 
 export class Effect {
@@ -44,6 +47,8 @@ export class Effect {
   autorun = true;
   shouldRun = true;
 
+  #dependencies?: SignalReader<unknown>[];
+
   #destroyed = false;
 
   /**
@@ -62,6 +67,7 @@ export class Effect {
     this.callback = callback;
 
     this.autorun = options?.autorun ?? true;
+    this.#dependencies = options?.dependencies;
 
     this.id = Effect.idGen.make();
 
@@ -133,8 +139,20 @@ export class Effect {
       this.runCleanupCallback();
       this.curChildEffectSlot = 0;
       this.shouldRun = false;
-      this.#nextCleanupCallback = runWithinEffect(this, this.callback);
+
+      if (this.hasStaticDependencies()) {
+        this.#nextCleanupCallback = this.callback() as VoidCallback;
+        for (const sigReader of this.#dependencies!) {
+          this.whenSignalIsRead(getSignalInstance(sigReader).id);
+        }
+      } else {
+        this.#nextCleanupCallback = runWithinEffect(this, this.callback);
+      }
     }
+  }
+
+  hasStaticDependencies() {
+    return this.#dependencies != null && this.#dependencies.length > 0;
   }
 
   /**

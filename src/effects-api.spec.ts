@@ -1,6 +1,6 @@
-import {createEffect, onDestroyEffect} from './effects-api.js';
-import {createSignal, destroySignal} from './createSignal.js';
 import {assertEffectsCount} from './assert-helpers.js';
+import {createSignal, destroySignal} from './createSignal.js';
+import {createEffect, onDestroyEffect} from './effects-api.js';
 
 describe('createEffect', () => {
   beforeEach(() => {
@@ -74,6 +74,48 @@ describe('createEffect', () => {
       a(); // yes, sure why not
       valB(b());
     });
+
+    expect(effectCallCount).toBe(1);
+    expect(valA).toBeCalledWith(123);
+    expect(valB).toBeCalledWith('abc');
+
+    setA(456);
+
+    expect(effectCallCount).toBe(2); // well, just to be really sure
+    expect(valA).toBeCalledWith(456);
+    expect(valB).toBeCalledWith('abc');
+
+    setB('def');
+
+    expect(effectCallCount).toBe(3);
+    expect(valA).toBeCalledWith(456);
+    expect(valB).toBeCalledWith('def');
+
+    setB('def'); // no change: no effect should be called here
+
+    expect(effectCallCount).toBe(3);
+
+    unsubscribe();
+  });
+
+  it('the effect callback is called again after calling a setter function (with static dependencies)', () => {
+    const [a, setA] = createSignal(123);
+    const [b, setB] = createSignal('abc');
+
+    const valA = jest.fn();
+    const valB = jest.fn();
+
+    let effectCallCount = 0;
+
+    const [, unsubscribe] = createEffect(
+      () => {
+        ++effectCallCount;
+        valA(a());
+        a(); // yes, sure why not
+        valB(b());
+      },
+      {dependencies: [a, b]},
+    );
 
     expect(effectCallCount).toBe(1);
     expect(valA).toBeCalledWith(123);
