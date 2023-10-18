@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## `v0.8.0`
+
+- the createEffect api was enhanced
+  - `createEffect(callback, [sigA, sigB, ..])`
+    - similar to react's createEffect hook, you can now (optionally) specify a dependency array. in the dependency array, you specify the signals that will execute the effect on change. the signals do not have to match the signals used in the effect callback. if such static dependencies are specified, the effect callback will no longer be executed automatically when you create the effect. it will only be executed later if at least one signal changes.
+
 ## `v0.7.0`
 
 - the decorators are no longer included in the default export (index.js)
