@@ -116,6 +116,8 @@ describe('createEffect', () => {
       },
       {dependencies: [a, b]},
     );
+    
+    // TODO first call?
 
     expect(effectCallCount).toBe(1);
     expect(valA).toBeCalledWith(123);
