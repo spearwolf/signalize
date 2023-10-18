@@ -7,9 +7,10 @@ import {
   saveEffectSubscriptionsCount,
   saveSignalDestroySubscriptionsCount,
 } from './assert-helpers.js';
-import {createEffect} from './effects-api.js';
 import {createMemo} from './createMemo.js';
 import {createSignal, destroySignal} from './createSignal.js';
+import {createEffect} from './effects-api.js';
+import {touch} from './touch.js';
 
 describe('destroySignal', () => {
   beforeEach(() => {
@@ -32,6 +33,10 @@ describe('destroySignal', () => {
     sigFoo((val) => {
       foo = val;
     });
+
+    expect(foo).toBe(0);
+
+    touch(sigFoo);
 
     expect(foo).toBe(666);
 

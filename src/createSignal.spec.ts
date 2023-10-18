@@ -7,6 +7,7 @@ import {
   unmuteSignal,
 } from './createSignal.js';
 import {createEffect} from './effects-api.js';
+import {touch} from './touch.js';
 
 describe('createSignal', () => {
   beforeEach(() => {
@@ -54,6 +55,10 @@ describe('createSignal', () => {
     const effect = jest.fn();
 
     signal(effect);
+
+    expect(effect).not.toHaveBeenCalled();
+
+    touch(signal);
 
     expect(effect).toBeCalledWith(666);
 
@@ -124,7 +129,7 @@ describe('createSignal', () => {
       foo = val;
     });
 
-    expect(foo).toBe(666);
+    expect(foo).toBe(0);
 
     setFoo(23);
 
