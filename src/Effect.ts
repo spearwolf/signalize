@@ -17,9 +17,11 @@ import {
 } from './global-queues.js';
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 
+export type EffectDeps = SignalReader<any>[];
+
 export interface EffectParams {
   autorun?: boolean;
-  dependencies?: SignalReader<any>[];
+  dependencies?: EffectDeps;
 }
 
 export class Effect {
@@ -69,23 +71,27 @@ export class Effect {
     this.autorun = options?.autorun ?? true;
     this.#dependencies = options?.dependencies;
 
+    // a batch will call the effect by id to run the effect
     this.id = Effect.idGen.make();
-
-    /** a batch will call the effect by id to run the effect */
     globalEffectQueue.on(this.id, 'recall', this);
 
     ++Effect.count;
   }
 
   static createEffect(
-    ...args:
-      | [callback: EffectCallback]
-      | [callback: EffectCallback, options: EffectParams]
-      | [options: EffectParams, callback: EffectCallback]
+    callback: EffectCallback,
+    optsOrDeps?: EffectParams | EffectDeps,
+    opts?: EffectParams,
   ): [RunEffectCallback, DestroyEffectCallback] {
-    const [callback, options] = (
-      typeof args[0] === 'function' ? args : [args[1], args[0]]
-    ) as [EffectCallback, EffectParams | undefined];
+    const dependencies = Array.isArray(optsOrDeps) ? optsOrDeps : undefined;
+
+    const options: EffectParams | undefined = dependencies
+      ? opts ?? {dependencies}
+      : (optsOrDeps as EffectParams | undefined);
+
+    if (options && dependencies) {
+      options.dependencies = dependencies;
+    }
 
     let effect: Effect | undefined;
 

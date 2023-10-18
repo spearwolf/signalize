@@ -107,16 +107,13 @@ describe('createEffect', () => {
 
     let effectCallCount = 0;
 
-    const [, unsubscribe] = createEffect(
-      () => {
-        ++effectCallCount;
-        valA(a());
-        a(); // yes, sure why not
-        valB(b());
-      },
-      {dependencies: [a, b]},
-    );
-    
+    const [, unsubscribe] = createEffect(() => {
+      ++effectCallCount;
+      valA(a());
+      a(); // yes, sure why not
+      valB(b());
+    }, [a, b]);
+
     // TODO first call?
 
     expect(effectCallCount).toBe(1);
