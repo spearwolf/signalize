@@ -10,7 +10,7 @@
   - the callback is no longer called as a dynamic effect
   - it only uses the original signal as a static effect dependency
 - introduce the type helper `SignalFuncs<Type>` &mdash; the return value type of `createSignal()`
-- the pre-compile step for jest is omitted, now ts-jest is used and jest can be called directly without any indirection :party:
+- the pre-compile step for jest is omitted, now ts-jest is used and jest can be called directly without any indirection 🥳
 
 ## `v0.7.0`
 
