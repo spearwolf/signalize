@@ -1,4 +1,5 @@
 import {createSignal} from './createSignal.js';
+import {touch} from './touch.js';
 
 describe('create signal with custom compare function', () => {
   it('works as expected', () => {
@@ -9,6 +10,10 @@ describe('create signal with custom compare function', () => {
     });
 
     signal(mock);
+
+    expect(mock).toBeCalledTimes(0);
+
+    touch(signal);
 
     expect(mock).toBeCalledTimes(1);
     expect(mock).toBeCalledWith([0, 0, 0]);

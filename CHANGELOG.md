@@ -5,6 +5,10 @@
 - the createEffect api was enhanced
   - `createEffect(callback, [sigA, sigB, ..])`
     - similar to react's createEffect hook, you can now (optionally) specify a dependency array. in the dependency array, you specify the signals that will execute the effect on change. the signals do not have to match the signals used in the effect callback. if such static dependencies are specified, the effect callback will no longer be executed automatically when you create the effect. it will only be executed later if at least one signal changes.
+- a signal reader callback is no longer called immediately ..
+  - only when the signal changes
+  - the callback is no longer called as a dynamic effect
+  - it only uses the original signal as a static effect dependency
 - introduce the type helper `SignalFuncs<Type>` &mdash; the return value type of `createSignal()`
 
 ## `v0.7.0`
