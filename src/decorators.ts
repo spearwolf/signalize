@@ -73,7 +73,9 @@ export function effect(options?: EffectDecoratorOptions) {
     return function (this: T, ...args: A): void {
       let effect = queryObjectEffect(this, name);
       if (effect == null) {
-        effect = createEffect({autorun}, () => target.call(this, ...args));
+        effect = createEffect(() => target.call(this, ...args), {
+          autorun,
+        });
         saveObjectEffect(this, name, effect);
       }
       return effect[0]();

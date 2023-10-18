@@ -21,7 +21,7 @@ describe('Effect -> autorun: false', () => {
       value = signal();
     });
 
-    const [run, unsubscribe] = createEffect({autorun: false}, effectCallback);
+    const [run, unsubscribe] = createEffect(effectCallback, {autorun: false});
 
     assertEffectsCount(1);
 
