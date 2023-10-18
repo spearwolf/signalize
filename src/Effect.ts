@@ -78,6 +78,16 @@ export class Effect {
     ++Effect.count;
   }
 
+  private hasStaticDependencies() {
+    return this.#dependencies != null && this.#dependencies.length > 0;
+  }
+
+  private saveSignalsFromDepenedencies() {
+    for (const sigReader of this.#dependencies!) {
+      this.whenSignalIsRead(getSignalInstance(sigReader).id);
+    }
+  }
+
   static createEffect(
     callback: EffectCallback,
     optsOrDeps?: EffectParams | EffectDeps,
@@ -109,7 +119,9 @@ export class Effect {
       globalEffectQueue.emit($createEffect, effect);
     }
 
-    if (effect.autorun) {
+    if (effect.hasStaticDependencies()) {
+      effect.saveSignalsFromDepenedencies();
+    } else if (effect.autorun) {
       effect.run();
     }
 
@@ -148,17 +160,10 @@ export class Effect {
 
       if (this.hasStaticDependencies()) {
         this.#nextCleanupCallback = this.callback() as VoidCallback;
-        for (const sigReader of this.#dependencies!) {
-          this.whenSignalIsRead(getSignalInstance(sigReader).id);
-        }
       } else {
         this.#nextCleanupCallback = runWithinEffect(this, this.callback);
       }
     }
-  }
-
-  hasStaticDependencies() {
-    return this.#dependencies != null && this.#dependencies.length > 0;
   }
 
   /**

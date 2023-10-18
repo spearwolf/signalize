@@ -99,7 +99,7 @@ describe('createEffect', () => {
   });
 
   it('the effect callback is called again after calling a setter function (with static dependencies)', () => {
-    const [a, setA] = createSignal(123);
+    const [a, setA] = createSignal(0);
     const [b, setB] = createSignal('abc');
 
     const valA = jest.fn();
@@ -114,7 +114,10 @@ describe('createEffect', () => {
       valB(b());
     }, [a, b]);
 
-    // TODO first call?
+    // IMPORTANT: we have a static dependency array, so when you create an effect, the effect callback is not called automatically
+    expect(effectCallCount).toBe(0);
+
+    setA(123);
 
     expect(effectCallCount).toBe(1);
     expect(valA).toBeCalledWith(123);
