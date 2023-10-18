@@ -3,6 +3,7 @@ import {createEffect} from './effects-api.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import type {SignalReader} from './types.js';
 
+// TODO add [optional] static dependencies
 export function createMemo<Type>(callback: () => Type): SignalReader<Type> {
   const [get, set] = createSignal<Type>();
   const [compute, unsubscribe] = createEffect(() => set(callback()), {

@@ -78,11 +78,11 @@ export class Effect {
     ++Effect.count;
   }
 
-  private hasStaticDependencies() {
+  private hasStaticDeps() {
     return this.#dependencies != null && this.#dependencies.length > 0;
   }
 
-  private saveSignalsFromDepenedencies() {
+  private saveSignalsFromDeps() {
     for (const sigReader of this.#dependencies!) {
       this.whenSignalIsRead(getSignalInstance(sigReader).id);
     }
@@ -119,8 +119,8 @@ export class Effect {
       globalEffectQueue.emit($createEffect, effect);
     }
 
-    if (effect.hasStaticDependencies()) {
-      effect.saveSignalsFromDepenedencies();
+    if (effect.hasStaticDeps()) {
+      effect.saveSignalsFromDeps();
     } else if (effect.autorun) {
       effect.run();
     }
@@ -158,7 +158,7 @@ export class Effect {
       this.curChildEffectSlot = 0;
       this.shouldRun = false;
 
-      if (this.hasStaticDependencies()) {
+      if (this.hasStaticDeps()) {
         this.#nextCleanupCallback = this.callback() as VoidCallback;
       } else {
         this.#nextCleanupCallback = runWithinEffect(this, this.callback);
