@@ -22,16 +22,22 @@ describe('connect signals', () => {
   });
 
   it('connect a signal with another signal (naive version)', () => {
-    const [sigA, setA] = createSignal(1);
+    const [sigA, setA] = createSignal(0);
     const [sigB, setB] = createSignal('foo');
     const [sigC, setC] = createSignal(-1);
 
-    expect(sigA()).toBe(1);
+    expect(sigA()).toBe(0);
     expect(sigB()).toBe('foo');
     expect(sigC()).toBe(-1);
 
     sigA((value) => setB(`foo:${value}`));
     sigA(setC);
+
+    expect(sigA()).toBe(0);
+    expect(sigB()).toBe('foo');
+    expect(sigC()).toBe(-1);
+
+    setA(1);
 
     expect(sigB()).toBe('foo:1');
     expect(sigC()).toBe(1);
@@ -414,12 +420,16 @@ describe('connect signals', () => {
 
   it('a connection should have a touch() feature just like signal does', () => {
     const [sigA, setA] = createSignal(1);
-    const [sigB] = createSignal(-1);
+    const [sigB, setB] = createSignal(0);
 
     const valueMock = jest.fn();
-
     const callingB = jest.fn();
+
     sigB(callingB);
+
+    expect(callingB).toHaveBeenCalledTimes(0);
+
+    setB(-1);
 
     expect(callingB).toHaveBeenCalledTimes(1);
     expect(callingB).toBeCalledWith(-1);
@@ -465,16 +475,14 @@ describe('connect signals', () => {
     sigB(callingB);
     sigB(callingC);
 
-    expect(callingB).toHaveBeenCalledTimes(1);
-    expect(callingC).toHaveBeenCalledTimes(1);
-    expect(callingB).toBeCalledWith(-1);
-    expect(callingC).toBeCalledWith(-1);
+    expect(callingB).toHaveBeenCalledTimes(0);
+    expect(callingC).toHaveBeenCalledTimes(0);
 
     connect(sigA, sigB);
     connect(sigA, sigC);
 
-    expect(callingB).toHaveBeenCalledTimes(2);
-    expect(callingC).toHaveBeenCalledTimes(2);
+    expect(callingB).toHaveBeenCalledTimes(1);
+    expect(callingC).toHaveBeenCalledTimes(1);
 
     setA(666);
 
@@ -482,24 +490,24 @@ describe('connect signals', () => {
     expect(sigB()).toBe(666);
     expect(sigC()).toBe(666);
 
-    expect(callingB).toHaveBeenCalledTimes(3);
+    expect(callingB).toHaveBeenCalledTimes(2);
     expect(callingB).toBeCalledWith(666);
 
-    expect(callingC).toHaveBeenCalledTimes(3);
+    expect(callingC).toHaveBeenCalledTimes(2);
     expect(callingC).toBeCalledWith(666);
 
     setA(666);
 
-    expect(callingB).toHaveBeenCalledTimes(3);
-    expect(callingC).toHaveBeenCalledTimes(3);
+    expect(callingB).toHaveBeenCalledTimes(2);
+    expect(callingC).toHaveBeenCalledTimes(2);
 
     touch(sigA);
 
     expect(sigB()).toBe(666);
-    expect(callingB).toHaveBeenCalledTimes(4);
+    expect(callingB).toHaveBeenCalledTimes(3);
 
     expect(sigC()).toBe(666);
-    expect(callingC).toHaveBeenCalledTimes(4);
+    expect(callingC).toHaveBeenCalledTimes(3);
 
     destroySignal(sigA, sigB, sigC);
   });

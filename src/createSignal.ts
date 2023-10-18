@@ -44,7 +44,7 @@ const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
           readSignal(signal.id);
         }
         return callback(signal.value);
-      });
+      }, [signalReader as SignalReader<Type>]);
     } else if (!signal.destroyed) {
       signal.beforeReadFn?.(signal.id);
       readSignal(signal.id);
