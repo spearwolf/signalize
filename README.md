@@ -26,7 +26,7 @@ npm install @spearwolf/signalize
 Packaged as `ES2022` and exported as _unbundled_ ESM-only javascript modules.
 Type definitions and source maps also included.
 
-> 🔎 Since v0.5 there is also a [CHANGELOG](./CHANGELOG.md)
+> 🔎 Since v0.5 there is also a [CHANGELOG](CHANGELOG.md)
 
 > Since v0.7 _commonjs_ modules are no longer exported ❗
 
