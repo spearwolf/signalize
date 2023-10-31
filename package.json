@@ -1,6 +1,6 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.8.0-dev",
+  "version": "0.8.0",
   "description": "signals and effects for all",
   "type": "module",
   "main": "lib/index.js",
@@ -43,7 +43,7 @@
     "@arethetypeswrong/cli": "^0.12.1",
     "@babel/core": "^7.23.0",
     "@babel/preset-typescript": "^7.23.0",
-    "@spearwolf/eventize": "^3.0.2",
+    "@spearwolf/eventize": "^3.4.1",
     "@types/jest": "^29.5.6",
     "@types/node": "^20.8.2",
     "@types/sinon": "^10.0.18",
@@ -73,7 +73,7 @@
     "carbon-now-cli": "^2.0.0"
   },
   "peerDependencies": {
-    "@spearwolf/eventize": "^3.0.0"
+    "@spearwolf/eventize": "^3.4.1"
   },
   "homepage": "https://github.com/spearwolf/signalize/",
   "license": "Apache-2.0",
