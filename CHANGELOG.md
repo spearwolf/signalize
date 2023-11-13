@@ -1,9 +1,11 @@
 # CHANGELOG
 
-## _next_
+## `v0.9.0`
 
 - ensure that each object has its own signal instance when using the `@signal` decorator
 - add `name` and `readAsValue: true` options to `@signal` decorator
+- introduce `@signalReader({name: 'foo'})` class accessor decorator
+- export `getObjectSignalKeys(obj)` helper
 
 ## `v0.8.0`
 

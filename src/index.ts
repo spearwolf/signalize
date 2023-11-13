@@ -8,6 +8,7 @@ export {
   destroyEffects,
   destroySignals,
   destroySignalsAndEffects,
+  getObjectSignalKeys,
   queryObjectEffect,
   queryObjectSignal,
 } from './object-signals-and-effects.js';
