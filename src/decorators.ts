@@ -13,32 +13,44 @@ import {value as readSignalValue} from './value.js';
 // https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820
 
-export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'>;
+export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'> & {
+  name?: string | symbol;
+  readAsValue?: boolean;
+};
 
 export function signal<T>(options?: SignalDecoratorOptions<T>) {
   return function <C extends Object>(
     _target: ClassAccessorDecoratorTarget<C, T>,
     context: ClassAccessorDecoratorContext<C, T>,
   ): ClassAccessorDecoratorResult<C, T> {
+    const signalName = (options?.name ?? context.name) as keyof C;
+    const readAsValue = Boolean(options?.readAsValue ?? false);
+
     return {
       get(this: C) {
-        return queryObjectSignal(this, context.name as keyof C)?.() as T;
+        const signalReader = queryObjectSignal(this, signalName);
+        if (signalReader) {
+          return (
+            readAsValue ? readSignalValue(signalReader) : signalReader()
+          ) as T;
+        }
+        return undefined;
       },
 
       set(this: C, value: T) {
-        getSignalInstance(
-          queryObjectSignal(this, context.name as keyof C),
-        )?.writer(value as any);
+        getSignalInstance(queryObjectSignal(this, signalName))?.writer(
+          value as any,
+        );
       },
 
       init(this: C, value: T): T {
-        const [getSignal, setSignal] = createSignal<T>(
+        const [readSignal, writeSignal] = createSignal<T>(
           undefined,
           options as any,
         );
-        saveObjectSignal(this, context.name, getSignal);
-        setSignal(value);
-        return readSignalValue(getSignal);
+        saveObjectSignal(this, signalName as string | symbol, readSignal);
+        writeSignal(value);
+        return readSignalValue(readSignal);
       },
     };
   };

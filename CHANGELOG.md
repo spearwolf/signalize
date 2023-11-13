@@ -3,6 +3,7 @@
 ## _next_
 
 - ensure that each object has its own signal instance when using the `@signal` decorator
+- add `name` and `readAsValue: true` options to `@signal` decorator
 
 ## `v0.8.0`
 
