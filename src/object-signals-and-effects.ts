@@ -31,6 +31,16 @@ export const queryObjectSignals = <O extends object>(
   return undefined;
 };
 
+export const getObjectSignalKeys = <O extends object>(
+  obj: O,
+): (string | symbol)[] | undefined => {
+  const signals = globalObjectSignalsAndEffects.get(obj)?.signals;
+  if (signals) {
+    return Object.keys(signals);
+  }
+  return undefined;
+};
+
 export const saveObjectSignal = (
   obj: any,
   name: string | symbol,

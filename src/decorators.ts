@@ -13,9 +13,24 @@ import {value as readSignalValue} from './value.js';
 // https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820
 
-export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'> & {
+export type SignalReaderDecoratorOptions = {
   name?: string | symbol;
-  readAsValue?: boolean;
+};
+
+export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'> &
+  SignalReaderDecoratorOptions & {
+    readAsValue?: boolean;
+  };
+
+const extractSignalName = (name: string | symbol) => {
+  if (typeof name === 'symbol') {
+    return name;
+  }
+  const len = name.length;
+  if (len > 1 && name[len - 1] === '$') {
+    return name.slice(0, len - 1);
+  }
+  return name;
 };
 
 export function signal<T>(options?: SignalDecoratorOptions<T>) {
@@ -23,7 +38,8 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
     _target: ClassAccessorDecoratorTarget<C, T>,
     context: ClassAccessorDecoratorContext<C, T>,
   ): ClassAccessorDecoratorResult<C, T> {
-    const signalName = (options?.name ?? context.name) as keyof C;
+    const signalName = (options?.name ??
+      extractSignalName(context.name)) as keyof C;
     const readAsValue = Boolean(options?.readAsValue ?? false);
 
     return {
@@ -51,6 +67,24 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
         saveObjectSignal(this, signalName as string | symbol, readSignal);
         writeSignal(value);
         return readSignalValue(readSignal);
+      },
+    };
+  };
+}
+
+export function signalReader<T, SR = SignalReader<T>>(
+  options?: SignalReaderDecoratorOptions,
+) {
+  return function <C extends Object>(
+    _target: ClassAccessorDecoratorTarget<C, SR>,
+    context: ClassAccessorDecoratorContext<C, SR>,
+  ): ClassAccessorDecoratorResult<C, SR> {
+    const signalName = (options?.name ??
+      extractSignalName(context.name)) as keyof C;
+
+    return {
+      get(this: C) {
+        return queryObjectSignal(this, signalName) as SR;
       },
     };
   };
@@ -99,6 +133,6 @@ export function effect(options?: EffectDecoratorOptions) {
   };
 }
 
-// TODO create a slot() class method decorator!
+// TODO create a slot() class method decorator??
 // - slots are regulary methods that emit an event (signal value) to the eventize(object-instance) when called
 // - slots should be able to be used as connection target
