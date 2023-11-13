@@ -1,3 +1,5 @@
+import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
+import {memo, signal} from './decorators.js';
 import {
   createMemo,
   destroySignal,
@@ -5,8 +7,6 @@ import {
   queryObjectSignal,
   value,
 } from './index.js';
-import {memo, signal} from './decorators.js';
-import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 
 describe('@signal is a class accessor decorator', () => {
   beforeEach(() => {
@@ -75,6 +75,46 @@ describe('@signal is a class accessor decorator', () => {
     expect(foo.foo).toBe(4);
     expect(foo.bar()).toBe(104);
 
+    destroySignals(foo);
+  });
+
+  it('each object has its on signal instance', () => {
+    class Foo {
+      @signal() accessor foo = 1;
+    }
+
+    const foo = new Foo();
+    expect(foo.foo).toBe(1);
+    assertSignalsCount(1, 'after new Foo');
+
+    const foo2 = new Foo();
+    expect(foo2.foo).toBe(1);
+    assertSignalsCount(2, 'after new Foo (2)');
+
+    const fooSignal = queryObjectSignal(foo, 'foo');
+    const foo2Signal = queryObjectSignal(foo2, 'foo');
+
+    expect(fooSignal).toBeDefined();
+    expect(foo2Signal).toBeDefined();
+    expect(fooSignal).not.toBe(foo2Signal);
+
+    const onFoo = jest.fn();
+    const onFoo2 = jest.fn();
+
+    fooSignal(onFoo);
+    foo2Signal(onFoo2);
+
+    foo.foo = 123;
+    expect(onFoo).toHaveBeenCalledTimes(1);
+    expect(onFoo2).not.toBeCalled();
+
+    foo2.foo = 456;
+    expect(onFoo2).toHaveBeenCalledTimes(1);
+
+    expect(foo.foo).toBe(123);
+    expect(foo2.foo).toBe(456);
+
+    destroySignals(foo2);
     destroySignals(foo);
   });
 });

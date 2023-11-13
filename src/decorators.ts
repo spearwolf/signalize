@@ -1,5 +1,5 @@
 import {createMemo} from './createMemo.js';
-import {createSignal} from './createSignal.js';
+import {createSignal, getSignalInstance} from './createSignal.js';
 import {createEffect} from './effects-api.js';
 import {
   queryObjectEffect,
@@ -8,7 +8,7 @@ import {
   saveObjectSignal,
 } from './object-signals-and-effects.js';
 import type {SignalParams, SignalReader} from './types.js';
-import {value as signalValue} from './value.js';
+import {value as readSignalValue} from './value.js';
 
 // https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820
@@ -16,25 +16,29 @@ import {value as signalValue} from './value.js';
 export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'>;
 
 export function signal<T>(options?: SignalDecoratorOptions<T>) {
-  return function <C>(
+  return function <C extends Object>(
     _target: ClassAccessorDecoratorTarget<C, T>,
     context: ClassAccessorDecoratorContext<C, T>,
   ): ClassAccessorDecoratorResult<C, T> {
-    const [getSignal, setSignal] = createSignal<T>(undefined, options as any);
-
     return {
       get(this: C) {
-        return getSignal();
+        return queryObjectSignal(this, context.name as keyof C)?.() as T;
       },
 
       set(this: C, value: T) {
-        setSignal(value);
+        getSignalInstance(
+          queryObjectSignal(this, context.name as keyof C),
+        )?.writer(value as any);
       },
 
       init(this: C, value: T): T {
+        const [getSignal, setSignal] = createSignal<T>(
+          undefined,
+          options as any,
+        );
         saveObjectSignal(this, context.name, getSignal);
         setSignal(value);
-        return signalValue(getSignal);
+        return readSignalValue(getSignal);
       },
     };
   };

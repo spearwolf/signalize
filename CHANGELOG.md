@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## _next_
+
+- ensure that each object has its own signal instance when using the `@signal` decorator
+
 ## `v0.8.0`
 
 - the createEffect api was enhanced
