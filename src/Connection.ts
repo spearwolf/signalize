@@ -4,14 +4,17 @@ import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {queryObjectSignals} from './object-signals-and-effects.js';
 import type {Signal, SignalReader} from './types.js';
 
-const globalSignalConnections = new WeakMap<
-  Signal<unknown>,
-  Set<Connection<unknown>>
->();
+/**
+ * global map of all connections per signal
+ */
+const g_sigConnects = new WeakMap<Signal<unknown>, Set<Connection<unknown>>>();
 
 export type ConnectionTargetType = object | Function;
 
-const globalConnectionTargets = new WeakMap<
+/**
+ * global map of all connections per object/function
+ */
+const g_otherConnects = new WeakMap<
   ConnectionTargetType,
   Set<Connection<unknown>>
 >();
@@ -51,12 +54,12 @@ export class Connection<T> extends Eventize {
   static #attachToSignal(connection: Connection<any>): void {
     if (!connection.isDestroyed) {
       const signal = connection.#source;
-      let connections = globalSignalConnections.get(signal);
+      let connections = g_sigConnects.get(signal);
       if (connections) {
         connections.add(connection);
       } else {
         connections = new Set([connection]);
-        globalSignalConnections.set(signal, connections);
+        g_sigConnects.set(signal, connections);
       }
     }
   }
@@ -64,11 +67,11 @@ export class Connection<T> extends Eventize {
   static #detachFromSignal(connection: Connection<any>): void {
     if (!connection.isDestroyed) {
       const signal = connection.#source;
-      const connections = globalSignalConnections.get(signal);
+      const connections = g_sigConnects.get(signal);
       if (connections) {
         connections.delete(connection);
         if (connections.size === 0) {
-          globalSignalConnections.delete(signal);
+          g_sigConnects.delete(signal);
         }
       }
     }
@@ -79,12 +82,12 @@ export class Connection<T> extends Eventize {
     connection: Connection<any>,
   ): void {
     if (!connection.isDestroyed) {
-      let connections = globalConnectionTargets.get(target);
+      let connections = g_otherConnects.get(target);
       if (connections) {
         connections.add(connection);
       } else {
         connections = new Set([connection]);
-        globalConnectionTargets.set(target, connections);
+        g_otherConnects.set(target, connections);
       }
     }
   }
@@ -94,11 +97,11 @@ export class Connection<T> extends Eventize {
     connection: Connection<any>,
   ): void {
     if (!connection.isDestroyed) {
-      const connections = globalConnectionTargets.get(target);
+      const connections = g_otherConnects.get(target);
       if (connections) {
         connections.delete(connection);
         if (connections.size === 0) {
-          globalConnectionTargets.delete(target);
+          g_otherConnects.delete(target);
         }
       }
     }
@@ -107,13 +110,13 @@ export class Connection<T> extends Eventize {
   static findConnectionsBySignal(
     signalReader: SignalReader<any>,
   ): Set<Connection<unknown>> | undefined {
-    return globalSignalConnections.get(getSignalInstance(signalReader));
+    return g_sigConnects.get(getSignalInstance(signalReader));
   }
 
   static findConnectionsByTarget(
     target: ConnectionTargetType,
   ): Connection<unknown>[] | undefined {
-    const connections = globalConnectionTargets.get(target);
+    const connections = g_otherConnects.get(target);
     return connections ? Array.from(connections) : undefined;
   }
 
@@ -146,7 +149,7 @@ export class Connection<T> extends Eventize {
     source: SignalReader<C>,
     target: ConnectionTarget<C>,
   ): Connection<C> | undefined {
-    const connectionsBySignal = globalSignalConnections.get(
+    const connectionsBySignal = g_sigConnects.get(
       getSignalInstance(source) as Signal<unknown>,
     );
     if (connectionsBySignal != null) {
