@@ -59,14 +59,22 @@ export function connect<
 ): Connection<Type>;
 
 export function connect(source: any, target: any) {
+  // === Connection :: source ===
+  const conSource = Array.isArray(source)
+    ? queryObjectSignal(...(source as [any, any]))
+    : source;
+
   const isObjectTarget = Array.isArray(target);
-  return new Connection(
-    Array.isArray(source)
-      ? queryObjectSignal(...(source as [any, any]))
-      : source,
-    isObjectTarget
-      ? queryObjectSignal(...(target as [any, any])) ?? target
-      : target,
-    isObjectTarget ? (target as [object, any])[0] : target,
-  );
+
+  // === Connection :: target ===
+  const conTarget = isObjectTarget
+    ? queryObjectSignal(...(target as [any, any])) ?? target
+    : target;
+
+  // === Connection :: connectionTarget ===
+  const conConnectionTarget = isObjectTarget
+    ? (target as [object, any])[0]
+    : target;
+
+  return new Connection(conSource, conTarget, conConnectionTarget);
 }
