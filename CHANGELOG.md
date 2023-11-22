@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `v0.10.1`
+
+- fix `@effect` decorator types
+
 ## `v0.10.0`
 
 - the `@effect` decorator now supports the specification of _static_ signal dependencies (via `signal` or `deps` options)

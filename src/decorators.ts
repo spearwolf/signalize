@@ -134,10 +134,10 @@ export function effect(options?: EffectDecoratorOptions) {
   const autostart = hasDeps ? options?.autostart ?? true : true;
 
   return function <T, A extends any[]>(
-    target: (this: T, ...args: A) => void,
-    {name}: ClassMethodDecoratorContext<T, (this: T, ...args: A) => void>,
+    target: (this: T, ...args: A) => any,
+    {name}: ClassMethodDecoratorContext<T, (this: T, ...args: A) => any>,
   ) {
-    return function (this: T, ...args: A): void {
+    return function (this: T, ...args: A): any {
       let effect = queryObjectEffect(this, name);
       if (effect == null) {
         const params: EffectParams = {autorun};
