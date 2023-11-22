@@ -1,3 +1,4 @@
+import {EffectParams} from './Effect.js';
 import {createMemo} from './createMemo.js';
 import {createSignal, getSignalInstance} from './createSignal.js';
 import {createEffect} from './effects-api.js';
@@ -26,9 +27,9 @@ const extractSignalName = (name: string | symbol) => {
   if (typeof name === 'symbol') {
     return name;
   }
-  const len = name.length;
-  if (len > 1 && name[len - 1] === '$') {
-    return name.slice(0, len - 1);
+  const idx = name.indexOf('$');
+  if (idx >= 0) {
+    return name.slice(0, idx);
   }
   return name;
 };
@@ -109,12 +110,28 @@ export function memo() {
   };
 }
 
-export interface EffectDecoratorOptions {
+export type HasSignalType = {signal?: string | symbol; autostart?: boolean};
+export type HasDepsType = {deps?: (string | symbol)[]; autostart?: boolean};
+
+export type EffectDecoratorOptions = (HasSignalType | HasDepsType) & {
+  /**
+   * if deactivated, the effect is not executed automatically when the dependencies change.
+   * in this case, the effect must be called explicitly in order to be executed (of course only if the dependencies have changed).
+   */
   autorun?: boolean;
-}
+};
 
 export function effect(options?: EffectDecoratorOptions) {
   const autorun = options?.autorun ?? true;
+
+  const deps: (string | symbol)[] | undefined =
+    ((options as HasSignalType)?.signal
+      ? [(options as HasSignalType).signal]
+      : undefined) ?? (options as HasDepsType)?.deps;
+
+  const hasDeps = deps != null && deps.length > 0;
+
+  const autostart = hasDeps ? options?.autostart ?? true : true;
 
   return function <T, A extends any[]>(
     target: (this: T, ...args: A) => void,
@@ -123,16 +140,33 @@ export function effect(options?: EffectDecoratorOptions) {
     return function (this: T, ...args: A): void {
       let effect = queryObjectEffect(this, name);
       if (effect == null) {
-        effect = createEffect(() => target.call(this, ...args), {
-          autorun,
-        });
+        const params: EffectParams = {autorun};
+        if (hasDeps) {
+          const readers: SignalReader<any>[] = deps
+            .map((signalName) => queryObjectSignal(this as any, signalName))
+            .filter(Boolean);
+          if (readers.length !== deps.length) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              'unknown object signals:',
+              deps.filter(
+                (signalName) => !queryObjectSignal(this as any, signalName),
+              ),
+            );
+          }
+          effect = createEffect(
+            () => target.call(this, ...args),
+            readers,
+            params,
+          );
+        } else {
+          effect = createEffect(() => target.call(this, ...args), params);
+        }
         saveObjectEffect(this, name, effect);
       }
-      return effect[0]();
+      if (autostart) {
+        effect[0]();
+      }
     };
   };
 }
-
-// TODO create a slot() class method decorator??
-// - slots are regulary methods that emit an event (signal value) to the eventize(object-instance) when called
-// - slots should be able to be used as connection target

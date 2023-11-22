@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## `v0.10.0`
+
+- the `@effect` decorator now supports the specification of _static_ signal dependencies (via `signal` or `deps` options)
+  - in this case, you can use the `autostart: false` option to control whether the effect is executed immediately when the effect method is called for the first time - or only later when one of the static signal dependencies changes
+  - by default (if it is not specified), then `autostart` is activated
+- if no name is specified in the `@signalReader` decorator, then the name is automatically determined from the accessor field name. with the special feature that the field name is cut off at the end if the field has a `$` in the name. for example, the signal name `foo` is extracted from the field name `foo$`
+
 ## `v0.9.0`
 
 - ensure that each object has its own signal instance when using the `@signal` decorator
