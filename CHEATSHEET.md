@@ -67,7 +67,7 @@ obj.xyz = 456;       // set value to 456
 
 ## Read
 
-- `λ()` returns the value of the signal. If this is called up within a dynamic effect, the effect remembers this signal and saves it as a dependent signal.
+- `λ()` returns the value of the signal. If this is called up within a dynamic effect, the effect remembers this signal and marks it as a dependent signal.
 - `value(λ)` returns the value of the signal. in contrast to the previous variant, however, no effect is notified here. it really only returns the value, there are no side effects.
 - `beQuiet(callback)` executes the callback immediately. if a signal is read out within the callback, this is done without notifying an active dynamic effect. it does not matter whether the signal is read out directly or with the `value()` helper.
 
@@ -76,7 +76,7 @@ obj.xyz = 456;       // set value to 456
 
 - `setλ(value)` sets a new signal value. if the value changes (this is normally simply checked using the `===` operator), all effects that have marked this signal as a dependency are executed immediately.
 - `touch(λ)` does not change the value of the signal. however, all dependent effects are still notified and executed.
-- `batch(callback)` executes the callback immediately. if values are changed within the callback signal, the values are changed immediately - but any dependent effects are only executed once with a delay after the end of the callback. this prevents effects with multiple dependencies from being triggered multiple times if several signals are written.
+- `batch(callback)` executes the callback immediately. if values are changed within the callback signal, the values are changed immediately - but any dependent effects are only executed once after the end of the callback. this prevents effects with multiple dependencies from being triggered multiple times if several signals are written.
 
 
 ## Destroy
@@ -101,7 +101,7 @@ obj.xyz = 456;       // set value to 456
 
 ### Dynamic Effects
 
-- `[run, destroy] = createEffect(callback)`
+- `[, destroy] = createEffect(callback)`
 - `[run, destroy] = createEffect(callback, {autorun: false})`
 
 
