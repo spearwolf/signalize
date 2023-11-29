@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## `v0.11.0`
+
+- add the `beQuiet()` helper for dynamic effects. within the beQuiet callback, an active dynamic effect will not be noticed when a signal is read.
+- add another test to demonstrate the dynamic nature of effects
+
 ## `v0.10.1`
 
 - fix `@effect` decorator types

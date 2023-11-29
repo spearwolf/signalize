@@ -1,5 +1,6 @@
 export * from './Connection.js';
 export {batch} from './batch.js';
+export * from './bequiet.js';
 export {connect} from './connect.js';
 export * from './createMemo.js';
 export * from './createSignal.js';
