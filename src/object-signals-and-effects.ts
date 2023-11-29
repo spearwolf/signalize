@@ -41,6 +41,7 @@ export const getObjectSignalKeys = <O extends object>(
   return undefined;
 };
 
+// TODO remove from public API
 export const saveObjectSignal = (
   obj: any,
   name: string | symbol,
@@ -57,9 +58,11 @@ export const saveObjectSignal = (
   }
 };
 
+// TODO remove from public API
 export const queryObjectEffect = (obj: any, name: string | symbol) =>
   globalObjectSignalsAndEffects.get(obj)?.effects[name];
 
+// TODO remove from public API
 export const saveObjectEffect = (
   obj: any,
   name: string | symbol,
@@ -76,6 +79,7 @@ export const saveObjectEffect = (
   }
 };
 
+// TODO support signal-readers as well
 export function destroySignals(...objects: any[]): void {
   for (const obj of objects) {
     if (globalObjectSignalsAndEffects.has(obj)) {
@@ -102,6 +106,7 @@ export function destroyEffects(...objects: any[]): void {
   }
 }
 
+// TODO support signal-readers as well
 export function destroySignalsAndEffects(...objects: any[]): void {
   for (const obj of objects) {
     if (globalObjectSignalsAndEffects.has(obj)) {

@@ -5,10 +5,12 @@ import {globalEffectQueue} from './global-queues.js';
 export const createEffect: typeof Effect.createEffect = (...args) =>
   Effect.createEffect(...args);
 
+// TODO remove from public API
 export const onCreateEffect = (...args: unknown[]) =>
   // @ts-ignore
   globalEffectQueue.on($createEffect, ...args);
 
+// TODO remove from public API
 export const onDestroyEffect = (...args: unknown[]) =>
   // @ts-ignore
   globalEffectQueue.on($destroyEffect, ...args);

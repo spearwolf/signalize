@@ -6,7 +6,7 @@ export type BatchCallback = VoidCallback;
 export type RunEffectCallback = VoidCallback;
 export type DestroyEffectCallback = VoidCallback;
 export type CompareFunc<Type> = (a: Type, b: Type) => boolean;
-export type BeforeReadFunc = (id: symbol) => void;
+export type BeforeReadFunc = () => void;
 
 export interface Signal<Type> {
   id: symbol;

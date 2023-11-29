@@ -49,7 +49,7 @@ const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
         return callback(signal.value);
       }, [signalReader as SignalReader<Type>]);
     } else if (!signal.destroyed) {
-      signal.beforeReadFn?.(signal.id);
+      signal.beforeReadFn?.();
       readSignal(signal.id);
     }
     return signal.value;
@@ -119,6 +119,7 @@ class SignalImpl<Type> implements Signal<Type> {
         this.lazy = false;
       }
       if (!this.muted && !this.destroyed) {
+        // TODO beQuiet ?
         writeSignal(this.id, this.#value);
         return;
       }
