@@ -10,6 +10,7 @@ export function createMemo<Type>(callback: () => Type): SignalReader<Type> {
     autorun: false,
   });
   const signal = getSignalInstance(get);
+  // TODO beQuiet ?
   signal.beforeReadFn = compute;
   globalDestroySignalQueue.once(signal.id, unsubscribe);
   return get;
