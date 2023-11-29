@@ -285,6 +285,4 @@ On the first call the _memo_ callback is always executed, on subsequent calls th
 
 _more docs coming!!_
 
-_...TBD..._
-
-[see old README for more infos](./README-legacy.md)
+[see CHEATSHEET more infos](./CHEATSHEET.md)

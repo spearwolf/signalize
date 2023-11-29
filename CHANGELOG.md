@@ -69,3 +69,22 @@
 - remove `type=module` from package.json
   - instead, use `*.mjs` file extension for _esm_ output
 - introduce CHANGELOG 😉
+
+## `0.4.0` (2023-03-02)
+
+- upgrade to typescript@5
+  - refactor build pipeline
+- mute, unmute and destroy signals
+  - `muteSignal(get)`
+  - `unmuteSignal(get)`
+  - `destroySignal(get)`
+- fix effect cleanup callback
+  - if an effect is executed again, the cleanup callback from the last effect is called first (the behavior is similar to the react.useEffect() cleanup function)
+- add `getEffectsCount()` and `onDestroyEffect()` helpers
+- auto cleanup/unsubscription of effects and memos when all their signals are destroyed
+- change signature of the `createEffect()` helper: an array with a _run_ and _unsubscribe_ function is now returned
+- refactor child effects
+
+## `0.3.2` (2023-02-22)
+
+- typescript: export all types
