@@ -59,6 +59,44 @@ describe('createEffect', () => {
     unsubscribe();
   });
 
+  it('dynamic effects only listen to the signals they actually read', () => {
+    const [a, setA] = createSignal(123);
+    const [b, setB] = createSignal('abc');
+
+    let valA: number;
+    let valB: string;
+    let effectCallCount = 0;
+
+    const [, unsubscribe] = createEffect(() => {
+      ++effectCallCount;
+      valA = a();
+      if (valA === 666) {
+        valB = b();
+      }
+    });
+
+    expect(effectCallCount).toBe(1);
+    expect(valA).toBe(123);
+    expect(valB).toBeUndefined();
+
+    setB('def'); // no effect, because the signal was never read
+
+    expect(effectCallCount).toBe(1);
+
+    setA(666); // re-run effect
+
+    expect(effectCallCount).toBe(2);
+    expect(valA).toBe(666);
+    expect(valB).toBe('def');
+
+    setB('ghi'); // now the effect is executed
+
+    expect(effectCallCount).toBe(3);
+    expect(valB).toBe('ghi');
+
+    unsubscribe();
+  });
+
   it('the effect callback is called again after calling a setter function', () => {
     const [a, setA] = createSignal(123);
     const [b, setB] = createSignal('abc');

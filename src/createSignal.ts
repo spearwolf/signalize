@@ -12,6 +12,7 @@ import type {
 } from './types.js';
 
 import {UniqIdGen} from './UniqIdGen.js';
+import {isQuiet} from './bequiet.js';
 import {$signal} from './constants.js';
 import {createEffect} from './effects-api.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
@@ -20,7 +21,9 @@ import {getCurrentEffect} from './globalEffectStack.js';
 const idCreator = new UniqIdGen('si');
 
 function readSignal(signalId: symbol) {
-  getCurrentEffect()?.whenSignalIsRead(signalId);
+  if (!isQuiet()) {
+    getCurrentEffect()?.whenSignalIsRead(signalId);
+  }
 }
 
 export function writeSignal(
