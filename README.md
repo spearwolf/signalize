@@ -53,6 +53,8 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
 
 > ⚠️ While the library / API is already quite stable and almost completely tested, this documentation is still in an early state ... if you want to get an exact picture of the functionality of the library, you currently have no choice but to inspect the tests and the source code! You are welcome to ask directly/start a [discussion](https://github.com/spearwolf/signalize/discussions) if you want :)
 
+[see CHEATSHEET for a quick overview of the API](./CHEATSHEET.md)
+
 ## Create Signals
 
 Signals are mutable states that can trigger effects when changed.
@@ -284,5 +286,3 @@ On the first call the _memo_ callback is always executed, on subsequent calls th
 ---
 
 _more docs coming!!_
-
-[see CHEATSHEET more infos](./CHEATSHEET.md)

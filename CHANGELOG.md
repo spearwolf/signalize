@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `v0.12.0`
+
+- `createEffect()` now also supports _async_ callbacks. if an async effect callback creates a cleanup callback as return value, it will be executed like a normal cleanup callback when the effect is re-executed
+
 ## `v0.11.0`
 
 - add the `beQuiet()` helper for dynamic effects. within the beQuiet callback, an active dynamic effect will not be noticed when a signal is read.

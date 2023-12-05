@@ -24,6 +24,9 @@ export interface EffectParams {
   dependencies?: EffectDeps;
 }
 
+const isThenable = (value: unknown): value is Promise<unknown> =>
+  value != null && typeof (value as Promise<unknown>).then === 'function';
+
 export class Effect {
   private static idGen = new UniqIdGen('ef');
 
@@ -205,8 +208,17 @@ export class Effect {
 
   private runCleanupCallback(): void {
     if (this.#nextCleanupCallback != null) {
-      this.#nextCleanupCallback();
+      const cleanupCallback = this.#nextCleanupCallback;
       this.#nextCleanupCallback = undefined;
+      if (isThenable(cleanupCallback)) {
+        Promise.resolve(cleanupCallback).then((cleanup) => {
+          if (typeof cleanup === 'function') {
+            cleanup();
+          }
+        });
+      } else {
+        cleanupCallback();
+      }
     }
   }
 
