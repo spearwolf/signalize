@@ -1,3 +1,4 @@
+import {eventize} from '@spearwolf/eventize';
 import {assertEffectsCount} from './assert-helpers.js';
 import {createSignal, destroySignal} from './createSignal.js';
 import {createEffect, onDestroyEffect} from './effects-api.js';
@@ -39,6 +40,48 @@ describe('createEffect', () => {
     destroySignal(a);
 
     expect(valA).toBe(42);
+  });
+
+  it('async returned effect cleanup callback is called', async () => {
+    const [a, setA] = createSignal(123);
+
+    const cleanupValues: number[] = [];
+    const ctrl = eventize({});
+
+    createEffect(async () => {
+      const val = a();
+      return () => {
+        cleanupValues.push(val);
+        ctrl.emit(`cleanup[${cleanupValues.length}]`);
+      };
+    });
+
+    expect(a()).toBe(123);
+    expect(cleanupValues).toHaveLength(0);
+
+    setA(666);
+
+    expect(a()).toBe(666);
+    expect(cleanupValues).toHaveLength(0);
+
+    await ctrl.onceAsync('cleanup[1]');
+
+    expect(cleanupValues).toEqual([123]);
+    cleanupValues.length = 0;
+
+    setA(667);
+    expect(a()).toBe(667);
+    expect(cleanupValues).toHaveLength(0);
+
+    setA(668);
+    expect(a()).toBe(668);
+    expect(cleanupValues).toHaveLength(0);
+
+    await ctrl.onceAsync('cleanup[2]');
+
+    expect(cleanupValues).toEqual([666, 667]);
+
+    destroySignal(a);
   });
 
   it('the effect callback is called synchronously and immediately', () => {
