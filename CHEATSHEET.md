@@ -48,6 +48,11 @@ obj.xyz$();          // => 123
 obj.xyz = 456;       // set value to 456
 ```
 
+> The use of `$` or `$$` as postfixes to variable names is optional and a matter of personal preference.
+> However, _signalize_ uses the convention that anything with a `$` prefix represents a _signal reader_ and not the value directly.
+> Btw. signal readers are also often represented as λ in this documentation.
+> Similarly, a `$$` postfix on the variable name indicates that it is a tuple of _signal reader_ and _signal writer_ (which is what `createSignal()` returns).
+
 #### API
 
 - `@signal() accessor Λ = initialValue`
