@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `v0.13.0`
+
+- upgrade build dependencies
+
 ## `v0.12.0`
 
 - `createEffect()` now also supports _async_ callbacks. if an async effect callback creates a cleanup callback as return value, it will be executed like a normal cleanup callback when the effect is re-executed

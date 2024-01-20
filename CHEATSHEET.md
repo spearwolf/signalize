@@ -116,12 +116,12 @@ obj.xyz = 456;       // set value to 456
 - `@effect() foo() { .. }`
 - `@effect(options) foo() { .. }`
 
-  | option      | type                          |
-  | ----------- | ----------------------------- |
-  | `deps`      | `Array< string` \| `symbol >` |
-  | `signal`    | `string` \| `symbol`          |
-  | `autostart` | `boolean`                     |
-  | `autorun`   | `boolean`                     |
+  | option      | type                          | description |
+  | ----------- | ----------------------------- | ----------- |
+  | `deps`      | `Array<` λ \| `string` \| `symbol` `>` | these are the signal dependencies that mark this as a _static_ effect. otherwise it is a _dynamic_ effect |
+  | `signal`    | λ \| `string` \| `symbol`          | is a shortcut that can be used when there is only one signal dependency |
+  | `autostart` | `boolean`                     | an effect becomes _active_ only after it is called manually for the first time. the signal dependencies are determined when the effect is executed. for a static effect, the dependencies are known beforehand, so you can choose whether the effect callback should be executed when the static effect is called for the first time, or only after the signal dependencies have been changed |
+  | `autorun`   | `boolean`                     | if disabled, the effect will not be executed automatically, but only when it is called manually (if it is called manually and the dependent signals have not changed, nothing will happen when it is called) |
 
 
 ### Memo
