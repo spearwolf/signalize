@@ -2,7 +2,10 @@
 
 ## `v0.13.0`
 
+_maintenance release_
+
 - upgrade build dependencies
+- remove unnecessary optional dependencies
 
 ## `v0.12.0`
 
