@@ -1,6 +1,6 @@
 # @spearwolf/signalize
 
-signals and effects for all ❗
+signals and effects for all 📢
 
 ![signalize hero image](hero.png)
 
