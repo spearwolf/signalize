@@ -30,8 +30,16 @@
   - `λ = createMemo(callback)`
   - `@memo() heavyCalc() { .. }`
 - **Connections**
-  - `connect()`
-  - `unconnect()`
+  - `γ = connect()`
+    - `γ.nextValue(): Promise`
+    - `γ.touch()`
+    - `γ.mute()`
+    - `γ.unmute()`
+    - `γ.toggle()`
+    - `γ.isMuted`
+    - `γ.destroy()`
+    - `γ.isDestroyed`
+  - `unconnect(γ)`
 - **utils**
   - `isSignal(λ)`
   - `muteSignal(λ)`
