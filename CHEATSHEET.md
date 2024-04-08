@@ -130,54 +130,48 @@ obj.xyz = 456;       // set value to 456
   | `name` | `string` \| `symbol` | Creates a readable object accessor that does not contain the signal value but the _signal reader_ (function). the name of the signal is optional. if not specified, then the internal signal name is assumed to be the same as the accessor name. if the accessor name ends with a `$`, then the `$` is stripped from the signal name. |
 
 
-## Read
+### Read
 
 - Calling the _signal reader_ without arguments `λ()` returns the value of the signal. If this _is called up within a dynamic effect_, the effect remembers this signal and marks it as a dependent signal.
 - `value(λ)` returns the value of the signal. in contrast to the previous variant, however, no effect is notified here. it really only returns the value, there are no side effects.
 - `beQuiet(callback)` executes the callback immediately. if a signal is read out within the callback, this is done without notifying an active dynamic effect. it does not matter whether the signal is read out directly or with the `value()` helper.
 
 
-## Write
+### Write
 
 - Calling the _signal writer_ `setλ(value)` sets a new signal value. if the value changes (this is normally simply checked using the `===` operator), all effects that have marked this signal as a dependency are executed immediately.
 - `touch(λ)` does not change the value of the signal. however, all dependent effects are still notified and executed.
 - `batch(callback)` executes the callback immediately. if values are changed within the callback signal, the values are changed immediately - but any dependent effects are only executed once after the end of the callback. this prevents effects with multiple dependencies from being triggered multiple times if several signals are written.
 
 
-## Destroy
+### Destroy
 
 - `destroySignal(λ)`
-- `destroySignals(...Ω)`
-- `destroySignalsAndEffects(...Ω)`
 
-
-## Other
-
-- `isSignal(λ): boolean`
-- `muteSignal(λ)`
-- `unmuteSignal(λ)`
-- `getSignalsCount(): number`
-- `queryObjectSignal(Ω, name)`
-- `queryObjectSignals(Ω)`
-- `getObjectSignalKeys(Ω)`
 
 
 ## Effects
 
-### Dynamic Effects
+Effects are functions that react to changes in signals and are executed automatically.
 
-- `[, destroy] = createEffect(callback)`
-- `[run, destroy] = createEffect(callback, {autorun: false})`
+Without effects, signals are nothing more than ordinary variables.
 
+With effects, you can easily control behavior changes in your application without having to write complex dependency or monitoring logic.
 
 ### Static Effects
 
 - `λ(callback)`
-- `[run, destroy] = createEffect(callback, {dependencies: ['foo', 'bar', ..]})`
-- `[run, destroy] = createEffect(callback, {dependencies, autorun: false})`
+- `[run, destroy] = createEffect(callback, [...dependencies])`
+- `[run, destroy] = createEffect(callback, options)`
 
 
-### Decorators
+### Dynamic Effects
+
+- `[, destroy] = createEffect(callback)`
+- `[run, destroy] = createEffect(callback, options)`
+
+
+### Object Decorator
 
 - `@effect() foo() { .. }`
 - `@effect(options) foo() { .. }`
@@ -188,26 +182,3 @@ obj.xyz = 456;       // set value to 456
   | `signal`    | λ \| `string` \| `symbol`          | is a shortcut that can be used when there is only one signal dependency |
   | `autostart` | `boolean`                     | an effect becomes _active_ only after it is called manually for the first time. the signal dependencies are determined when the effect is executed. for a static effect, the dependencies are known beforehand, so you can choose whether the effect callback should be executed when the static effect is called for the first time, or only after the signal dependencies have been changed |
   | `autorun`   | `boolean`                     | if disabled, the effect will not be executed automatically, but only when it is called manually (if it is called manually and the dependent signals have not changed, nothing will happen when it is called) |
-
-
-### Memo
-
-- `λ = createMemo(callback)`
-- `@memo() heavyCalc() { .. }`
-
-
-### Destroy
-
-- `destroyEffects(...Ω)`
-- `destroySignalsAndEffects(...Ω)`
-
-
-## Other
-
-- `getEffectsCount(): number`
-
-
-## Connections
-
-- `connect()`
-- `unconnect()`
