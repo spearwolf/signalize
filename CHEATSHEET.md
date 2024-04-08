@@ -1,8 +1,59 @@
+## Overview
+
+- **Signals**
+  - **Create**
+    - `[λ, setλ] = createSignal(0)`
+    - `@signal() accessor α = 0`
+    - `@signalReader() accessor β = 0`
+  - **Read**
+    - `λ()`
+    - `λ(effect)`
+    - `value(λ)`
+    - `beQuiet(callback)`
+  - **Write**
+    - `setλ(value)`
+    - `touch(λ)`
+    - `batch(callback)`
+  - **Destroy**
+    - `destroySignal(λ)`
+    - `destroySignals(...Ω)`
+    - `destroySignalsAndEffects(...Ω)`
+  - **Utils**
+    - `isSignal(λ)`
+    - `muteSignal(λ)`
+    - `unmuteSignal(λ)`
+    - `getSignalsCount()`
+    - `queryObjectSignal(Ω, name)`
+    - `queryObjectSignals(Ω)`
+    - `getObjectSignalKeys(Ω)`
+- **Effects**
+  - **dynamic**
+    - `[, destroy] = createEffect(callback)`
+    - `[run, destroy] = createEffect(callback, options)`
+  - **static**
+    - `λ(callback)`
+    - `[run, destroy] = createEffect(callback, [...dependencies])`
+    - `[run, destroy] = createEffect(callback, options)`
+  - **object decorators**
+    - `@effect() foo() { .. }`
+    - `@effect(options) foo() { .. }`
+- **Memo**
+  - `λ = createMemo(callback)`
+  - `@memo() heavyCalc() { .. }`
+- **Connections**
+  - `connect()`
+  - `unconnect()`
+- **Utils**
+  - `destroyEffects(...Ω)`
+  - `destroySignalsAndEffects(...Ω)`
+  - `getEffectsCount()`
+
+
 ## Signals
 
 Signals are mutable states that can trigger effects when changed.
 
-## Create
+### Create
 
 ```js
 import {createSignal} from '@spearwolf/signalize';
@@ -13,20 +64,22 @@ foo();           // read out the signal value => 'abc'
 setFoo('bar');   // write a new value
 ```
 
-### API
+#### API
 
 - `[λ, setλ] = createSignal()`
 - `[λ, setλ] = createSignal(initialValue)`
 - `[λ, setλ] = createSignal(initialValue, options)`
 
-  | option         | type                |
-  | -------------- | ------------------- |
-  | `lazy`         | `boolean`           |
-  | `compareFn`    | `(a, b) => boolean` |
-  | `beforeReadFn` | `() => void`        |
+##### createSignal options
+
+| option         | type                | description |
+| -------------- | ------------------- | ----------- |
+| `compareFn`    | `(a, b) => boolean` | Normally, the equality of two values is checked with the strict equality operator `===`. If you want to go a different way here, you can pass a function that does this. |
+| `lazy`         | `boolean`           | If this flag is set, it is assumed that the value is a function that _returns the current value_. This function is then executed _lazy_, i.e. only when the signal is read. |
+| `beforeReadFn` | `() => void`        | the name says it all: a callback that is executed before the signal value is read. not intended for everyday use, but quite useful for edge cases and testing. |
 
 
-### Decorators
+### Object Decorators
 
 ```js
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
@@ -48,38 +101,39 @@ obj.xyz$();          // => 123
 obj.xyz = 456;       // set value to 456
 ```
 
-> The use of `$` or `$$` as postfixes to variable names is optional and a matter of personal preference.
-> However, _signalize_ uses the convention that anything with a `$` prefix represents a _signal reader_ and not the value directly.
-> Btw. signal readers are also often represented as λ in this documentation.
+> 🔎 The use of `$` or `$$` as postfixes to variable names is optional and a matter of personal preference.
+> However, _signalize_ mostly uses the convention that anything with a `$` prefix represents a _signal reader_ and not the value directly.
 > Similarly, a `$$` postfix on the variable name indicates that it is a tuple of _signal reader_ and _signal writer_ (which is what `createSignal()` returns).
+> By the way, signal readers are often represented in this documentation as λ, β, γ or other greek letters.
 
 #### API
 
 - `@signal() accessor Λ = initialValue`
 - `@signal(options) accessor Λ = initialValue`
 
-  | option        | type                 |
-  | ------------- | -------------------- |
-  | `readAsValue` | `boolean`            |
-  | `name`        | `string` \| `symbol` |
+  | option        | type                 | description |
+  | ------------- | -------------------- | ----------- |
+  | `name`        | `string` \| `symbol` | The name of the signal. setting a name is optional, the signal name is usually the same as the _accessor_ name. each object has an internal map of its signals, where the key is the signal name. the name is used later, for example, for `queryObjectSignal()` or `destroySignal()` |
+  | `readAsValue` | `boolean`            | If enabled, the value of the signal will be read without informing the dependencies, just like the `value(λ)` helper does. However, if the signal was defined as an object accessor using the decorator, it is not possible to access the signal reader without the help of `@signalReader()` or `queryObjectSignal()`. |
 
+- `@signalReader() accessor Λ$`
 - `@signalReader(options) accessor Λ$`
 
-  | option | type                 |
-  | ------ | -------------------- |
-  | `name` | `string` \| `symbol` |
+  | option | type                 | description |
+  | ------ | -------------------- | ----------- |
+  | `name` | `string` \| `symbol` | Creates a readable object accessor that does not contain the signal value but the _signal reader_ (function). the name of the signal is optional. if not specified, then the internal signal name is assumed to be the same as the accessor name. if the accessor name ends with a `$`, then the `$` is stripped from the signal name. |
 
 
 ## Read
 
-- `λ()` returns the value of the signal. If this is called up within a dynamic effect, the effect remembers this signal and marks it as a dependent signal.
+- Calling the _signal reader_ without arguments `λ()` returns the value of the signal. If this _is called up within a dynamic effect_, the effect remembers this signal and marks it as a dependent signal.
 - `value(λ)` returns the value of the signal. in contrast to the previous variant, however, no effect is notified here. it really only returns the value, there are no side effects.
 - `beQuiet(callback)` executes the callback immediately. if a signal is read out within the callback, this is done without notifying an active dynamic effect. it does not matter whether the signal is read out directly or with the `value()` helper.
 
 
 ## Write
 
-- `setλ(value)` sets a new signal value. if the value changes (this is normally simply checked using the `===` operator), all effects that have marked this signal as a dependency are executed immediately.
+- Calling the _signal writer_ `setλ(value)` sets a new signal value. if the value changes (this is normally simply checked using the `===` operator), all effects that have marked this signal as a dependency are executed immediately.
 - `touch(λ)` does not change the value of the signal. however, all dependent effects are still notified and executed.
 - `batch(callback)` executes the callback immediately. if values are changed within the callback signal, the values are changed immediately - but any dependent effects are only executed once after the end of the callback. this prevents effects with multiple dependencies from being triggered multiple times if several signals are written.
 
@@ -112,6 +166,7 @@ obj.xyz = 456;       // set value to 456
 
 ### Static Effects
 
+- `λ(callback)`
 - `[run, destroy] = createEffect(callback, {dependencies: ['foo', 'bar', ..]})`
 - `[run, destroy] = createEffect(callback, {dependencies, autorun: false})`
 
