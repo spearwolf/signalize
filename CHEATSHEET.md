@@ -1,52 +1,50 @@
 ## Overview
 
 - **Signals**
-  - **Create**
-    - `[λ, setλ] = createSignal(0)`
-    - `@signal() accessor α = 0`
-    - `@signalReader() accessor β = 0`
-  - **Read**
+  - **create**
+    - `[λ, setλ] = createSignal()`
+    - `@signal() accessor α`
+    - `@signalReader() accessor β`
+  - **read**
     - `λ()`
     - `λ(effect)`
     - `value(λ)`
     - `beQuiet(callback)`
-  - **Write**
+  - **write**
     - `setλ(value)`
     - `touch(λ)`
     - `batch(callback)`
-  - **Destroy**
+  - **destroy**
     - `destroySignal(λ)`
-    - `destroySignals(...Ω)`
-    - `destroySignalsAndEffects(...Ω)`
-  - **Utils**
-    - `isSignal(λ)`
-    - `muteSignal(λ)`
-    - `unmuteSignal(λ)`
-    - `getSignalsCount()`
-    - `queryObjectSignal(Ω, name)`
-    - `queryObjectSignals(Ω)`
-    - `getObjectSignalKeys(Ω)`
 - **Effects**
-  - **dynamic**
-    - `[, destroy] = createEffect(callback)`
-    - `[run, destroy] = createEffect(callback, options)`
   - **static**
     - `λ(callback)`
     - `[run, destroy] = createEffect(callback, [...dependencies])`
     - `[run, destroy] = createEffect(callback, options)`
-  - **object decorators**
-    - `@effect() foo() { .. }`
-    - `@effect(options) foo() { .. }`
+  - **dynamic**
+    - `[, destroy] = createEffect(callback)`
+    - `[run, destroy] = createEffect(callback, options)`
+  - **object decorator**
+    - `@effect(options?) foo() { .. }`
 - **Memo**
   - `λ = createMemo(callback)`
   - `@memo() heavyCalc() { .. }`
 - **Connections**
   - `connect()`
   - `unconnect()`
-- **Utils**
-  - `destroyEffects(...Ω)`
-  - `destroySignalsAndEffects(...Ω)`
+- **utils**
+  - `isSignal(λ)`
+  - `muteSignal(λ)`
+  - `unmuteSignal(λ)`
+  - `getSignalsCount()`
   - `getEffectsCount()`
+  - **objects**
+    - `queryObjectSignal(Ω, name)`
+    - `queryObjectSignals(Ω)`
+    - `getObjectSignalKeys(Ω)`
+    - `destroyEffects(...Ω)`
+    - `destroySignals(...Ω)`
+    - `destroySignalsAndEffects(...Ω)`
 
 
 ## Signals
