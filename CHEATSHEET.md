@@ -22,13 +22,13 @@
     - `[run, destroy] = createEffect(callback, [...dependencies])`
     - `[run, destroy] = createEffect(callback, options)`
   - **dynamic**
-    - `[, destroy] = createEffect(callback)`
+    - `[run, destroy] = createEffect(callback)`
     - `[run, destroy] = createEffect(callback, options)`
   - **object decorator**
-    - `@effect(options?) foo() { .. }`
+    - `@effect(options) foo() { .. }`
 - **Memo**
   - `λ = createMemo(callback)`
-  - `@memo() heavyCalc() { .. }`
+  - `@memo() compute() { .. }`
 - **Connections**
   - `γ = connect()`
     - `γ.nextValue(): Promise`
@@ -76,7 +76,20 @@ setFoo('bar');   // write a new value
 - `[λ, setλ] = createSignal(initialValue)`
 - `[λ, setλ] = createSignal(initialValue, options)`
 
-##### createSignal options
+##### Return value
+
+`createSignal()` &rarr; `[signalReader, signalWriter]` returns a tuple with two functions. the first function is the _signal reader_, the second is the _signal writer_.
+
+If the _signal reader_ is called as a function, it returns the current _signal value_ as the return value.
+
+If the _signal writer_ is called with a value, this value is set as the new _signal value_. When the signal value _changes_, any effects that depend on it will be executed.
+
+Reading and writing is always immediate. Any effects are called synchronously. However, it is possible to change this behavior using `batch()`, `beQuiet()`, `value()` or other methods of this library. 
+
+You can destroy the reactivity of a signal with `destroySignal(signalReader)`. A destroyed signal will no longer trigger any effects. But both the _signal reader_ and the _signal writer_ are still usable and will read and write the _signal value_.
+
+
+##### Options
 
 | option         | type                | description |
 | -------------- | ------------------- | ----------- |
