@@ -94,7 +94,7 @@ You can destroy the reactivity of a signal with `destroySignal(signalReader)`. A
 | option         | type                | description |
 | -------------- | ------------------- | ----------- |
 | `compareFn`    | `(a, b) => boolean` | Normally, the equality of two values is checked with the strict equality operator `===`. If you want to go a different way here, you can pass a function that does this. |
-| `lazy`         | `boolean`           | If this flag is set, it is assumed that the value is a function that _returns the current value_. This function is then executed _lazy_, i.e. only when the signal is read for the first time. |
+| `lazy`         | `boolean`           | If this flag is set, it is assumed that the value is a function that _returns the current value_. This function is then executed _lazy_, i.e. only when the signal is read for the first time. At this point, however, it should be noted that the _signal value_ is initially only _lazy_. once resolved, it is no longer _lazy_. |
 | `beforeReadFn` | `() => void`        | the name says it all: a callback that is executed before the signal value is read. not intended for everyday use, but quite useful for edge cases and testing. |
 
 
