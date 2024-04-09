@@ -161,6 +161,8 @@ obj.xyz = 456;       // set value to 456
 
 - `destroySignal(λ)`
 
+Destroys the reactivity of the signal. This signal will no longer be able to cause any effects.
+However, the _signal reader_ and _signal writer_ functions will continue to work.
 
 
 ## Effects
@@ -171,6 +173,58 @@ Without effects, signals are nothing more than ordinary variables.
 
 With effects, you can easily control behavior changes in your application without having to write complex dependency or monitoring logic.
 
+### Dynamic Effects
+
+<table>
+  <tbody>
+    <tr>
+      <th>A dynamic effect function</th>
+      <th>A class with a dynamic effect</th>
+    </tr>
+    <tr>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-standalone-effect-function--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-standalone-effect-function--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/main/docs/images/gists/a-standalone-effect-function--light.png"
+            alt="A standalone effect function"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+      <td valign="top">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-class-with-an-effect-method--dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-class-with-an-effect-method--light.png">
+          <img
+            src="https://github.com/spearwolf/signalize/raw/main/docs/images/gists/a-class-with-an-effect-method--light.png"
+            alt="A class with an effect method"
+            style="max-width: 100%;"
+          />
+        </picture>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+**Dynamic effects** are always executed the first time. During the execution of an effect callback function, the read signals are tracked. If one of the signals is changed afterwards, the effect is (automatically) called again.
+
+> 🔎 The signals used are re-recorded each time the effect runs again.
+> This is why they are called _dynamic_ effects.
+
+**Static effects** do not track signals; instead, dependencies are defined in advance during effect creation:
+
+```js
+createEffect(() => {
+  const sum = a() + b();
+  console.log('sum of', a(), 'and', b(), 'is', sum);
+}, [a, b]);
+```
+
+It doesn't matter which signals are used within the effect function, the effect will be re-run whenever a signal in the signal dependencies list changes.
+
+
 ### Static Effects
 
 - `λ(callback)`
@@ -180,7 +234,7 @@ With effects, you can easily control behavior changes in your application withou
 
 ### Dynamic Effects
 
-- `[, destroy] = createEffect(callback)`
+- `[run, destroy] = createEffect(callback)`
 - `[run, destroy] = createEffect(callback, options)`
 
 
