@@ -1,7 +1,7 @@
-import {createSignal} from './index.js';
 import {assertEffectsCount} from './assert-helpers.js';
 import {destroySignal} from './createSignal.js';
 import {createEffect} from './effects-api.js';
+import {createSignal} from './index.js';
 
 describe('Effect -> autorun: false', () => {
   beforeEach(() => {
@@ -25,29 +25,29 @@ describe('Effect -> autorun: false', () => {
 
     assertEffectsCount(1);
 
-    expect(effectCallback).toBeCalledTimes(0);
+    expect(effectCallback).toHaveBeenCalledTimes(0);
     expect(value).toBe(-1);
 
     run();
 
-    expect(effectCallback).toBeCalledTimes(1);
+    expect(effectCallback).toHaveBeenCalledTimes(1);
     expect(value).toBe(0);
 
     setValue(1);
 
-    expect(effectCallback).toBeCalledTimes(1);
+    expect(effectCallback).toHaveBeenCalledTimes(1);
     expect(value).toBe(0);
 
     run();
 
-    expect(effectCallback).toBeCalledTimes(2);
+    expect(effectCallback).toHaveBeenCalledTimes(2);
     expect(value).toBe(1);
 
     unsubscribe();
 
     setValue(2);
 
-    expect(effectCallback).toBeCalledTimes(2);
+    expect(effectCallback).toHaveBeenCalledTimes(2);
     expect(value).toBe(1);
     expect(signal()).toBe(2);
 
