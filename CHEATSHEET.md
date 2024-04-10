@@ -364,7 +364,10 @@ With a _static_ effect, the dependencies are known in advance: but again, the ef
 
 Your _effect callback_ (which is your function that you pass to the effect as parameter) may also optionally return a _cleanup_ function.
 
-Before calling an _effect callback_, a previously returned _cleanup_ function (if you provided it) is executed.
+Before calling an _effect_, a previously set _cleanup_ function is executed.
+
+The effect cleanup function is reset each time the effect is executed. If the effect does not return a function, nothing will be called the next time the effect is called.
+
 
 > 🔎 Does this behaviour look familiar? probably because this feature was inspired by [react's useEffect hook](https://react.dev/reference/react/useEffect)
 
