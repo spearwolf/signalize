@@ -246,7 +246,7 @@ Without effects, signals are nothing more than ordinary variables.
 
 With effects, you can easily control behavior changes in your application without having to write complex dependency or monitoring logic.
 
-### Dynamic Effects
+### Dynamic vs. Static effects
 
 <table>
   <tbody>
@@ -298,7 +298,9 @@ createEffect(() => {
 It doesn't matter which signals are used within the effect function, the effect will be re-run whenever a signal in the signal dependencies list changes.
 
 
-### Static Effects
+### API
+
+#### Static Effects
 
 ```js
 [run, destroy] = createEffect(callback, [...dependencies])
@@ -318,7 +320,7 @@ alternatively, the _signal reader_ can also be called with an effect callback. t
 > 🔎 By the way, you cannot directly destroy an effect created in this way, this happens automatically when the signal is destroyed.
 
 
-### Dynamic Effects
+#### Dynamic Effects
 
 ```js
 [run, destroy] = createEffect(callback)
