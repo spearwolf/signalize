@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `v0.14.0` (not yet released)
+
+- upgrade build dependencies
+
 ## `v0.13.0`
 
 _maintenance release_
