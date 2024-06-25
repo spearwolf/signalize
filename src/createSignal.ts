@@ -3,7 +3,7 @@ import type {
   CompareFunc,
   Signal,
   SignalCallback,
-  SignalFuncs,
+  SignalLike,
   SignalParams,
   SignalReader,
   SignalValueParams,
@@ -11,6 +11,7 @@ import type {
   SignalWriterParams,
 } from './types.js';
 
+import {SignalObject} from './SignalObject.js';
 import {UniqIdGen} from './UniqIdGen.js';
 import {isQuiet} from './bequiet.js';
 import {$signal} from './constants.js';
@@ -34,10 +35,13 @@ export function writeSignal(
   globalSignalQueue.emit(signalId, value, params);
 }
 
-export const isSignal = (
-  signalReader: any,
-): signalReader is SignalReader<unknown> =>
-  typeof signalReader === 'function' && $signal in signalReader;
+export const isSignal = (signalLike: any): signalLike is SignalLike<unknown> =>
+  signalLike != null && signalLike[$signal] != null;
+
+// export const isSignalReader = (
+//   signalReader: any,
+// ): signalReader is SignalReader<unknown> =>
+//   typeof signalReader === 'function' && $signal in signalReader;
 
 const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
   const signalReader = (callback?: SignalCallback<Type>) => {
@@ -132,6 +136,8 @@ class SignalImpl<Type> implements Signal<Type> {
     }
   };
 
+  readonly object: SignalObject<Type>;
+
   constructor(lazy: boolean, initialValue?: Type | (() => Type) | undefined) {
     this.id = idCreator.make();
 
@@ -148,22 +154,24 @@ class SignalImpl<Type> implements Signal<Type> {
     }
 
     this.reader = createSignalReader(this);
+
+    this.object = new SignalObject(this);
   }
 }
 
 export const getSignalInstance = <Type = unknown>(
-  signalReader: SignalReader<Type>,
-): Signal<Type> => signalReader?.[$signal];
+  signalLike: SignalLike<Type>,
+): Signal<Type> => signalLike?.[$signal];
 
 export function createSignal<Type = unknown>(
-  initialValue: Type | SignalReader<Type> | (() => Type) = undefined,
+  initialValue: Type | SignalLike<Type> | (() => Type) = undefined,
   params?: SignalParams<Type>,
-): SignalFuncs<Type> {
+): SignalObject<Type> {
   let signal!: Signal<Type>;
 
   if (isSignal(initialValue)) {
     // NOTE createSignal(otherSignal) returns otherSignal and does NOT create a new signal
-    signal = getSignalInstance(initialValue as SignalReader<Type>);
+    signal = getSignalInstance(initialValue as SignalLike<Type>);
   } else {
     // === Create a new signal ===
     const lazy = params?.lazy ?? false;
@@ -172,12 +180,13 @@ export function createSignal<Type = unknown>(
     signal.compareFn = params?.compareFn;
   }
 
-  return [signal.reader, signal.writer];
+  // return [signal.reader, signal.writer];
+  return signal.object;
 }
 
-export const destroySignal = (...signalReaders: SignalReader<any>[]): void => {
-  for (const signalReader of signalReaders) {
-    const signal = getSignalInstance(signalReader);
+export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
+  for (const sigLike of signalLikes) {
+    const signal = getSignalInstance(sigLike);
     if (signal != null && !signal.destroyed) {
       signal.destroyed = true;
       signal.beforeReadFn = undefined;
@@ -190,18 +199,18 @@ export const destroySignal = (...signalReaders: SignalReader<any>[]): void => {
 // TODO rethink mute() and unmute() signatures -> how to toggle ?
 
 export const muteSignal = <Type = unknown>(
-  signalReader: SignalReader<Type>,
+  signalLike: SignalLike<Type>,
 ): void => {
-  const signal = getSignalInstance(signalReader);
+  const signal = getSignalInstance(signalLike);
   if (signal != null) {
     signal.muted = true;
   }
 };
 
 export const unmuteSignal = <Type = unknown>(
-  signalReader: SignalReader<Type>,
+  signalLike: SignalLike<Type>,
 ): void => {
-  const signal = getSignalInstance(signalReader);
+  const signal = getSignalInstance(signalLike);
   if (signal != null) {
     signal.muted = false;
   }

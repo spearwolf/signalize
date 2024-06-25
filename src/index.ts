@@ -1,4 +1,5 @@
 export * from './Connection.js';
+export * from './SignalObject.js';
 export {batch} from './batch.js';
 export * from './bequiet.js';
 export {connect} from './connect.js';
@@ -27,3 +28,5 @@ export * from './value.js';
 // TODO docs: create a cheat sheet
 
 // TODO docs: add contribution guide (setup dev env, run tests, etc.)
+
+// TODO build: prepend banner to index.js and decorators.js output fragments

@@ -1,6 +1,6 @@
 import {Connection} from './Connection.js';
 import {queryObjectSignal} from './object-signals-and-effects.js';
-import type {SignalReader} from './types.js';
+import type {SignalLike} from './types.js';
 
 type ObjectProps<Obj, PropType> = {
   [Key in keyof Obj as Obj[Key] extends PropType ? Key : never]: unknown;
@@ -13,12 +13,12 @@ type ObjectMethods<Obj, MethodFirstArgType> = {
 };
 
 export function connect<Type>(
-  source: SignalReader<Type>,
-  target: SignalReader<Type>,
+  source: SignalLike<Type>,
+  target: SignalLike<Type>,
 ): Connection<Type>;
 
 export function connect<Type>(
-  source: SignalReader<Type>,
+  source: SignalLike<Type>,
   target: (val?: Type) => void,
 ): Connection<Type>;
 
@@ -26,7 +26,7 @@ export function connect<
   Object extends object,
   Key extends keyof ObjectProps<Object, Type>,
   Type,
->(source: [Object, Key], target: SignalReader<Type>): Connection<Type>;
+>(source: [Object, Key], target: SignalLike<Type>): Connection<Type>;
 
 export function connect<
   Type,
@@ -34,7 +34,7 @@ export function connect<
   Key extends
     | keyof ObjectProps<Object, Type>
     | keyof ObjectMethods<Object, Type>,
->(source: SignalReader<Type>, target: [Object, Key]): Connection<Type>;
+>(source: SignalLike<Type>, target: [Object, Key]): Connection<Type>;
 
 export function connect<
   Type,

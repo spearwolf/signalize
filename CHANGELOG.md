@@ -1,7 +1,13 @@
 # CHANGELOG
 
-## `v0.14.0` (not yet released)
+## `v0.14.0` (2024-06-25)
 
+- `createSignal()` now returns a polymorphic api
+  - a new object-based api is returned, see the [SignalObject](./src/SignalObject.ts) class for details
+  - but the returned api can still be used as an array of [reader, writer] functions
+  - so you don't need to change existing code that uses the reader and writer function syntax
+  - but you can use the new object-based api, which may be more convenient (depending on your coding style and context)
+  - more docs will follow later ;)
 - upgrade build dependencies
 
 ## `v0.13.0`

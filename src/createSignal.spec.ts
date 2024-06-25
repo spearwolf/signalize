@@ -153,4 +153,31 @@ describe('createSignal', () => {
 
     expect(foo).toBe(111);
   });
+
+  it('createSignal returns the new object-based signal api', () => {
+    const foo = createSignal(666);
+    const effect = jest.fn();
+
+    expect(foo.value).toBe(666);
+    expect(foo.get()).toBe(666);
+    expect(isSignal(foo)).toBe(true);
+
+    const [sigRead, sigWrite] = foo;
+    expect(sigRead).toBe(foo.get);
+    expect(sigWrite).toBe(foo.set);
+
+    foo.onChange(effect);
+
+    expect(effect).not.toHaveBeenCalled();
+
+    foo.touch();
+
+    expect(effect).toHaveBeenCalledWith(666);
+
+    foo.set(1001);
+
+    expect(effect).toHaveBeenCalledWith(1001);
+
+    foo.destroy();
+  });
 });

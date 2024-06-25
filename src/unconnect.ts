@@ -4,7 +4,7 @@ import {
   queryObjectSignal,
   queryObjectSignals,
 } from './object-signals-and-effects.js';
-import type {SignalReader} from './types.js';
+import type {SignalLike} from './types.js';
 
 type ObjectProps<Obj, PropType> = {
   [Key in keyof Obj as Obj[Key] extends PropType ? Key : never]: unknown;
@@ -20,8 +20,8 @@ type ObjectMethods<Obj, MethodFirstArgType> = {
 // sig -> sig | fn | obj
 //
 export function unconnect<Type>(
-  source: SignalReader<Type>,
-  target?: SignalReader<Type> | ((val?: Type) => void) | object,
+  source: SignalLike<Type>,
+  target?: SignalLike<Type> | ((val?: Type) => void) | object,
 ): void;
 
 // obj
@@ -29,7 +29,7 @@ export function unconnect<Type>(
 //
 export function unconnect<Type>(
   source: object,
-  target?: SignalReader<Type> | ((val?: Type) => void) | object,
+  target?: SignalLike<Type> | ((val?: Type) => void) | object,
 ): void;
 
 // sig -> obj.prop
@@ -40,7 +40,7 @@ export function unconnect<
   Key extends
     | keyof ObjectProps<Object, Type>
     | keyof ObjectMethods<Object, Type>,
->(source: SignalReader<Type>, target: [Object, Key]): void;
+>(source: SignalLike<Type>, target: [Object, Key]): void;
 
 // obj.prop
 // obj.prop -> sig | fn | obj
@@ -51,7 +51,7 @@ export function unconnect<
   Type,
 >(
   source: [Object, Key],
-  target?: SignalReader<Type> | ((val?: Type) => void) | object,
+  target?: SignalLike<Type> | ((val?: Type) => void) | object,
 ): void;
 
 // obj.prop -> obj.prop
