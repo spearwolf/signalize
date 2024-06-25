@@ -1,8 +1,8 @@
 import {getSignalInstance, isSignal, writeSignal} from './createSignal.js';
 import {queryObjectSignal} from './object-signals-and-effects.js';
-import type {SignalReader} from './types.js';
+import type {SignalLike} from './types.js';
 
-function touch<Type>(source: SignalReader<Type>): void;
+function touch<Type>(source: SignalLike<Type>): void;
 
 function touch<O extends object, K extends keyof O>(source: [O, K]): void;
 

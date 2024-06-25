@@ -2,7 +2,7 @@ import type {
   DestroyEffectCallback,
   EffectCallback,
   RunEffectCallback,
-  SignalReader,
+  SignalLike,
   VoidCallback,
 } from './types.js';
 
@@ -17,7 +17,7 @@ import {
 } from './global-queues.js';
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 
-export type EffectDeps = SignalReader<any>[];
+export type EffectDeps = SignalLike<any>[];
 
 export interface EffectParams {
   autorun?: boolean;
@@ -52,7 +52,7 @@ export class Effect {
   autorun = true;
   shouldRun = true;
 
-  #dependencies?: SignalReader<unknown>[];
+  #dependencies?: SignalLike<unknown>[];
 
   #destroyed = false;
 
@@ -86,8 +86,8 @@ export class Effect {
   }
 
   private saveSignalsFromDeps() {
-    for (const sigReader of this.#dependencies!) {
-      this.whenSignalIsRead(getSignalInstance(sigReader).id);
+    for (const sig of this.#dependencies!) {
+      this.whenSignalIsRead(getSignalInstance(sig).id);
     }
   }
 

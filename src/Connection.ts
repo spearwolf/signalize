@@ -2,7 +2,7 @@ import {Eventize, UnsubscribeFunc} from '@spearwolf/eventize';
 import {getSignalInstance, isSignal} from './createSignal.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {queryObjectSignals} from './object-signals-and-effects.js';
-import type {Signal, SignalReader} from './types.js';
+import type {Signal, SignalLike} from './types.js';
 
 /**
  * global map of all connections per signal
@@ -32,7 +32,7 @@ export type ConnectionProperty<
 > = [O, K];
 
 export type ConnectionTarget<T> =
-  | SignalReader<T>
+  | SignalLike<T>
   | ConnectionFunction<T>
   | ConnectionProperty<T>;
 
@@ -108,9 +108,9 @@ export class Connection<T> extends Eventize {
   }
 
   static findConnectionsBySignal(
-    signalReader: SignalReader<any>,
+    signalLike: SignalLike<any>,
   ): Set<Connection<unknown>> | undefined {
-    return g_sigConnects.get(getSignalInstance(signalReader));
+    return g_sigConnects.get(getSignalInstance(signalLike));
   }
 
   static findConnectionsByTarget(
@@ -146,7 +146,7 @@ export class Connection<T> extends Eventize {
   }
 
   static findConnection<C>(
-    source: SignalReader<C>,
+    source: SignalLike<C>,
     target: ConnectionTarget<C>,
   ): Connection<C> | undefined {
     const connectionsBySignal = g_sigConnects.get(
@@ -164,7 +164,10 @@ export class Connection<T> extends Eventize {
         index = connections.findIndex((conn) => {
           if (conn.#type === ConnectionType.Property) {
             const connTarget = conn.#target as ConnectionProperty<C>;
-            return connTarget[0] === target[0] && connTarget[1] === target[1];
+            return (
+              connTarget[0] === (target as any)[0] &&
+              connTarget[1] === (target as any)[1]
+            );
           }
           return false;
         });
@@ -191,7 +194,7 @@ export class Connection<T> extends Eventize {
   #connectionTarget?: ConnectionTargetType;
 
   constructor(
-    source: SignalReader<T>,
+    source: SignalLike<T>,
     target: ConnectionTarget<T>,
     connectionTarget?: ConnectionTargetType,
   ) {
@@ -214,7 +217,7 @@ export class Connection<T> extends Eventize {
       this.#target = target as () => void;
       this.#type = ConnectionType.Function;
     } else {
-      this.#target = target;
+      this.#target = target as any;
       this.#type = ConnectionType.Property;
     }
 
