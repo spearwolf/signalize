@@ -69,7 +69,7 @@ describe('createSignal', () => {
     destroySignal(signal);
   });
 
-  it('createSignal(otherSigal) should return otherSignal and NOT create a new signal', () => {
+  it('createSignal(otherSignal) should return otherSignal and NOT create a new signal', () => {
     const [signal, set] = createSignal(666);
 
     assertSignalsCount(1, 'createSignal(666)');

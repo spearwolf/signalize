@@ -1,3 +1,4 @@
+import {emit} from '@spearwolf/eventize';
 import {globalEffectQueue} from './global-queues.js';
 import type {BatchCallback} from './types.js';
 
@@ -11,7 +12,7 @@ class Batch {
   }
 
   run() {
-    globalEffectQueue.emit(Array.from(this.#delayedEffects));
+    emit(globalEffectQueue, Array.from(this.#delayedEffects));
   }
 }
 

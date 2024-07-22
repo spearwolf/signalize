@@ -1,3 +1,6 @@
+import {on} from '@spearwolf/eventize';
+import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
+import {signal} from './decorators.js';
 import {
   Connection,
   connect,
@@ -7,8 +10,6 @@ import {
   touch,
   unconnect,
 } from './index.js';
-import {signal} from './decorators.js';
-import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 
 describe('connect signals', () => {
   beforeEach(() => {
@@ -64,7 +65,7 @@ describe('connect signals', () => {
 
     const con = connect(sigA, sigB);
 
-    con.on({
+    on(con, {
       [Connection.Value]: valueMock,
       [Connection.Destroy]: destroyMock,
     });
@@ -326,7 +327,7 @@ describe('connect signals', () => {
     destroySignal(sigA, sigB);
   });
 
-  it('a connection should be pausable (mute/unmute)', () => {
+  it('a connection should be pauseable (mute/unmute)', () => {
     const [sigA, setA] = createSignal(1);
     const [sigB] = createSignal(-1);
 
@@ -338,7 +339,7 @@ describe('connect signals', () => {
 
     const con = connect(sigA, sigB);
 
-    con.on({
+    on(con, {
       [Connection.Mute]: muteMock,
       [Connection.Unmute]: unmuteMock,
     });
@@ -393,8 +394,8 @@ describe('connect signals', () => {
 
     const destroyMock = jest.fn();
 
-    con0.on(Connection.Destroy, destroyMock);
-    con1.on(Connection.Destroy, destroyMock);
+    on(con0, Connection.Destroy, destroyMock);
+    on(con1, Connection.Destroy, destroyMock);
 
     setA(666);
 
@@ -436,7 +437,7 @@ describe('connect signals', () => {
 
     const con = connect(sigA, sigB);
 
-    con.on(Connection.Value, valueMock);
+    on(con, Connection.Value, valueMock);
 
     expect(callingB).toHaveBeenCalledTimes(2);
     expect(valueMock).toHaveBeenCalledTimes(1);

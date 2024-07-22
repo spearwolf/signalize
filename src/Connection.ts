@@ -1,4 +1,12 @@
-import {Eventize, UnsubscribeFunc} from '@spearwolf/eventize';
+import {
+  emit,
+  eventize,
+  off,
+  on,
+  once,
+  retain,
+  UnsubscribeFunc,
+} from '@spearwolf/eventize';
 import {getSignalInstance, isSignal} from './createSignal.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {queryObjectSignals} from './object-signals-and-effects.js';
@@ -45,7 +53,7 @@ export enum ConnectionType {
   Property = 'property',
 }
 
-export class Connection<T> extends Eventize {
+export class Connection<T> {
   static Value = 'value';
   static Mute = 'mute';
   static Unmute = 'unmute';
@@ -204,9 +212,9 @@ export class Connection<T> extends Eventize {
       return conn;
     }
 
-    super();
+    eventize(this);
 
-    this.retain(Connection.Value);
+    retain(this, Connection.Value);
 
     this.#source = getSignalInstance(source);
 
@@ -223,7 +231,8 @@ export class Connection<T> extends Eventize {
 
     this.#connectionTarget = connectionTarget;
 
-    this.#unsubscribe = globalSignalQueue.on(
+    this.#unsubscribe = on(
+      globalSignalQueue,
       this.#source.id,
       (_value, params) => {
         if (params?.touch === true) {
@@ -234,7 +243,7 @@ export class Connection<T> extends Eventize {
       },
     );
 
-    globalDestroySignalQueue.once(this.#source.id, 'destroy', this);
+    once(globalDestroySignalQueue, this.#source.id, 'destroy', this);
 
     Connection.#attachToSignal(this);
 
@@ -250,7 +259,7 @@ export class Connection<T> extends Eventize {
       // we can not just use 'once' here because the value is retained
       let valEmitCount = 0;
       const unsubscribe = [
-        this.on(Connection.Value, (val) => {
+        on(this, Connection.Value, (val) => {
           if (valEmitCount === 1) {
             unsubscribe.forEach((unsub) => {
               unsub();
@@ -260,7 +269,7 @@ export class Connection<T> extends Eventize {
             ++valEmitCount;
           }
         }),
-        this.on(Connection.Destroy, () => {
+        on(this, Connection.Destroy, () => {
           unsubscribe.forEach((unsub) => {
             unsub();
           });
@@ -283,7 +292,7 @@ export class Connection<T> extends Eventize {
         (obj[key] as (val: T) => void)(value);
       }
 
-      this.emit(Connection.Value, value);
+      emit(this, Connection.Value, value);
     }
     return this;
   }
@@ -295,7 +304,7 @@ export class Connection<T> extends Eventize {
   mute(): Connection<T> {
     if (!this.isDestroyed && !this.#muted) {
       this.#muted = true;
-      this.emit(Connection.Mute, this);
+      emit(this, Connection.Mute, this);
     }
     return this;
   }
@@ -303,7 +312,7 @@ export class Connection<T> extends Eventize {
   unmute(): Connection<T> {
     if (!this.isDestroyed && this.#muted) {
       this.#muted = false;
-      this.emit(Connection.Unmute, this);
+      emit(this, Connection.Unmute, this);
     }
     return this;
   }
@@ -311,15 +320,15 @@ export class Connection<T> extends Eventize {
   toggle(): boolean {
     if (!this.isDestroyed) {
       this.#muted = !this.#muted;
-      this.emit(this.#muted ? Connection.Mute : Connection.Unmute, this);
+      emit(this, this.#muted ? Connection.Mute : Connection.Unmute, this);
     }
     return this.#muted;
   }
 
   destroy(): void {
     if (!this.isDestroyed) {
-      this.emit(Connection.Destroy, this);
-      this.off();
+      emit(this, Connection.Destroy, this);
+      off(this);
       Connection.#detachFromSignal(this);
       this.#unsubscribe?.();
       this.#unsubscribe = undefined;

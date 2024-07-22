@@ -1,6 +1,6 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "signals and effects for all",
   "type": "module",
   "main": "lib/index.js",
@@ -43,7 +43,7 @@
     "@arethetypeswrong/cli": "^0.15.3",
     "@babel/core": "^7.24.9",
     "@babel/preset-typescript": "^7.24.7",
-    "@spearwolf/eventize": "^3.4.2",
+    "@spearwolf/eventize": "^4.0.0",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.14.11",
     "@types/sinon": "^17.0.3",
@@ -70,7 +70,7 @@
     "typescript": "^5.5.3"
   },
   "peerDependencies": {
-    "@spearwolf/eventize": "^3.4.1"
+    "@spearwolf/eventize": "^4.0.0"
   },
   "homepage": "https://github.com/spearwolf/signalize/",
   "license": "Apache-2.0",

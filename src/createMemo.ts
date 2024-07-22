@@ -1,3 +1,4 @@
+import {once} from '@spearwolf/eventize';
 import {createSignal, getSignalInstance} from './createSignal.js';
 import {createEffect} from './effects-api.js';
 import {globalDestroySignalQueue} from './global-queues.js';
@@ -12,6 +13,6 @@ export function createMemo<Type>(callback: () => Type): SignalReader<Type> {
   const signal = getSignalInstance(get);
   // TODO beQuiet ?
   signal.beforeReadFn = compute;
-  globalDestroySignalQueue.once(signal.id, unsubscribe);
+  once(globalDestroySignalQueue, signal.id, unsubscribe);
   return get;
 }

@@ -1,4 +1,4 @@
-import {eventize} from '@spearwolf/eventize';
+import {emit, eventize, onceAsync} from '@spearwolf/eventize';
 import {assertEffectsCount} from './assert-helpers.js';
 import {createSignal, destroySignal} from './createSignal.js';
 import {createEffect, onDestroyEffect} from './effects-api.js';
@@ -46,13 +46,13 @@ describe('createEffect', () => {
     const [a, setA] = createSignal(123);
 
     const cleanupValues: number[] = [];
-    const ctrl = eventize({});
+    const ctrl = eventize();
 
     createEffect(async () => {
       const val = a();
       return () => {
         cleanupValues.push(val);
-        ctrl.emit(`cleanup[${cleanupValues.length}]`);
+        emit(ctrl, `cleanup[${cleanupValues.length}]`);
       };
     });
 
@@ -64,7 +64,7 @@ describe('createEffect', () => {
     expect(a()).toBe(666);
     expect(cleanupValues).toHaveLength(0);
 
-    await ctrl.onceAsync('cleanup[1]');
+    await onceAsync(ctrl, 'cleanup[1]');
 
     expect(cleanupValues).toEqual([123]);
     cleanupValues.length = 0;
@@ -77,7 +77,7 @@ describe('createEffect', () => {
     expect(a()).toBe(668);
     expect(cleanupValues).toHaveLength(0);
 
-    await ctrl.onceAsync('cleanup[2]');
+    await onceAsync(ctrl, 'cleanup[2]');
 
     expect(cleanupValues).toEqual([666, 667]);
 

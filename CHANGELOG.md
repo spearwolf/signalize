@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## `v0.15.0` (2024-07-22)
+
+_maintenance update_
+
+- **no** new feature inside!
+- just updated most build dependencies
+- BUT also updated the (only) runtime dependency [@spearwolf/eventize](https://github.com/spearwolf/eventize) to v4.x:
+  and this is a ❗BREAKING CHANGE❗ since the new eventize api switches to the functional api by default
+- _so you may need to make adjustments to your codebase if you use the eventize api directly (independently of signalize)_
+  
+
 ## `v0.14.0` (2024-06-25)
 
 - `createSignal()` now returns a polymorphic api

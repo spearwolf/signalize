@@ -6,6 +6,7 @@ import type {
   VoidCallback,
 } from './types.js';
 
+import {emit, off, on, once} from '@spearwolf/eventize';
 import {UniqIdGen} from './UniqIdGen.js';
 import {getCurrentBatch} from './batch.js';
 import {$createEffect, $destroyEffect, $destroySignal} from './constants.js';
@@ -62,7 +63,7 @@ export class Effect {
    *
    * While the _effect callback_ is being executed, the effect instance is pushed onto the _global effect stack_.
    * If a _signal_ is read during the execution of the _effect callback_
-   * it recognises the effect and executes the `effect.onReadSignal()` method.
+   * it recognizes the effect and executes the `effect.onReadSignal()` method.
    *
    * The effect then knows which signals are calling it and subscribes to those signal ids in the _global signals queue_.
    *
@@ -76,7 +77,7 @@ export class Effect {
 
     // a batch will call the effect by id to run the effect
     this.id = Effect.idGen.make();
-    globalEffectQueue.on(this.id, 'recall', this);
+    on(globalEffectQueue, this.id, 'recall', this);
 
     ++Effect.count;
   }
@@ -114,12 +115,12 @@ export class Effect {
       if (effect == null) {
         effect = new Effect(callback, options);
         parentEffect.attachChildEffect(effect);
-        globalEffectQueue.emit($createEffect, effect);
+        emit(globalEffectQueue, $createEffect, effect);
       }
       parentEffect.curChildEffectSlot++;
     } else {
       effect = new Effect(callback, options);
-      globalEffectQueue.emit($createEffect, effect);
+      emit(globalEffectQueue, $createEffect, effect);
     }
 
     if (effect.hasStaticDeps()) {
@@ -189,15 +190,15 @@ export class Effect {
   whenSignalIsRead(signalId: symbol): void {
     if (!this.#signals.has(signalId)) {
       this.#signals.add(signalId);
-      globalSignalQueue.on(signalId, 'recall', this);
-      globalDestroySignalQueue.once(signalId, $destroySignal, this);
+      on(globalSignalQueue, signalId, 'recall', this);
+      once(globalDestroySignalQueue, signalId, $destroySignal, this);
     }
   }
 
   [$destroySignal](signalId: symbol): void {
     if (!this.#destroyedSignals.has(signalId) && this.#signals.has(signalId)) {
       this.#destroyedSignals.add(signalId);
-      globalSignalQueue.off(signalId, this);
+      off(globalSignalQueue, signalId, this);
       const shouldDestroy = this.#destroyedSignals.size === this.#signals.size;
       if (shouldDestroy) {
         // no signals left, so nobody can trigger this effect anymore
@@ -225,13 +226,13 @@ export class Effect {
   destroy(): void {
     if (this.#destroyed) return;
 
-    globalEffectQueue.emit($destroyEffect, this);
+    emit(globalEffectQueue, $destroyEffect, this);
 
     this.runCleanupCallback();
 
-    globalSignalQueue.off(this);
-    globalEffectQueue.off(this);
-    globalDestroySignalQueue.off(this);
+    off(globalSignalQueue, this);
+    off(globalEffectQueue, this);
+    off(globalDestroySignalQueue, this);
 
     this.#destroyed = true;
 
