@@ -11,6 +11,7 @@ import type {
   SignalWriterParams,
 } from './types.js';
 
+import {emit} from '@spearwolf/eventize';
 import {SignalObject} from './SignalObject.js';
 import {UniqIdGen} from './UniqIdGen.js';
 import {isQuiet} from './bequiet.js';
@@ -32,7 +33,7 @@ export function writeSignal(
   value: unknown,
   params?: SignalValueParams,
 ) {
-  globalSignalQueue.emit(signalId, value, params);
+  emit(globalSignalQueue, signalId, value, params);
 }
 
 export const isSignal = (signalLike: any): signalLike is SignalLike<unknown> =>
@@ -191,7 +192,7 @@ export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
       signal.destroyed = true;
       signal.beforeReadFn = undefined;
       --SignalImpl.instanceCount;
-      globalDestroySignalQueue.emit(signal.id, signal.id);
+      emit(globalDestroySignalQueue, signal.id, signal.id);
     }
   }
 };
