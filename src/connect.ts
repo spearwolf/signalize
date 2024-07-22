@@ -68,7 +68,7 @@ export function connect(source: any, target: any) {
 
   // === Connection :: target ===
   const conTarget = isObjectTarget
-    ? queryObjectSignal(...(target as [any, any])) ?? target
+    ? (queryObjectSignal(...(target as [any, any])) ?? target)
     : target;
 
   // === Connection :: connectionTarget ===

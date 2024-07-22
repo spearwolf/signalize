@@ -99,7 +99,7 @@ export class Effect {
     const dependencies = Array.isArray(optsOrDeps) ? optsOrDeps : undefined;
 
     const options: EffectParams | undefined = dependencies
-      ? opts ?? {dependencies}
+      ? (opts ?? {dependencies})
       : (optsOrDeps as EffectParams | undefined);
 
     if (options && dependencies) {
