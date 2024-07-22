@@ -131,7 +131,7 @@ export function effect(options?: EffectDecoratorOptions) {
 
   const hasDeps = deps != null && deps.length > 0;
 
-  const autostart = hasDeps ? options?.autostart ?? true : true;
+  const autostart = hasDeps ? (options?.autostart ?? true) : true;
 
   return function <T, A extends any[]>(
     target: (this: T, ...args: A) => any,
