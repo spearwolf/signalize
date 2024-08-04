@@ -1,4 +1,4 @@
-export const $signal = Symbol('signal');
-export const $destroySignal = Symbol('destroySignal');
-export const $createEffect = Symbol('createEffect');
-export const $destroyEffect = Symbol('destroyEffect');
+export const $signal = Symbol.for('signal');
+export const $destroySignal = Symbol.for('destroySignal');
+export const $createEffect = Symbol.for('createEffect');
+export const $destroyEffect = Symbol.for('destroyEffect');
