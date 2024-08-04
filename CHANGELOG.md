@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## `v0.16.0` (2024-08-04)
+
+- update to `@spearwolf/eventize@4.0.1`
+- use `Symbol.for` for constants
+
 ## `v0.15.0` (2024-07-22)
 
 _maintenance update_
