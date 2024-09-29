@@ -60,32 +60,42 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
   - **create**
     - `🦋 = [λ, setλ] = createSignal()`
     - `@signal() accessor α`
-    - `@signalReader() accessor β`
+    - _DEPRECATED_ `@signalReader() accessor β`
   - **read**
+    - `🦋.get()`
     - `λ()`
-    - `λ(effect)`
+    - `🦋.onChange(callback)`
+    - `λ(callback)`
+    - `🦋.value`
     - `value(λ)`
     - `beQuiet(callback)`
   - **write**
+    - `🦋.set(value)`
     - `setλ(value)`
+    - `🦋.touch()`
     - `touch(λ)`
     - `batch(callback)`
+    - `🦋.muted`
+    - `muteSignal(λ)`
+    - `unmuteSignal(λ)`
   - **destroy**
+    - `🦋.destroy()`
     - `destroySignal(λ)`
 - **Effects**
   - **static**
-    - `[run, destroy] = createEffect(callback, [...dependencies])`
-    - `[run, destroy] = createEffect(callback, options)`
-    - `λ(effectCallback)`
+    - `🦄 = [run, destroy] = createEffect(callback, [...dependencies])`
+    - `🦄 = [run, destroy] = createEffect(callback, options)`
+    - `🦋.onChange(callback)`
+    - `λ(callback)`
   - **dynamic**
-    - `[run, destroy] = createEffect(callback)`
-    - `[run, destroy] = createEffect(callback, options)`
+    - `🦄 = [run, destroy] = createEffect(callback)`
+    - `🦄 = [run, destroy] = createEffect(callback, options)`
   - **object decorator**
-    - `@effect(options) foo() { .. }`
+    - _DEPRECATED_ `@effect(options) foo() { .. }`
 - **Memo**
   - `λ = createMemo(callback)`
   - `@memo() compute() { .. }`
-- **Connections**
+- **Building Blocks**
   - `γ = connect()`
     - `γ.nextValue(): Promise`
     - `γ.touch()`
@@ -97,12 +107,12 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
     - `γ.isDestroyed`
   - `unconnect(γ)`
 - **utils**
-  - `isSignal(λ)`
-  - `muteSignal(λ)`
-  - `unmuteSignal(λ)`
+  - `isSignal(🦋|λ)`
+  - `muteSignal(🦋|λ)`
+  - `unmuteSignal(🦋|λ)`
   - `getSignalsCount()`
   - `getEffectsCount()`
-  - **objects**
+  - _DEPRECATED_ **objects**
     - `queryObjectSignal(Ω, name)`
     - `queryObjectSignals(Ω)`
     - `getObjectSignalKeys(Ω)`
@@ -175,9 +185,9 @@ The _signal object_ (🦋) is a wrapper around it, providing a signal API beyond
 
 | 🦋-Methods | Description |
 |------------|-------------|
-| <code>.get():&nbsp;value</code> | The _signal reader_ returns the value. If the method is called during a _dynamic effect_, the effect is informed of this and the next time the value changes, the effect is automatically repeated. |
+| <code>.get()&nbsp;&rarr;&nbsp;value</code> | The _signal reader_ returns the value. If the method is called during a _dynamic effect_, the effect is informed of this and the next time the value changes, the effect is automatically repeated. |
 | `.set(value)` | The _signal writer_ sets the new value and informs the observers of the new value. |
-| `.value` | Returns the value. This is done without noticing any effect, as opposed to using `.get()` |
+| `.value` | Just return the value. This is done without noticing any effect, as opposed to using `.get()` |
 | <code>.onChange((value)&nbsp;&rarr;&nbsp;void)</code> | ... |
 | `.muted` | ... |
 | `.touch()` | ... |
@@ -376,7 +386,7 @@ It doesn't matter which signals are used within the effect function, the effect 
 #### Static Effects
 
 ```js
-[run, destroy] = createEffect(callback, [...dependencies])
+🦄 = [run, destroy] = createEffect(callback, [...dependencies])
 
 [run, destroy] = createEffect(callback, options)
 ```
