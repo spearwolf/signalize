@@ -58,7 +58,7 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
 
 - **Signals**
   - **create**
-    - `[λ, setλ] = createSignal()`
+    - `🦋 = [λ, setλ] = createSignal()`
     - `@signal() accessor α`
     - `@signalReader() accessor β`
   - **read**
