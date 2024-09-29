@@ -153,33 +153,48 @@ Signals are mutable states that can trigger effects when changed.
 #### API
 
 ```js
-[λ, setλ] = createSignal()
+🦋 = [λ, setλ] = createSignal()
 
-[λ, setλ] = createSignal(initialValue)
-
-[λ, setλ] = createSignal(initialValue, options)
+⋯ = createSignal(initialValue)
+⋯ = createSignal(initialValue, options)
 ```
 
 ##### Return value
 
-`createSignal()` &rarr; `[signalReader, signalWriter]` returns a tuple with two functions. the first function is the _signal reader_, the second is the _signal writer_.
+`createSignal()` &rarr; `🦋 | [signalReader, signalWriter]` returns the _signal object_ (🦋), which is also a _tuple of two functions_.
+The first function is the _signal reader_, the second is the _signal writer_.
 
-If the _signal reader_ is called as a function, it returns the current _signal value_ as the return value.
+If the _signal reader_ is called as a function, it returns the current _signal value_ as the return value: `λ(): value`
 
-If the _signal writer_ is called with a value, this value is set as the new _signal value_. When the signal value _changes_, any effects that depend on it will be executed.
+If the _signal writer_ is called with a value, this value is set as the new _signal value_: `setλ(nextValue)`
+When the signal value _changes_, any _effects_ that depend on it will be executed.
 
 Reading and writing is always immediate. Any effects are called synchronously. However, it is possible to change this behavior using `batch()`, `beQuiet()`, `value()` or other methods of this library. 
 
-You can destroy the reactivity of a signal with `destroySignal(signalReader)`. A destroyed signal will no longer trigger any effects. But both the _signal reader_ and the _signal writer_ are still usable and will read and write the _signal value_.
+The _signal object_ (🦋) is a wrapper around it, providing a signal API beyond read and write:
+
+| 🦋-Methods | Description |
+|------------|-------------|
+| <code>.get():&nbsp;value</code> | The _signal reader_ returns the value. If the method is called during a _dynamic effect_, the effect is informed of this and the next time the value changes, the effect is automatically repeated. |
+| `.set(value)` | The _signal writer_ sets the new value and informs the observers of the new value. |
+| `.value` | Returns the value. This is done without noticing any effect, as opposed to using `.get()` |
+| <code>.onChange((value)&nbsp;&rarr;&nbsp;void)</code> | ... |
+| `.muted` | ... |
+| `.touch()` | ... |
+| `.destroy()` | ... |
 
 
-##### Options
+You can destroy the reactivity of a signal with `🦋.destroy()` or `destroySignal(λ)`. A destroyed signal will no longer trigger any _effects_. But both the _signal reader_ and the _signal writer_ are still usable and will read and write the _signal value_.
+
+
+
+##### createSignal() Options
 
 | option         | type                | description |
 | -------------- | ------------------- | ----------- |
-| `compareFn`    | `(a, b) => boolean` | Normally, the equality of two values is checked with the strict equality operator `===`. If you want to go a different way here, you can pass a function that does this. |
+| `compareFn`    | <code>(a,&nbsp;b)&nbsp;=>&nbsp;boolean</code> | Normally, the equality of two values is checked with the strict equality operator `===`. If you want to go a different way here, you can pass a function that does this. |
 | `lazy`         | `boolean`           | If this flag is set, it is assumed that the value is a function that _returns the current value_. This function is then executed _lazy_, i.e. only when the signal is read for the first time. At this point, however, it should be noted that the _signal value_ is initially only _lazy_. once resolved, it is no longer _lazy_. |
-| `beforeReadFn` | `() => void`        | the name says it all: a callback that is executed before the signal value is read. not intended for everyday use, but quite useful for edge cases and testing. |
+| `beforeReadFn` | <code>()&nbsp;=>&nbsp;void</code> | the name says it all: a callback that is executed before the signal value is read. not intended for everyday use, but quite useful for edge cases and testing. |
 
 
 ### Create a signal using decorators
