@@ -2,7 +2,8 @@
 
 signals and effects for all 📢
 
-![signalize hero image](hero.png)
+![signalize hero image](hero-web.webp)
+<small><em>Image created in response to a request from spearwolf, using OpenAI's DALL-E, guided by ChatGPT.</em></small>
 
 ---
 
