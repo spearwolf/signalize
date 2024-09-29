@@ -27,9 +27,9 @@ npm install @spearwolf/signalize
 Packaged as `ES2022` and exported as _unbundled_ ESM-only javascript modules.
 Type definitions and source maps also included.
 
-> 🔎 Since v0.5 there is also a [CHANGELOG](https://github.com/spearwolf/signalize/blob/main/CHANGELOG.md)
+> 🔎 Since `v0.5` there is also a [CHANGELOG](https://github.com/spearwolf/signalize/blob/main/CHANGELOG.md) 🎉
 
-> Since v0.7 _commonjs_ modules are no longer exported ❗
+> ❗Since `v0.7` _commonjs_ modules are no longer exported❗
 
 # Overview 👀
 
@@ -37,12 +37,12 @@ The whole API of `@spearwolf/signalize` is about ..
 
 - __signals__
   - like state variables with hidden superpowers
-  - when the value of a signal changes, all subscribers are automatically informed
+  - when the value of a signal changes, all observers are automatically informed
 - __effects__
-  - are callback functions that are automatically executed when one or more signals &mdash; _which are read within the effect function_ &mdash; change
-  - just think of it as a standalone `useEffect()` hook (but without react :wink:)
-- __connections__
-  - which are basically _links_ between signals and functions
+  - are functions that are _automatically executed_ when one or more signals change
+  - just think of it as a next-gen and independent `useEffect()` hook (but without the limitations imposed by react :wink:)
+- __building blocks__
+  - connect independent logical modules together
   - like the geometry node connections in blender or the node connections in blueprints of the unreal engine
 
 A __functional API__ is provided, as well as a __class-based API that uses decorators__.
@@ -52,7 +52,7 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
 
 # 📖 Usage
 
-> ⚠️ While the library / API is already quite stable and almost completely tested, this documentation is still in an early state ... there are some features that are not documented in detail here. The adventurous developer is encouraged to explore the source code and tests directly at this point.
+> ⚠️ The core of the library is stable and fully tested, although the API is still partially evolving, and the same goes for the documentation ... there are some features that are not documented in detail here. The adventurous developer is encouraged to explore the source code and tests directly at this point.
 
 ## API Overview
 
