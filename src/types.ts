@@ -13,7 +13,7 @@ export interface SignalLike<Type> {
   [$signal]: Signal<Type>;
 }
 
-export interface Signal<Type> {
+export interface Signal<Type> extends SignalLike<Type> {
   id: symbol;
   value: Type | undefined;
   valueFn: () => Type | undefined;
@@ -27,11 +27,13 @@ export interface Signal<Type> {
   object: SignalObject<Type>;
 }
 
+//export type AnySignal = SignalLike<any> | Signal<any>;
+
 export interface SignalCallback<Type> {
   (value: Type): VoidCallback | void;
 }
 
-export interface SignalReader<Type> {
+export interface SignalReader<Type> extends SignalLike<Type> {
   (callback?: SignalCallback<Type>): Type;
   [$signal]: Signal<Type>;
 }
@@ -44,6 +46,7 @@ export interface SignalParams<Type> {
   lazy?: boolean;
   compareFn?: CompareFunc<Type>;
   beforeReadFn?: BeforeReadFunc;
+  group?: object;
 }
 
 export interface SignalValueParams {

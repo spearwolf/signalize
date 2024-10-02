@@ -19,6 +19,7 @@ import {$signal} from './constants.js';
 import {createEffect} from './effects-api.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {getCurrentEffect} from './globalEffectStack.js';
+import { Group } from './Group.js';
 
 const idCreator = new UniqIdGen('si');
 
@@ -38,11 +39,6 @@ export function writeSignal(
 
 export const isSignal = (signalLike: any): signalLike is SignalLike<unknown> =>
   signalLike != null && signalLike[$signal] != null;
-
-// export const isSignalReader = (
-//   signalReader: any,
-// ): signalReader is SignalReader<unknown> =>
-//   typeof signalReader === 'function' && $signal in signalReader;
 
 const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
   const signalReader = (callback?: SignalCallback<Type>) => {
@@ -73,6 +69,10 @@ class SignalImpl<Type> implements Signal<Type> {
   id: symbol;
 
   lazy: boolean;
+
+  get [$signal](): Signal<Type> {
+    return this;
+  }
 
   compareFn?: CompareFunc<Type>;
   beforeReadFn?: BeforeReadFunc;
@@ -160,9 +160,7 @@ class SignalImpl<Type> implements Signal<Type> {
   }
 }
 
-export const getSignalInstance = <Type = unknown>(
-  signalLike: SignalLike<Type>,
-): Signal<Type> => signalLike?.[$signal];
+export const getSignalInstance = <Type = unknown>(sig: SignalLike<Type>): Signal<Type> => sig?.[$signal];
 
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalLike<Type> | (() => Type) = undefined,
@@ -181,7 +179,10 @@ export function createSignal<Type = unknown>(
     signal.compareFn = params?.compareFn;
   }
 
-  // return [signal.reader, signal.writer];
+  if (params?.group) {
+    new Group(params.group).addSignal(signal);
+  }
+
   return signal.object;
 }
 
