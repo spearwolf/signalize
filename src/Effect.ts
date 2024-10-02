@@ -5,6 +5,7 @@ import type {
   SignalLike,
   VoidCallback,
 } from './types.js';
+import {Group} from './Group.js';
 
 import {emit, off, on, once} from '@spearwolf/eventize';
 import {UniqIdGen} from './UniqIdGen.js';
@@ -23,6 +24,7 @@ export type EffectDeps = SignalLike<any>[];
 export interface EffectParams {
   autorun?: boolean;
   dependencies?: EffectDeps;
+  group?: object;
 }
 
 const isThenable = (value: unknown): value is Promise<unknown> =>
@@ -80,6 +82,10 @@ export class Effect {
     on(globalEffectQueue, this.id, 'recall', this);
 
     ++Effect.count;
+
+    if (options?.group) {
+      new Group(options.group).addEffect(this);
+    }
   }
 
   private hasStaticDeps() {
