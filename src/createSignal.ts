@@ -19,7 +19,7 @@ import {$signal} from './constants.js';
 import {createEffect} from './effects-api.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {getCurrentEffect} from './globalEffectStack.js';
-import { Group } from './Group.js';
+import {Group} from './Group.js';
 
 const idCreator = new UniqIdGen('si');
 
@@ -160,7 +160,9 @@ class SignalImpl<Type> implements Signal<Type> {
   }
 }
 
-export const getSignalInstance = <Type = unknown>(sig: SignalLike<Type>): Signal<Type> => sig?.[$signal];
+export const getSignalInstance = <Type = unknown>(
+  sig: SignalLike<Type>,
+): Signal<Type> => sig?.[$signal];
 
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalLike<Type> | (() => Type) = undefined,

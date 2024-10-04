@@ -208,7 +208,6 @@ export class Connection<T> {
   ) {
     const conn = Connection.findConnection(source, target);
     if (conn != null) {
-      // eslint-disable-next-line no-constructor-return
       return conn;
     }
 
