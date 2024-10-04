@@ -33,6 +33,7 @@ rules:
   no-fallthrough: off
   no-undef-init: off
   prefer-rest-params: off
+  no-constructor-return: off
   eqeqeq: [2, "smart"]
   "@typescript-eslint/explicit-function-return-type": off
   "@typescript-eslint/no-explicit-any": off

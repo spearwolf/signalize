@@ -1,6 +1,6 @@
-import {Effect} from "./Effect.js";
-import {destroySignal, getSignalInstance} from "./createSignal.js";
-import {SignalLike, Signal} from "./types.js";
+import {Effect} from './Effect.js';
+import {destroySignal, getSignalInstance} from './createSignal.js';
+import {SignalLike, Signal} from './types.js';
 
 const store = new Map<object, Group>();
 
@@ -41,10 +41,10 @@ export class Group {
 
   addGroup(group: Group) {
     if (this.#destroyed) {
-      throw new Error("Cannot add a group to a destroyed group");
+      throw new Error('Cannot add a group to a destroyed group');
     }
     if (group === this) {
-      throw new Error("Cannot add a group to itself");
+      throw new Error('Cannot add a group to itself');
     }
     this.#groups.add(group);
     return group;
@@ -57,7 +57,7 @@ export class Group {
 
   addSignal(signal: SignalLike<any>) {
     if (this.#destroyed) {
-      throw new Error("Cannot add a signal to a destroyed group");
+      throw new Error('Cannot add a signal to a destroyed group');
     }
     const sig = getSignalInstance(signal);
     if (sig && !sig.destroyed) {
@@ -76,7 +76,7 @@ export class Group {
 
   addEffect(effect: Effect) {
     if (this.#destroyed) {
-      throw new Error("Cannot add an effect to a destroyed group");
+      throw new Error('Cannot add an effect to a destroyed group');
     }
     this.#effects.add(effect);
     return effect;
