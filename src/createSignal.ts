@@ -34,7 +34,9 @@ export function writeSignal(
   value: unknown,
   params?: SignalValueParams,
 ) {
-  emit(globalSignalQueue, signalId, value, params);
+  if (!isQuiet()) {
+    emit(globalSignalQueue, signalId, value, params);
+  }
 }
 
 export const isSignal = (signalLike: any): signalLike is SignalLike<unknown> =>
@@ -124,7 +126,6 @@ class SignalImpl<Type> implements Signal<Type> {
         this.lazy = false;
       }
       if (!this.muted && !this.destroyed) {
-        // TODO beQuiet ?
         writeSignal(this.id, this.#value);
         return;
       }
