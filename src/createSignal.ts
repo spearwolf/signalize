@@ -182,7 +182,7 @@ export function createSignal<Type = unknown>(
   }
 
   if (params?.group) {
-    new Group(params.group).addSignal(signal);
+    Group.get(params.group).addSignal(signal);
   }
 
   return signal.object;
