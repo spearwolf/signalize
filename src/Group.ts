@@ -12,7 +12,11 @@ export class Group {
   #destroyed = false;
 
   static get(object: object) {
-    return object instanceof Group ? object : store.get(object);
+    if (object == null) return undefined;
+    if (object instanceof Group && !object.#destroyed) {
+      return object;
+    }
+    return store.get(object);
   }
 
   static destroy(object: object) {
@@ -29,10 +33,11 @@ export class Group {
     store.clear();
   }
 
-  constructor(object: object) {
-    if (object instanceof Group) {
+  constructor(object?: object) {
+    if (object != null && object instanceof Group && !object.#destroyed) {
       return object;
     }
+    object ??= this;
     if (store.has(object)) {
       return store.get(object)!;
     }
@@ -86,6 +91,15 @@ export class Group {
   //  this.#effects.delete(effect);
   //  return effect;
   //}
+
+  runEffects() {
+    if (this.#destroyed) {
+      throw new Error('Cannot run effects on a destroyed group');
+    }
+    for (const effect of this.#effects) {
+      effect.run();
+    }
+  }
 
   destroy() {
     if (this.#destroyed) return;

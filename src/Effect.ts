@@ -84,7 +84,7 @@ export class Effect {
     ++Effect.count;
 
     if (options?.group) {
-      new Group(options.group).addEffect(this);
+      Group.get(options.group).addEffect(this);
     }
   }
 
