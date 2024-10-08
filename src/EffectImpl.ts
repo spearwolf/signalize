@@ -134,7 +134,6 @@ export class EffectImpl {
       effect.run();
     }
 
-    // return [effect.run.bind(effect), effect.destroy.bind(effect)];
     return new Effect(effect);
   }
 
