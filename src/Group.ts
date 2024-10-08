@@ -1,4 +1,5 @@
 import {EffectImpl} from './EffectImpl.js';
+import {Signal} from './Signal.js';
 import {destroySignal, getSignalInstance} from './createSignal.js';
 import {ISignalImpl, SignalLike} from './types.js';
 
@@ -7,6 +8,7 @@ const store = new Map<object, Group>();
 export class Group {
   #groups = new Set<Group>();
   #signals = new Set<ISignalImpl<any>>();
+  #namedSignals = new Map<string | symbol, Signal<any>>();
   #effects = new Set<EffectImpl>();
 
   #destroyed = false;
@@ -71,6 +73,28 @@ export class Group {
     return signal;
   }
 
+  setSignal(name: string | symbol, signal?: Signal<any>) {
+    if (this.#destroyed) {
+      throw new Error('Cannot attach a named signal to a destroyed group');
+    }
+    if (signal) {
+      this.addSignal(signal);
+    }
+    if (this.#namedSignals.has(name)) {
+      this.removeSignal(this.#namedSignals.get(name)!);
+    }
+    if (signal) {
+      this.#namedSignals.set(name, signal);
+    } else {
+      this.#namedSignals.delete(name);
+    }
+    return signal;
+  }
+
+  getSignal(name: string | symbol) {
+    return this.#namedSignals.get(name);
+  }
+
   removeSignal(signal: SignalLike<any>) {
     const sig = getSignalInstance(signal);
     if (sig) {
@@ -113,6 +137,7 @@ export class Group {
 
     this.#groups.clear();
     this.#signals.clear();
+    this.#namedSignals.clear();
     this.#effects.clear();
 
     store.delete(this);
