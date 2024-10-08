@@ -21,14 +21,14 @@ describe('Effect -> autorun: false', () => {
       value = signal();
     });
 
-    const [run, unsubscribe] = createEffect(effectCallback, {autorun: false});
+    const effect = createEffect(effectCallback, {autorun: false});
 
     assertEffectsCount(1);
 
     expect(effectCallback).toHaveBeenCalledTimes(0);
     expect(value).toBe(-1);
 
-    run();
+    effect.run();
 
     expect(effectCallback).toHaveBeenCalledTimes(1);
     expect(value).toBe(0);
@@ -38,12 +38,12 @@ describe('Effect -> autorun: false', () => {
     expect(effectCallback).toHaveBeenCalledTimes(1);
     expect(value).toBe(0);
 
-    run();
+    effect.run();
 
     expect(effectCallback).toHaveBeenCalledTimes(2);
     expect(value).toBe(1);
 
-    unsubscribe();
+    effect.destroy();
 
     setValue(2);
 

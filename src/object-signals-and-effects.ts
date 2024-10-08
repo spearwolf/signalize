@@ -1,16 +1,10 @@
 import {destroySignal} from './createSignal.js';
-import type {
-  DestroyEffectCallback,
-  RunEffectCallback,
-  SignalReader,
-} from './types.js';
+import {EffectObject} from './EffectObject.js';
+import type {SignalReader} from './types.js';
 
 interface SignalsAndEffects {
   signals: Record<string | symbol, SignalReader<any>>;
-  effects: Record<
-    string | symbol,
-    [run: RunEffectCallback, destroy: DestroyEffectCallback]
-  >;
+  effects: Record<string | symbol, EffectObject>;
 }
 
 const globalObjectSignalsAndEffects = new WeakMap<any, SignalsAndEffects>();
@@ -66,7 +60,7 @@ export const queryObjectEffect = (obj: any, name: string | symbol) =>
 export const saveObjectEffect = (
   obj: any,
   name: string | symbol,
-  effect: [RunEffectCallback, DestroyEffectCallback],
+  effect: EffectObject,
 ) => {
   const effects = globalObjectSignalsAndEffects.get(obj);
   if (effects) {
@@ -96,10 +90,8 @@ export function destroyEffects(...objects: any[]): void {
   for (const obj of objects) {
     if (globalObjectSignalsAndEffects.has(obj)) {
       const signalsAndEffects = globalObjectSignalsAndEffects.get(obj);
-      for (const [, destroyEffect] of Object.values(
-        signalsAndEffects.effects,
-      )) {
-        destroyEffect();
+      for (const effect of Object.values(signalsAndEffects.effects)) {
+        effect.destroy();
       }
       signalsAndEffects.effects = {};
     }
@@ -114,8 +106,8 @@ export function destroySignalsAndEffects(...objects: any[]): void {
       for (const sig of Object.values(signals)) {
         destroySignal(sig);
       }
-      for (const [, destroyEffect] of Object.values(effects)) {
-        destroyEffect();
+      for (const effect of Object.values(effects)) {
+        effect.destroy();
       }
       globalObjectSignalsAndEffects.delete(obj);
     }

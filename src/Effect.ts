@@ -1,13 +1,8 @@
-import type {
-  DestroyEffectCallback,
-  EffectCallback,
-  RunEffectCallback,
-  SignalLike,
-  VoidCallback,
-} from './types.js';
 import {Group} from './Group.js';
+import type {EffectCallback, SignalLike, VoidCallback} from './types.js';
 
-import {emit, off, on, once} from '@spearwolf/eventize';
+import {emit, eventize, off, on, once} from '@spearwolf/eventize';
+import {EffectObject} from './EffectObject.js';
 import {UniqIdGen} from './UniqIdGen.js';
 import {getCurrentBatch} from './batch.js';
 import {$createEffect, $destroyEffect, $destroySignal} from './constants.js';
@@ -32,6 +27,8 @@ const isThenable = (value: unknown): value is Promise<unknown> =>
 
 export class Effect {
   private static idGen = new UniqIdGen('ef');
+
+  static Destroy = 'destroy';
 
   /** global effect counter */
   static count = 0;
@@ -72,6 +69,8 @@ export class Effect {
    * Please do not call this constructor directly, use `createEffect()` instead.
    */
   constructor(callback: EffectCallback, options?: EffectParams) {
+    eventize(this);
+
     this.callback = callback;
 
     this.autorun = options?.autorun ?? true;
@@ -102,7 +101,7 @@ export class Effect {
     callback: EffectCallback,
     optsOrDeps?: EffectParams | EffectDeps,
     opts?: EffectParams,
-  ): [RunEffectCallback, DestroyEffectCallback] {
+  ): EffectObject {
     const dependencies = Array.isArray(optsOrDeps) ? optsOrDeps : undefined;
 
     const options: EffectParams | undefined = dependencies
@@ -135,7 +134,8 @@ export class Effect {
       effect.run();
     }
 
-    return [effect.run.bind(effect), effect.destroy.bind(effect)];
+    // return [effect.run.bind(effect), effect.destroy.bind(effect)];
+    return new EffectObject(effect);
   }
 
   private getCurrentChildEffect(): Effect | undefined {
@@ -156,7 +156,7 @@ export class Effect {
    *
    * The optional return value of the _effect callback_ is stored as the next _cleanup callback_.
    */
-  run(): void {
+  run = (): void => {
     if (this.#destroyed) return;
     if (!this.shouldRun) return;
 
@@ -174,7 +174,7 @@ export class Effect {
         this.#nextCleanupCallback = runWithinEffect(this, this.callback);
       }
     }
-  }
+  };
 
   /**
    * Eventually run the _effect callback_
@@ -229,8 +229,11 @@ export class Effect {
     }
   }
 
-  destroy(): void {
+  destroy = (): void => {
     if (this.#destroyed) return;
+
+    emit(this, Effect.Destroy, this);
+    off(this);
 
     emit(globalEffectQueue, $destroyEffect, this);
 
@@ -251,5 +254,5 @@ export class Effect {
     this.childEffects.length = 0;
 
     --Effect.count;
-  }
+  };
 }
