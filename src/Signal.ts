@@ -5,7 +5,7 @@ import {destroySignal} from './createSignal.js';
 import {createEffect} from './effects-api.js';
 import {touch} from './touch.js';
 import type {
-  Signal,
+  ISignalImpl,
   SignalFuncs,
   SignalLike,
   SignalReader,
@@ -14,12 +14,12 @@ import type {
 } from './types.js';
 import {value} from './value.js';
 
-export interface SignalObject<Type> extends SignalFuncs<Type> {}
+export interface Signal<Type> extends SignalFuncs<Type> {}
 
-export class SignalObject<Type = unknown> implements SignalLike<Type> {
-  readonly [$signal]: Signal<Type>;
+export class Signal<Type = unknown> implements SignalLike<Type> {
+  readonly [$signal]: ISignalImpl<Type>;
 
-  constructor(sig: Signal<Type>) {
+  constructor(sig: ISignalImpl<Type>) {
     this[$signal] = sig;
   }
 

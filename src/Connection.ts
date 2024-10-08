@@ -10,12 +10,15 @@ import {
 import {getSignalInstance, isSignal} from './createSignal.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {queryObjectSignals} from './object-signals-and-effects.js';
-import type {Signal, SignalLike} from './types.js';
+import type {ISignalImpl, SignalLike} from './types.js';
 
 /**
  * global map of all connections per signal
  */
-const g_sigConnects = new WeakMap<Signal<unknown>, Set<Connection<unknown>>>();
+const g_sigConnects = new WeakMap<
+  ISignalImpl<unknown>,
+  Set<Connection<unknown>>
+>();
 
 export type ConnectionTargetType = object | Function;
 
@@ -158,7 +161,7 @@ export class Connection<T> {
     target: ConnectionTarget<C>,
   ): Connection<C> | undefined {
     const connectionsBySignal = g_sigConnects.get(
-      getSignalInstance(source) as Signal<unknown>,
+      getSignalInstance(source) as ISignalImpl<unknown>,
     );
     if (connectionsBySignal != null) {
       const connections = Array.from(connectionsBySignal);
@@ -195,8 +198,8 @@ export class Connection<T> {
     return this.#muted;
   }
 
-  #source?: Signal<T>;
-  #target?: Signal<T> | ConnectionFunction<T> | ConnectionProperty<T>;
+  #source?: ISignalImpl<T>;
+  #target?: ISignalImpl<T> | ConnectionFunction<T> | ConnectionProperty<T>;
 
   #type: ConnectionType;
   #connectionTarget?: ConnectionTargetType;
@@ -218,7 +221,7 @@ export class Connection<T> {
     this.#source = getSignalInstance(source);
 
     if (isSignal(target)) {
-      this.#target = getSignalInstance(target) as Signal<T>;
+      this.#target = getSignalInstance(target) as ISignalImpl<T>;
       this.#type = ConnectionType.Signal;
     } else if (isFunction(target)) {
       this.#target = target as () => void;
@@ -283,7 +286,10 @@ export class Connection<T> {
       const {value} = this.#source;
 
       if (this.#type === ConnectionType.Signal) {
-        (this.#target as Signal<T>).writer(value, touch ? {touch} : undefined);
+        (this.#target as ISignalImpl<T>).writer(
+          value,
+          touch ? {touch} : undefined,
+        );
       } else if (this.#type === ConnectionType.Function) {
         (this.#target as (val: T) => void)(value);
       } else {

@@ -1,12 +1,12 @@
 import {EffectImpl} from './EffectImpl.js';
 import {destroySignal, getSignalInstance} from './createSignal.js';
-import {SignalLike, Signal} from './types.js';
+import {ISignalImpl, SignalLike} from './types.js';
 
 const store = new Map<object, Group>();
 
 export class Group {
   #groups = new Set<Group>();
-  #signals = new Set<Signal<any>>();
+  #signals = new Set<ISignalImpl<any>>();
   #effects = new Set<EffectImpl>();
 
   #destroyed = false;
@@ -86,11 +86,6 @@ export class Group {
     this.#effects.add(effect);
     return effect;
   }
-
-  //removeEffect(effect: Effect) {
-  //  this.#effects.delete(effect);
-  //  return effect;
-  //}
 
   runEffects() {
     if (this.#destroyed) {
