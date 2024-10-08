@@ -1,4 +1,5 @@
 import {EffectParams} from './EffectImpl.js';
+import {Group} from './Group.js';
 import {createMemo} from './createMemo.js';
 import {createSignal, getSignalInstance} from './createSignal.js';
 import {createEffect} from './effects-api.js';
@@ -61,17 +62,16 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
       },
 
       init(this: C, value: T): T {
-        const {get: readSignal, set: writeSignal} = createSignal<T>(
-          undefined,
-          options as any,
-        );
-        saveObjectSignal(this, signalName as string | symbol, readSignal);
-        writeSignal(value);
-        return readSignalValue(readSignal);
+        const sig = createSignal<T>(value, options as any);
+        saveObjectSignal(this, signalName as string | symbol, sig.get);
+        new Group(this).setSignal(signalName as string | symbol, sig);
+        return readSignalValue(sig.get);
       },
     };
   };
 }
+
+let g_signalReader_deprecatedWarningShown = false;
 
 export function signalReader<T, SR = SignalReader<T>>(
   options?: SignalReaderDecoratorOptions,
@@ -82,6 +82,14 @@ export function signalReader<T, SR = SignalReader<T>>(
   ): ClassAccessorDecoratorResult<C, SR> {
     const signalName = (options?.name ??
       extractSignalName(context.name)) as keyof C;
+
+    if (!g_signalReader_deprecatedWarningShown) {
+      g_signalReader_deprecatedWarningShown = true;
+      // eslint-disable-next-line no-console
+      console.warn(
+        'The usage of the @signalReader() decorator is deprecated, please use the signal object api instead!',
+      );
+    }
 
     return {
       get(this: C) {
@@ -104,6 +112,7 @@ export function memo() {
       if (signalReader == null) {
         signalReader = createMemo<R>(() => target.call(this, ...args));
         saveObjectSignal(this, context.name, signalReader);
+        new Group(this).addSignal(signalReader);
       }
       return signalReader();
     };
@@ -121,6 +130,8 @@ export type EffectDecoratorOptions = (HasSignalType | HasDepsType) & {
   autorun?: boolean;
 };
 
+let g_effect_deprecatedWarningShown = false;
+
 export function effect(options?: EffectDecoratorOptions) {
   const autorun = options?.autorun ?? true;
 
@@ -132,6 +143,14 @@ export function effect(options?: EffectDecoratorOptions) {
   const hasDeps = deps != null && deps.length > 0;
 
   const autostart = hasDeps ? (options?.autostart ?? true) : true;
+
+  if (!g_effect_deprecatedWarningShown) {
+    g_effect_deprecatedWarningShown = true;
+    // eslint-disable-next-line no-console
+    console.warn(
+      'The usage of the @effect() decorator is deprecated, please create effects in combination with groups instead!',
+    );
+  }
 
   return function <T, A extends any[]>(
     target: (this: T, ...args: A) => any,
@@ -148,7 +167,7 @@ export function effect(options?: EffectDecoratorOptions) {
           if (readers.length !== deps.length) {
             // eslint-disable-next-line no-console
             console.warn(
-              'unknown object signals:',
+              'unknown signals:',
               deps.filter(
                 (signalName) => !queryObjectSignal(this as any, signalName),
               ),
@@ -165,7 +184,6 @@ export function effect(options?: EffectDecoratorOptions) {
         saveObjectEffect(this, name, effect);
       }
       if (autostart) {
-        // TODO rename Effect:option:`autostart` to `autorun`
         effect.run();
       }
     };

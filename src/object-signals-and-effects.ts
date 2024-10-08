@@ -3,24 +3,33 @@ import {Effect} from './Effect.js';
 import type {SignalReader} from './types.js';
 
 interface SignalsAndEffects {
-  signals: Record<string | symbol, SignalReader<any>>;
-  effects: Record<string | symbol, Effect>;
+  signals?: Map<string | symbol, SignalReader<any>>;
+  effects?: Map<string | symbol, Effect>;
 }
 
 const globalObjectSignalsAndEffects = new WeakMap<any, SignalsAndEffects>();
+
+const getStore = (obj: any): SignalsAndEffects => {
+  let store = globalObjectSignalsAndEffects.get(obj);
+  if (!store) {
+    store = {};
+    globalObjectSignalsAndEffects.set(obj, store);
+  }
+  return store;
+};
 
 export const queryObjectSignal = <O extends object, K extends keyof O>(
   obj: O,
   name: K,
 ): SignalReader<O[K]> | undefined =>
-  globalObjectSignalsAndEffects.get(obj)?.signals[name as any];
+  globalObjectSignalsAndEffects.get(obj)?.signals?.get(name as any);
 
 export const queryObjectSignals = <O extends object>(
   obj: O,
 ): SignalReader<any>[] | undefined => {
   const signals = globalObjectSignalsAndEffects.get(obj)?.signals;
   if (signals) {
-    return Object.values(signals);
+    return Array.from(signals.values());
   }
   return undefined;
 };
@@ -30,7 +39,7 @@ export const getObjectSignalKeys = <O extends object>(
 ): (string | symbol)[] | undefined => {
   const signals = globalObjectSignalsAndEffects.get(obj)?.signals;
   if (signals) {
-    return Object.keys(signals);
+    return Array.from(signals.keys());
   }
   return undefined;
 };
@@ -41,20 +50,14 @@ export const saveObjectSignal = (
   name: string | symbol,
   signalReader: SignalReader<any>,
 ) => {
-  const signals = globalObjectSignalsAndEffects.get(obj);
-  if (signals) {
-    signals.signals[name] = signalReader;
-  } else {
-    globalObjectSignalsAndEffects.set(obj, {
-      signals: {[name]: signalReader},
-      effects: {},
-    });
-  }
+  const store = getStore(obj);
+  store.signals ??= new Map();
+  store.signals.set(name, signalReader);
 };
 
 // TODO remove from public API
 export const queryObjectEffect = (obj: any, name: string | symbol) =>
-  globalObjectSignalsAndEffects.get(obj)?.effects[name];
+  globalObjectSignalsAndEffects.get(obj)?.effects?.get(name);
 
 // TODO remove from public API
 export const saveObjectEffect = (
@@ -62,26 +65,23 @@ export const saveObjectEffect = (
   name: string | symbol,
   effect: Effect,
 ) => {
-  const effects = globalObjectSignalsAndEffects.get(obj);
-  if (effects) {
-    effects.effects[name] = effect;
-  } else {
-    globalObjectSignalsAndEffects.set(obj, {
-      effects: {[name]: effect},
-      signals: {},
-    });
-  }
+  const store = getStore(obj);
+  store.effects ??= new Map();
+  store.effects.set(name, effect);
 };
 
 // TODO support signal-readers as well
 export function destroySignals(...objects: any[]): void {
   for (const obj of objects) {
     if (globalObjectSignalsAndEffects.has(obj)) {
-      const signalsAndEffects = globalObjectSignalsAndEffects.get(obj);
-      for (const sig of Object.values(signalsAndEffects.signals)) {
-        destroySignal(sig);
+      const store = globalObjectSignalsAndEffects.get(obj);
+      if (store.signals) {
+        for (const sig of store.signals.values()) {
+          destroySignal(sig);
+        }
+        store.signals.clear();
+        store.signals = undefined;
       }
-      signalsAndEffects.signals = {};
     }
   }
 }
@@ -89,11 +89,14 @@ export function destroySignals(...objects: any[]): void {
 export function destroyEffects(...objects: any[]): void {
   for (const obj of objects) {
     if (globalObjectSignalsAndEffects.has(obj)) {
-      const signalsAndEffects = globalObjectSignalsAndEffects.get(obj);
-      for (const effect of Object.values(signalsAndEffects.effects)) {
-        effect.destroy();
+      const store = globalObjectSignalsAndEffects.get(obj);
+      if (store.effects) {
+        for (const effect of store.effects.values()) {
+          effect.destroy();
+        }
+        store.effects.clear();
+        store.effects = undefined;
       }
-      signalsAndEffects.effects = {};
     }
   }
 }
@@ -102,13 +105,8 @@ export function destroyEffects(...objects: any[]): void {
 export function destroySignalsAndEffects(...objects: any[]): void {
   for (const obj of objects) {
     if (globalObjectSignalsAndEffects.has(obj)) {
-      const {signals, effects} = globalObjectSignalsAndEffects.get(obj);
-      for (const sig of Object.values(signals)) {
-        destroySignal(sig);
-      }
-      for (const effect of Object.values(effects)) {
-        effect.destroy();
-      }
+      destroySignals(obj);
+      destroyEffects(obj);
       globalObjectSignalsAndEffects.delete(obj);
     }
   }
