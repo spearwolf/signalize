@@ -1,7 +1,7 @@
 import {assertEffectsCount} from './assert-helpers.js';
 import {createEffect, onCreateEffect, onDestroyEffect} from './effects-api.js';
 
-import {Effect} from './Effect.js';
+import {EffectImpl} from './EffectImpl.js';
 
 describe('onCreateEffect', () => {
   beforeEach(() => {
@@ -23,7 +23,7 @@ describe('onCreateEffect', () => {
 
     expect(effectCreated).toBeCalledTimes(1);
     expect(effectDestroyed).toBeCalledTimes(0);
-    expect(effectCreated.mock.calls[0][0]).toBeInstanceOf(Effect);
+    expect(effectCreated.mock.calls[0][0]).toBeInstanceOf(EffectImpl);
 
     unsubscribeCreateEffect();
 

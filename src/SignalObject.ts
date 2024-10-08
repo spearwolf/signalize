@@ -5,12 +5,12 @@ import {destroySignal} from './createSignal.js';
 import {createEffect} from './effects-api.js';
 import {touch} from './touch.js';
 import type {
-  DestroyEffectCallback,
   Signal,
   SignalFuncs,
   SignalLike,
   SignalReader,
   SignalWriter,
+  VoidFunc,
 } from './types.js';
 import {value} from './value.js';
 
@@ -44,7 +44,7 @@ export class SignalObject<Type = unknown> implements SignalLike<Type> {
     this.set(val);
   }
 
-  onChange(action: (val: Type) => any): DestroyEffectCallback {
+  onChange(action: (val: Type) => any): VoidFunc {
     const {destroy} = createEffect(() => {
       return action(this.value);
     }, [this.get]);

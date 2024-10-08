@@ -4,8 +4,9 @@
 
 - create `SignalObject` wrapper
   - as return result of `createSignal()`
-- create `EffectObject` wrapper
-  - as return result of `createEffect()`
+- create ~~`EffectObject`~~ `Effect` wrapper
+  - as return result of `createEffect(): Effect`
+  - rename previous `Effect` &rarr; `EffectImpl`
 
 ## `v0.16.0` (2024-08-04)
 

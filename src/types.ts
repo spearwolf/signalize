@@ -1,11 +1,11 @@
 import type {SignalObject} from './SignalObject.js';
 import type {$signal} from './constants.js';
 
-export type VoidCallback = () => void;
-export type EffectCallback = VoidCallback | (() => VoidCallback);
-export type BatchCallback = VoidCallback;
-export type RunEffectCallback = VoidCallback;
-export type DestroyEffectCallback = VoidCallback;
+export type VoidFunc = () => void;
+
+export type EffectCallback = VoidFunc | (() => VoidFunc);
+export type BatchCallback = VoidFunc;
+
 export type CompareFunc<Type> = (a: Type, b: Type) => boolean;
 export type BeforeReadFunc = () => void;
 
@@ -30,7 +30,7 @@ export interface Signal<Type> extends SignalLike<Type> {
 //export type AnySignal = SignalLike<any> | Signal<any>;
 
 export interface SignalCallback<Type> {
-  (value: Type): VoidCallback | void;
+  (value: Type): VoidFunc | void;
 }
 
 export interface SignalReader<Type> extends SignalLike<Type> {

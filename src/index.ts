@@ -22,8 +22,6 @@ export * from './value.js';
 
 // TODO docs: update README (missing decorators docs, rewrite introduction, add ts@5 / decorators stage-3 notes ...)
 
-// TODO docs: rename the library to 'signaler-effectus' ?
-
 // TODO docs: create a cheat sheet
 
 // TODO docs: add contribution guide (setup dev env, run tests, etc.)
