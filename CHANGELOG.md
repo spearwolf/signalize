@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## `v0.1z.0` (not yet released)
+
+- create `SignalObject` wrapper
+  - as return result of `createSignal()`
+- create `EffectObject` wrapper
+  - as return result of `createEffect()`
+
 ## `v0.16.0` (2024-08-04)
 
 - update to `@spearwolf/eventize@4.0.1`

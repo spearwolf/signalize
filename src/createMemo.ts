@@ -7,9 +7,12 @@ import type {SignalReader} from './types.js';
 // TODO add [optional] static dependencies
 export function createMemo<Type>(callback: () => Type): SignalReader<Type> {
   const [get, set] = createSignal<Type>();
-  const [compute, unsubscribe] = createEffect(() => set(callback()), {
-    autorun: false,
-  });
+  const {run: compute, destroy: unsubscribe} = createEffect(
+    () => set(callback()),
+    {
+      autorun: false,
+    },
+  );
   const signal = getSignalInstance(get);
   // TODO beQuiet ?
   signal.beforeReadFn = compute;

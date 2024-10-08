@@ -21,7 +21,7 @@ describe('beQuiet', () => {
     const [c, setC] = createSignal(0);
     const [d, setD] = createSignal(0);
 
-    const [runEffect, destroyEffect] = createEffect(() => {
+    const effect = createEffect(() => {
       setB(a() + 1);
       beQuiet(() => {
         setD(c() + 1);
@@ -36,7 +36,7 @@ describe('beQuiet', () => {
     expect(c()).toBe(4);
     expect(d()).toBe(1);
 
-    runEffect(); // has no effect - no dependencies changed!
+    effect.run(); // has no effect - no dependencies changed!
 
     expect(b()).toBe(2);
     expect(d()).toBe(1);
@@ -46,7 +46,7 @@ describe('beQuiet', () => {
     expect(b()).toBe(2);
     expect(d()).toBe(5);
 
-    destroyEffect();
+    effect.destroy();
     destroySignal(a, b, c, d);
   });
 });

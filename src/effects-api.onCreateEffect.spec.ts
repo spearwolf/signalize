@@ -19,7 +19,7 @@ describe('onCreateEffect', () => {
     const unsubscribeCreateEffect = onCreateEffect(effectCreated);
     const unsubscribeDestroyEffect = onDestroyEffect(effectDestroyed);
 
-    const [, unsubscribeEffect] = createEffect(() => {});
+    const effect = createEffect(() => {});
 
     expect(effectCreated).toBeCalledTimes(1);
     expect(effectDestroyed).toBeCalledTimes(0);
@@ -32,7 +32,7 @@ describe('onCreateEffect', () => {
 
     assertEffectsCount(1);
 
-    unsubscribeEffect();
+    effect.destroy();
 
     expect(effectDestroyed).toBeCalledTimes(1);
     expect(effectDestroyed.mock.calls[0][0]).toBe(

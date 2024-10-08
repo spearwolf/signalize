@@ -89,7 +89,7 @@ describe('createSignal', () => {
 
     let foo = 0;
 
-    const [, unsubscribe] = createEffect(() => {
+    const effect = createEffect(() => {
       foo = sigFoo();
     });
 
@@ -112,7 +112,7 @@ describe('createSignal', () => {
 
     expect(foo).toBe(111);
 
-    unsubscribe();
+    effect.destroy();
     setFoo(222);
 
     expect(foo).toBe(111);

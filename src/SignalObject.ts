@@ -5,6 +5,7 @@ import {destroySignal} from './createSignal.js';
 import {createEffect} from './effects-api.js';
 import {touch} from './touch.js';
 import type {
+  DestroyEffectCallback,
   Signal,
   SignalFuncs,
   SignalLike,
@@ -43,11 +44,11 @@ export class SignalObject<Type = unknown> implements SignalLike<Type> {
     this.set(val);
   }
 
-  onChange(action: (val: Type) => any): () => void {
-    const [, unsubscribe] = createEffect(() => {
+  onChange(action: (val: Type) => any): DestroyEffectCallback {
+    const {destroy} = createEffect(() => {
       return action(this.value);
     }, [this.get]);
-    return unsubscribe;
+    return destroy;
   }
 
   get muted(): boolean {

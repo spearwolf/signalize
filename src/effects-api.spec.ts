@@ -91,7 +91,7 @@ describe('createEffect', () => {
     let valA: number;
     let valB: string;
 
-    const [, unsubscribe] = createEffect(() => {
+    const effect = createEffect(() => {
       valA = a();
       valB = b();
     });
@@ -99,7 +99,7 @@ describe('createEffect', () => {
     expect(valA).toBe(123);
     expect(valB).toBe('abc');
 
-    unsubscribe();
+    effect.destroy();
   });
 
   it('dynamic effects only listen to the signals they actually read', () => {
@@ -110,7 +110,7 @@ describe('createEffect', () => {
     let valB: string;
     let effectCallCount = 0;
 
-    const [, unsubscribe] = createEffect(() => {
+    const effect = createEffect(() => {
       ++effectCallCount;
       valA = a();
       if (valA === 666) {
@@ -137,7 +137,7 @@ describe('createEffect', () => {
     expect(effectCallCount).toBe(3);
     expect(valB).toBe('ghi');
 
-    unsubscribe();
+    effect.destroy();
   });
 
   it('the effect callback is called again after calling a setter function', () => {
@@ -149,7 +149,7 @@ describe('createEffect', () => {
 
     let effectCallCount = 0;
 
-    const [, unsubscribe] = createEffect(() => {
+    const effect = createEffect(() => {
       ++effectCallCount;
       valA(a());
       a(); // yes, sure why not
@@ -176,7 +176,7 @@ describe('createEffect', () => {
 
     expect(effectCallCount).toBe(3);
 
-    unsubscribe();
+    effect.destroy();
   });
 
   it('the effect callback is called again after calling a setter function (with static dependencies)', () => {
@@ -188,7 +188,7 @@ describe('createEffect', () => {
 
     let effectCallCount = 0;
 
-    const [, unsubscribe] = createEffect(() => {
+    const effect = createEffect(() => {
       ++effectCallCount;
       valA(a());
       a(); // yes, sure why not
@@ -220,13 +220,13 @@ describe('createEffect', () => {
 
     expect(effectCallCount).toBe(3);
 
-    unsubscribe();
+    effect.destroy();
   });
 
   it('calling a setter from within an affect callback', () => {
     const [count, setCount] = createSignal(0);
 
-    const [, unsubscribe] = createEffect(() => {
+    const effect = createEffect(() => {
       if (count() < 23) {
         setCount(count() + 1);
       }
@@ -234,7 +234,7 @@ describe('createEffect', () => {
 
     expect(count()).toBe(23);
 
-    unsubscribe();
+    effect.destroy();
   });
 
   it('nested effects work as expected', () => {
@@ -265,7 +265,7 @@ describe('createEffect', () => {
       thirdEffectCallCount = 0;
     };
 
-    const [, unsubscribe] = createEffect(() => {
+    const effect = createEffect(() => {
       ++firstEffectCallCount;
       a();
       a();
@@ -361,7 +361,7 @@ describe('createEffect', () => {
     expect(d).toBeCalledTimes(0);
     expect(e).toBeCalledTimes(1);
 
-    unsubscribe();
+    effect.destroy();
 
     expect(destroyEffectMock).toBeCalledTimes(3);
   });

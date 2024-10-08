@@ -165,7 +165,8 @@ export function effect(options?: EffectDecoratorOptions) {
         saveObjectEffect(this, name, effect);
       }
       if (autostart) {
-        effect[0]();
+        // TODO rename Effect:option:`autostart` to `autorun`
+        effect.run();
       }
     };
   };
