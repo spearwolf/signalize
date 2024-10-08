@@ -1,4 +1,4 @@
-import {EffectParams} from './Effect.js';
+import {EffectParams} from './EffectImpl.js';
 import {createMemo} from './createMemo.js';
 import {createSignal, getSignalInstance} from './createSignal.js';
 import {createEffect} from './effects-api.js';

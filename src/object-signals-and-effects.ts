@@ -1,10 +1,10 @@
 import {destroySignal} from './createSignal.js';
-import {EffectObject} from './EffectObject.js';
+import {Effect} from './Effect.js';
 import type {SignalReader} from './types.js';
 
 interface SignalsAndEffects {
   signals: Record<string | symbol, SignalReader<any>>;
-  effects: Record<string | symbol, EffectObject>;
+  effects: Record<string | symbol, Effect>;
 }
 
 const globalObjectSignalsAndEffects = new WeakMap<any, SignalsAndEffects>();
@@ -60,7 +60,7 @@ export const queryObjectEffect = (obj: any, name: string | symbol) =>
 export const saveObjectEffect = (
   obj: any,
   name: string | symbol,
-  effect: EffectObject,
+  effect: Effect,
 ) => {
   const effects = globalObjectSignalsAndEffects.get(obj);
   if (effects) {

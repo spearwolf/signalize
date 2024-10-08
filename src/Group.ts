@@ -1,4 +1,4 @@
-import {Effect} from './Effect.js';
+import {EffectImpl} from './EffectImpl.js';
 import {destroySignal, getSignalInstance} from './createSignal.js';
 import {SignalLike, Signal} from './types.js';
 
@@ -7,7 +7,7 @@ const store = new Map<object, Group>();
 export class Group {
   #groups = new Set<Group>();
   #signals = new Set<Signal<any>>();
-  #effects = new Set<Effect>();
+  #effects = new Set<EffectImpl>();
 
   #destroyed = false;
 
@@ -79,7 +79,7 @@ export class Group {
     return signal;
   }
 
-  addEffect(effect: Effect) {
+  addEffect(effect: EffectImpl) {
     if (this.#destroyed) {
       throw new Error('Cannot add an effect to a destroyed group');
     }

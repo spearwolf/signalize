@@ -1,19 +1,19 @@
-import type {EffectCallback, VoidCallback} from './types.js';
+import type {EffectCallback, VoidFunc} from './types.js';
 
-import {Effect} from './Effect.js';
+import {EffectImpl} from './EffectImpl.js';
 
-const globalEffectStack: Effect[] = [];
+const globalEffectStack: EffectImpl[] = [];
 
-export const getCurrentEffect = (): Effect | undefined =>
+export const getCurrentEffect = (): EffectImpl | undefined =>
   globalEffectStack.at(-1);
 
 export const runWithinEffect = (
-  effect: Effect,
+  effect: EffectImpl,
   callback: EffectCallback,
-): VoidCallback => {
+): VoidFunc => {
   globalEffectStack.push(effect);
   try {
-    return callback() as VoidCallback;
+    return callback() as VoidFunc;
   } finally {
     globalEffectStack.pop();
   }

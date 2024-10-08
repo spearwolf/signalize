@@ -1,6 +1,6 @@
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 
-import {Effect} from './Effect.js';
+import {EffectImpl} from './EffectImpl.js';
 
 const NOOP = () => {};
 
@@ -8,16 +8,16 @@ describe('globalEffectStack', () => {
   describe('getCurrentEffect()', () => {
     it('should return undefined if the method not called within an effect callback', () => {
       expect(getCurrentEffect()).toBeUndefined();
-      runWithinEffect(new Effect(NOOP), NOOP);
+      runWithinEffect(new EffectImpl(NOOP), NOOP);
       expect(getCurrentEffect()).toBeUndefined();
     });
 
     it('should return the current effect if the method is called within an effect callback', (done) => {
-      const effect = new Effect(NOOP);
+      const effect = new EffectImpl(NOOP);
       runWithinEffect(effect, () => {
         expect(getCurrentEffect()).toBe(effect);
 
-        const childEffect = new Effect(NOOP);
+        const childEffect = new EffectImpl(NOOP);
         runWithinEffect(childEffect, () => {
           expect(getCurrentEffect()).toBe(childEffect);
         });
