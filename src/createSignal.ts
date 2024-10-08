@@ -1,7 +1,7 @@
 import type {
   BeforeReadFunc,
   CompareFunc,
-  Signal,
+  ISignalImpl,
   SignalCallback,
   SignalLike,
   SignalParams,
@@ -12,14 +12,14 @@ import type {
 } from './types.js';
 
 import {emit} from '@spearwolf/eventize';
-import {SignalObject} from './SignalObject.js';
-import {UniqIdGen} from './UniqIdGen.js';
 import {isQuiet} from './bequiet.js';
 import {$signal} from './constants.js';
 import {createEffect} from './effects-api.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {getCurrentEffect} from './globalEffectStack.js';
 import {Group} from './Group.js';
+import {Signal} from './Signal.js';
+import {UniqIdGen} from './UniqIdGen.js';
 
 const idCreator = new UniqIdGen('si');
 
@@ -42,7 +42,9 @@ export function writeSignal(
 export const isSignal = (signalLike: any): signalLike is SignalLike<unknown> =>
   signalLike != null && signalLike[$signal] != null;
 
-const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
+const createSignalReader = <Type>(
+  signal: ISignalImpl<Type>,
+): SignalReader<Type> => {
   const signalReader = (callback?: SignalCallback<Type>) => {
     if (callback) {
       createEffect(() => {
@@ -65,14 +67,14 @@ const createSignalReader = <Type>(signal: Signal<Type>): SignalReader<Type> => {
   return signalReader as SignalReader<Type>;
 };
 
-class SignalImpl<Type> implements Signal<Type> {
+class SignalImpl<Type> implements ISignalImpl<Type> {
   static instanceCount = 0;
 
   id: symbol;
 
   lazy: boolean;
 
-  get [$signal](): Signal<Type> {
+  get [$signal](): ISignalImpl<Type> {
     return this;
   }
 
@@ -138,7 +140,7 @@ class SignalImpl<Type> implements Signal<Type> {
     }
   };
 
-  readonly object: SignalObject<Type>;
+  readonly object: Signal<Type>;
 
   constructor(lazy: boolean, initialValue?: Type | (() => Type) | undefined) {
     this.id = idCreator.make();
@@ -157,19 +159,19 @@ class SignalImpl<Type> implements Signal<Type> {
 
     this.reader = createSignalReader(this);
 
-    this.object = new SignalObject(this);
+    this.object = new Signal(this);
   }
 }
 
 export const getSignalInstance = <Type = unknown>(
   sig: SignalLike<Type>,
-): Signal<Type> => sig?.[$signal];
+): ISignalImpl<Type> => sig?.[$signal];
 
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalLike<Type> | (() => Type) = undefined,
   params?: SignalParams<Type>,
-): SignalObject<Type> {
-  let signal!: Signal<Type>;
+): Signal<Type> {
+  let signal!: ISignalImpl<Type>;
 
   if (isSignal(initialValue)) {
     // NOTE createSignal(otherSignal) returns otherSignal and does NOT create a new signal
@@ -177,7 +179,7 @@ export function createSignal<Type = unknown>(
   } else {
     // === Create a new signal ===
     const lazy = params?.lazy ?? false;
-    signal = new SignalImpl(lazy, initialValue) as Signal<Type>;
+    signal = new SignalImpl(lazy, initialValue) as ISignalImpl<Type>;
     signal.beforeReadFn = params?.beforeReadFn;
     signal.compareFn = params?.compareFn;
   }

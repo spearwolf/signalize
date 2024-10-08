@@ -1,4 +1,4 @@
-import type {SignalObject} from './SignalObject.js';
+import type {Signal} from './Signal.js';
 import type {$signal} from './constants.js';
 
 export type VoidFunc = () => void;
@@ -10,10 +10,10 @@ export type CompareFunc<Type> = (a: Type, b: Type) => boolean;
 export type BeforeReadFunc = () => void;
 
 export interface SignalLike<Type> {
-  [$signal]: Signal<Type>;
+  [$signal]: ISignalImpl<Type>;
 }
 
-export interface Signal<Type> extends SignalLike<Type> {
+export interface ISignalImpl<Type> extends SignalLike<Type> {
   id: symbol;
   value: Type | undefined;
   valueFn: () => Type | undefined;
@@ -24,7 +24,7 @@ export interface Signal<Type> extends SignalLike<Type> {
   destroyed: boolean;
   reader: SignalReader<Type>;
   writer: SignalWriter<Type>;
-  object: SignalObject<Type>;
+  object: Signal<Type>;
 }
 
 //export type AnySignal = SignalLike<any> | Signal<any>;
@@ -35,7 +35,7 @@ export interface SignalCallback<Type> {
 
 export interface SignalReader<Type> extends SignalLike<Type> {
   (callback?: SignalCallback<Type>): Type;
-  [$signal]: Signal<Type>;
+  [$signal]: ISignalImpl<Type>;
 }
 
 export interface SignalWriter<Type> {

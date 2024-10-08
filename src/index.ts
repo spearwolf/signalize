@@ -1,6 +1,6 @@
 export * from './Connection.js';
 export * from './Group.js';
-export * from './SignalObject.js';
+export * from './Signal.js';
 export {batch} from './batch.js';
 export * from './bequiet.js';
 export {connect} from './connect.js';

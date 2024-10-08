@@ -2,8 +2,9 @@
 
 ## `v0.17.0` (not yet released)
 
-- create `SignalObject` wrapper
-  - as return result of `createSignal()`
+- create ~~`SignalObject`~~ `Signal` wrapper
+  - as return result of `createSignal(): Signal`
+  - rename type `Signal` &rarr; `ISignalImpl`
 - create ~~`EffectObject`~~ `Effect` wrapper
   - as return result of `createEffect(): Effect`
   - rename previous `Effect` &rarr; `EffectImpl`
