@@ -13,7 +13,7 @@ describe('createEffect', () => {
   });
 
   it('the effect cleanup callback is called like react:useEffect', () => {
-    const [a, setA] = createSignal(123);
+    const {get: a, set: setA} = createSignal(123);
 
     let valA = 0;
 
@@ -43,7 +43,7 @@ describe('createEffect', () => {
   });
 
   it('async returned effect cleanup callback is called', async () => {
-    const [a, setA] = createSignal(123);
+    const {get: a, set: setA} = createSignal(123);
 
     const cleanupValues: number[] = [];
     const ctrl = eventize();
@@ -85,8 +85,8 @@ describe('createEffect', () => {
   });
 
   it('the effect callback is called synchronously and immediately', () => {
-    const [a] = createSignal(123);
-    const [b] = createSignal('abc');
+    const {get: a} = createSignal(123);
+    const {get: b} = createSignal('abc');
 
     let valA: number;
     let valB: string;
@@ -103,8 +103,8 @@ describe('createEffect', () => {
   });
 
   it('dynamic effects only listen to the signals they actually read', () => {
-    const [a, setA] = createSignal(123);
-    const [b, setB] = createSignal('abc');
+    const {get: a, set: setA} = createSignal(123);
+    const {get: b, set: setB} = createSignal('abc');
 
     let valA: number;
     let valB: string;
@@ -141,8 +141,8 @@ describe('createEffect', () => {
   });
 
   it('the effect callback is called again after calling a setter function', () => {
-    const [a, setA] = createSignal(123);
-    const [b, setB] = createSignal('abc');
+    const {get: a, set: setA} = createSignal(123);
+    const {get: b, set: setB} = createSignal('abc');
 
     const valA = jest.fn();
     const valB = jest.fn();
@@ -180,8 +180,8 @@ describe('createEffect', () => {
   });
 
   it('the effect callback is called again after calling a setter function (with static dependencies)', () => {
-    const [a, setA] = createSignal(0);
-    const [b, setB] = createSignal('abc');
+    const {get: a, set: setA} = createSignal(0);
+    const {get: b, set: setB} = createSignal('abc');
 
     const valA = jest.fn();
     const valB = jest.fn();
@@ -224,7 +224,7 @@ describe('createEffect', () => {
   });
 
   it('calling a setter from within an affect callback', () => {
-    const [count, setCount] = createSignal(0);
+    const {get: count, set: setCount} = createSignal(0);
 
     const effect = createEffect(() => {
       if (count() < 23) {
@@ -238,11 +238,11 @@ describe('createEffect', () => {
   });
 
   it('nested effects work as expected', () => {
-    const [getA, setA] = createSignal(123);
-    const [getB, setB] = createSignal('abc');
-    const [getC, setC] = createSignal('A');
-    const [getD, setD] = createSignal('foo');
-    const [getE, setE] = createSignal(true);
+    const {get: getA, set: setA} = createSignal(123);
+    const {get: getB, set: setB} = createSignal('abc');
+    const {get: getC, set: setC} = createSignal('A');
+    const {get: getD, set: setD} = createSignal('foo');
+    const {get: getE, set: setE} = createSignal(true);
 
     const a = jest.fn(getA);
     const b = jest.fn(getB);

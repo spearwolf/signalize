@@ -1,10 +1,10 @@
-import {createEffect} from './effects-api.js';
 import {createSignal} from './createSignal.js';
+import {createEffect} from './effects-api.js';
 
 describe('unsubscribe as return function from effect callback', () => {
   it('should be called before recalling the effect callback', () => {
-    const [a, setA] = createSignal(123);
-    const [b, setB] = createSignal('abc');
+    const {get: a, set: setA} = createSignal(123);
+    const {get: b, set: setB} = createSignal('abc');
 
     const valA = jest.fn();
     const valB = jest.fn();

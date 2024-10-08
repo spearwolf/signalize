@@ -1,20 +1,15 @@
-/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-
 import {$signal} from './constants.js';
 import {destroySignal} from './createSignal.js';
 import {createEffect} from './effects-api.js';
 import {touch} from './touch.js';
 import type {
   ISignalImpl,
-  SignalFuncs,
   SignalLike,
   SignalReader,
   SignalWriter,
   VoidFunc,
 } from './types.js';
 import {value} from './value.js';
-
-export interface Signal<Type> extends SignalFuncs<Type> {}
 
 export class Signal<Type = unknown> implements SignalLike<Type> {
   readonly [$signal]: ISignalImpl<Type>;
@@ -29,11 +24,6 @@ export class Signal<Type = unknown> implements SignalLike<Type> {
 
   get set(): SignalWriter<Type> {
     return this[$signal].writer;
-  }
-
-  *[Symbol.iterator]() {
-    yield this.get;
-    yield this.set;
   }
 
   get value(): Type {

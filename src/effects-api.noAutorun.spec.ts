@@ -15,7 +15,7 @@ describe('Effect -> autorun: false', () => {
   it('if autorun is false then the effect is not executed by default', () => {
     let value = -1;
 
-    const [signal, setValue] = createSignal(0);
+    const {get: signal, set: setValue} = createSignal(0);
 
     const effectCallback = jest.fn(() => {
       value = signal();

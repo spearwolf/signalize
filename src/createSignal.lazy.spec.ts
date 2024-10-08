@@ -3,7 +3,7 @@ import {createSignal} from './createSignal.js';
 describe('create lazy signal', () => {
   it('works as expected', () => {
     const lazyFn = jest.fn(() => 'foo');
-    const [val, setValue] = createSignal(lazyFn, {lazy: true});
+    const {get: val, set: setValue} = createSignal(lazyFn, {lazy: true});
 
     expect(val()).toBe('foo');
     expect(val()).toBe('foo');
@@ -26,7 +26,7 @@ describe('create lazy signal', () => {
     const lazy0 = jest.fn(() => 'foo');
     const lazy1 = jest.fn(() => 'bar');
 
-    const [val, setValue] = createSignal(lazy0, {lazy: true});
+    const {get: val, set: setValue} = createSignal(lazy0, {lazy: true});
 
     expect(val()).toBe('foo');
     expect(val()).toBe('foo');

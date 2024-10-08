@@ -16,10 +16,10 @@ describe('beQuiet', () => {
   });
 
   it('if it is silent, there will be no signal when it is read (dynamic effects)', () => {
-    const [a, setA] = createSignal(0);
-    const [b, setB] = createSignal(0);
-    const [c, setC] = createSignal(0);
-    const [d, setD] = createSignal(0);
+    const {get: a, set: setA} = createSignal(0);
+    const {get: b, set: setB} = createSignal(0);
+    const {get: c, set: setC} = createSignal(0);
+    const {get: d, set: setD} = createSignal(0);
 
     const effect = createEffect(() => {
       setB(a() + 1);

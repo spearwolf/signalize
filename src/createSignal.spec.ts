@@ -21,9 +21,9 @@ describe('createSignal', () => {
   });
 
   it('works as expected', () => {
-    const [num, setNum] = createSignal(1);
-    const [str, setStr] = createSignal('foo');
-    const [obj, setObj] = createSignal<Object>();
+    const {get: num, set: setNum} = createSignal(1);
+    const {get: str, set: setStr} = createSignal('foo');
+    const {get: obj, set: setObj} = createSignal<Object>();
 
     expect(num()).toBe(1);
     expect(str()).toBe('foo');
@@ -43,7 +43,7 @@ describe('createSignal', () => {
   });
 
   it('isSignal', () => {
-    const [signal, set] = createSignal();
+    const {get: signal, set} = createSignal();
     expect(isSignal(signal)).toBe(true);
     expect(isSignal(set)).toBe(false);
     expect(isSignal(() => {})).toBe(false);
@@ -51,7 +51,7 @@ describe('createSignal', () => {
   });
 
   it('signal reader has an optional effect callback as argument', () => {
-    const [signal, set] = createSignal(666);
+    const {get: signal, set} = createSignal(666);
     const effect = jest.fn();
 
     signal(effect);
@@ -70,11 +70,11 @@ describe('createSignal', () => {
   });
 
   it('createSignal(otherSignal) should return otherSignal and NOT create a new signal', () => {
-    const [signal, set] = createSignal(666);
+    const {get: signal, set} = createSignal(666);
 
     assertSignalsCount(1, 'createSignal(666)');
 
-    const [otherSignal, setOther] = createSignal(signal);
+    const {get: otherSignal, set: setOther} = createSignal(signal);
 
     assertSignalsCount(1, 'createSignal(otherSignal)');
 
@@ -85,7 +85,7 @@ describe('createSignal', () => {
   });
 
   it('mute, unmute and unsubscribe', () => {
-    const [sigFoo, setFoo] = createSignal(666);
+    const {get: sigFoo, set: setFoo} = createSignal(666);
 
     let foo = 0;
 
@@ -121,7 +121,7 @@ describe('createSignal', () => {
   });
 
   it('mute, unmute with signal reader callback effect', () => {
-    const [sigFoo, setFoo] = createSignal(666);
+    const {get: sigFoo, set: setFoo} = createSignal(666);
 
     let foo = 0;
 
@@ -162,7 +162,7 @@ describe('createSignal', () => {
     expect(foo.get()).toBe(666);
     expect(isSignal(foo)).toBe(true);
 
-    const [sigRead, sigWrite] = foo;
+    const {get: sigRead, set: sigWrite} = foo;
     expect(sigRead).toBe(foo.get);
     expect(sigWrite).toBe(foo.set);
 

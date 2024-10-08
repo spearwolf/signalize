@@ -3,8 +3,8 @@ import {createSignal} from './createSignal.js';
 
 describe('createMemo', () => {
   it('works as expected (lazy by default)', () => {
-    const [firstName, setFirstName] = createSignal<string>();
-    const [lastName, setLastName] = createSignal<string>();
+    const {get: firstName, set: setFirstName} = createSignal<string>();
+    const {get: lastName, set: setLastName} = createSignal<string>();
 
     let memoCallCount = 0;
 

@@ -23,9 +23,9 @@ describe('connect signals', () => {
   });
 
   it('connect a signal with another signal (naive version)', () => {
-    const [sigA, setA] = createSignal(0);
-    const [sigB, setB] = createSignal('foo');
-    const [sigC, setC] = createSignal(-1);
+    const {get: sigA, set: setA} = createSignal(0);
+    const {get: sigB, set: setB} = createSignal('foo');
+    const {get: sigC, set: setC} = createSignal(-1);
 
     expect(sigA()).toBe(0);
     expect(sigB()).toBe('foo');
@@ -54,8 +54,8 @@ describe('connect signals', () => {
   });
 
   it('connect a signal with another signal (this time with the connect() api)', () => {
-    const [sigA, setA] = createSignal(1);
-    const [sigB, setB] = createSignal(-1);
+    const {get: sigA, set: setA} = createSignal(1);
+    const {get: sigB, set: setB} = createSignal(-1);
 
     const valueMock = jest.fn();
     const destroyMock = jest.fn();
@@ -111,7 +111,7 @@ describe('connect signals', () => {
   });
 
   it('connect a signal with another object signal', () => {
-    const [sigA, setA] = createSignal(1);
+    const {get: sigA, set: setA} = createSignal(1);
 
     class Foo {
       @signal() accessor b = -1;
@@ -141,7 +141,7 @@ describe('connect signals', () => {
   });
 
   it('connect a signal with an object method', () => {
-    const [sigA, setA] = createSignal(1);
+    const {get: sigA, set: setA} = createSignal(1);
 
     class Foo {
       b: (val: number) => void = jest.fn();
@@ -173,7 +173,7 @@ describe('connect signals', () => {
   });
 
   it('connect a signal with a function', () => {
-    const [sigA, setA] = createSignal(1);
+    const {get: sigA, set: setA} = createSignal(1);
 
     const bMock = jest.fn();
 
@@ -201,7 +201,7 @@ describe('connect signals', () => {
 
     const foo = new Foo();
 
-    const [b] = createSignal(-1);
+    const {get: b} = createSignal(-1);
 
     expect(foo.a).toBe(1);
     expect(b()).toBe(-1);
@@ -302,8 +302,8 @@ describe('connect signals', () => {
   });
 
   it('a connection between two points is a singleton and cannot be created more than once', () => {
-    const [sigA, setA] = createSignal(1);
-    const [sigB] = createSignal(-1);
+    const {get: sigA, set: setA} = createSignal(1);
+    const {get: sigB} = createSignal(-1);
 
     expect(sigA()).toBe(1);
     expect(sigB()).toBe(-1);
@@ -328,8 +328,8 @@ describe('connect signals', () => {
   });
 
   it('a connection should be pauseable (mute/unmute)', () => {
-    const [sigA, setA] = createSignal(1);
-    const [sigB] = createSignal(-1);
+    const {get: sigA, set: setA} = createSignal(1);
+    const {get: sigB} = createSignal(-1);
 
     const muteMock = jest.fn();
     const unmuteMock = jest.fn();
@@ -385,9 +385,9 @@ describe('connect signals', () => {
   });
 
   it('if the signal is destroyed, all connections from this signal should be disconnected automatically', () => {
-    const [sigA, setA] = createSignal(1);
-    const [sigB] = createSignal(-1);
-    const [sigC] = createSignal(-1);
+    const {get: sigA, set: setA} = createSignal(1);
+    const {get: sigB} = createSignal(-1);
+    const {get: sigC} = createSignal(-1);
 
     const con0 = connect(sigA, sigB);
     const con1 = connect(sigA, sigC);
@@ -420,8 +420,8 @@ describe('connect signals', () => {
   });
 
   it('a connection should have a touch() feature just like signal does', () => {
-    const [sigA, setA] = createSignal(1);
-    const [sigB, setB] = createSignal(0);
+    const {get: sigA, set: setA} = createSignal(1);
+    const {get: sigB, set: setB} = createSignal(0);
 
     const valueMock = jest.fn();
     const callingB = jest.fn();
@@ -466,9 +466,9 @@ describe('connect signals', () => {
   });
 
   it('if a signal is touched, then all connections should also be touched', () => {
-    const [sigA, setA] = createSignal(1);
-    const [sigB] = createSignal(-1);
-    const [sigC] = createSignal(-1);
+    const {get: sigA, set: setA} = createSignal(1);
+    const {get: sigB} = createSignal(-1);
+    const {get: sigC} = createSignal(-1);
 
     const callingB = jest.fn();
     const callingC = jest.fn();

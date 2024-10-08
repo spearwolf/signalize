@@ -61,7 +61,7 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
       },
 
       init(this: C, value: T): T {
-        const [readSignal, writeSignal] = createSignal<T>(
+        const {get: readSignal, set: writeSignal} = createSignal<T>(
           undefined,
           options as any,
         );
