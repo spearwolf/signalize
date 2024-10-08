@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## `v0.1z.0` (not yet released)
+## `v0.17.0` (not yet released)
 
 - create `SignalObject` wrapper
   - as return result of `createSignal()`
