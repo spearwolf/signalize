@@ -2,12 +2,30 @@
 
 ## `v0.17.0` (not yet released)
 
-- create ~~`SignalObject`~~ `Signal` wrapper
-  - as return result of `createSignal(): Signal`
-  - rename type `Signal` &rarr; `ISignalImpl`
-- create ~~`EffectObject`~~ `Effect` wrapper
-  - as return result of `createEffect(): Effect`
-  - rename previous `Effect` &rarr; `EffectImpl`
+- refactor `createSignal()` and `createEffect()` api call signatures
+  - introduce `Signal` class (formerly `SignalObject`)
+    - as return result of `createSignal(): Signal`
+    - rename previous `Signal` _type_ &rarr; `ISignalImpl`
+  - introduce a new `Effect` class
+    - as return result of `createEffect(): Effect`
+    - rename previous `Effect` class &rarr; `EffectImpl`
+  
+### Migration Guide
+
+### Change `createSignal()` calls
+
+The signature of the call to `createSignal()` has changed; a signal _object_ is now returned.
+The previous calls in the form `const [val, setVal] = createSignal()` can be transformed into the form `const {get: val, set: setVal} = createSignal()`. Alternatively, you can now simply call `const val = createSignal()` and read the signal using `val.get()` or `val.value` and write it using `val.set()`.
+
+### Change `createEffect()` calls
+
+Similarly, the `createEffect()` function now also returns an effect _object_.
+The previous call `const [run, destroy] = createEffect()` should be rewritten as follows: `const {run, destroy} = createEffect()`. Alternatively, simply use the effect object:
+```ts
+const effect = createEffect(...)
+...
+effect.destroy()
+```
 
 ## `v0.16.0` (2024-08-04)
 

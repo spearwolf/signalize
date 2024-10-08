@@ -2,9 +2,9 @@ import {connect, createSignal, destroySignal} from './index.js';
 
 describe('Connection.nextValue', () => {
   it("we don't wanna the retained value - we want the next value update", async () => {
-    const [sigA, setSigA] = createSignal(23);
+    const {get: sigA, set: setSigA} = createSignal(23);
 
-    const [sigB] = createSignal(-77);
+    const {get: sigB} = createSignal(-77);
 
     const con = connect(sigA, sigB);
 
@@ -30,8 +30,8 @@ describe('Connection.nextValue', () => {
   });
 
   it('reject promise if connection is destroyed', async () => {
-    const [sigA] = createSignal(23);
-    const [sigB] = createSignal(-77);
+    const {get: sigA} = createSignal(23);
+    const {get: sigB} = createSignal(-77);
 
     const con = connect(sigA, sigB);
 

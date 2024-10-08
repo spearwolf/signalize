@@ -1,3 +1,5 @@
+import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
+import {signal} from './decorators.js';
 import {
   connect,
   createSignal,
@@ -5,8 +7,6 @@ import {
   destroySignals,
   unconnect,
 } from './index.js';
-import {signal} from './decorators.js';
-import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 
 describe('unconnect', () => {
   beforeEach(() => {
@@ -20,9 +20,9 @@ describe('unconnect', () => {
   });
 
   it('signal', () => {
-    const [firstSignal, setFirstSignal] = createSignal(23);
+    const {get: firstSignal, set: setFirstSignal} = createSignal(23);
 
-    const [sig, setSig] = createSignal(-77);
+    const {get: sig, set: setSig} = createSignal(-77);
 
     const c_ = connect(firstSignal, sig);
 
@@ -30,7 +30,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -95,11 +95,11 @@ describe('unconnect', () => {
   });
 
   it('signal (without unconnect ;)', () => {
-    const [sig, setSig] = createSignal(23);
+    const {get: sig, set: setSig} = createSignal(23);
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -169,11 +169,11 @@ describe('unconnect', () => {
   });
 
   it('signal -> function', () => {
-    const [sig, setSig] = createSignal(23);
+    const {get: sig, set: setSig} = createSignal(23);
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -243,11 +243,11 @@ describe('unconnect', () => {
   });
 
   it('signal -> signal', () => {
-    const [sig, setSig] = createSignal(23);
+    const {get: sig, set: setSig} = createSignal(23);
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -317,11 +317,11 @@ describe('unconnect', () => {
   });
 
   it('signal -> object', () => {
-    const [sig, setSig] = createSignal(23);
+    const {get: sig, set: setSig} = createSignal(23);
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -415,11 +415,11 @@ describe('unconnect', () => {
   });
 
   it('signal -> object.signal', () => {
-    const [sig, setSig] = createSignal(23);
+    const {get: sig, set: setSig} = createSignal(23);
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -489,11 +489,11 @@ describe('unconnect', () => {
   });
 
   it('signal -> object.method', () => {
-    const [sig, setSig] = createSignal(23);
+    const {get: sig, set: setSig} = createSignal(23);
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -563,7 +563,7 @@ describe('unconnect', () => {
   });
 
   it('object', () => {
-    const [yetAnotherSignal, setYetAnotherSignal] = createSignal(23);
+    const {get: yetAnotherSignal, set: setYetAnotherSignal} = createSignal(23);
 
     class Source {
       @signal() accessor sigA = -1;
@@ -578,7 +578,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -653,7 +653,7 @@ describe('unconnect', () => {
   });
 
   it('object -> function', () => {
-    const [yetAnotherSignal, setYetAnotherSignal] = createSignal(23);
+    const {get: yetAnotherSignal, set: setYetAnotherSignal} = createSignal(23);
 
     class Source {
       @signal() accessor sigA = -1;
@@ -668,7 +668,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -743,7 +743,7 @@ describe('unconnect', () => {
   });
 
   it('object -> signal', () => {
-    const [yetAnotherSignal, setYetAnotherSignal] = createSignal(23);
+    const {get: yetAnotherSignal, set: setYetAnotherSignal} = createSignal(23);
 
     class Source {
       @signal() accessor sigA = -1;
@@ -758,7 +758,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -825,7 +825,7 @@ describe('unconnect', () => {
   it.skip('object -> object', () => {});
 
   it('object -> object.signal', () => {
-    const [yetAnotherSignal, setYetAnotherSignal] = createSignal(23);
+    const {get: yetAnotherSignal, set: setYetAnotherSignal} = createSignal(23);
 
     class Source {
       @signal() accessor sigA = -1;
@@ -840,7 +840,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -904,7 +904,7 @@ describe('unconnect', () => {
   });
 
   it('object -> object.method', () => {
-    const [yetAnotherSignal, setYetAnotherSignal] = createSignal(23);
+    const {get: yetAnotherSignal, set: setYetAnotherSignal} = createSignal(23);
 
     class Source {
       @signal() accessor sigA = -1;
@@ -919,7 +919,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -983,7 +983,7 @@ describe('unconnect', () => {
   });
 
   it('object.signal', () => {
-    const [yetAnotherSignal, setYetAnotherSignal] = createSignal(23);
+    const {get: yetAnotherSignal, set: setYetAnotherSignal} = createSignal(23);
 
     class Source {
       @signal() accessor sigA = -1;
@@ -998,7 +998,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -1062,7 +1062,7 @@ describe('unconnect', () => {
   });
 
   it('object.signal -> function', () => {
-    const [yetAnotherSignal, setYetAnotherSignal] = createSignal(23);
+    const {get: yetAnotherSignal, set: setYetAnotherSignal} = createSignal(23);
 
     class Source {
       @signal() accessor sigA = -1;
@@ -1077,7 +1077,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -1141,7 +1141,7 @@ describe('unconnect', () => {
   });
 
   it('object.signal -> signal', () => {
-    const [yetAnotherSignal, setYetAnotherSignal] = createSignal(23);
+    const {get: yetAnotherSignal, set: setYetAnotherSignal} = createSignal(23);
 
     class Source {
       @signal() accessor sigA = -1;
@@ -1156,7 +1156,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -1220,7 +1220,7 @@ describe('unconnect', () => {
   });
 
   it('object.signal -> object', () => {
-    const [yetAnotherSignal, setYetAnotherSignal] = createSignal(23);
+    const {get: yetAnotherSignal, set: setYetAnotherSignal} = createSignal(23);
 
     class Source {
       @signal() accessor sigA = -1;
@@ -1235,7 +1235,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -1299,7 +1299,7 @@ describe('unconnect', () => {
   });
 
   it('object.signal -> object.signal', () => {
-    const [yetAnotherSignal, setYetAnotherSignal] = createSignal(23);
+    const {get: yetAnotherSignal, set: setYetAnotherSignal} = createSignal(23);
 
     class Source {
       @signal() accessor sigA = -1;
@@ -1314,7 +1314,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;
@@ -1378,7 +1378,7 @@ describe('unconnect', () => {
   });
 
   it('object.signal -> object.method', () => {
-    const [yetAnotherSignal, setYetAnotherSignal] = createSignal(23);
+    const {get: yetAnotherSignal, set: setYetAnotherSignal} = createSignal(23);
 
     class Source {
       @signal() accessor sigA = -1;
@@ -1393,7 +1393,7 @@ describe('unconnect', () => {
 
     const mockFn = jest.fn();
 
-    const [otherSignal] = createSignal(-1);
+    const {get: otherSignal} = createSignal(-1);
 
     class Foo {
       @signal() accessor bar = -1;

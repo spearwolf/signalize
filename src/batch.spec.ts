@@ -1,11 +1,11 @@
 import {batch} from './batch.js';
-import {createEffect} from './effects-api.js';
 import {createSignal} from './createSignal.js';
+import {createEffect} from './effects-api.js';
 
 describe('batch', () => {
   it('delay the effect callback execution until the batch callback finished', () => {
-    const [a, setA] = createSignal(123);
-    const [b, setB] = createSignal('abc');
+    const {get: a, set: setA} = createSignal(123);
+    const {get: b, set: setB} = createSignal('abc');
 
     const valA = jest.fn();
     const valB = jest.fn();
@@ -56,9 +56,9 @@ describe('batch', () => {
   });
 
   it('nested effects work as expected', () => {
-    const [a, setA] = createSignal(123);
-    const [b, setB] = createSignal('abc');
-    const [c, setC] = createSignal(23);
+    const {get: a, set: setA} = createSignal(123);
+    const {get: b, set: setB} = createSignal('abc');
+    const {get: c, set: setC} = createSignal(23);
 
     const valA = jest.fn();
     const valB = jest.fn();

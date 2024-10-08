@@ -26,7 +26,7 @@ describe('destroySignal', () => {
   });
 
   it('destroy signal reader callback effect', () => {
-    const [sigFoo, setFoo] = createSignal(666);
+    const {get: sigFoo, set: setFoo} = createSignal(666);
 
     let foo = 0;
 
@@ -59,8 +59,8 @@ describe('destroySignal', () => {
   });
 
   it('destroy signal destroys effects and memos', () => {
-    const [getFoo, setFoo] = createSignal(1);
-    const [getBar, setBar] = createSignal(2);
+    const {get: getFoo, set: setFoo} = createSignal(1);
+    const {get: getBar, set: setBar} = createSignal(2);
 
     let foo = 0;
     let bar = 0;

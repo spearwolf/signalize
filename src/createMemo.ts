@@ -6,7 +6,7 @@ import type {SignalReader} from './types.js';
 
 // TODO add [optional] static dependencies
 export function createMemo<Type>(callback: () => Type): SignalReader<Type> {
-  const [get, set] = createSignal<Type>();
+  const {get, set} = createSignal<Type>();
   const {run: compute, destroy: unsubscribe} = createEffect(
     () => set(callback()),
     {
