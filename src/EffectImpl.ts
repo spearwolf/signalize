@@ -14,7 +14,7 @@ import {
 } from './global-queues.js';
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 
-export type EffectDeps = SignalLike<any>[];
+export type EffectDeps = (SignalLike<any> | string | symbol)[];
 
 export interface EffectParams {
   autorun?: boolean;
@@ -73,18 +73,33 @@ export class EffectImpl {
 
     this.callback = callback;
 
+    let group: Group | undefined;
+
+    if (options?.group != null) {
+      group = Group.findOrCreate(options.group);
+      group.addEffect(this);
+    }
+
     this.autorun = options?.autorun ?? true;
-    this.#dependencies = options?.dependencies;
+
+    this.#dependencies = options?.dependencies
+      ? options.dependencies.map((dep) => {
+          switch (typeof dep) {
+            case 'string':
+            case 'symbol':
+              return group.getSignal(dep);
+            default:
+              return dep;
+          }
+        })
+      : undefined;
 
     // a batch will call the effect by id to run the effect
     this.id = EffectImpl.idGen.make();
+
     on(globalEffectQueue, this.id, 'recall', this);
 
     ++EffectImpl.count;
-
-    if (options?.group != null) {
-      Group.findOrCreate(options.group).addEffect(this);
-    }
   }
 
   private hasStaticDeps() {

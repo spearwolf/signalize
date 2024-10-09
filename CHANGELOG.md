@@ -5,13 +5,15 @@
 _❗BREAKING CHANGES❗_
 
 - refactor `createSignal()` and `createEffect()` api call signatures
-  - introduce `Signal` class (formerly `SignalObject`)
+  - introduce the `Signal` class (formerly `SignalObject`)
     - as return result of `createSignal(): Signal`
     - rename previous `Signal` _type_ &rarr; `ISignalImpl`
   - introduce a new `Effect` class
     - as return result of `createEffect(): Effect`
     - rename previous `Effect` class &rarr; `EffectImpl`
-- remove `@signalReader()` decorator
+- remove the `@signalReader()` decorator
+- remove the `@effect()` decorator
+- introduce the new `Group` API
   
 ### Migration Guide
 
@@ -29,6 +31,107 @@ const effect = createEffect(...)
 ...
 effect.destroy()
 ```
+
+#### Replace `@signalReader()` declarations
+
+The Group API now replaces the `@signalReader` decorator.
+
+For each object that uses the `@signal()` decorator, a `Group` is automatically created, in which the signals are stored according to their name.
+It is therefore possible to retrieve the signal api object via `group.getSignal(name)`.
+
+Before:
+
+```ts
+class Foo {
+  @signal() accessor bar = 123;
+  @signalReader() accessor bar$;
+}
+
+const f = new Foo();
+
+f.bar$((val) => {
+  console.log('bar changed to', val);
+});
+```
+
+After:
+
+```ts
+class Foo {
+  @signal() accessor bar = 123;
+}
+
+const f = new Foo();
+
+const bar = Group.get(f).getSignal('bar');
+
+bar.onChange((val) => {
+  console.log('bar changed to', val);
+});
+```
+
+#### Replace `@effect()` declarations
+
+The Group API now replaces the `@effect` decorator.
+
+Before:
+
+```ts
+class Foo {
+  @signal() accessor bar = 123;
+  @signal() accessor plah = 'abc';
+  
+  constructor() {
+    this.staticEffect(); 
+    this.dynamicEffect(); 
+  }
+  
+  @effect(['bar', 'plah'])
+  staticEffect() {
+    console.log('bar, plah :=', this.bar, this.plah);
+  }
+
+  @effect() dynamicEffect() {
+    console.log('plah, bar :=', this.plah, this.bar);
+  }
+  
+  destroy() {
+    destroySignalsAndEffects(this);
+  }
+}
+```
+
+After:
+
+```ts
+class Foo {
+  @signal() accessor bar = 123;
+  @signal() accessor plah = 'abc';
+  
+  constructor() {
+    createEffect(() => this.dynamicEffect(), { group: this });
+
+    createEffect(
+      () => this.staticEffect(),
+      [ 'bar', 'plah' ],
+      { group: this },
+    ).run();
+  }
+  
+  staticEffect() {
+    console.log('bar, plah :=', this.bar, this.plah);
+  }
+
+  dynamicEffect() {
+    console.log('plah, bar :=', this.plah, this.bar);
+  }
+
+  destroy() {
+    destroySignals(this);
+  }
+}
+```
+
 
 ## `v0.16.0` (2024-08-04)
 
