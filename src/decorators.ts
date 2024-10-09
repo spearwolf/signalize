@@ -73,6 +73,8 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
 
 let g_signalReader_deprecatedWarningShown = false;
 
+// TODO remove @signalReader decorator
+
 export function signalReader<T, SR = SignalReader<T>>(
   options?: SignalReaderDecoratorOptions,
 ) {
@@ -131,6 +133,8 @@ export type EffectDecoratorOptions = (HasSignalType | HasDepsType) & {
 };
 
 let g_effect_deprecatedWarningShown = false;
+
+// TODO remove @effect decorator
 
 export function effect(options?: EffectDecoratorOptions) {
   const autorun = options?.autorun ?? true;
