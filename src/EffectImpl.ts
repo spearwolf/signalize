@@ -82,8 +82,8 @@ export class EffectImpl {
 
     ++EffectImpl.count;
 
-    if (options?.group) {
-      Group.get(options.group).addEffect(this);
+    if (options?.group != null) {
+      Group.findOrCreate(options.group).addEffect(this);
     }
   }
 
