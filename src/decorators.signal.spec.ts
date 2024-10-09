@@ -101,8 +101,8 @@ describe('@signal is a class accessor decorator', () => {
     const onFoo = jest.fn();
     const onFoo2 = jest.fn();
 
-    fooSignal(onFoo);
-    foo2Signal(onFoo2);
+    fooSignal.onChange(onFoo);
+    foo2Signal.onChange(onFoo2);
 
     foo.foo = 123;
     expect(onFoo).toHaveBeenCalledTimes(1);

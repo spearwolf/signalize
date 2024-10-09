@@ -1,10 +1,9 @@
 import {destroySignal} from './createSignal.js';
 import {Effect} from './Effect.js';
-import type {SignalReader} from './types.js';
+import {Signal} from './Signal.js';
 
 interface ObjectStore {
-  // TODO store signal object instead of reader
-  signals?: Map<string | symbol, SignalReader<any>>;
+  signals?: Map<string | symbol, Signal<any>>;
   // TODO remove effects from ObjectStore
   effects?: Map<string | symbol, Effect>;
 }
@@ -23,12 +22,12 @@ const getStore = (obj: object): ObjectStore => {
 export const queryObjectSignal = <O extends object, K extends keyof O>(
   obj: O,
   name: K,
-): SignalReader<O[K]> | undefined =>
+): Signal<O[K]> | undefined =>
   g_objectStores.get(obj)?.signals?.get(name as any);
 
 export const queryObjectSignals = <O extends object>(
   obj: O,
-): SignalReader<any>[] | undefined => {
+): Signal<any>[] | undefined => {
   const signals = g_objectStores.get(obj)?.signals;
   if (signals) {
     return Array.from(signals.values());
@@ -50,11 +49,11 @@ export const getObjectSignalKeys = <O extends object>(
 export const saveObjectSignal = (
   obj: any,
   name: string | symbol,
-  signalReader: SignalReader<any>,
+  signal: Signal<any>,
 ) => {
   const store = getStore(obj);
   store.signals ??= new Map();
-  store.signals.set(name, signalReader);
+  store.signals.set(name, signal);
 };
 
 // TODO remove from public API
