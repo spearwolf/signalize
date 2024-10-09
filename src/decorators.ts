@@ -1,13 +1,8 @@
-import {EffectParams} from './EffectImpl.js';
 import {Group} from './Group.js';
-import {Signal} from './Signal.js';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
-import {createEffect} from './effects-api.js';
 import {
-  queryObjectEffect,
   queryObjectSignal,
-  saveObjectEffect,
   saveObjectSignal,
 } from './object-signals-and-effects.js';
 import type {SignalParams} from './types.js';
@@ -80,79 +75,6 @@ export function memo(options?: MemoDecoratorOptions) {
         saveObjectSignal(this, name, sig);
       }
       return sigGet();
-    };
-  };
-}
-
-export type HasSignalType = {signal?: string | symbol; autostart?: boolean};
-export type HasDepsType = {deps?: (string | symbol)[]; autostart?: boolean};
-
-export type EffectDecoratorOptions = (HasSignalType | HasDepsType) & {
-  /**
-   * if deactivated, the effect is not executed automatically when the dependencies change.
-   * in this case, the effect must be called explicitly in order to be executed (of course only if the dependencies have changed).
-   */
-  autorun?: boolean;
-};
-
-let g_effect_deprecatedWarningShown = false;
-
-// TODO remove @effect decorator
-
-export function effect(options?: EffectDecoratorOptions) {
-  const autorun = options?.autorun ?? true;
-
-  const deps: (string | symbol)[] | undefined =
-    ((options as HasSignalType)?.signal
-      ? [(options as HasSignalType).signal]
-      : undefined) ?? (options as HasDepsType)?.deps;
-
-  const hasDeps = deps != null && deps.length > 0;
-
-  const autostart = hasDeps ? (options?.autostart ?? true) : true;
-
-  if (!g_effect_deprecatedWarningShown) {
-    g_effect_deprecatedWarningShown = true;
-    // eslint-disable-next-line no-console
-    console.warn(
-      'The usage of the @effect() decorator is deprecated, please create effects in combination with groups instead!',
-    );
-  }
-
-  return function <T, A extends any[]>(
-    target: (this: T, ...args: A) => any,
-    {name}: ClassMethodDecoratorContext<T, (this: T, ...args: A) => any>,
-  ) {
-    return function (this: T, ...args: A): any {
-      let effect = queryObjectEffect(this, name);
-      if (effect == null) {
-        const params: EffectParams = {autorun};
-        if (hasDeps) {
-          const signals: Signal<any>[] = deps
-            .map((signalName) => queryObjectSignal(this as any, signalName))
-            .filter(Boolean);
-          if (signals.length !== deps.length) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              'unknown signals:',
-              deps.filter(
-                (signalName) => !queryObjectSignal(this as any, signalName),
-              ),
-            );
-          }
-          effect = createEffect(
-            () => target.call(this, ...args),
-            signals,
-            params,
-          );
-        } else {
-          effect = createEffect(() => target.call(this, ...args), params);
-        }
-        saveObjectEffect(this, name, effect);
-      }
-      if (autostart) {
-        effect.run();
-      }
     };
   };
 }

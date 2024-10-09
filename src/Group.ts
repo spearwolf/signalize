@@ -13,6 +13,8 @@ export class Group {
 
   #destroyed = false;
 
+  #parentGroup?: Group;
+
   static get(object: object) {
     if (object == null) return undefined;
     if (object instanceof Group && !object.#destroyed) {
@@ -60,12 +62,22 @@ export class Group {
     if (group === this) {
       throw new Error('Cannot add a group to itself');
     }
+
     this.#groups.add(group);
+
+    if (group.#parentGroup && group.#parentGroup !== this) {
+      group.#parentGroup.#groups.delete(group);
+    }
+    group.#parentGroup = this;
+
     return group;
   }
 
   removeGroup(group: Group) {
-    this.#groups.delete(group);
+    if (group !== this && this.#groups.has(group)) {
+      this.#groups.delete(group);
+      group.#parentGroup = undefined;
+    }
     return group;
   }
 
@@ -98,8 +110,8 @@ export class Group {
     return signal;
   }
 
-  getSignal(name: string | symbol) {
-    return this.#namedSignals.get(name);
+  getSignal<Type = any>(name: string | symbol): Signal<Type> | undefined {
+    return this.#namedSignals.get(name) ?? this.#parentGroup?.getSignal(name);
   }
 
   removeSignal(signal: SignalLike<any>) {
@@ -125,6 +137,9 @@ export class Group {
     for (const effect of this.#effects) {
       effect.run();
     }
+    for (const childGroup of this.#groups) {
+      childGroup.runEffects();
+    }
   }
 
   destroy() {
@@ -146,6 +161,8 @@ export class Group {
     this.#signals.clear();
     this.#namedSignals.clear();
     this.#effects.clear();
+
+    this.#parentGroup?.removeGroup(this);
 
     store.delete(this);
 
