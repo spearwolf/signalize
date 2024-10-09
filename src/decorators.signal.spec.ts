@@ -4,6 +4,8 @@ import {
   createMemo,
   destroySignal,
   destroySignals,
+  getObjectSignalKeys,
+  Group,
   queryObjectSignal,
   value,
 } from './index.js';
@@ -115,6 +117,42 @@ describe('@signal is a class accessor decorator', () => {
     expect(foo2.foo).toBe(456);
 
     destroySignals(foo2);
+    destroySignals(foo);
+  });
+
+  it('get the signals from the object using the group', () => {
+    class Foo {
+      @signal() accessor foo = 1;
+      @signal({name: 'plah'}) accessor bar = 23;
+      @signal() accessor xyz = 'abc';
+    }
+
+    const foo = new Foo();
+
+    assertSignalsCount(3, 'after new Foo');
+
+    foo.foo = 666;
+
+    expect(foo.foo).toBe(666);
+
+    const group = Group.get(foo);
+
+    expect(group.getSignal('foo').value).toBe(666);
+
+    foo.bar = 42;
+
+    expect(foo.bar).toBe(42);
+    expect(group.getSignal('plah').value).toBe(42);
+
+    foo.xyz = 'hello';
+
+    expect(foo.xyz).toBe('hello');
+    expect(group.getSignal('xyz').value).toBe('hello');
+
+    expect(getObjectSignalKeys(foo).sort()).toEqual(
+      ['foo', 'plah', 'xyz'].sort(),
+    );
+
     destroySignals(foo);
   });
 });
