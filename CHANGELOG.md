@@ -11,6 +11,7 @@ _❗BREAKING CHANGES❗_
   - introduce a new `Effect` class
     - as return result of `createEffect(): Effect`
     - rename previous `Effect` class &rarr; `EffectImpl`
+- remove `@signalReader()` decorator
   
 ### Migration Guide
 

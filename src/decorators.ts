@@ -1,7 +1,8 @@
 import {EffectParams} from './EffectImpl.js';
 import {Group} from './Group.js';
+import {Signal} from './Signal.js';
 import {createMemo} from './createMemo.js';
-import {createSignal, getSignalInstance} from './createSignal.js';
+import {createSignal} from './createSignal.js';
 import {createEffect} from './effects-api.js';
 import {
   queryObjectEffect,
@@ -9,8 +10,7 @@ import {
   saveObjectEffect,
   saveObjectSignal,
 } from './object-signals-and-effects.js';
-import type {SignalParams, SignalReader} from './types.js';
-import {value as readSignalValue} from './value.js';
+import type {SignalParams} from './types.js';
 
 // https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820
@@ -24,97 +24,97 @@ export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'> &
     readAsValue?: boolean;
   };
 
-const extractSignalName = (name: string | symbol) => {
-  if (typeof name === 'symbol') {
-    return name;
-  }
-  const idx = name.indexOf('$');
-  if (idx >= 0) {
-    return name.slice(0, idx);
-  }
-  return name;
-};
-
 export function signal<T>(options?: SignalDecoratorOptions<T>) {
   return function <C extends Object>(
     _target: ClassAccessorDecoratorTarget<C, T>,
     context: ClassAccessorDecoratorContext<C, T>,
   ): ClassAccessorDecoratorResult<C, T> {
-    const signalName = (options?.name ??
-      extractSignalName(context.name)) as keyof C;
+    const signalName = (options?.name || context.name) as keyof C;
     const readAsValue = Boolean(options?.readAsValue ?? false);
 
     return {
       get(this: C) {
-        const signalReader = queryObjectSignal(this, signalName);
-        if (signalReader) {
-          return (
-            readAsValue ? readSignalValue(signalReader) : signalReader()
-          ) as T;
+        const sig = queryObjectSignal(this, signalName);
+        if (sig) {
+          return (readAsValue ? sig.value : sig.get()) as T;
         }
         return undefined;
       },
 
       set(this: C, value: T) {
-        getSignalInstance(queryObjectSignal(this, signalName))?.writer(
-          value as any,
-        );
+        queryObjectSignal(this, signalName)?.set(value as any);
       },
 
       init(this: C, value: T): T {
         const sig = createSignal<T>(value, options as any);
-        saveObjectSignal(this, signalName as string | symbol, sig.get);
+        saveObjectSignal(this, signalName as string | symbol, sig);
         new Group(this).setSignal(signalName as string | symbol, sig);
-        return readSignalValue(sig.get);
+        return sig.value;
       },
     };
   };
 }
 
-let g_signalReader_deprecatedWarningShown = false;
+// let g_signalReader_deprecatedWarningShown = false;
 
-// TODO remove @signalReader decorator
+// export function signalReader<T, SR = SignalReader<T>>(
+//   options?: SignalReaderDecoratorOptions,
+// ) {
+//   return function <C extends Object>(
+//     _target: ClassAccessorDecoratorTarget<C, SR>,
+//     context: ClassAccessorDecoratorContext<C, SR>,
+//   ): ClassAccessorDecoratorResult<C, SR> {
+//     const signalName = (options?.name || context.name) as keyof C;
 
-export function signalReader<T, SR = SignalReader<T>>(
-  options?: SignalReaderDecoratorOptions,
-) {
-  return function <C extends Object>(
-    _target: ClassAccessorDecoratorTarget<C, SR>,
-    context: ClassAccessorDecoratorContext<C, SR>,
-  ): ClassAccessorDecoratorResult<C, SR> {
-    const signalName = (options?.name ??
-      extractSignalName(context.name)) as keyof C;
+//     if (!g_signalReader_deprecatedWarningShown) {
+//       g_signalReader_deprecatedWarningShown = true;
+//       // eslint-disable-next-line no-console
+//       console.warn(
+//         'The usage of the @signalReader() decorator is deprecated, please use the signal object api instead!',
+//       );
+//     }
 
-    if (!g_signalReader_deprecatedWarningShown) {
-      g_signalReader_deprecatedWarningShown = true;
-      // eslint-disable-next-line no-console
-      console.warn(
-        'The usage of the @signalReader() decorator is deprecated, please use the signal object api instead!',
-      );
-    }
+//     return {
+//       get(this: C) {
+//         return queryObjectSignal(this, signalName) as SR;
+//       },
+//     };
+//   };
+// }
 
-    return {
-      get(this: C) {
-        return queryObjectSignal(this, signalName) as SR;
-      },
-    };
-  };
+export interface MemoDecoratorOptions {
+  name?: string | symbol;
 }
 
-export function memo() {
+export function memo(options?: MemoDecoratorOptions) {
   return function <T extends object, A extends any[], R>(
     target: (this: T, ...args: A) => R,
     context: ClassMethodDecoratorContext<T, (this: T, ...args: A) => R>,
   ) {
+    const name = options?.name || context.name;
+
     return function (this: T, ...args: A): R {
-      let signalReader: SignalReader<R> = queryObjectSignal(
-        this,
-        context.name as any,
-      ) as any;
+      //let signalReader: SignalReader<R> = queryObjectSignal(
+      //  this,
+      //  name as any,
+      //) as any;
+      //if (signalReader == null) {
+      //  signalReader = createMemo<R>(() => target.call(this, ...args), {
+      //    group: new Group(this),
+      //  });
+      //  saveObjectSignal(this, context.name, signalReader);
+      //  new Group(this).addSignal(signalReader);
+      //}
+      //return signalReader();
+      const sig = Group.get(this)?.getSignal(name);
+      let signalReader = sig?.get;
       if (signalReader == null) {
-        signalReader = createMemo<R>(() => target.call(this, ...args));
-        saveObjectSignal(this, context.name, signalReader);
-        new Group(this).addSignal(signalReader);
+        const group = new Group(this);
+        signalReader = createMemo<R>(() => target.call(this, ...args), {
+          group,
+          name,
+        });
+        saveObjectSignal(this, name, group.getSignal(name));
       }
       return signalReader();
     };
@@ -165,10 +165,10 @@ export function effect(options?: EffectDecoratorOptions) {
       if (effect == null) {
         const params: EffectParams = {autorun};
         if (hasDeps) {
-          const readers: SignalReader<any>[] = deps
+          const signals: Signal<any>[] = deps
             .map((signalName) => queryObjectSignal(this as any, signalName))
             .filter(Boolean);
-          if (readers.length !== deps.length) {
+          if (signals.length !== deps.length) {
             // eslint-disable-next-line no-console
             console.warn(
               'unknown signals:',
@@ -179,7 +179,7 @@ export function effect(options?: EffectDecoratorOptions) {
           }
           effect = createEffect(
             () => target.call(this, ...args),
-            readers,
+            signals,
             params,
           );
         } else {

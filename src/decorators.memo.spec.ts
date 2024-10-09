@@ -1,5 +1,5 @@
-import {destroySignals, queryObjectSignal, value} from './index.js';
 import {memo, signal} from './decorators.js';
+import {destroySignals, queryObjectSignal, value} from './index.js';
 
 describe('@memo is a class method decorator', () => {
   it('works as expected', () => {
