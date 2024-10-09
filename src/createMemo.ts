@@ -2,41 +2,42 @@ import {once} from '@spearwolf/eventize';
 import {createSignal, getSignalInstance} from './createSignal.js';
 import {createEffect} from './effects-api.js';
 import {globalDestroySignalQueue} from './global-queues.js';
-import type {SignalReader} from './types.js';
 import {Group} from './Group.js';
+import type {SignalReader} from './types.js';
 
 // TODO add [optional] static dependencies
-export interface MemoParams {
-  group?: Group;
+export interface CreateMemoOptions {
+  group?: object | Group;
   name?: string | symbol;
 }
 
 export function createMemo<Type>(
   callback: () => Type,
-  params?: MemoParams,
+  options?: CreateMemoOptions,
 ): SignalReader<Type> {
   const sig = createSignal<Type>();
 
-  if (params?.group != null) {
-    if (params?.name != null) {
-      params.group.setSignal(params.name, sig);
+  const group =
+    options?.group != null ? Group.findOrCreate(options.group) : undefined;
+
+  if (group != null) {
+    if (options?.name) {
+      group.setSignal(options.name, sig);
     } else {
-      params.group.addSignal(sig);
+      group.addSignal(sig);
     }
   }
 
-  const eff = createEffect(() => sig.set(callback()), {
+  const e = createEffect(() => sig.set(callback()), {
     autorun: false,
-    group: params?.group,
+    group,
   });
 
-  const signal = getSignalInstance(sig);
-  // TODO create Signal#beforeRead= wrapper
-
+  const sig_ = getSignalInstance(sig);
   // TODO beQuiet ?
-  signal.beforeReadFn = eff.run;
+  sig_.beforeReadFn = e.run;
 
-  once(globalDestroySignalQueue, signal.id, eff.destroy);
+  once(globalDestroySignalQueue, sig_.id, e.destroy);
 
   return sig.get;
 }

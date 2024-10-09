@@ -48,39 +48,12 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
       init(this: C, value: T): T {
         const sig = createSignal<T>(value, options as any);
         saveObjectSignal(this, signalName as string | symbol, sig);
-        new Group(this).setSignal(signalName as string | symbol, sig);
+        Group.findOrCreate(this).setSignal(signalName as string | symbol, sig);
         return sig.value;
       },
     };
   };
 }
-
-// let g_signalReader_deprecatedWarningShown = false;
-
-// export function signalReader<T, SR = SignalReader<T>>(
-//   options?: SignalReaderDecoratorOptions,
-// ) {
-//   return function <C extends Object>(
-//     _target: ClassAccessorDecoratorTarget<C, SR>,
-//     context: ClassAccessorDecoratorContext<C, SR>,
-//   ): ClassAccessorDecoratorResult<C, SR> {
-//     const signalName = (options?.name || context.name) as keyof C;
-
-//     if (!g_signalReader_deprecatedWarningShown) {
-//       g_signalReader_deprecatedWarningShown = true;
-//       // eslint-disable-next-line no-console
-//       console.warn(
-//         'The usage of the @signalReader() decorator is deprecated, please use the signal object api instead!',
-//       );
-//     }
-
-//     return {
-//       get(this: C) {
-//         return queryObjectSignal(this, signalName) as SR;
-//       },
-//     };
-//   };
-// }
 
 export interface MemoDecoratorOptions {
   name?: string | symbol;
@@ -94,29 +67,19 @@ export function memo(options?: MemoDecoratorOptions) {
     const name = options?.name || context.name;
 
     return function (this: T, ...args: A): R {
-      //let signalReader: SignalReader<R> = queryObjectSignal(
-      //  this,
-      //  name as any,
-      //) as any;
-      //if (signalReader == null) {
-      //  signalReader = createMemo<R>(() => target.call(this, ...args), {
-      //    group: new Group(this),
-      //  });
-      //  saveObjectSignal(this, context.name, signalReader);
-      //  new Group(this).addSignal(signalReader);
-      //}
-      //return signalReader();
-      const sig = Group.get(this)?.getSignal(name);
-      let signalReader = sig?.get;
-      if (signalReader == null) {
-        const group = new Group(this);
-        signalReader = createMemo<R>(() => target.call(this, ...args), {
+      let group = Group.get(this);
+      let sig = group?.getSignal(name);
+      let sigGet = sig?.get;
+      if (sigGet == null) {
+        group ??= Group.findOrCreate(this);
+        sigGet = createMemo<R>(() => target.call(this, ...args), {
           group,
           name,
         });
-        saveObjectSignal(this, name, group.getSignal(name));
+        sig = group.getSignal(name);
+        saveObjectSignal(this, name, sig);
       }
-      return signalReader();
+      return sigGet();
     };
   };
 }

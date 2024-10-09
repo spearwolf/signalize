@@ -21,6 +21,13 @@ export class Group {
     return store.get(object);
   }
 
+  static findOrCreate(object: object) {
+    if (object == null) {
+      throw new Error('Cannot create a group with a null object');
+    }
+    return new Group(object);
+  }
+
   static destroy(object: object) {
     const group = store.get(object);
     if (group) {
@@ -35,7 +42,7 @@ export class Group {
     store.clear();
   }
 
-  constructor(object?: object) {
+  private constructor(object?: object) {
     if (object != null && object instanceof Group && !object.#destroyed) {
       return object;
     }
