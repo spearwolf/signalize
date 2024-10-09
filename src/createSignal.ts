@@ -184,8 +184,8 @@ export function createSignal<Type = unknown>(
     signal.compareFn = params?.compareFn;
   }
 
-  if (params?.group) {
-    Group.get(params.group).addSignal(signal);
+  if (params?.group != null) {
+    Group.findOrCreate(params.group).addSignal(signal);
   }
 
   return signal.object;
