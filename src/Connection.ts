@@ -12,6 +12,10 @@ import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {findObjectSignals} from './object-signals.js';
 import type {ISignalImpl, SignalLike} from './types.js';
 
+// TODO attach Connections to SignalGroups
+
+// TODO rename Connection to SignalLink ?
+
 /**
  * global map of all connections per signal
  */
