@@ -1,6 +1,6 @@
 import {emit} from '@spearwolf/eventize';
 import {globalEffectQueue} from './global-queues.js';
-import type {BatchCallback} from './types.js';
+import type {VoidFunc} from './types.js';
 
 class Batch {
   static current?: Batch;
@@ -18,7 +18,7 @@ class Batch {
 
 export const getCurrentBatch = (): Batch | undefined => Batch.current;
 
-export function batch(callback: BatchCallback): void {
+export function batch(callback: VoidFunc): void {
   // if there is a current batch context, we use it, otherwise we just create a new one.
   // the batch is executed after the callback, but only if we have created the batch ourselves.
   let curBatch = Batch.current;

@@ -54,7 +54,7 @@ const createSignalReader = <Type>(
         return callback(signal.value);
       }, [signalReader as SignalReader<Type>]);
     } else if (!signal.destroyed) {
-      signal.beforeReadFn?.();
+      signal.beforeRead?.();
       readSignal(signal.id);
     }
     return signal.value;
@@ -78,8 +78,8 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
     return this;
   }
 
-  compareFn?: CompareFunc<Type>;
-  beforeReadFn?: BeforeReadFunc;
+  compare?: CompareFunc<Type>;
+  beforeRead?: BeforeReadFunc;
 
   muted = false;
   destroyed = false;
@@ -109,9 +109,9 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
   ) => {
     const lazy = params?.lazy ?? false;
 
-    const compareFn = params?.compareFn ?? this.compareFn;
+    const compare = params?.compare ?? this.compare;
     const equals: CompareFunc<Type> =
-      compareFn ?? ((a: Type, b: Type) => a === b);
+      compare ?? ((a: Type, b: Type) => a === b);
 
     if (
       lazy !== this.lazy ||
@@ -180,8 +180,8 @@ export function createSignal<Type = unknown>(
     // === Create a new signal ===
     const lazy = params?.lazy ?? false;
     signal = new SignalImpl(lazy, initialValue) as ISignalImpl<Type>;
-    signal.beforeReadFn = params?.beforeReadFn;
-    signal.compareFn = params?.compareFn;
+    signal.beforeRead = params?.beforeRead;
+    signal.compare = params?.compare;
   }
 
   if (params?.attach != null) {
@@ -196,7 +196,7 @@ export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
     const signal = signalImpl(sigLike);
     if (signal != null && !signal.destroyed) {
       signal.destroyed = true;
-      signal.beforeReadFn = undefined;
+      signal.beforeRead = undefined;
       --SignalImpl.instanceCount;
       emit(globalDestroySignalQueue, signal.id, signal.id);
     }
