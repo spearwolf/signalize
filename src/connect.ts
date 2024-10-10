@@ -23,18 +23,24 @@ export function connect<Type>(
 ): Connection<Type>;
 
 export function connect<
-  Object extends object,
-  Key extends keyof ObjectProps<Object, Type>,
   Type,
->(source: [Object, Key], target: SignalLike<Type>): Connection<Type>;
+  SourceObject extends object,
+  SourceKey extends keyof ObjectProps<SourceObject, Type>,
+>(
+  source: [SourceObject, SourceKey],
+  target: SignalLike<Type>,
+): Connection<Type>;
 
 export function connect<
   Type,
-  Object extends object,
-  Key extends
-    | keyof ObjectProps<Object, Type>
-    | keyof ObjectMethods<Object, Type>,
->(source: SignalLike<Type>, target: [Object, Key]): Connection<Type>;
+  TargetObject extends object,
+  TargetKey extends
+    | keyof ObjectProps<TargetObject, Type>
+    | keyof ObjectMethods<TargetObject, Type>,
+>(
+  source: SignalLike<Type>,
+  target: [TargetObject, TargetKey],
+): Connection<Type>;
 
 export function connect<
   Type,
