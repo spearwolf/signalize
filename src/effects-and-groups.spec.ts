@@ -1,6 +1,6 @@
 import {assertEffectsCount} from './assert-helpers.js';
 import {signal} from './decorators.js';
-import {createEffect, destroySignals} from './index.js';
+import {createEffect, destroyObjectSignals} from './index.js';
 
 describe('effects and groups', () => {
   beforeEach(() => {
@@ -58,6 +58,6 @@ describe('effects and groups', () => {
     expect(foo.plahCallCount).toBe(3);
     expect(cleanup).toHaveBeenCalledWith('phoobar');
 
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 });

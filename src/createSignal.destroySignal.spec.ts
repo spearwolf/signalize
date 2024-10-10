@@ -9,7 +9,7 @@ import {
 } from './assert-helpers.js';
 import {createMemo} from './createMemo.js';
 import {createSignal, destroySignal} from './createSignal.js';
-import {createEffect} from './effects-api.js';
+import {createEffect} from './effects.js';
 import {touch} from './touch.js';
 
 describe('destroySignal', () => {

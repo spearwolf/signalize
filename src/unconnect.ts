@@ -1,9 +1,6 @@
 import {Connection, type ConnectionTargetType} from './Connection.js';
 import {isSignal} from './createSignal.js';
-import {
-  queryObjectSignal,
-  queryObjectSignals,
-} from './object-signals-and-effects.js';
+import {findObjectSignals, findObjectSignalByName} from './object-signals.js';
 import type {SignalLike} from './types.js';
 
 type ObjectProps<Obj, PropType> = {
@@ -93,7 +90,7 @@ export function unconnect(source: any, target?: any): void {
         // --------------------------------------------------
         Connection.findConnection(
           source,
-          queryObjectSignal(...(target as [object, keyof object])) ??
+          findObjectSignalByName(...(target as [object, keyof object])) ??
             (target as any),
         )?.destroy();
       } else {
@@ -113,7 +110,7 @@ export function unconnect(source: any, target?: any): void {
       // --------------------------------------------------
       // unconnect( object[, ...] )
       // --------------------------------------------------
-      const objectSignals = queryObjectSignals(source);
+      const objectSignals = findObjectSignals(source);
       if (objectSignals) {
         for (const sig of objectSignals) {
           unconnect(sig, target);
@@ -128,7 +125,7 @@ export function unconnect(source: any, target?: any): void {
     }
   } else {
     // source is [object, prop]
-    const signal = queryObjectSignal(source[0], source[1]);
+    const signal = findObjectSignalByName(source[0], source[1]);
     if (signal != null) {
       unconnect(signal, target);
     }

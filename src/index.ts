@@ -1,21 +1,30 @@
 export {batch} from './batch.js';
-export * from './bequiet.js';
+export {beQuiet, isQuiet} from './bequiet.js';
 export {connect} from './connect.js';
 export * from './Connection.js';
-export * from './createMemo.js';
-export * from './createSignal.js';
-export * from './effects-api.js';
-export * from './Group.js';
+export {createMemo, type CreateMemoOptions} from './createMemo.js';
 export {
-  destroySignals,
-  getObjectSignalKeys,
-  queryObjectSignal,
-} from './object-signals-and-effects.js';
-export * from './Signal.js';
-export * from './touch.js';
+  createSignal,
+  destroySignal,
+  getSignalsCount,
+  isSignal,
+  muteSignal,
+  unmuteSignal,
+} from './createSignal.js';
+export {Effect} from './Effect.js';
+export {createEffect, getEffectsCount} from './effects.js';
+export {Group} from './Group.js';
+export {
+  destroyObjectSignals,
+  findObjectSignalByName,
+  findObjectSignalKeys,
+  findObjectSignals,
+} from './object-signals.js';
+export {Signal} from './Signal.js';
+export {touch} from './touch.js';
 export type * from './types.js';
 export {unconnect} from './unconnect.js';
-export * from './value.js';
+export {value} from './value.js';
 
 // TODO docs: update README (missing decorators docs, rewrite introduction, add ts@5 / decorators stage-3 notes ...)
 

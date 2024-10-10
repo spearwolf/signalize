@@ -3,8 +3,8 @@ import {signal} from './decorators.js';
 import {
   connect,
   createSignal,
+  destroyObjectSignals,
   destroySignal,
-  destroySignals,
   unconnect,
 } from './index.js';
 
@@ -91,7 +91,7 @@ describe('unconnect', () => {
     expect(foo.plah).not.toHaveBeenCalled();
 
     destroySignal(sig, otherSignal, firstSignal);
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('signal (without unconnect ;)', () => {
@@ -165,7 +165,7 @@ describe('unconnect', () => {
     expect(foo.plah).not.toHaveBeenCalled();
 
     destroySignal(otherSignal);
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('signal -> function', () => {
@@ -239,7 +239,7 @@ describe('unconnect', () => {
     expect(foo.plah).toHaveBeenCalledWith(666);
 
     destroySignal(sig, otherSignal);
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('signal -> signal', () => {
@@ -313,7 +313,7 @@ describe('unconnect', () => {
     expect(foo.plah).toHaveBeenCalledWith(666);
 
     destroySignal(sig, otherSignal);
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('signal -> object', () => {
@@ -410,8 +410,7 @@ describe('unconnect', () => {
     expect(bar.plah).toHaveBeenCalledWith(666);
 
     destroySignal(sig, otherSignal);
-    destroySignals(foo);
-    destroySignals(bar);
+    destroyObjectSignals(foo, bar);
   });
 
   it('signal -> object.signal', () => {
@@ -485,7 +484,7 @@ describe('unconnect', () => {
     expect(foo.plah).toHaveBeenCalledWith(666);
 
     destroySignal(sig, otherSignal);
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('signal -> object.method', () => {
@@ -559,7 +558,7 @@ describe('unconnect', () => {
     expect(foo.plah).not.toHaveBeenCalled();
 
     destroySignal(sig, otherSignal);
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('object', () => {
@@ -648,8 +647,7 @@ describe('unconnect', () => {
     expect(foo.plah).not.toHaveBeenCalled();
 
     destroySignal(otherSignal, yetAnotherSignal);
-    destroySignals(foo);
-    destroySignals(source);
+    destroyObjectSignals(foo, source);
   });
 
   it('object -> function', () => {
@@ -738,8 +736,7 @@ describe('unconnect', () => {
     expect(foo.plah).not.toHaveBeenCalled();
 
     destroySignal(otherSignal, yetAnotherSignal);
-    destroySignals(foo);
-    destroySignals(source);
+    destroyObjectSignals(foo, source);
   });
 
   it('object -> signal', () => {
@@ -817,8 +814,7 @@ describe('unconnect', () => {
     // ------------------------------------
 
     destroySignal(otherSignal, yetAnotherSignal);
-    destroySignals(foo);
-    destroySignals(source);
+    destroyObjectSignals(foo, source);
   });
 
   // TODO implement all unconnect tests
@@ -899,8 +895,7 @@ describe('unconnect', () => {
     // ------------------------------------
 
     destroySignal(otherSignal, yetAnotherSignal);
-    destroySignals(foo);
-    destroySignals(source);
+    destroyObjectSignals(foo, source);
   });
 
   it('object -> object.method', () => {
@@ -978,8 +973,7 @@ describe('unconnect', () => {
     // ------------------------------------
 
     destroySignal(otherSignal, yetAnotherSignal);
-    destroySignals(foo);
-    destroySignals(source);
+    destroyObjectSignals(foo, source);
   });
 
   it('object.signal', () => {
@@ -1057,8 +1051,7 @@ describe('unconnect', () => {
     // ------------------------------------
 
     destroySignal(otherSignal, yetAnotherSignal);
-    destroySignals(foo);
-    destroySignals(source);
+    destroyObjectSignals(foo, source);
   });
 
   it('object.signal -> function', () => {
@@ -1136,8 +1129,7 @@ describe('unconnect', () => {
     // ------------------------------------
 
     destroySignal(otherSignal, yetAnotherSignal);
-    destroySignals(foo);
-    destroySignals(source);
+    destroyObjectSignals(foo, source);
   });
 
   it('object.signal -> signal', () => {
@@ -1215,8 +1207,7 @@ describe('unconnect', () => {
     // ------------------------------------
 
     destroySignal(otherSignal, yetAnotherSignal);
-    destroySignals(foo);
-    destroySignals(source);
+    destroyObjectSignals(foo, source);
   });
 
   it('object.signal -> object', () => {
@@ -1294,8 +1285,7 @@ describe('unconnect', () => {
     // ------------------------------------
 
     destroySignal(otherSignal, yetAnotherSignal);
-    destroySignals(foo);
-    destroySignals(source);
+    destroyObjectSignals(foo, source);
   });
 
   it('object.signal -> object.signal', () => {
@@ -1373,8 +1363,7 @@ describe('unconnect', () => {
     // ------------------------------------
 
     destroySignal(otherSignal, yetAnotherSignal);
-    destroySignals(foo);
-    destroySignals(source);
+    destroyObjectSignals(foo, source);
   });
 
   it('object.signal -> object.method', () => {
@@ -1452,7 +1441,6 @@ describe('unconnect', () => {
     // ------------------------------------
 
     destroySignal(otherSignal, yetAnotherSignal);
-    destroySignals(foo);
-    destroySignals(source);
+    destroyObjectSignals(foo, source);
   });
 });

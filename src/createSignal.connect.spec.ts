@@ -5,8 +5,8 @@ import {
   Connection,
   connect,
   createSignal,
+  destroyObjectSignals,
   destroySignal,
-  destroySignals,
   touch,
   unconnect,
 } from './index.js';
@@ -137,7 +137,7 @@ describe('connect signals', () => {
     expect(foo.b).toBe(2);
 
     destroySignal(sigA);
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('connect a signal with an object method', () => {
@@ -217,7 +217,7 @@ describe('connect signals', () => {
     expect(b()).toBe(2);
 
     destroySignal(b);
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('connect an object signal with another object signal', () => {
@@ -241,7 +241,7 @@ describe('connect signals', () => {
     expect(foo.a).toBe(2);
     expect(foo.b).toBe(2);
 
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('connect an object signal with an object method', () => {
@@ -272,7 +272,7 @@ describe('connect signals', () => {
     expect(foo.b).toHaveBeenCalledTimes(2);
     expect(foo.b).toHaveBeenCalledWith(2);
 
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('connect an object signal with a function', () => {
@@ -298,7 +298,7 @@ describe('connect signals', () => {
     expect(foo.a).toBe(2);
     expect(bMock).toHaveBeenCalledWith(2);
 
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('a connection between two points is a singleton and cannot be created more than once', () => {

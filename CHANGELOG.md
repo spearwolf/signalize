@@ -14,6 +14,12 @@ _❗BREAKING CHANGES❗_
 - remove the `@signalReader()` decorator
 - remove the `@effect()` decorator
 - introduce the new `Group` API
+- refactor public api exports
+  - rename `queryObjectSignal()` &rarr; `findObjectSignalByName()`
+  - rename `getObjectSignalKeys()` &rarr; `findObjectSignalKeys()`
+  - rename `getObjectSignals()` &rarr; `findObjectSignals()`
+  - rename `destroySignals()` &rarr; `destroyObjectSignals()`
+
 
 ### Migration Guide
 

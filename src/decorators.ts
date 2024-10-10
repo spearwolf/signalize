@@ -1,10 +1,7 @@
 import {Group} from './Group.js';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
-import {
-  queryObjectSignal,
-  saveObjectSignal,
-} from './object-signals-and-effects.js';
+import {findObjectSignalByName, storeAsObjectSignal} from './object-signals.js';
 import type {SignalParams} from './types.js';
 
 // https://github.com/tc39/proposal-decorators
@@ -29,7 +26,7 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
 
     return {
       get(this: C) {
-        const sig = queryObjectSignal(this, signalName);
+        const sig = findObjectSignalByName(this, signalName);
         if (sig) {
           return (readAsValue ? sig.value : sig.get()) as T;
         }
@@ -37,12 +34,12 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
       },
 
       set(this: C, value: T) {
-        queryObjectSignal(this, signalName)?.set(value as any);
+        findObjectSignalByName(this, signalName)?.set(value as any);
       },
 
       init(this: C, value: T): T {
         const sig = createSignal<T>(value, options as any);
-        saveObjectSignal(this, signalName as string | symbol, sig);
+        storeAsObjectSignal(this, signalName as string | symbol, sig);
         Group.findOrCreate(this).setSignal(signalName as string | symbol, sig);
         return sig.value;
       },
@@ -72,7 +69,7 @@ export function memo(options?: MemoDecoratorOptions) {
           name,
         });
         sig = group.getSignal(name);
-        saveObjectSignal(this, name, sig);
+        storeAsObjectSignal(this, name, sig);
       }
       return sigGet();
     };

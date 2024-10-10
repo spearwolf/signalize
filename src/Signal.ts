@@ -1,6 +1,6 @@
 import {$signal} from './constants.js';
 import {destroySignal} from './createSignal.js';
-import {createEffect} from './effects-api.js';
+import {createEffect} from './effects.js';
 import {touch} from './touch.js';
 import type {
   ISignalImpl,

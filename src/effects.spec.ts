@@ -1,7 +1,7 @@
 import {emit, eventize, onceAsync} from '@spearwolf/eventize';
 import {assertEffectsCount} from './assert-helpers.js';
 import {createSignal, destroySignal} from './createSignal.js';
-import {createEffect, onDestroyEffect} from './effects-api.js';
+import {createEffect, onDestroyEffect} from './effects.js';
 
 describe('createEffect', () => {
   beforeEach(() => {
