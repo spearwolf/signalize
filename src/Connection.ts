@@ -1,6 +1,5 @@
 import {
   emit,
-  eventize,
   off,
   on,
   once,
@@ -14,12 +13,12 @@ import type {ISignalImpl, SignalLike} from './types.js';
 
 // TODO attach Connections to SignalGroups
 
-// TODO rename Connection to SignalLink ?
+// TODO a Connection with signal <> should be bidirectional!
 
 /**
  * global map of all connections per signal
  */
-const g_sigConnects = new WeakMap<
+const gSignalConnections = new WeakMap<
   ISignalImpl<unknown>,
   Set<Connection<unknown>>
 >();
@@ -29,36 +28,79 @@ export type ConnectionTargetType = object | Function;
 /**
  * global map of all connections per object/function
  */
-const g_otherConnects = new WeakMap<
+const gOtherConnections = new WeakMap<
   ConnectionTargetType,
   Set<Connection<unknown>>
 >();
 
 export type ConnectionFunction<T = unknown> = (val: T) => void;
 
-type ObjectProps<Obj, PropType> = {
+type ObjectProperties<Obj, PropType> = {
   [Key in keyof Obj as Obj[Key] extends PropType ? Key : never]: unknown;
 };
 
-export type ConnectionProperty<
+export type ConnectionObjectProperty<
   T,
   O extends object = never,
-  K extends keyof ObjectProps<O, T> = never,
+  K extends keyof ObjectProperties<O, T> = never,
 > = [O, K];
 
 export type ConnectionTarget<T> =
   | SignalLike<T>
   | ConnectionFunction<T>
-  | ConnectionProperty<T>;
+  | ConnectionObjectProperty<T>;
 
 const isFunction = (value: unknown): value is Function =>
   typeof value === 'function';
 
 export enum ConnectionType {
-  Signal = 'signal',
-  Function = 'function',
-  Property = 'property',
+  Signal = 'S',
+  Function = 'F',
+  Property = 'P',
 }
+
+const attachSignal = (con: Connection<any>, signal: ISignalImpl<any>) => {
+  let connections = gSignalConnections.get(signal);
+  if (connections) {
+    connections.add(con);
+  } else {
+    connections = new Set([con]);
+    gSignalConnections.set(signal, connections);
+  }
+};
+
+const attachTarget = (con: Connection<any>, target: ConnectionTargetType) => {
+  let connections = gOtherConnections.get(target);
+  if (connections) {
+    connections.add(con);
+  } else {
+    connections = new Set([con]);
+    gOtherConnections.set(target, connections);
+  }
+};
+
+const detachSignal = (con: Connection<any>, signal: ISignalImpl<any>) => {
+  const connections = gSignalConnections.get(signal);
+  if (connections) {
+    connections.delete(con);
+    if (connections.size === 0) {
+      gSignalConnections.delete(signal);
+    }
+  }
+};
+
+const detachTarget = (
+  connection: Connection<any>,
+  target: ConnectionTargetType,
+) => {
+  const connections = gOtherConnections.get(target);
+  if (connections) {
+    connections.delete(connection);
+    if (connections.size === 0) {
+      gOtherConnections.delete(target);
+    }
+  }
+};
 
 export class Connection<T> {
   static Value = 'value';
@@ -66,91 +108,35 @@ export class Connection<T> {
   static Unmute = 'unmute';
   static Destroy = 'destroy';
 
-  static #attachToSignal(connection: Connection<any>): void {
-    if (!connection.isDestroyed) {
-      const signal = connection.#source;
-      let connections = g_sigConnects.get(signal);
-      if (connections) {
-        connections.add(connection);
-      } else {
-        connections = new Set([connection]);
-        g_sigConnects.set(signal, connections);
-      }
-    }
-  }
-
-  static #detachFromSignal(connection: Connection<any>): void {
-    if (!connection.isDestroyed) {
-      const signal = connection.#source;
-      const connections = g_sigConnects.get(signal);
-      if (connections) {
-        connections.delete(connection);
-        if (connections.size === 0) {
-          g_sigConnects.delete(signal);
-        }
-      }
-    }
-  }
-
-  static #attachToTarget(
-    target: ConnectionTargetType,
-    connection: Connection<any>,
-  ): void {
-    if (!connection.isDestroyed) {
-      let connections = g_otherConnects.get(target);
-      if (connections) {
-        connections.add(connection);
-      } else {
-        connections = new Set([connection]);
-        g_otherConnects.set(target, connections);
-      }
-    }
-  }
-
-  static #detachFromTarget(
-    target: ConnectionTargetType,
-    connection: Connection<any>,
-  ): void {
-    if (!connection.isDestroyed) {
-      const connections = g_otherConnects.get(target);
-      if (connections) {
-        connections.delete(connection);
-        if (connections.size === 0) {
-          g_otherConnects.delete(target);
-        }
-      }
-    }
-  }
-
-  static findConnectionsBySignal(
+  static findBySignal(
     signalLike: SignalLike<any>,
   ): Set<Connection<unknown>> | undefined {
-    return g_sigConnects.get(signalImpl(signalLike));
+    return gSignalConnections.get(signalImpl(signalLike));
   }
 
-  static findConnectionsByTarget(
+  static findByTarget(
     target: ConnectionTargetType,
   ): Connection<unknown>[] | undefined {
-    const connections = g_otherConnects.get(target);
+    const connections = gOtherConnections.get(target);
     return connections ? Array.from(connections) : undefined;
   }
 
-  static findConnectionsByObject<O extends object>(
+  static findByObject<O extends object>(
     source: O,
   ): Connection<unknown>[] | undefined {
     const connections = new Set<Connection<unknown>>();
 
     const signals = findObjectSignals(source);
     if (signals) {
-      for (const con of signals.flatMap((sig) => {
-        const connectionsBySignal = Connection.findConnectionsBySignal(sig);
+      for (const con of signals.flatMap((si) => {
+        const connectionsBySignal = Connection.findBySignal(si);
         return connectionsBySignal ? Array.from(connectionsBySignal) : [];
       })) {
         connections.add(con);
       }
     }
 
-    const connectionsByTarget = Connection.findConnectionsByTarget(source);
+    const connectionsByTarget = Connection.findByTarget(source);
     if (connectionsByTarget) {
       for (const con of connectionsByTarget) {
         connections.add(con);
@@ -160,25 +146,28 @@ export class Connection<T> {
     return connections.size > 0 ? Array.from(connections) : undefined;
   }
 
-  static findConnection<C>(
+  static find<C>(
     source: SignalLike<C>,
     target: ConnectionTarget<C>,
   ): Connection<C> | undefined {
-    const connectionsBySignal = g_sigConnects.get(
+    const signalConnections = gSignalConnections.get(
       signalImpl(source) as ISignalImpl<unknown>,
     );
-    if (connectionsBySignal != null) {
-      const connections = Array.from(connectionsBySignal);
+    if (signalConnections != null) {
+      const connections = Array.from(signalConnections);
       let index = -1;
       if (isSignal(target)) {
-        const targetSignal = signalImpl(target);
-        index = connections.findIndex((conn) => conn.#target === targetSignal);
+        // signal
+        const tsi = signalImpl(target);
+        index = connections.findIndex((conn) => conn.#target === tsi);
       } else if (isFunction(target)) {
+        // function
         index = connections.findIndex((conn) => conn.#target === target);
       } else {
+        // object + property
         index = connections.findIndex((conn) => {
           if (conn.#type === ConnectionType.Property) {
-            const connTarget = conn.#target as ConnectionProperty<C>;
+            const connTarget = conn.#target as ConnectionObjectProperty<C>;
             return (
               connTarget[0] === (target as any)[0] &&
               connTarget[1] === (target as any)[1]
@@ -203,7 +192,10 @@ export class Connection<T> {
   }
 
   #source?: ISignalImpl<T>;
-  #target?: ISignalImpl<T> | ConnectionFunction<T> | ConnectionProperty<T>;
+  #target?:
+    | ISignalImpl<T>
+    | ConnectionFunction<T>
+    | ConnectionObjectProperty<T>;
 
   #type: ConnectionType;
   #connectionTarget?: ConnectionTargetType;
@@ -213,19 +205,17 @@ export class Connection<T> {
     target: ConnectionTarget<T>,
     connectionTarget?: ConnectionTargetType,
   ) {
-    const conn = Connection.findConnection(source, target);
-    if (conn != null) {
-      return conn;
+    const con = Connection.find(source, target);
+    if (con != null) {
+      return con;
     }
-
-    eventize(this);
 
     retain(this, Connection.Value);
 
     this.#source = signalImpl(source);
 
     if (isSignal(target)) {
-      this.#target = signalImpl(target) as ISignalImpl<T>;
+      this.#target = signalImpl<T>(target as SignalLike<T>);
       this.#type = ConnectionType.Signal;
     } else if (isFunction(target)) {
       this.#target = target as () => void;
@@ -251,10 +241,10 @@ export class Connection<T> {
 
     once(globalDestroySignalQueue, this.#source.id, 'destroy', this);
 
-    Connection.#attachToSignal(this);
+    attachSignal(this, this.#source);
 
-    if (connectionTarget != null) {
-      Connection.#attachToTarget(connectionTarget, this);
+    if (connectionTarget) {
+      attachTarget(this, connectionTarget);
     }
 
     this.touch();
@@ -297,7 +287,7 @@ export class Connection<T> {
       } else if (this.#type === ConnectionType.Function) {
         (this.#target as (val: T) => void)(value);
       } else {
-        const [obj, key] = this.#target as ConnectionProperty<T>;
+        const [obj, key] = this.#target as ConnectionObjectProperty<T>;
         (obj[key] as (val: T) => void)(value);
       }
 
@@ -335,19 +325,22 @@ export class Connection<T> {
   }
 
   destroy(): void {
-    if (!this.isDestroyed) {
-      emit(this, Connection.Destroy, this);
-      off(this);
-      Connection.#detachFromSignal(this);
-      this.#unsubscribe?.();
-      this.#unsubscribe = undefined;
-      this.#source = undefined;
-      this.#target = undefined;
-      if (this.#connectionTarget != null) {
-        Connection.#detachFromTarget(this.#connectionTarget, this);
-        this.#connectionTarget = undefined;
-      }
+    if (this.isDestroyed) return;
+
+    emit(this, Connection.Destroy, this);
+    off(this);
+    detachSignal(this, this.#source);
+
+    this.#unsubscribe?.();
+    this.#unsubscribe = undefined;
+    this.#source = undefined;
+    this.#target = undefined;
+    if (this.#connectionTarget != null) {
+      detachTarget(this, this.#connectionTarget);
+      this.#connectionTarget = undefined;
     }
+
+    Object.freeze(this);
   }
 
   get isDestroyed(): boolean {

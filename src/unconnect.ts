@@ -72,7 +72,7 @@ export function unconnect(source: any, target?: any): void {
         // --------------------------------------------------
         // unconnect( signal )
         // --------------------------------------------------
-        const connectionsBySignal = Connection.findConnectionsBySignal(source);
+        const connectionsBySignal = Connection.findBySignal(source);
         if (connectionsBySignal) {
           for (const con of connectionsBySignal) {
             con.destroy();
@@ -83,12 +83,12 @@ export function unconnect(source: any, target?: any): void {
         // --------------------------------------------------
         // unconnect( signal, signal )
         // --------------------------------------------------
-        Connection.findConnection(source, target as any)?.destroy();
+        Connection.find(source, target as any)?.destroy();
       } else if (Array.isArray(target)) {
         // --------------------------------------------------
         // unconnect( signal, [object, property] )
         // --------------------------------------------------
-        Connection.findConnection(
+        Connection.find(
           source,
           findObjectSignalByName(...(target as [object, keyof object])) ??
             (target as any),
@@ -97,7 +97,7 @@ export function unconnect(source: any, target?: any): void {
         // --------------------------------------------------
         // unconnect( signal, object | function )
         // --------------------------------------------------
-        const connectionsBySignal = Connection.findConnectionsBySignal(source);
+        const connectionsBySignal = Connection.findBySignal(source);
         if (connectionsBySignal) {
           for (const con of connectionsBySignal) {
             if (con.hasTarget(target)) {
@@ -133,7 +133,7 @@ export function unconnect(source: any, target?: any): void {
 }
 
 function destroyConnectionsByTarget(target: ConnectionTargetType) {
-  const connectionsByTarget = Connection.findConnectionsByTarget(target);
+  const connectionsByTarget = Connection.findByTarget(target);
   if (connectionsByTarget) {
     for (const con of connectionsByTarget) {
       con.destroy();
