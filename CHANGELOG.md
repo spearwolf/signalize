@@ -4,21 +4,26 @@
 
 _❗BREAKING CHANGES❗_
 
-- refactor `createSignal()` and `createEffect()` api call signatures
+- refactor `createSignal()` and `createEffect()` api calls
   - introduce the `Signal` class (formerly `SignalObject`)
     - as return result of `createSignal(): Signal`
     - rename previous `Signal` _type_ &rarr; `ISignalImpl`
   - introduce a new `Effect` class
     - as return result of `createEffect(): Effect`
     - rename previous `Effect` class &rarr; `EffectImpl`
-- remove the `@signalReader()` decorator
-- remove the `@effect()` decorator
+  - rename some `createSignal()` options
+    - rename `compareFn` &rarr; `compare`
+    - rename `beforeReadFn` &rarr; `beforeRead`
 - introduce the new `SignalGroup` API
+- remove some awkward and mistakable decorators
+  - remove `@signalReader()`
+  - remove `@effect()`
 - refactor public api exports
   - rename `queryObjectSignal()` &rarr; `findObjectSignalByName()`
   - rename `getObjectSignalKeys()` &rarr; `findObjectSignalKeys()`
   - rename `getObjectSignals()` &rarr; `findObjectSignals()`
   - rename `destroySignals()` &rarr; `destroyObjectSignals()`
+- cleanup types
 
 
 ### Migration Guide

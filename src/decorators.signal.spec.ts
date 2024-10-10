@@ -55,7 +55,7 @@ describe('@signal is a class accessor decorator', () => {
       b != null && (a === b || a === b + 1);
 
     class Foo {
-      @signal({compareFn: equals}) accessor foo = 1;
+      @signal({compare: equals}) accessor foo = 1;
 
       @memo() bar() {
         return this.foo + 100;

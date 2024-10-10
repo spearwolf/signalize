@@ -202,9 +202,9 @@ You can destroy the reactivity of a signal with `🦋.destroy()` or `destroySign
 
 | option         | type                | description |
 | -------------- | ------------------- | ----------- |
-| `compareFn`    | <code>(a,&nbsp;b)&nbsp;=>&nbsp;boolean</code> | Normally, the equality of two values is checked with the strict equality operator `===`. If you want to go a different way here, you can pass a function that does this. |
+| `compare`    | <code>(a,&nbsp;b)&nbsp;=>&nbsp;boolean</code> | Normally, the equality of two values is checked with the strict equality operator `===`. If you want to go a different way here, you can pass a function that does this. |
 | `lazy`         | `boolean`           | If this flag is set, it is assumed that the value is a function that _returns the current value_. This function is then executed _lazy_, i.e. only when the signal is read for the first time. At this point, however, it should be noted that the _signal value_ is initially only _lazy_. once resolved, it is no longer _lazy_. |
-| `beforeReadFn` | <code>()&nbsp;=>&nbsp;void</code> | the name says it all: a callback that is executed before the signal value is read. not intended for everyday use, but quite useful for edge cases and testing. |
+| `beforeRead` | <code>()&nbsp;=>&nbsp;void</code> | the name says it all: a callback that is executed before the signal value is read. not intended for everyday use, but quite useful for edge cases and testing. |
 
 
 ### Create a signal using decorators

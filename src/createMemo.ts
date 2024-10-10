@@ -37,7 +37,7 @@ export function createMemo<Type>(
 
   const sig_ = signalImpl(sig);
   // TODO beQuiet ?
-  sig_.beforeReadFn = e.run;
+  sig_.beforeRead = e.run;
 
   once(globalDestroySignalQueue, sig_.id, e.destroy);
 

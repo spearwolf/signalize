@@ -5,7 +5,6 @@ import type {$signal} from './constants.js';
 export type VoidFunc = () => void;
 
 export type EffectCallback = VoidFunc | (() => VoidFunc);
-export type BatchCallback = VoidFunc;
 
 export type CompareFunc<Type> = (a: Type, b: Type) => boolean;
 export type BeforeReadFunc = () => void;
@@ -19,16 +18,14 @@ export interface ISignalImpl<Type> extends SignalLike<Type> {
   value: Type | undefined;
   valueFn: () => Type | undefined;
   lazy: boolean;
-  compareFn?: CompareFunc<Type>;
-  beforeReadFn?: BeforeReadFunc;
+  compare?: CompareFunc<Type>;
+  beforeRead?: BeforeReadFunc;
   muted: boolean;
   destroyed: boolean;
   reader: SignalReader<Type>;
   writer: SignalWriter<Type>;
   object: Signal<Type>;
 }
-
-//export type AnySignal = SignalLike<any> | Signal<any>;
 
 export interface SignalCallback<Type> {
   (value: Type): VoidFunc | void;
@@ -45,10 +42,8 @@ export interface SignalWriter<Type> {
 
 export interface SignalParams<Type> {
   lazy?: boolean;
-  // TODO rename to compare
-  compareFn?: CompareFunc<Type>;
-  // TODO rename to beforeRead
-  beforeReadFn?: BeforeReadFunc;
+  compare?: CompareFunc<Type>;
+  beforeRead?: BeforeReadFunc;
   attach?: object | SignalGroup;
 }
 
