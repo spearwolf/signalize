@@ -7,7 +7,7 @@ import type {SignalReader} from './types.js';
 
 // TODO add [optional] static dependencies
 export interface CreateMemoOptions {
-  group?: object | SignalGroup;
+  attach?: object | SignalGroup;
   name?: string | symbol;
 }
 
@@ -18,8 +18,8 @@ export function createMemo<Type>(
   const sig = createSignal<Type>();
 
   const group =
-    options?.group != null
-      ? SignalGroup.findOrCreate(options.group)
+    options?.attach != null
+      ? SignalGroup.findOrCreate(options.attach)
       : undefined;
 
   if (group != null) {
@@ -32,7 +32,7 @@ export function createMemo<Type>(
 
   const e = createEffect(() => sig.set(callback()), {
     autorun: false,
-    group,
+    attach: group,
   });
 
   const sig_ = getSignalInstance(sig);

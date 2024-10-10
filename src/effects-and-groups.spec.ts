@@ -22,8 +22,10 @@ describe('effects and groups', () => {
       plahCallCount = 0;
 
       constructor() {
-        createEffect(this.plah.bind(this), ['foo', 'bar'], {group: this}).run();
-        // createEffect(this.plah.bind(this), {group: this});
+        createEffect(this.plah.bind(this), ['foo', 'bar'], {
+          attach: this,
+        }).run();
+        // createEffect(this.plah.bind(this), {attach: this});
       }
 
       private plah() {

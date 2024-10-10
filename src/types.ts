@@ -1,4 +1,5 @@
 import type {Signal} from './Signal.js';
+import {SignalGroup} from './SignalGroup.js';
 import type {$signal} from './constants.js';
 
 export type VoidFunc = () => void;
@@ -44,9 +45,11 @@ export interface SignalWriter<Type> {
 
 export interface SignalParams<Type> {
   lazy?: boolean;
+  // TODO rename to compare
   compareFn?: CompareFunc<Type>;
+  // TODO rename to beforeRead
   beforeReadFn?: BeforeReadFunc;
-  group?: object;
+  attach?: object | SignalGroup;
 }
 
 export interface SignalValueParams {

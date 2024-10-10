@@ -16,10 +16,10 @@ import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 
 export type EffectDeps = (SignalLike<any> | string | symbol)[];
 
-export interface EffectParams {
+export interface EffectOptions {
   autorun?: boolean;
   dependencies?: EffectDeps;
-  group?: object;
+  attach?: object | SignalGroup;
 }
 
 const isThenable = (value: unknown): value is Promise<unknown> =>
@@ -68,15 +68,15 @@ export class EffectImpl {
    *
    * Please do not call this constructor directly, use `createEffect()` instead.
    */
-  constructor(callback: EffectCallback, options?: EffectParams) {
+  constructor(callback: EffectCallback, options?: EffectOptions) {
     eventize(this);
 
     this.callback = callback;
 
     let group: SignalGroup | undefined;
 
-    if (options?.group != null) {
-      group = SignalGroup.findOrCreate(options.group);
+    if (options?.attach != null) {
+      group = SignalGroup.findOrCreate(options.attach);
       group.attachEffect(this);
     }
 
@@ -114,14 +114,14 @@ export class EffectImpl {
 
   static createEffect(
     callback: EffectCallback,
-    optsOrDeps?: EffectParams | EffectDeps,
-    opts?: EffectParams,
+    optsOrDeps?: EffectOptions | EffectDeps,
+    opts?: EffectOptions,
   ): Effect {
     const dependencies = Array.isArray(optsOrDeps) ? optsOrDeps : undefined;
 
-    const options: EffectParams | undefined = dependencies
+    const options: EffectOptions | undefined = dependencies
       ? (opts ?? {dependencies})
-      : (optsOrDeps as EffectParams | undefined);
+      : (optsOrDeps as EffectOptions | undefined);
 
     if (options && dependencies) {
       options.dependencies = dependencies;
