@@ -6,7 +6,7 @@ import {Effect} from './Effect.js';
 import {UniqIdGen} from './UniqIdGen.js';
 import {getCurrentBatch} from './batch.js';
 import {$createEffect, $destroyEffect, $destroySignal} from './constants.js';
-import {getSignalInstance} from './createSignal.js';
+import {signalImpl} from './createSignal.js';
 import {
   globalDestroySignalQueue,
   globalEffectQueue,
@@ -108,7 +108,7 @@ export class EffectImpl {
 
   private saveSignalsFromDeps() {
     for (const sig of this.#dependencies!) {
-      this.whenSignalIsRead(getSignalInstance(sig).id);
+      this.whenSignalIsRead(signalImpl(sig).id);
     }
   }
 

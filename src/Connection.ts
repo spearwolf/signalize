@@ -7,7 +7,7 @@ import {
   retain,
   UnsubscribeFunc,
 } from '@spearwolf/eventize';
-import {getSignalInstance, isSignal} from './createSignal.js';
+import {isSignal, signalImpl} from './createSignal.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {findObjectSignals} from './object-signals.js';
 import type {ISignalImpl, SignalLike} from './types.js';
@@ -121,7 +121,7 @@ export class Connection<T> {
   static findConnectionsBySignal(
     signalLike: SignalLike<any>,
   ): Set<Connection<unknown>> | undefined {
-    return g_sigConnects.get(getSignalInstance(signalLike));
+    return g_sigConnects.get(signalImpl(signalLike));
   }
 
   static findConnectionsByTarget(
@@ -161,13 +161,13 @@ export class Connection<T> {
     target: ConnectionTarget<C>,
   ): Connection<C> | undefined {
     const connectionsBySignal = g_sigConnects.get(
-      getSignalInstance(source) as ISignalImpl<unknown>,
+      signalImpl(source) as ISignalImpl<unknown>,
     );
     if (connectionsBySignal != null) {
       const connections = Array.from(connectionsBySignal);
       let index = -1;
       if (isSignal(target)) {
-        const targetSignal = getSignalInstance(target);
+        const targetSignal = signalImpl(target);
         index = connections.findIndex((conn) => conn.#target === targetSignal);
       } else if (isFunction(target)) {
         index = connections.findIndex((conn) => conn.#target === target);
@@ -218,10 +218,10 @@ export class Connection<T> {
 
     retain(this, Connection.Value);
 
-    this.#source = getSignalInstance(source);
+    this.#source = signalImpl(source);
 
     if (isSignal(target)) {
-      this.#target = getSignalInstance(target) as ISignalImpl<T>;
+      this.#target = signalImpl(target) as ISignalImpl<T>;
       this.#type = ConnectionType.Signal;
     } else if (isFunction(target)) {
       this.#target = target as () => void;

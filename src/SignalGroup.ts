@@ -1,6 +1,6 @@
 import {EffectImpl} from './EffectImpl.js';
 import {Signal} from './Signal.js';
-import {destroySignal, getSignalInstance} from './createSignal.js';
+import {destroySignal, signalImpl} from './createSignal.js';
 import {ISignalImpl, SignalLike} from './types.js';
 
 const store = new Map<object, SignalGroup>();
@@ -82,7 +82,7 @@ export class SignalGroup {
     if (this.#destroyed) {
       throw new Error('Cannot attach a signal to a destroyed group');
     }
-    const sig = getSignalInstance(signal);
+    const sig = signalImpl(signal);
     if (sig && !sig.destroyed) {
       this.#signals.add(sig);
     }
@@ -112,7 +112,7 @@ export class SignalGroup {
   }
 
   detachSignal(signal: SignalLike<any>) {
-    const sig = getSignalInstance(signal);
+    const sig = signalImpl(signal);
     if (sig) {
       this.#signals.delete(sig);
     }
