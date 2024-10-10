@@ -1,5 +1,5 @@
 import {once} from '@spearwolf/eventize';
-import {createSignal, getSignalInstance} from './createSignal.js';
+import {createSignal, signalImpl} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
@@ -35,7 +35,7 @@ export function createMemo<Type>(
     attach: group,
   });
 
-  const sig_ = getSignalInstance(sig);
+  const sig_ = signalImpl(sig);
   // TODO beQuiet ?
   sig_.beforeReadFn = e.run;
 

@@ -1,4 +1,4 @@
-import {getSignalInstance, isSignal, writeSignal} from './createSignal.js';
+import {signalImpl, isSignal, writeSignal} from './createSignal.js';
 import {findObjectSignalByName} from './object-signals.js';
 import type {SignalLike} from './types.js';
 
@@ -7,7 +7,7 @@ function touch<Type>(source: SignalLike<Type>): void;
 function touch<O extends object, K extends keyof O>(source: [O, K]): void;
 
 function touch(source: any) {
-  const signal = getSignalInstance(
+  const signal = signalImpl(
     isSignal(source)
       ? source
       : findObjectSignalByName(...(source as [any, any])),

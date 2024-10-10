@@ -163,8 +163,7 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
   }
 }
 
-// TODO rename to getSignalImpl or signalImpl
-export const getSignalInstance = <Type = unknown>(
+export const signalImpl = <Type = unknown>(
   sig: SignalLike<Type>,
 ): ISignalImpl<Type> => sig?.[$signal];
 
@@ -176,7 +175,7 @@ export function createSignal<Type = unknown>(
 
   if (isSignal(initialValue)) {
     // NOTE createSignal(otherSignal) returns otherSignal and does NOT create a new signal
-    signal = getSignalInstance(initialValue as SignalLike<Type>);
+    signal = signalImpl(initialValue as SignalLike<Type>);
   } else {
     // === Create a new signal ===
     const lazy = params?.lazy ?? false;
@@ -194,7 +193,7 @@ export function createSignal<Type = unknown>(
 
 export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
   for (const sigLike of signalLikes) {
-    const signal = getSignalInstance(sigLike);
+    const signal = signalImpl(sigLike);
     if (signal != null && !signal.destroyed) {
       signal.destroyed = true;
       signal.beforeReadFn = undefined;
@@ -209,7 +208,7 @@ export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
 export const muteSignal = <Type = unknown>(
   signalLike: SignalLike<Type>,
 ): void => {
-  const signal = getSignalInstance(signalLike);
+  const signal = signalImpl(signalLike);
   if (signal != null) {
     signal.muted = true;
   }
@@ -218,7 +217,7 @@ export const muteSignal = <Type = unknown>(
 export const unmuteSignal = <Type = unknown>(
   signalLike: SignalLike<Type>,
 ): void => {
-  const signal = getSignalInstance(signalLike);
+  const signal = signalImpl(signalLike);
   if (signal != null) {
     signal.muted = false;
   }
