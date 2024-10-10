@@ -5,10 +5,19 @@ import {ISignalImpl, SignalLike} from './types.js';
 
 const store = new Map<object, SignalGroup>();
 
+type SignalNameType = string | symbol;
+
+// TODO add tests for SignalGroup
+
 export class SignalGroup {
   #groups = new Set<SignalGroup>();
-  #signals = new Set<ISignalImpl<any>>();
-  #namedSignals = new Map<string | symbol, Signal<any>>();
+
+  #signals = new Set<ISignalImpl>();
+  #namedSignals = new Map<SignalNameType, ISignalImpl>();
+
+  #signalKeys = new WeakMap<ISignalImpl<any>, Set<SignalNameType>>();
+  #otherSignals = new Map<SignalNameType, ISignalImpl[]>();
+
   #effects = new Set<EffectImpl>();
 
   #destroyed = false;
@@ -71,6 +80,9 @@ export class SignalGroup {
   }
 
   detachGroup(group: SignalGroup) {
+    if (this.#destroyed) {
+      throw new Error('Cannot detach a group from a destroyed group');
+    }
     if (group !== this && this.#groups.has(group)) {
       this.#groups.delete(group);
       group.#parentGroup = undefined;
@@ -78,44 +90,98 @@ export class SignalGroup {
     return group;
   }
 
-  attachSignal(signal: SignalLike<any>) {
+  attachSignal(signal: SignalLike) {
     if (this.#destroyed) {
       throw new Error('Cannot attach a signal to a destroyed group');
     }
-    const sig = signalImpl(signal);
-    if (sig && !sig.destroyed) {
-      this.#signals.add(sig);
+
+    const si = signalImpl(signal);
+
+    if (si?.destroyed) {
+      throw new Error('Cannot attach a destroyed signal to a group');
     }
+
+    if (si) {
+      this.#signals.add(si);
+    }
+
     return signal;
   }
 
-  attachSignalByName(name: string | symbol, signal?: Signal<any>) {
+  attachSignalByName(name: SignalNameType, signal?: SignalLike) {
     if (this.#destroyed) {
       throw new Error('Cannot attach a named signal to a destroyed group');
     }
+
     if (signal) {
       this.attachSignal(signal);
-    }
-    if (this.#namedSignals.has(name)) {
-      this.detachSignal(this.#namedSignals.get(name)!);
-    }
-    if (signal) {
-      this.#namedSignals.set(name, signal);
+
+      const si = signalImpl(signal);
+
+      this.#namedSignals.set(name, si);
+
+      if (this.#otherSignals.has(name)) {
+        this.#otherSignals.get(name)!.push(si);
+      } else {
+        this.#otherSignals.set(name, [si]);
+      }
+
+      if (this.#signalKeys.has(si)) {
+        this.#signalKeys.get(si)!.add(name);
+      } else {
+        this.#signalKeys.set(si, new Set([name]));
+      }
     } else {
       this.#namedSignals.delete(name);
     }
+
     return signal;
   }
 
-  getSignal<Type = any>(name: string | symbol): Signal<Type> | undefined {
-    return this.#namedSignals.get(name) ?? this.#parentGroup?.getSignal(name);
+  getSignal<Type = any>(name: SignalNameType): Signal<Type> | undefined {
+    if (this.#destroyed) return;
+    return (
+      this.#namedSignals.get(name)?.object ?? this.#parentGroup?.getSignal(name)
+    );
   }
 
-  detachSignal(signal: SignalLike<any>) {
-    const sig = signalImpl(signal);
-    if (sig) {
-      this.#signals.delete(sig);
+  detachSignal(signal: SignalLike) {
+    if (this.#destroyed) return;
+
+    const si = signalImpl(signal);
+
+    if (si) {
+      this.#signals.delete(si);
+
+      if (this.#signalKeys.has(si)) {
+        // signal has named keys
+        const keys = this.#signalKeys.get(si)!;
+        for (const name of keys) {
+          // for each signal key
+          if (this.#otherSignals.has(name)) {
+            // find all signals that use this key
+            const otherSignals = this.#otherSignals.get(name)!;
+
+            // remove the signal from the other signals list (we know, the signal must be part of the list)
+            otherSignals.splice(otherSignals.indexOf(si), 1);
+
+            if (otherSignals.length === 0) {
+              // if there are no further signals for this name, then we can delete
+              this.#namedSignals.delete(name);
+              this.#otherSignals.delete(name);
+            } else if (this.#namedSignals.get(name) === si) {
+              // there are other signals and the signal was the active one.
+              // so the previous signal will be associated with the name again.
+              this.#namedSignals.set(name, otherSignals.at(-1)!);
+            }
+          }
+        }
+
+        keys.clear();
+        this.#signalKeys.delete(si);
+      }
     }
+
     return signal;
   }
 
@@ -157,6 +223,7 @@ export class SignalGroup {
     this.#groups.clear();
     this.#signals.clear();
     this.#namedSignals.clear();
+    this.#otherSignals.clear();
     this.#effects.clear();
 
     this.#parentGroup?.detachGroup(this);
@@ -164,5 +231,14 @@ export class SignalGroup {
     store.delete(this);
 
     this.#destroyed = true;
+
+    this.#groups = undefined;
+    this.#signals = undefined;
+    this.#signalKeys = undefined;
+    this.#namedSignals = undefined;
+    this.#otherSignals = undefined;
+    this.#signalKeys = undefined;
+
+    Object.freeze(this);
   }
 }
