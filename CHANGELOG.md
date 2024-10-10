@@ -14,7 +14,7 @@ _❗BREAKING CHANGES❗_
 - remove the `@signalReader()` decorator
 - remove the `@effect()` decorator
 - introduce the new `Group` API
-  
+
 ### Migration Guide
 
 #### Change `createSignal()` calls

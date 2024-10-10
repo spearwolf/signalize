@@ -1,11 +1,8 @@
 import {destroySignal} from './createSignal.js';
-import {Effect} from './Effect.js';
 import {Signal} from './Signal.js';
 
 interface ObjectStore {
   signals?: Map<string | symbol, Signal<any>>;
-  // TODO remove effects from ObjectStore
-  effects?: Map<string | symbol, Effect>;
 }
 
 const g_objectStores = new WeakMap<object, ObjectStore>();
@@ -45,7 +42,6 @@ export const getObjectSignalKeys = <O extends object>(
   return undefined;
 };
 
-// TODO remove from public API
 export const saveObjectSignal = (
   obj: any,
   name: string | symbol,
@@ -56,22 +52,6 @@ export const saveObjectSignal = (
   store.signals.set(name, signal);
 };
 
-// TODO remove from public API
-export const queryObjectEffect = (obj: any, name: string | symbol) =>
-  g_objectStores.get(obj)?.effects?.get(name);
-
-// TODO remove from public API
-export const saveObjectEffect = (
-  obj: any,
-  name: string | symbol,
-  effect: Effect,
-) => {
-  const store = getStore(obj);
-  store.effects ??= new Map();
-  store.effects.set(name, effect);
-};
-
-// TODO support signal-readers as well
 export function destroySignals(...objects: any[]): void {
   for (const obj of objects) {
     if (g_objectStores.has(obj)) {
@@ -83,32 +63,6 @@ export function destroySignals(...objects: any[]): void {
         store.signals.clear();
         store.signals = undefined;
       }
-    }
-  }
-}
-
-export function destroyEffects(...objects: any[]): void {
-  for (const obj of objects) {
-    if (g_objectStores.has(obj)) {
-      const store = g_objectStores.get(obj);
-      if (store.effects) {
-        for (const effect of store.effects.values()) {
-          effect.destroy();
-        }
-        store.effects.clear();
-        store.effects = undefined;
-      }
-    }
-  }
-}
-
-// TODO support signal-readers as well
-export function destroySignalsAndEffects(...objects: any[]): void {
-  for (const obj of objects) {
-    if (g_objectStores.has(obj)) {
-      destroySignals(obj);
-      destroyEffects(obj);
-      g_objectStores.delete(obj);
     }
   }
 }
