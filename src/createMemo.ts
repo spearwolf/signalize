@@ -15,7 +15,7 @@ export function createMemo<Type>(
   callback: () => Type,
   options?: CreateMemoOptions,
 ): SignalReader<Type> {
-  const sig = createSignal<Type>();
+  const si = createSignal<Type>();
 
   const group =
     options?.attach != null
@@ -24,22 +24,22 @@ export function createMemo<Type>(
 
   if (group != null) {
     if (options?.name) {
-      group.attachSignalByName(options.name, sig);
+      group.attachSignalByName(options.name, si);
     } else {
-      group.attachSignal(sig);
+      group.attachSignal(si);
     }
   }
 
-  const e = createEffect(() => sig.set(callback()), {
+  const e = createEffect(() => si.set(callback()), {
     autorun: false,
     attach: group,
   });
 
-  const sig_ = signalImpl(sig);
+  const sImpl = signalImpl(si);
   // TODO beQuiet ?
-  sig_.beforeRead = e.run;
+  sImpl.beforeRead = e.run;
 
-  once(globalDestroySignalQueue, sig_.id, e.destroy);
+  once(globalDestroySignalQueue, sImpl.id, e.destroy);
 
-  return sig.get;
+  return si.get;
 }
