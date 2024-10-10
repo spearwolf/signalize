@@ -1,4 +1,4 @@
-import {Group} from './Group.js';
+import {SignalGroup} from './SignalGroup.js';
 import type {EffectCallback, SignalLike, VoidFunc} from './types.js';
 
 import {emit, eventize, off, on, once} from '@spearwolf/eventize';
@@ -73,10 +73,10 @@ export class EffectImpl {
 
     this.callback = callback;
 
-    let group: Group | undefined;
+    let group: SignalGroup | undefined;
 
     if (options?.group != null) {
-      group = Group.findOrCreate(options.group);
+      group = SignalGroup.findOrCreate(options.group);
       group.addEffect(this);
     }
 

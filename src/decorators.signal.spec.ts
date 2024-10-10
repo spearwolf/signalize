@@ -6,7 +6,7 @@ import {
   destroySignal,
   findObjectSignalByName,
   findObjectSignalKeys,
-  Group,
+  SignalGroup,
   value,
 } from './index.js';
 
@@ -134,7 +134,7 @@ describe('@signal is a class accessor decorator', () => {
 
     expect(foo.foo).toBe(666);
 
-    const group = Group.get(foo);
+    const group = SignalGroup.get(foo);
 
     expect(group.getSignal('foo').value).toBe(666);
 

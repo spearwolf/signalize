@@ -13,7 +13,7 @@ _❗BREAKING CHANGES❗_
     - rename previous `Effect` class &rarr; `EffectImpl`
 - remove the `@signalReader()` decorator
 - remove the `@effect()` decorator
-- introduce the new `Group` API
+- introduce the new `SignalGroup` API
 - refactor public api exports
   - rename `queryObjectSignal()` &rarr; `findObjectSignalByName()`
   - rename `getObjectSignalKeys()` &rarr; `findObjectSignalKeys()`
@@ -40,9 +40,9 @@ effect.destroy()
 
 #### Replace `@signalReader()` declarations
 
-The Group API now replaces the `@signalReader` decorator.
+The `SignalGroup` API now replaces the `@signalReader` decorator.
 
-For each object that uses the `@signal()` decorator, a `Group` is automatically created, in which the signals are stored according to their name.
+For each object that uses the `@signal()` decorator, a `SignalGroup` is automatically created, in which the signals are stored according to their name.
 It is therefore possible to retrieve the signal api object via `group.getSignal(name)`.
 
 Before:
@@ -69,7 +69,7 @@ class Foo {
 
 const f = new Foo();
 
-const bar = Group.get(f).getSignal('bar');
+const bar = SignalGroup.get(f).getSignal('bar');
 
 bar.onChange((val) => {
   console.log('bar changed to', val);
@@ -78,7 +78,7 @@ bar.onChange((val) => {
 
 #### Replace `@effect()` declarations
 
-The Group API now replaces the `@effect` decorator.
+The `SignalGroup` API now replaces the `@effect` decorator.
 
 Before:
 
@@ -133,7 +133,7 @@ class Foo {
   }
 
   destroy() {
-    destroySignals(this);
+    SignalGroup.destroy(this);
   }
 }
 ```

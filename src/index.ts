@@ -13,7 +13,6 @@ export {
 } from './createSignal.js';
 export {Effect} from './Effect.js';
 export {createEffect, getEffectsCount} from './effects.js';
-export {Group} from './Group.js';
 export {
   destroyObjectSignals,
   findObjectSignalByName,
@@ -21,6 +20,7 @@ export {
   findObjectSignals,
 } from './object-signals.js';
 export {Signal} from './Signal.js';
+export {SignalGroup} from './SignalGroup.js';
 export {touch} from './touch.js';
 export type * from './types.js';
 export {unconnect} from './unconnect.js';

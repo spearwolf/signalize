@@ -3,21 +3,21 @@ import {Signal} from './Signal.js';
 import {destroySignal, getSignalInstance} from './createSignal.js';
 import {ISignalImpl, SignalLike} from './types.js';
 
-const store = new Map<object, Group>();
+const store = new Map<object, SignalGroup>();
 
-export class Group {
-  #groups = new Set<Group>();
+export class SignalGroup {
+  #groups = new Set<SignalGroup>();
   #signals = new Set<ISignalImpl<any>>();
   #namedSignals = new Map<string | symbol, Signal<any>>();
   #effects = new Set<EffectImpl>();
 
   #destroyed = false;
 
-  #parentGroup?: Group;
+  #parentGroup?: SignalGroup;
 
   static get(object: object) {
     if (object == null) return undefined;
-    if (object instanceof Group && !object.#destroyed) {
+    if (object instanceof SignalGroup && !object.#destroyed) {
       return object;
     }
     return store.get(object);
@@ -27,14 +27,11 @@ export class Group {
     if (object == null) {
       throw new Error('Cannot create a group with a null object');
     }
-    return new Group(object);
+    return new SignalGroup(object);
   }
 
   static destroy(object: object) {
-    const group = store.get(object);
-    if (group) {
-      group.destroy();
-    }
+    store.get(object)?.destroy();
   }
 
   static clear() {
@@ -45,7 +42,7 @@ export class Group {
   }
 
   private constructor(object?: object) {
-    if (object != null && object instanceof Group && !object.#destroyed) {
+    if (object != null && object instanceof SignalGroup && !object.#destroyed) {
       return object;
     }
     object ??= this;
@@ -55,7 +52,7 @@ export class Group {
     store.set(object, this);
   }
 
-  addGroup(group: Group) {
+  addGroup(group: SignalGroup) {
     if (this.#destroyed) {
       throw new Error('Cannot add a group to a destroyed group');
     }
@@ -73,7 +70,7 @@ export class Group {
     return group;
   }
 
-  removeGroup(group: Group) {
+  removeGroup(group: SignalGroup) {
     if (group !== this && this.#groups.has(group)) {
       this.#groups.delete(group);
       group.#parentGroup = undefined;
