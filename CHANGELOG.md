@@ -115,12 +115,12 @@ class Foo {
   @signal() accessor plah = 'abc';
   
   constructor() {
-    createEffect(() => this.dynamicEffect(), { group: this });
+    createEffect(() => this.dynamicEffect(), { attach: this });
 
     createEffect(
       () => this.staticEffect(),
       [ 'bar', 'plah' ],
-      { group: this },
+      { attach: this },
     ).run();
   }
   

@@ -21,30 +21,30 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
     _target: ClassAccessorDecoratorTarget<C, T>,
     context: ClassAccessorDecoratorContext<C, T>,
   ): ClassAccessorDecoratorResult<C, T> {
-    const signalName = (options?.name || context.name) as keyof C;
+    const name = (options?.name || context.name) as keyof C;
     const readAsValue = Boolean(options?.readAsValue ?? false);
 
     return {
       get(this: C) {
-        const sig = findObjectSignalByName(this, signalName);
-        if (sig) {
-          return (readAsValue ? sig.value : sig.get()) as T;
+        const si = findObjectSignalByName(this, name);
+        if (si) {
+          return (readAsValue ? si.value : si.get()) as T;
         }
         return undefined;
       },
 
       set(this: C, value: T) {
-        findObjectSignalByName(this, signalName)?.set(value as any);
+        findObjectSignalByName(this, name)?.set(value as any);
       },
 
       init(this: C, value: T): T {
-        const sig = createSignal<T>(value, options as any);
-        storeAsObjectSignal(this, signalName as string | symbol, sig);
+        const si = createSignal<T>(value, options as any);
+        storeAsObjectSignal(this, name as string | symbol, si);
         SignalGroup.findOrCreate(this).attachSignalByName(
-          signalName as string | symbol,
-          sig,
+          name as string | symbol,
+          si,
         );
-        return sig.value;
+        return si.value;
       },
     };
   };
@@ -63,18 +63,18 @@ export function memo(options?: MemoDecoratorOptions) {
 
     return function (this: T, ...args: A): R {
       let group = SignalGroup.get(this);
-      let sig = group?.getSignal(name);
-      let sigGet = sig?.get;
-      if (sigGet == null) {
+      let si = group?.getSignal(name);
+      let siGet = si?.get;
+      if (siGet == null) {
         group ??= SignalGroup.findOrCreate(this);
-        sigGet = createMemo<R>(() => target.call(this, ...args), {
-          group,
+        siGet = createMemo<R>(() => target.call(this, ...args), {
+          attach: group,
           name,
         });
-        sig = group.getSignal(name);
-        storeAsObjectSignal(this, name, sig);
+        si = group.getSignal(name);
+        storeAsObjectSignal(this, name, si);
       }
-      return sigGet();
+      return siGet();
     };
   };
 }
