@@ -24,9 +24,9 @@ export function createMemo<Type>(
 
   if (group != null) {
     if (options?.name) {
-      group.setSignal(options.name, sig);
+      group.attachSignalByName(options.name, sig);
     } else {
-      group.addSignal(sig);
+      group.attachSignal(sig);
     }
   }
 

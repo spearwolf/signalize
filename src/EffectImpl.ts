@@ -77,7 +77,7 @@ export class EffectImpl {
 
     if (options?.group != null) {
       group = SignalGroup.findOrCreate(options.group);
-      group.addEffect(this);
+      group.attachEffect(this);
     }
 
     this.autorun = options?.autorun ?? true;

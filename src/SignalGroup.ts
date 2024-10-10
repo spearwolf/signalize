@@ -52,12 +52,12 @@ export class SignalGroup {
     store.set(object, this);
   }
 
-  addGroup(group: SignalGroup) {
+  attachGroup(group: SignalGroup) {
     if (this.#destroyed) {
-      throw new Error('Cannot add a group to a destroyed group');
+      throw new Error('Cannot attach a group to a destroyed group');
     }
     if (group === this) {
-      throw new Error('Cannot add a group to itself');
+      throw new Error('Cannot attach a group to itself');
     }
 
     this.#groups.add(group);
@@ -70,7 +70,7 @@ export class SignalGroup {
     return group;
   }
 
-  removeGroup(group: SignalGroup) {
+  detachGroup(group: SignalGroup) {
     if (group !== this && this.#groups.has(group)) {
       this.#groups.delete(group);
       group.#parentGroup = undefined;
@@ -78,9 +78,9 @@ export class SignalGroup {
     return group;
   }
 
-  addSignal(signal: SignalLike<any>) {
+  attachSignal(signal: SignalLike<any>) {
     if (this.#destroyed) {
-      throw new Error('Cannot add a signal to a destroyed group');
+      throw new Error('Cannot attach a signal to a destroyed group');
     }
     const sig = getSignalInstance(signal);
     if (sig && !sig.destroyed) {
@@ -89,15 +89,15 @@ export class SignalGroup {
     return signal;
   }
 
-  setSignal(name: string | symbol, signal?: Signal<any>) {
+  attachSignalByName(name: string | symbol, signal?: Signal<any>) {
     if (this.#destroyed) {
       throw new Error('Cannot attach a named signal to a destroyed group');
     }
     if (signal) {
-      this.addSignal(signal);
+      this.attachSignal(signal);
     }
     if (this.#namedSignals.has(name)) {
-      this.removeSignal(this.#namedSignals.get(name)!);
+      this.detachSignal(this.#namedSignals.get(name)!);
     }
     if (signal) {
       this.#namedSignals.set(name, signal);
@@ -111,7 +111,7 @@ export class SignalGroup {
     return this.#namedSignals.get(name) ?? this.#parentGroup?.getSignal(name);
   }
 
-  removeSignal(signal: SignalLike<any>) {
+  detachSignal(signal: SignalLike<any>) {
     const sig = getSignalInstance(signal);
     if (sig) {
       this.#signals.delete(sig);
@@ -119,9 +119,9 @@ export class SignalGroup {
     return signal;
   }
 
-  addEffect(effect: EffectImpl) {
+  attachEffect(effect: EffectImpl) {
     if (this.#destroyed) {
-      throw new Error('Cannot add an effect to a destroyed group');
+      throw new Error('Cannot attach an effect to a destroyed group');
     }
     this.#effects.add(effect);
     return effect;
@@ -159,7 +159,7 @@ export class SignalGroup {
     this.#namedSignals.clear();
     this.#effects.clear();
 
-    this.#parentGroup?.removeGroup(this);
+    this.#parentGroup?.detachGroup(this);
 
     store.delete(this);
 
