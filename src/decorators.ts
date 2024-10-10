@@ -7,6 +7,8 @@ import type {SignalParams} from './types.js';
 // https://github.com/tc39/proposal-decorators
 // https://github.com/microsoft/TypeScript/pull/50820
 
+// TODO create a @signalGroup decorator for method arguments ?
+
 export type SignalReaderDecoratorOptions = {
   name?: string | symbol;
 };
