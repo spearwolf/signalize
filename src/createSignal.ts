@@ -186,7 +186,7 @@ export function createSignal<Type = unknown>(
   }
 
   if (params?.group != null) {
-    SignalGroup.findOrCreate(params.group).addSignal(signal);
+    SignalGroup.findOrCreate(params.group).attachSignal(signal);
   }
 
   return signal.object;

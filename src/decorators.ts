@@ -40,7 +40,7 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
       init(this: C, value: T): T {
         const sig = createSignal<T>(value, options as any);
         storeAsObjectSignal(this, signalName as string | symbol, sig);
-        SignalGroup.findOrCreate(this).setSignal(
+        SignalGroup.findOrCreate(this).attachSignalByName(
           signalName as string | symbol,
           sig,
         );
