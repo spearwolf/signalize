@@ -1,20 +1,17 @@
-export * from './Connection.js';
-export * from './Group.js';
-export * from './Signal.js';
 export {batch} from './batch.js';
 export * from './bequiet.js';
 export {connect} from './connect.js';
+export * from './Connection.js';
 export * from './createMemo.js';
 export * from './createSignal.js';
 export * from './effects-api.js';
+export * from './Group.js';
 export {
-  destroyEffects,
   destroySignals,
-  destroySignalsAndEffects,
   getObjectSignalKeys,
-  queryObjectEffect,
   queryObjectSignal,
 } from './object-signals-and-effects.js';
+export * from './Signal.js';
 export * from './touch.js';
 export type * from './types.js';
 export {unconnect} from './unconnect.js';
