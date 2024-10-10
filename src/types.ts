@@ -9,11 +9,11 @@ export type EffectCallback = VoidFunc | (() => VoidFunc);
 export type CompareFunc<Type> = (a: Type, b: Type) => boolean;
 export type BeforeReadFunc = () => void;
 
-export interface SignalLike<Type> {
+export interface SignalLike<Type = any> {
   [$signal]: ISignalImpl<Type>;
 }
 
-export interface ISignalImpl<Type> extends SignalLike<Type> {
+export interface ISignalImpl<Type = any> extends SignalLike<Type> {
   id: symbol;
   value: Type | undefined;
   valueFn: () => Type | undefined;
