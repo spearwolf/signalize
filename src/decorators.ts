@@ -1,4 +1,4 @@
-import {Group} from './Group.js';
+import {SignalGroup} from './SignalGroup.js';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
 import {findObjectSignalByName, storeAsObjectSignal} from './object-signals.js';
@@ -40,7 +40,10 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
       init(this: C, value: T): T {
         const sig = createSignal<T>(value, options as any);
         storeAsObjectSignal(this, signalName as string | symbol, sig);
-        Group.findOrCreate(this).setSignal(signalName as string | symbol, sig);
+        SignalGroup.findOrCreate(this).setSignal(
+          signalName as string | symbol,
+          sig,
+        );
         return sig.value;
       },
     };
@@ -59,11 +62,11 @@ export function memo(options?: MemoDecoratorOptions) {
     const name = options?.name || context.name;
 
     return function (this: T, ...args: A): R {
-      let group = Group.get(this);
+      let group = SignalGroup.get(this);
       let sig = group?.getSignal(name);
       let sigGet = sig?.get;
       if (sigGet == null) {
-        group ??= Group.findOrCreate(this);
+        group ??= SignalGroup.findOrCreate(this);
         sigGet = createMemo<R>(() => target.call(this, ...args), {
           group,
           name,
