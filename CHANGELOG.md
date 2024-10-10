@@ -40,7 +40,7 @@ effect.destroy()
 
 #### Replace `@signalReader()` declarations
 
-The `SignalGroup` API now replaces the `@signalReader` decorator.
+The `SignalGroup` API now replaces the awkward `@signalReader` decorator.
 
 For each object that uses the `@signal()` decorator, a `SignalGroup` is automatically created, in which the signals are stored according to their name.
 It is therefore possible to retrieve the signal api object via `group.getSignal(name)`.
@@ -78,7 +78,9 @@ bar.onChange((val) => {
 
 #### Replace `@effect()` declarations
 
-The `SignalGroup` API now replaces the `@effect` decorator.
+The `SignalGroup` API now replaces the mistakable `@effect` decorator.
+
+The necessity to call the methods annotated as `@effect()` in the constructor once has led to misunderstandings and ambiguities, especially when it was an effect with static dependencies. With the new `attach` option for effects, the behavior is now explicit and clear. 
 
 Before:
 
