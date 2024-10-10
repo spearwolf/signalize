@@ -1,5 +1,5 @@
 import {Connection} from './Connection.js';
-import {queryObjectSignal} from './object-signals-and-effects.js';
+import {findObjectSignalByName} from './object-signals.js';
 import type {SignalLike} from './types.js';
 
 type ObjectProps<Obj, PropType> = {
@@ -61,14 +61,14 @@ export function connect<
 export function connect(source: any, target: any) {
   // === Connection :: source ===
   const conSource = Array.isArray(source)
-    ? queryObjectSignal(...(source as [any, any]))
+    ? findObjectSignalByName(...(source as [any, any]))
     : source;
 
   const isObjectTarget = Array.isArray(target);
 
   // === Connection :: target ===
   const conTarget = isObjectTarget
-    ? (queryObjectSignal(...(target as [any, any])) ?? target)
+    ? (findObjectSignalByName(...(target as [any, any])) ?? target)
     : target;
 
   // === Connection :: connectionTarget ===

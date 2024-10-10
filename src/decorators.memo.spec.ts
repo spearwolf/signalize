@@ -1,5 +1,5 @@
 import {memo, signal} from './decorators.js';
-import {destroySignals, queryObjectSignal, value} from './index.js';
+import {destroyObjectSignals, findObjectSignalByName, value} from './index.js';
 
 describe('@memo is a class method decorator', () => {
   it('works as expected', () => {
@@ -20,7 +20,7 @@ describe('@memo is a class method decorator', () => {
     expect(foo.bar()).toBe(101);
     expect(foo.barCallCount).toBe(1);
 
-    const barSignal = queryObjectSignal(foo, 'bar');
+    const barSignal = findObjectSignalByName(foo, 'bar');
 
     expect(barSignal).toBeDefined();
     expect(value(barSignal)).toBe(101);
@@ -42,6 +42,6 @@ describe('@memo is a class method decorator', () => {
 
     expect(foo.barCallCount).toBe(2);
 
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 });

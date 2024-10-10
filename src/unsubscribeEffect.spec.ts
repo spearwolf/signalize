@@ -1,5 +1,5 @@
 import {createSignal} from './createSignal.js';
-import {createEffect} from './effects-api.js';
+import {createEffect} from './effects.js';
 
 describe('unsubscribe as return function from effect callback', () => {
   it('should be called before recalling the effect callback', () => {

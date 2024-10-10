@@ -1,6 +1,6 @@
 import {assertEffectsCount} from './assert-helpers.js';
 import {destroySignal} from './createSignal.js';
-import {createEffect} from './effects-api.js';
+import {createEffect} from './effects.js';
 import {createSignal} from './index.js';
 
 describe('Effect -> autorun: false', () => {

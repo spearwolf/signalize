@@ -1,6 +1,6 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
 
-import {getEffectsCount} from './effects-api.js';
+import {getEffectsCount} from './effects.js';
 
 import {getSignalsCount} from './createSignal.js';
 import {globalDestroySignalQueue, globalEffectQueue} from './global-queues.js';

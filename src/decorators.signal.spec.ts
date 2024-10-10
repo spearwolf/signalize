@@ -2,11 +2,11 @@ import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 import {memo, signal} from './decorators.js';
 import {
   createMemo,
+  destroyObjectSignals,
   destroySignal,
-  destroySignals,
-  getObjectSignalKeys,
+  findObjectSignalByName,
+  findObjectSignalKeys,
   Group,
-  queryObjectSignal,
   value,
 } from './index.js';
 
@@ -31,7 +31,7 @@ describe('@signal is a class accessor decorator', () => {
     expect(foo.foo).toBe(1);
     assertSignalsCount(1, 'after new Foo');
 
-    const fooSignal = queryObjectSignal(foo, 'foo');
+    const fooSignal = findObjectSignalByName(foo, 'foo');
 
     expect(fooSignal).toBeDefined();
     expect(value(fooSignal)).toBe(1);
@@ -46,7 +46,7 @@ describe('@signal is a class accessor decorator', () => {
     expect(computedFoo()).toBe(102);
     assertSignalsCount(2, 'after createMemo()');
 
-    destroySignals(foo);
+    destroyObjectSignals(foo);
     destroySignal(computedFoo);
   });
 
@@ -77,7 +77,7 @@ describe('@signal is a class accessor decorator', () => {
     expect(foo.foo).toBe(4);
     expect(foo.bar()).toBe(104);
 
-    destroySignals(foo);
+    destroyObjectSignals(foo);
   });
 
   it('each object has its on signal instance', () => {
@@ -93,8 +93,8 @@ describe('@signal is a class accessor decorator', () => {
     expect(foo2.foo).toBe(1);
     assertSignalsCount(2, 'after new Foo (2)');
 
-    const fooSignal = queryObjectSignal(foo, 'foo');
-    const foo2Signal = queryObjectSignal(foo2, 'foo');
+    const fooSignal = findObjectSignalByName(foo, 'foo');
+    const foo2Signal = findObjectSignalByName(foo2, 'foo');
 
     expect(fooSignal).toBeDefined();
     expect(foo2Signal).toBeDefined();
@@ -116,8 +116,7 @@ describe('@signal is a class accessor decorator', () => {
     expect(foo.foo).toBe(123);
     expect(foo2.foo).toBe(456);
 
-    destroySignals(foo2);
-    destroySignals(foo);
+    destroyObjectSignals(foo, foo2);
   });
 
   it('get the signals from the object using the group', () => {
@@ -149,10 +148,10 @@ describe('@signal is a class accessor decorator', () => {
     expect(foo.xyz).toBe('hello');
     expect(group.getSignal('xyz').value).toBe('hello');
 
-    expect(getObjectSignalKeys(foo).sort()).toEqual(
+    expect(findObjectSignalKeys(foo).sort()).toEqual(
       ['foo', 'plah', 'xyz'].sort(),
     );
 
-    destroySignals(foo);
+    group.destroy();
   });
 });

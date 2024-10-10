@@ -7,7 +7,7 @@ interface ObjectStore {
 
 const g_objectStores = new WeakMap<object, ObjectStore>();
 
-const getStore = (obj: object): ObjectStore => {
+const getObjStore = (obj: object): ObjectStore => {
   let store = g_objectStores.get(obj);
   if (!store) {
     store = {};
@@ -16,13 +16,13 @@ const getStore = (obj: object): ObjectStore => {
   return store;
 };
 
-export const queryObjectSignal = <O extends object, K extends keyof O>(
+export const findObjectSignalByName = <O extends object, K extends keyof O>(
   obj: O,
   name: K,
 ): Signal<O[K]> | undefined =>
   g_objectStores.get(obj)?.signals?.get(name as any);
 
-export const queryObjectSignals = <O extends object>(
+export const findObjectSignals = <O extends object>(
   obj: O,
 ): Signal<any>[] | undefined => {
   const signals = g_objectStores.get(obj)?.signals;
@@ -32,7 +32,7 @@ export const queryObjectSignals = <O extends object>(
   return undefined;
 };
 
-export const getObjectSignalKeys = <O extends object>(
+export const findObjectSignalKeys = <O extends object>(
   obj: O,
 ): (string | symbol)[] | undefined => {
   const signals = g_objectStores.get(obj)?.signals;
@@ -42,17 +42,17 @@ export const getObjectSignalKeys = <O extends object>(
   return undefined;
 };
 
-export const saveObjectSignal = (
+export const storeAsObjectSignal = (
   obj: any,
   name: string | symbol,
   signal: Signal<any>,
 ) => {
-  const store = getStore(obj);
+  const store = getObjStore(obj);
   store.signals ??= new Map();
   store.signals.set(name, signal);
 };
 
-export function destroySignals(...objects: any[]): void {
+export function destroyObjectSignals(...objects: object[]): void {
   for (const obj of objects) {
     if (g_objectStores.has(obj)) {
       const store = g_objectStores.get(obj);

@@ -9,7 +9,7 @@ import {
 } from '@spearwolf/eventize';
 import {getSignalInstance, isSignal} from './createSignal.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
-import {queryObjectSignals} from './object-signals-and-effects.js';
+import {findObjectSignals} from './object-signals.js';
 import type {ISignalImpl, SignalLike} from './types.js';
 
 /**
@@ -136,7 +136,7 @@ export class Connection<T> {
   ): Connection<unknown>[] | undefined {
     const connections = new Set<Connection<unknown>>();
 
-    const signals = queryObjectSignals(source);
+    const signals = findObjectSignals(source);
     if (signals) {
       for (const con of signals.flatMap((sig) => {
         const connectionsBySignal = Connection.findConnectionsBySignal(sig);

@@ -1,6 +1,6 @@
 import {once} from '@spearwolf/eventize';
 import {createSignal, getSignalInstance} from './createSignal.js';
-import {createEffect} from './effects-api.js';
+import {createEffect} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {Group} from './Group.js';
 import type {SignalReader} from './types.js';

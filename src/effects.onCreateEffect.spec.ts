@@ -1,5 +1,5 @@
 import {assertEffectsCount} from './assert-helpers.js';
-import {createEffect, onCreateEffect, onDestroyEffect} from './effects-api.js';
+import {createEffect, onCreateEffect, onDestroyEffect} from './effects.js';
 
 import {EffectImpl} from './EffectImpl.js';
 
