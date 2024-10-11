@@ -1,4 +1,4 @@
-import {Connection} from './Connection.js';
+import {Connection} from './Connection.legacy.js';
 import {findObjectSignalByName} from './object-signals.js';
 import type {SignalLike} from './types.js';
 

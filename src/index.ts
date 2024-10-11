@@ -1,7 +1,7 @@
 export {batch} from './batch.js';
 export {beQuiet, isQuiet} from './bequiet.js';
-export {connect} from './connect.js';
-export * from './Connection.js';
+export {connect} from './connect.legacy.js';
+export * from './Connection.legacy.js';
 export {createMemo, type CreateMemoOptions} from './createMemo.js';
 export {
   createSignal,
@@ -23,7 +23,7 @@ export {Signal} from './Signal.js';
 export {SignalGroup} from './SignalGroup.js';
 export {touch} from './touch.js';
 export type * from './types.js';
-export {unconnect} from './unconnect.js';
+export {unconnect} from './unconnect.legacy.js';
 export {value} from './value.js';
 
 // TODO docs: update README (missing decorators docs, rewrite introduction, add ts@5 / decorators stage-3 notes ...)
