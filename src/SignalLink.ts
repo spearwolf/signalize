@@ -1,4 +1,12 @@
-import {emit, off, on, once, retain, retainClear} from '@spearwolf/eventize';
+import {
+  emit,
+  eventize,
+  off,
+  on,
+  once,
+  retain,
+  retainClear,
+} from '@spearwolf/eventize';
 import {signalImpl} from './createSignal.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {ISignalImpl, SignalLike} from './types.js';
@@ -16,10 +24,13 @@ export abstract class SignalLink<ValueType = any> {
 
   readonly source: ISignalImpl<ValueType>;
 
+  lastValue?: ValueType;
+
   isDestroyed = false;
 
   constructor(source: SignalLike<ValueType>) {
-    retain(this, SignalLink.Value);
+    eventize(this);
+    // retain(this, SignalLink.Value);
 
     this.source = signalImpl(source);
 
@@ -38,27 +49,41 @@ export abstract class SignalLink<ValueType = any> {
 
   nextValue(): Promise<ValueType> {
     return new Promise((resolve, reject) => {
-      // we can not just use 'once' here because the value is retained
-      let valEmitCount = 0;
-      const unsubscribe = [
-        on(this, SignalLink.Value, (val) => {
-          if (valEmitCount === 1) {
-            unsubscribe.forEach((unsub) => {
-              unsub();
-            });
-            resolve(val);
-          } else {
-            ++valEmitCount;
-          }
+      const subscriptions: (() => void)[] = [];
+      const unsubscribe = () =>
+        subscriptions.forEach((unsub) => {
+          unsub();
+        });
+
+      subscriptions.push(
+        // we can not just use 'once' here because the value is retained
+        once(this, SignalLink.Value, (val) => {
+          unsubscribe();
+          resolve(val);
         }),
         once(this, SignalLink.Destroy, () => {
-          unsubscribe.forEach((unsub) => {
-            unsub();
-          });
+          unsubscribe();
           reject();
         }),
-      ];
+      );
     });
+  }
+
+  async *asyncValues(
+    stopAction?: (value: ValueType, index: number) => boolean,
+  ) {
+    let i = 0;
+    while (!this.isDestroyed) {
+      try {
+        const next = await this.nextValue();
+        if (stopAction && stopAction(next, i++)) break;
+        retain(this, SignalLink.Value);
+        yield next;
+      } catch {
+        break;
+      }
+    }
+    retainClear(this, SignalLink.Value);
   }
 
   destroy() {
@@ -70,6 +95,8 @@ export abstract class SignalLink<ValueType = any> {
     emit(this, SignalLink.Destroy, this);
     retainClear(this, SignalLink.Value);
     off(this);
+
+    this.lastValue = undefined;
 
     this.isDestroyed = true;
 
@@ -108,6 +135,7 @@ export abstract class SignalLink<ValueType = any> {
       const {value} = this.source;
       action(value);
       emit(this, SignalLink.Value, value);
+      this.lastValue = value;
     }
   }
 }
