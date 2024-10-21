@@ -35,3 +35,5 @@ export {value} from './value.js';
 // TODO docs: add contribution guide (setup dev env, run tests, etc.)
 
 // TODO build: prepend banner to index.js and decorators.js output fragments
+
+// TODO remove legacy connect* features
