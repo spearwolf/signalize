@@ -5,7 +5,6 @@ import {globalDestroySignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
 import type {SignalReader} from './types.js';
 
-// TODO add [optional] static dependencies
 export interface CreateMemoOptions {
   attach?: object | SignalGroup;
   name?: string | symbol;
@@ -36,7 +35,6 @@ export function createMemo<Type>(
   });
 
   const sImpl = signalImpl(si);
-  // TODO beQuiet ?
   sImpl.beforeRead = e.run;
 
   once(globalDestroySignalQueue, sImpl.id, e.destroy);

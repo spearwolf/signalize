@@ -203,8 +203,6 @@ export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
   }
 };
 
-// TODO rethink mute() and unmute() signatures -> how to toggle ?
-
 export const muteSignal = <Type = unknown>(
   signalLike: SignalLike<Type>,
 ): void => {
