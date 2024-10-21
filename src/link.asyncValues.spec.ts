@@ -44,4 +44,31 @@ describe('link.asyncValues', () => {
 
     destroySignal(a, b);
   });
+
+  it('async values with destroy', async () => {
+    const a = createSignal(23);
+    const b = createSignal(0);
+
+    const con = link(a, b);
+
+    expect(a.value).toBe(23);
+
+    const result = new Promise(async (resolve) => {
+      const values = [];
+
+      for await (const val of con.asyncValues()) {
+        values.push(val);
+        a.set(val + 1);
+        if (val === 5) con.destroy();
+      }
+
+      resolve(values);
+    });
+
+    a.set(1);
+
+    await expect(result).resolves.toEqual([1, 2, 3, 4, 5]);
+
+    destroySignal(a, b);
+  });
 });
