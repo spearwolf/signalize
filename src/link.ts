@@ -20,6 +20,8 @@ type LinkableTarget<ValueType> =
   | Signal<ValueType>
   | ValueCallback<ValueType>;
 
+// TODO add group option to link(src, trg, {attach})
+
 export function link<ValueType>(
   source: LinkableSource<ValueType>,
   target: LinkableTarget<ValueType>,
@@ -57,6 +59,8 @@ export function link<ValueType>(
 
   return link;
 }
+
+// TODO add tests for unlink()
 
 export function unlink<ValueType>(
   source: LinkableSource<ValueType>,

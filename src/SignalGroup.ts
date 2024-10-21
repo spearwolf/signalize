@@ -9,6 +9,7 @@ const store = new Map<object, SignalGroup>();
 type SignalNameType = string | symbol;
 
 // TODO add tests for SignalGroup
+// TODO add SignalGroup.attachLink
 
 export class SignalGroup {
   #groups = new Set<SignalGroup>();
