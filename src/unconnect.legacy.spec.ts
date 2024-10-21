@@ -817,7 +817,6 @@ describe('unconnect', () => {
     destroyObjectSignals(foo, source);
   });
 
-  // TODO implement all unconnect tests
   it.skip('object -> object', () => {});
 
   it('object -> object.signal', () => {
