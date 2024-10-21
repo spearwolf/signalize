@@ -4,6 +4,7 @@ import {getEffectsCount} from './effects.js';
 
 import {getSignalsCount} from './createSignal.js';
 import {globalDestroySignalQueue, globalEffectQueue} from './global-queues.js';
+import {getLinksCount} from './link.js';
 
 const namespacePrefix = (namespace?: string) =>
   namespace ? `${namespace}: ` : '';
@@ -23,6 +24,16 @@ export function assertSignalsCount(count: number, namespace?: string) {
     `${namespacePrefix(
       namespace,
     )}Number of active signals should be ${count} but is ${getSignalsCount()}`,
+  ).toBe(count);
+}
+
+export function assertLinksCount(count: number, namespace?: string) {
+  const linksCount = getLinksCount();
+  expect(
+    linksCount,
+    `${namespacePrefix(
+      namespace,
+    )}Number of active links should be ${count} but is ${linksCount}`,
   ).toBe(count);
 }
 

@@ -36,6 +36,7 @@ export function link<ValueType>(
     }
   } else {
     links = new Map<object | Function, SignalLink<any>>();
+    gLinks.set(sourceSignal, links);
   }
 
   const targetSignal = signalImpl(target as SignalLike<ValueType>);
@@ -84,4 +85,19 @@ export function unlink<ValueType>(
       gLinks.delete(sourceSignal);
     }
   }
+}
+
+export function getLinksCount(source?: SignalLike<any>): number {
+  let counter = 0;
+  if (source == null) {
+    for (const links of gLinks.values()) {
+      counter += links.size;
+    }
+  } else {
+    const sourceSignal = signalImpl(source);
+    if (gLinks.has(sourceSignal)) {
+      counter = gLinks.get(sourceSignal)!.size;
+    }
+  }
+  return counter;
 }
