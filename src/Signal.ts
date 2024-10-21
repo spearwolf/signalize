@@ -11,30 +11,30 @@ import type {
 } from './types.js';
 import {value} from './value.js';
 
-export class Signal<Type = unknown> implements SignalLike<Type> {
-  readonly [$signal]: ISignalImpl<Type>;
+export class Signal<ValueType> implements SignalLike<ValueType> {
+  readonly [$signal]: ISignalImpl<ValueType>;
 
-  constructor(sig: ISignalImpl<Type>) {
+  constructor(sig: ISignalImpl<ValueType>) {
     this[$signal] = sig;
   }
 
-  get get(): SignalReader<Type> {
+  get get(): SignalReader<ValueType> {
     return this[$signal].reader;
   }
 
-  get set(): SignalWriter<Type> {
+  get set(): SignalWriter<ValueType> {
     return this[$signal].writer;
   }
 
-  get value(): Type {
+  get value(): ValueType {
     return value(this.get);
   }
 
-  set value(val: Type) {
+  set value(val: ValueType) {
     this.set(val);
   }
 
-  onChange(action: (val: Type) => any): VoidFunc {
+  onChange(action: (val: ValueType) => any): VoidFunc {
     const {destroy} = createEffect(() => {
       return action(this.value);
     }, [this.get]);
