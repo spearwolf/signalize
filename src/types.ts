@@ -3,8 +3,8 @@ import {SignalGroup} from './SignalGroup.js';
 import type {$signal} from './constants.js';
 
 export type VoidFunc = () => void;
-
 export type EffectCallback = VoidFunc | (() => VoidFunc);
+export type ValueChangedCallback<T> = (value: T) => VoidFunc | void;
 
 export type CompareFunc<Type> = (a: Type, b: Type) => boolean;
 export type BeforeReadFunc = () => void;
@@ -27,22 +27,17 @@ export interface ISignalImpl<Type = any> extends SignalLike<Type> {
   object: Signal<Type>;
 }
 
-export interface SignalCallback<Type> {
-  (value: Type): VoidFunc | void;
+export interface SignalReader<T> extends SignalLike<T> {
+  (callback?: ValueChangedCallback<T>): T;
 }
 
-export interface SignalReader<Type> extends SignalLike<Type> {
-  (callback?: SignalCallback<Type>): Type;
-  [$signal]: ISignalImpl<Type>;
+export interface SignalWriter<T> {
+  (value: T | (() => T), params?: SignalWriterParams<T>): void;
 }
 
-export interface SignalWriter<Type> {
-  (value: Type | (() => Type), params?: SignalWriterParams<Type>): void;
-}
-
-export interface SignalParams<Type> {
+export interface SignalParams<T> {
   lazy?: boolean;
-  compare?: CompareFunc<Type>;
+  compare?: CompareFunc<T>;
   beforeRead?: BeforeReadFunc;
   attach?: object | SignalGroup;
 }
@@ -51,11 +46,11 @@ export interface SignalValueParams {
   touch?: boolean;
 }
 
-export interface SignalWriterParams<Type>
-  extends SignalParams<Type>,
+export interface SignalWriterParams<T>
+  extends SignalParams<T>,
     SignalValueParams {}
 
-export type SignalFuncs<Type = unknown> = [
-  get: SignalReader<Type>,
-  set: SignalWriter<Type>,
+export type SignalFuncs<T = unknown> = [
+  get: SignalReader<T>,
+  set: SignalWriter<T>,
 ];

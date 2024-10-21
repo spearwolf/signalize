@@ -2,7 +2,7 @@ import type {
   BeforeReadFunc,
   CompareFunc,
   ISignalImpl,
-  SignalCallback,
+  ValueChangedCallback,
   SignalLike,
   SignalParams,
   SignalReader,
@@ -45,7 +45,7 @@ export const isSignal = (signalLike: any): signalLike is SignalLike<unknown> =>
 const createSignalReader = <Type>(
   signal: ISignalImpl<Type>,
 ): SignalReader<Type> => {
-  const signalReader = (callback?: SignalCallback<Type>) => {
+  const signalReader = (callback?: ValueChangedCallback<Type>) => {
     if (callback) {
       createEffect(() => {
         if (!signal.destroyed) {
