@@ -30,7 +30,6 @@ export abstract class SignalLink<ValueType = any> {
 
   constructor(source: SignalLike<ValueType>) {
     eventize(this);
-    // retain(this, SignalLink.Value);
 
     this.source = signalImpl(source);
 
