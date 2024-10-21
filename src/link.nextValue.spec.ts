@@ -18,7 +18,7 @@ describe('link.nextValue', () => {
     assertLinksCount(0, 'afterEach');
   });
 
-  it("we don't wanna the retained value - we want the next value update", async () => {
+  it('resolve to next value', async () => {
     const a = createSignal(23);
     const {get: getB} = createSignal(-77);
 
@@ -38,7 +38,7 @@ describe('link.nextValue', () => {
 
     await expect(nextValue).resolves.toBe(42); // the value of the promise that has already been fulfilled should not change
 
-    nextValue = con.nextValue();
+    nextValue = con.nextValue(); /// 666 is past - we will wait for the next value
 
     a.set(100);
 
@@ -47,7 +47,7 @@ describe('link.nextValue', () => {
     destroySignal(getB, a);
   });
 
-  it('reject promise if link is destroyed', async () => {
+  it('reject next value when link is destroyed', async () => {
     const {get: getA} = createSignal(23);
     const b = createSignal(-77);
 
