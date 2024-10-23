@@ -1,16 +1,19 @@
-import {signal, effect} from '@spearwolf/signalize/decorators';
+import {createEffect, destroyObjectSignals} from '@spearwolf/signalize';
+import {signal} from '@spearwolf/signalize/decorators';
 
 class CheekyCalc {
   @signal() accessor a = 0;
   @signal() accessor b = 1;
 
-  @effect() calc() {
-    const sum = this.a + this.b;
-    console.log('sum of', this.a, 'and', this.b, 'is', sum);
+  constructor() {
+    createEffect(() => {
+      const sum = this.a + this.b;
+      console.log('sum of', this.a, 'and', this.b, 'is', sum);
+    });
   }
 
-  constructor() {
-    this.calc();
+  dispose() {
+    destroyObjectSignals(this);
   }
 }
 

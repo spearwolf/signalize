@@ -40,7 +40,7 @@
     "world": "run-s -sn clean lint prettier:check compile test"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.15.3",
+    "@arethetypeswrong/cli": "^0.16.4",
     "@babel/core": "^7.24.9",
     "@babel/preset-typescript": "^7.24.7",
     "@spearwolf/eventize": "^4.0.1",
