@@ -22,3 +22,4 @@ scripts
 rollup.config.*
 jest.config.*
 types
+hero.*
