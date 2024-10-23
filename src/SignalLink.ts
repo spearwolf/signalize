@@ -7,6 +7,7 @@ import {
   retain,
   retainClear,
 } from '@spearwolf/eventize';
+import {Destroy, Mute, Unmute, Value} from './constants.js';
 import {signalImpl} from './createSignal.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
@@ -15,11 +16,6 @@ import {ISignalImpl, SignalLike} from './types.js';
 export type ValueCallback<ValueType = any> = (value: ValueType) => void;
 
 export abstract class SignalLink<ValueType = any> {
-  static Value = 'value';
-  static Mute = 'mute';
-  static Unmute = 'unmute';
-  static Destroy = 'destroy';
-
   #muted = false;
   #unsubscribe?: () => void;
 
@@ -50,7 +46,7 @@ export abstract class SignalLink<ValueType = any> {
   attach(to: object) {
     const group = SignalGroup.findOrCreate(to);
     group.attachLink(this);
-    once(this, SignalLink.Destroy, () => {
+    once(this, Destroy, () => {
       group.detachLink(this);
     });
     return group;
@@ -66,11 +62,11 @@ export abstract class SignalLink<ValueType = any> {
 
       subscriptions.push(
         // we can not just use 'once' here because the value is retained
-        once(this, SignalLink.Value, (val) => {
+        once(this, Value, (val) => {
           unsubscribe();
           resolve(val);
         }),
-        once(this, SignalLink.Destroy, () => {
+        once(this, Destroy, () => {
           unsubscribe();
           reject();
         }),
@@ -86,13 +82,13 @@ export abstract class SignalLink<ValueType = any> {
       try {
         const next = await this.nextValue();
         if (stopAction && stopAction(next, i++)) break;
-        retain(this, SignalLink.Value);
+        retain(this, Value);
         yield next;
       } catch {
         break;
       }
     }
-    retainClear(this, SignalLink.Value);
+    retainClear(this, Value);
   }
 
   destroy() {
@@ -101,8 +97,8 @@ export abstract class SignalLink<ValueType = any> {
     this.#unsubscribe?.();
     this.#unsubscribe = undefined;
 
-    emit(this, SignalLink.Destroy, this);
-    retainClear(this, SignalLink.Value);
+    emit(this, Destroy, this);
+    retainClear(this, Value);
     off(this);
 
     this.lastValue = undefined;
@@ -112,10 +108,14 @@ export abstract class SignalLink<ValueType = any> {
     Object.freeze(this);
   }
 
+  get isMuted(): boolean {
+    return this.#muted;
+  }
+
   mute(): this {
     if (!this.isDestroyed && !this.#muted) {
       this.#muted = true;
-      emit(this, SignalLink.Mute, this);
+      emit(this, Mute, this);
     }
     return this;
   }
@@ -123,7 +123,7 @@ export abstract class SignalLink<ValueType = any> {
   unmute(): this {
     if (!this.isDestroyed && this.#muted) {
       this.#muted = false;
-      emit(this, SignalLink.Unmute, this);
+      emit(this, Unmute, this);
     }
     return this;
   }
@@ -131,7 +131,7 @@ export abstract class SignalLink<ValueType = any> {
   toggle(): boolean {
     if (!this.isDestroyed) {
       this.#muted = !this.#muted;
-      emit(this, this.#muted ? SignalLink.Mute : SignalLink.Unmute, this);
+      emit(this, this.#muted ? Mute : Unmute, this);
     }
     return this.#muted;
   }
@@ -143,7 +143,7 @@ export abstract class SignalLink<ValueType = any> {
     if (!this.#muted && !this.isDestroyed) {
       const {value} = this.source;
       action(value);
-      emit(this, SignalLink.Value, value);
+      emit(this, Value, value);
       this.lastValue = value;
     }
   }
