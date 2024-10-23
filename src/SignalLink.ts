@@ -9,6 +9,7 @@ import {
 } from '@spearwolf/eventize';
 import {signalImpl} from './createSignal.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
+import {SignalGroup} from './SignalGroup.js';
 import {ISignalImpl, SignalLike} from './types.js';
 
 export type ValueCallback<ValueType = any> = (value: ValueType) => void;
@@ -44,6 +45,15 @@ export abstract class SignalLink<ValueType = any> {
     });
 
     once(globalDestroySignalQueue, this.source.id, () => this.destroy());
+  }
+
+  attach(to: object) {
+    const group = SignalGroup.findOrCreate(to);
+    group.attachLink(this);
+    once(this, SignalLink.Destroy, () => {
+      group.detachLink(this);
+    });
+    return group;
   }
 
   nextValue(): Promise<ValueType> {

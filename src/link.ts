@@ -20,11 +20,25 @@ type LinkableTarget<ValueType> =
   | Signal<ValueType>
   | ValueCallback<ValueType>;
 
-// TODO add group option to link(src, trg, {attach})
+// TODO add two-way binding option to link(src, trgt, {twoWay: true}) ?
+
+export interface LinkOptions {
+  /**
+   * Attach the link to this group, so it will be destroyed when the group is destroyed
+   */
+  attach?: object;
+
+  // /**
+  //  * Enable two-bay binding between two signals.
+  //  * Has no effect when the target is a callback function.
+  //  */
+  // twoWay?: boolean;
+}
 
 export function link<ValueType>(
   source: LinkableSource<ValueType>,
   target: LinkableTarget<ValueType>,
+  options?: LinkOptions,
 ): SignalLink<ValueType> {
   const sourceSignal = signalImpl(source);
   let links: Map<object | Function, SignalLink<any>>;
@@ -46,6 +60,11 @@ export function link<ValueType>(
     targetSignal != null
       ? new SignalLinkToSignal(source, targetSignal)
       : new SignalLinkToCallback(source, target as ValueCallback<ValueType>);
+
+  const attachToGroup = options?.attach;
+  if (attachToGroup) {
+    link.attach(attachToGroup);
+  }
 
   const _target = targetSignal ?? target;
   links.set(_target, link);
