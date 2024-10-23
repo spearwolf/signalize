@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## `v0.17.0` (not yet released)
+## `v0.17.0` (2024-10-23)
 
 _❗BREAKING CHANGES❗_
 
