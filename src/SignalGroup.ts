@@ -1,6 +1,7 @@
 import {emit, eventize, off} from '@spearwolf/eventize';
 import {EffectImpl} from './EffectImpl.js';
 import {Signal} from './Signal.js';
+import {SignalLink} from './SignalLink.js';
 import {destroySignal, signalImpl} from './createSignal.js';
 import {ISignalImpl, SignalLike} from './types.js';
 
@@ -9,7 +10,6 @@ const store = new Map<object, SignalGroup>();
 type SignalNameType = string | symbol;
 
 // TODO add tests for SignalGroup
-// TODO add SignalGroup.attachLink
 
 export class SignalGroup {
   #groups = new Set<SignalGroup>();
@@ -21,6 +21,8 @@ export class SignalGroup {
   #otherSignals = new Map<SignalNameType, ISignalImpl[]>();
 
   #effects = new Set<EffectImpl>();
+
+  #links = new Set<SignalLink<any>>();
 
   #destroyed = false;
 
@@ -151,7 +153,7 @@ export class SignalGroup {
   }
 
   detachSignal(signal: SignalLike) {
-    if (this.#destroyed) return;
+    if (this.#destroyed) return signal;
 
     const si = signalImpl(signal);
 
@@ -210,6 +212,32 @@ export class SignalGroup {
     }
   }
 
+  attachLink(link: SignalLink<any>) {
+    if (this.#destroyed) {
+      throw new Error('Cannot attach a link to a destroyed group');
+    }
+
+    if (link?.isDestroyed) {
+      throw new Error('Cannot attach a destroyed link to a group');
+    }
+
+    if (link) {
+      this.#links.add(link);
+    }
+
+    return link;
+  }
+
+  detachLink(link: SignalLink<any>) {
+    if (this.#destroyed) return link;
+
+    if (link) {
+      this.#links.delete(link);
+    }
+
+    return link;
+  }
+
   destroy() {
     if (this.#destroyed) return;
 
@@ -228,11 +256,16 @@ export class SignalGroup {
       destroySignal(signal);
     }
 
+    for (const link of this.#links) {
+      link.destroy();
+    }
+
     this.#groups.clear();
     this.#signals.clear();
     this.#namedSignals.clear();
     this.#otherSignals.clear();
     this.#effects.clear();
+    this.#links.clear();
 
     this.#parentGroup?.detachGroup(this);
 
@@ -246,6 +279,7 @@ export class SignalGroup {
     this.#namedSignals = undefined;
     this.#otherSignals = undefined;
     this.#signalKeys = undefined;
+    this.#links = undefined;
 
     Object.freeze(this);
   }
