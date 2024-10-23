@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## `v0.17.1` (2024-10-23)
+
+- minor maintenance release
+  - exclude unused images from npm package output
+
 ## `v0.17.0` (2024-10-23)
 
 _❗BREAKING CHANGES❗_
