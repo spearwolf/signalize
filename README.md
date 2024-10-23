@@ -204,7 +204,8 @@ You can destroy the reactivity of a signal with `🦋.destroy()` or `destroySign
 ### Create a signal using decorators
 
 ```js
-import {signal, signalReader} from '@spearwolf/signalize/decorators';
+import {signal} from '@spearwolf/signalize/decorators';
+import {findObjectSignalByName} from '@spearwolf/signalize';
 
 class Foo {
   @signal() accessor foo = 'bar';
@@ -219,12 +220,8 @@ obj.foo = 'plah';    // set value to 'plah'
 obj.xyz;             // => 123
 obj.xyz = 456;       // set value to 456
 
+findObjectSignalByName.get(obj, 'xyz').value // => 456
 ```
-
-> 🔎 The use of `$` or `$$` as postfixes to variable names is optional and a matter of personal preference.
-> However, _signalize_ mostly uses the convention that anything with a `$` prefix represents a _signal reader_ and not the value directly.
-> Similarly, a `$$` postfix on the variable name indicates that it is a tuple of _signal reader_ and _signal writer_ (which is what `createSignal()` returns).
-> By the way, signal readers are often represented in this documentation as λ, β, γ or other greek letters.
 
 #### API
 
@@ -242,25 +239,8 @@ class {
 
 | option        | type                 | description |
 | ------------- | -------------------- | ----------- |
-| `name`        | `string` \| `symbol` | The name of the signal. setting a name is optional, the signal name is usually the same as the _accessor_ name. each object has an internal map of its signals, where the key is the signal name. the name is used later, for example, for `queryObjectSignal()` or `destroySignal()` |
-| `readAsValue` | `boolean`            | If enabled, the value of the signal will be read without informing the dependencies, just like the `value(λ)` helper does. However, if the signal was defined as an object accessor using the decorator, it is not possible to access the signal reader without the help of `@signalReader()` or `queryObjectSignal()`. |
-
-
-##### `@signalReader`
-
-```js
-class {
-
-  @signalReader() accessor Λ$
-
-  @signalReader(options) accessor Λ$
-
-}
-```
-
-| option | type                 | description |
-| ------ | -------------------- | ----------- |
-| `name` | `string` \| `symbol` | Creates a readable object accessor that does not contain the signal value but the _signal reader_ (function). the name of the signal is optional. if not specified, then the internal signal name is assumed to be the same as the accessor name. if the accessor name ends with a `$`, then the `$` is stripped from the signal name. |
+| `name`        | `string` \| `symbol` | The name of the signal. setting a name is optional, the signal name is usually the same as the _accessor_ name. each object has an internal map of its signals, where the key is the signal name. the name is used later, for example, for `findObjectSignalByName()` or `destroySignal()` |
+| `readAsValue` | `boolean`            | If enabled, the value of the signal will be read without informing the dependencies, just like the `value(λ)` helper does. However, if the signal was defined as an object accessor using the decorator, it is not possible to access the signal object without the `findObjectSignalByName()` helper. |
 
 
 ### Read signal value
@@ -378,9 +358,9 @@ It doesn't matter which signals are used within the effect function, the effect 
 #### Static Effects
 
 ```js
-🦄 = [run, destroy] = createEffect(callback, [...dependencies])
+🦄 = {run, destroy} = createEffect(callback, [...dependencies])
 
-[run, destroy] = createEffect(callback, options)
+🦄 = {run, destroy} = createEffect(callback, options)
 ```
 
 | option      | type                          | description |
@@ -392,15 +372,17 @@ It doesn't matter which signals are used within the effect function, the effect 
 λ(effectCallback)
 ```
 alternatively, the _signal reader_ can also be called with an effect callback. this creates a _static_ effect that is called whenever the signal value changes. important here: the callback is not called automatically the first time, but only when the _signal value_ changes afterwards.
-> 🔎 By the way, you cannot directly destroy an effect created in this way, this happens automatically when the signal is destroyed.
+
+> [!NOTE]
+> By the way, you cannot directly destroy an effect created in this way, this happens automatically when the signal is destroyed.
 
 
 #### Dynamic Effects
 
 ```js
-[run, destroy] = createEffect(callback)
+🦄 = {run, destroy} = createEffect(callback)
 
-[run, destroy] = createEffect(callback, options)
+🦄 = {run, destroy} = createEffect(callback, options)
 ```
 
 | option      | type                          | description |
@@ -408,46 +390,17 @@ alternatively, the _signal reader_ can also be called with an effect callback. t
 | `autorun`   | `boolean`                     | if _autorun_ is set to `false`, the effect callback will not be called automatically at any time! to call the effect, you must explicitly call the `run()` function. everything else behaves as expected for an effect. when `run()` is called, the effect is only executed when the signals have changed (or on the very first call). |
 
 
-#### The return values of `createEffect()`
+#### The return value of `createEffect()`
 
-The call to `createEffect()` returns a tuple with two functions.
+The call to `createEffect()` returns an effect object.
 
-The first function is the `run()` function. When the _run_ function is called, the effect is executed, but only if the dependent signals have changed.
+Here you can find the `run()` function. When the _run_ function is called, the effect is executed, but only if the dependent signals have changed.
 
 So this function is not really useful unless you use the `autorun: false` feature, which prevents the effect from being executed automatically.
 
 This is where the `run()` comes in, which explicitly executes the effect: for example, do you want to execute an effect only at a certain time (e.g. within a `setInterval()` or `requestAnimationFrame()` callback)? then `run()` is the way to go!
 
-The second function is the destroy callback, which destroys the effect when called.
-
-
-### Create an effect using decorators
-
-```js
-class {
-  
-  @effect() foo() { .. }
-
-  @effect(options) foo() { .. }
-
-}
-```
-
-IMPORTANT NOTE: If a class method is declared as an effect, this effect is _not_ automatically activated when the object is instantiated.
-To activate the effect, the user must call it once, for example in the constructor of the class.
-
-**The effect does not become active until it has been called once.**
-
-With a _dynamic_ effect, this is absolutely necessary to determine the dependent signals.
-
-With a _static_ effect, the dependencies are known in advance: but again, the effect is only active after it has been called once. If you do not want a static effect to be executed on the first call, i.e. before it is activated, you can use the `autostart: false` option.
-
-| option      | type                          | description |
-| ----------- | ----------------------------- | ----------- |
-| `deps`      | `Array<` λ \| `string` \| `symbol` `>` | these are the signal dependencies that mark this as a _static_ effect. otherwise it is a _dynamic_ effect |
-| `signal`    | λ \| `string` \| `symbol`          | is a shortcut that can be used when there is only one signal dependency |
-| `autorun`   | `boolean`                     | if _autorun_ is set to `false`, the effect callback will not be called automatically at any time! to call the effect, you must explicitly call the `run()` function. everything else behaves as expected for an effect. when `run()` is called, the effect is only executed when the signals have changed (or on the very first call). |
-| `autostart` | `boolean`                     | _applies to static effects only:_ use this to control whether the effect should be invoked the first time it is called (activated) |
+The effect object also contains the destroy callback, which destroys the effect when called.
 
 
 ### The effect can optionally return a _cleanup_ function
@@ -458,13 +411,13 @@ Before calling an _effect_, a previously set _cleanup_ function is executed.
 
 The effect cleanup function is reset each time the effect is executed. If the effect does not return a function, nothing will be called the next time the effect is called.
 
-
-> 🔎 Does this behaviour look familiar? probably because this feature was inspired by [react's useEffect hook](https://react.dev/reference/react/useEffect)
+> [!NOTE]
+> Does this behavior look familiar? probably because this feature was inspired by [react's useEffect hook](https://react.dev/reference/react/useEffect)
 
 #### Example: Use an effect _cleanup_ function
 
 ```js
-const [getSelector, makeInteractive] = createSignal();
+const {get: getSelector, set: makeInteractive} = createSignal();
 
 function onClick(event) {
   console.log('click! selector=', getSelector(), 'element=', event.target);

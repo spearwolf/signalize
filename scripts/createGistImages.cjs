@@ -23,7 +23,7 @@ async function makeGistImages(presets) {
       const basename = gistname.replace(/\.[tj]s$/, '');
       try {
         await execShPromise(
-          `npx carbon-now --config docs/gists/carbon-now.json -p ${preset} --save-to docs/images/gists --save-as ${basename}--${preset} docs/gists/${gistname}`,
+          `pnpm dlx carbon-now-cli --config docs/gists/carbon-now.json -p ${preset} --save-to docs/images/gists --save-as ${basename}--${preset} docs/gists/${gistname}`,
           {cwd: projectDir},
         );
       } catch (e) {
