@@ -27,9 +27,11 @@ npm install @spearwolf/signalize
 Packaged as `ES2022` and exported as _unbundled_ ESM-only javascript modules.
 Type definitions and source maps also included.
 
-> 🔎 Since `v0.5` there is also a [CHANGELOG](https://github.com/spearwolf/signalize/blob/main/CHANGELOG.md) 🎉
+> [!NOTE]
+> Since `v0.5` there is also a [CHANGELOG](https://github.com/spearwolf/signalize/blob/main/CHANGELOG.md) 🎉
 
-> ❗Since `v0.7` _commonjs_ modules are no longer exported❗
+> [!CAUTION]
+> Since `v0.7` _commonjs_ modules are no longer exported❗
 
 # Overview 👀
 
@@ -41,26 +43,24 @@ The whole API of `@spearwolf/signalize` is about ..
 - __effects__
   - are functions that are _automatically executed_ when one or more signals change
   - just think of it as a next-gen and independent `useEffect()` hook (but without the limitations imposed by react :wink:)
-- __building blocks__
-  - connect independent logical modules together
-  - like the geometry node connections in blender or the node connections in blueprints of the unreal engine
 
 A __functional API__ is provided, as well as a __class-based API that uses decorators__.
 
-> 🔎 Under the hood the event-driven library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used!
+> [!NOTE]
+> Under the hood the event-driven library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used!
 
 
 # 📖 Usage
 
-> ⚠️ The core of the library is stable and fully tested, although the API is still partially evolving, and the same goes for the documentation ... there are some features that are not documented in detail here. The adventurous developer is encouraged to explore the source code and tests directly at this point.
+> [!WARNING] 
+> The core of the library is stable and fully tested, although the API is still partially evolving, and the same goes for the documentation ... there are some features that are not documented in detail here. The adventurous developer is encouraged to explore the source code and tests directly at this point.
 
 ## API Overview
 
 - **Signals**
   - **create**
-    - `🦋 = [λ, setλ] = createSignal()`
+    - `🦋 = {get: λ, set: setλ} = createSignal()`
     - `@signal() accessor α`
-    - _DEPRECATED_ `@signalReader() accessor β`
   - **read**
     - `🦋.get()`
     - `λ()`
@@ -82,22 +82,22 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
     - `🦋.destroy()`
     - `destroySignal(λ)`
 - **Effects**
+  - **dynamic**
+    - `🦄 = createEffect(callback)`
+    - `🦄 = createEffect(callback, options)`
   - **static**
-    - `🦄 = [run, destroy] = createEffect(callback, [...dependencies])`
-    - `🦄 = [run, destroy] = createEffect(callback, options)`
+    - `🦄 = createEffect(callback, [...dependencies])`
+    - `🦄 = createEffect(callback, options)`
     - `🦋.onChange(callback)`
     - `λ(callback)`
-  - **dynamic**
-    - `🦄 = [run, destroy] = createEffect(callback)`
-    - `🦄 = [run, destroy] = createEffect(callback, options)`
-  - **object decorator**
-    - _DEPRECATED_ `@effect(options) foo() { .. }`
 - **Memo**
   - `λ = createMemo(callback)`
   - `@memo() compute() { .. }`
-- **Building Blocks**
-  - `γ = connect()`
+- **Building Blocks & Components**
+  - attach to _groups_ &rarr; `class SignalGroup`
+  - `γ = link(src, trgt)`
     - `γ.nextValue(): Promise`
+    - `γ.asyncValues(): yield*`
     - `γ.touch()`
     - `γ.mute()`
     - `γ.unmute()`
@@ -105,20 +105,15 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
     - `γ.isMuted`
     - `γ.destroy()`
     - `γ.isDestroyed`
-  - `unconnect(γ)`
+  - `unlink()`
 - **utils**
   - `isSignal(🦋|λ)`
   - `muteSignal(🦋|λ)`
   - `unmuteSignal(🦋|λ)`
+- **testing**
   - `getSignalsCount()`
   - `getEffectsCount()`
-  - _DEPRECATED_ **objects**
-    - `queryObjectSignal(Ω, name)`
-    - `queryObjectSignals(Ω)`
-    - `getObjectSignalKeys(Ω)`
-    - `destroyEffects(...Ω)`
-    - `destroySignals(...Ω)`
-    - `destroySignalsAndEffects(...Ω)`
+  - `getLinksCount()`
 
 
 ## 📖 Signals
@@ -163,7 +158,7 @@ Signals are mutable states that can trigger effects when changed.
 #### API
 
 ```js
-🦋 = [λ, setλ] = createSignal()
+🦋 = {get: λ, set: setλ} = createSignal()
 
 ⋯ = createSignal(initialValue)
 ⋯ = createSignal(initialValue, options)
@@ -171,8 +166,7 @@ Signals are mutable states that can trigger effects when changed.
 
 ##### Return value
 
-`createSignal()` &rarr; `🦋 | [signalReader, signalWriter]` returns the _signal object_ (🦋), which is also a _tuple of two functions_.
-The first function is the _signal reader_, the second is the _signal writer_.
+`createSignal()` &rarr; `🦋 | {get: signalReader, set: signalWriter}` returns the _signal object_ (🦋), which contains the _signal reader_ and the _signal writer_ functions.
 
 If the _signal reader_ is called as a function, it returns the current _signal value_ as the return value: `λ(): value`
 
@@ -214,9 +208,7 @@ import {signal, signalReader} from '@spearwolf/signalize/decorators';
 
 class Foo {
   @signal() accessor foo = 'bar';
-
   @signal({readAsValue: true}) accessor xyz = 123;
-  @signalReader() accessor xyz$;
 }
 
 const obj = new Foo();
@@ -225,8 +217,8 @@ obj.foo;             // => 'bar'
 obj.foo = 'plah';    // set value to 'plah'
 
 obj.xyz;             // => 123
-obj.xyz$();          // => 123
 obj.xyz = 456;       // set value to 456
+
 ```
 
 > 🔎 The use of `$` or `$$` as postfixes to variable names is optional and a matter of personal preference.

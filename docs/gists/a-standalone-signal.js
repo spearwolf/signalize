@@ -1,8 +1,8 @@
 import {createSignal} from '@spearwolf/signalize';
 
-const [foo, setFoo] = createSignal(123);
+const foo = createSignal(123);
 
-foo(); // => 123
+foo.get(); // => 123
 
-setFoo(456);
-foo(); // => 456
+foo.set(456);
+foo.value; // => 456
