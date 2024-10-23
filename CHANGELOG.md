@@ -24,7 +24,9 @@ _❗BREAKING CHANGES❗_
   - rename `getObjectSignals()` &rarr; `findObjectSignals()`
   - rename `destroySignals()` &rarr; `destroyObjectSignals()`
 - cleanup types
-
+- remove `connect()`, `unconnect()` and `class Connection`
+- introduce `link()`, `unlink()` and `class SignalGroup`
+  - as a more general approach and replacement of the previous connection api
 
 ### Migration Guide
 
@@ -144,6 +146,10 @@ class Foo {
   }
 }
 ```
+
+#### Refactor `connect()` and `unconnect()` usages
+
+The *connection* api is now replaced by the `class SignalGroup` and the `link()` and `unlink()` functions..
 
 
 ## `v0.16.0` (2024-08-04)

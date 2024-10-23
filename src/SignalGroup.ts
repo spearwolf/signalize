@@ -2,6 +2,7 @@ import {emit, eventize, off} from '@spearwolf/eventize';
 import {EffectImpl} from './EffectImpl.js';
 import {Signal} from './Signal.js';
 import {SignalLink} from './SignalLink.js';
+import {Destroy} from './constants.js';
 import {destroySignal, signalImpl} from './createSignal.js';
 import {ISignalImpl, SignalLike} from './types.js';
 
@@ -27,8 +28,6 @@ export class SignalGroup {
   #destroyed = false;
 
   #parentGroup?: SignalGroup;
-
-  static Destroy = 'destroy';
 
   static get(object: object) {
     if (object == null) return undefined;
@@ -241,7 +240,7 @@ export class SignalGroup {
   destroy() {
     if (this.#destroyed) return;
 
-    emit(this, SignalGroup.Destroy, this);
+    emit(this, Destroy, this);
     off(this);
 
     for (const childGroup of this.#groups) {
