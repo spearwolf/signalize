@@ -74,6 +74,9 @@
   },
   "homepage": "https://github.com/spearwolf/signalize/",
   "license": "Apache-2.0",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/spearwolf/signalize.git"

@@ -9,23 +9,24 @@ jobs:
     name: Run tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
-      - run: npm i --omit=optional
-        name: Install dependencies
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.10.0
+          run_install: true
 
-      - run: npm run lint
+      - run: pnpm lint
         name: Run lintings
 
-      - run: npm run prettier:check
+      - run: pnpm prettier:check
         name: Run prettier checks
 
-      - run: npm test
+      - run: pnpm test
         name: Run tests
 
   deploy:
@@ -33,21 +34,21 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-          registry-url: 'https://registry.npmjs.org'
 
-      - run: npm i --omit=optional
-        name: Install dependencies
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.10.0
+          run_install: true
 
-      - run: npm run dist
+      - run: pnpm dist
         name: Build package
 
-      - run: npm run publish:pkg
+      - run: pnpm publish:pkg
         name: Publish package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
