@@ -213,7 +213,9 @@ The _signal object_ (🦋) is a wrapper around it, providing a signal API beyond
 | `.destroy()` | ... |
 
 
-You can destroy the reactivity of a signal with `🦋.destroy()` or `destroySignal(λ)`. A destroyed signal will no longer trigger any _effects_. But both the _signal reader_ and the _signal writer_ are still usable and will read and write the _signal value_.
+> [!NOTE]
+> You can destroy the reactivity of a signal with `🦋.destroy()` or `destroySignal(λ)`.
+> **A destroyed signal will no longer trigger any effects**. But both the _signal reader_ and the _signal writer_ are still usable and will read and write the _signal value_.
 
 
 
@@ -264,7 +266,7 @@ class {
 
 | option        | type                 | description |
 | ------------- | -------------------- | ----------- |
-| `name`        | `string` \| `symbol` | The name of the signal. setting a name is optional, the signal name is usually the same as the _accessor_ name. each object has an internal map of its signals, where the key is the signal name. the name is used later, for example, for `findObjectSignalByName()` or `destroySignal()` |
+| `name`        | `string`&nbsp;\|&nbsp;`symbol` | The name of the signal. setting a name is optional, the signal name is usually the same as the _accessor_ name. each object has an internal map of its signals, where the key is the signal name. the name is used later, for example, for `findObjectSignalByName()` or `destroySignal()` |
 | `readAsValue` | `boolean`            | If enabled, the value of the signal will be read without informing the dependencies, just like the `value(λ)` helper does. However, if the signal was defined as an object accessor using the decorator, it is not possible to access the signal object without the `findObjectSignalByName()` helper. |
 
 
@@ -273,14 +275,16 @@ class {
 
 ```typescript
 λ(): val
+🦋.get(): val
 ```
 
 Calling the _signal reader_ without arguments returns the value of the signal. If this _is called up within a dynamic effect_, the effect remembers this signal and marks it as a dependent signal.
 
 ```js
-value(λ): val
+value(λ|🦋): val
+🦋.value
 ```
-returns the value of the signal. in contrast to the previous variant, however, no effect is notified here. it really only returns the value, there are no side effects.
+returns the value of the signal. in contrast to the previous variant, however, **no effect is notified here**. it really only returns the value, there are no side effects.
 
 ```js
 beQuiet(callback)
@@ -292,11 +296,13 @@ executes the callback immediately. if a signal is read out within the callback, 
 
 ```js
 setλ(value) 
+🦋.set(val)
 ```
 Calling the _signal writer_ sets a new signal value. if the value changes (this is normally simply checked using the `===` operator), all effects that have marked this signal as a dependency are executed immediately.
 
 ```js
-touch(λ)
+touch(λ|🦋)
+🦋.touch()
 ```
 does not change the value of the signal. however, all dependent effects are still notified and executed.
 
@@ -311,7 +317,8 @@ See [The difference between the standard behavior of effects and the use of batc
 ### Destroy signal
 
 ```js
-destroySignal(λ)
+destroySignal(λ|🦋)
+🦋.destroy()
 ```
 
 Destroys the _reactivity_ of the signal. This signal will no longer be able to cause any effects.
@@ -363,7 +370,8 @@ With effects, you can easily control behavior changes in your application withou
 
 **Dynamic effects** are always executed the first time. During the execution of an effect callback function, the read signals are tracked. If one of the signals is changed afterwards, the effect is (automatically) called again.
 
-> 🔎 The signals used are re-recorded each time the effect runs again.
+> [!NOTE]
+> The signals used are re-recorded each time the effect runs again.
 > This is why they are called _dynamic_ effects.
 
 **Static effects** do not track signals; instead, dependencies are defined in advance during effect creation:
@@ -384,7 +392,6 @@ It doesn't matter which signals are used within the effect function, the effect 
 
 ```js
 🦄 = {run, destroy} = createEffect(callback, [...dependencies])
-
 🦄 = {run, destroy} = createEffect(callback, options)
 ```
 
@@ -406,7 +413,6 @@ alternatively, the _signal reader_ can also be called with an effect callback. t
 
 ```js
 🦄 = {run, destroy} = createEffect(callback)
-
 🦄 = {run, destroy} = createEffect(callback, options)
 ```
 
