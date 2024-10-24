@@ -63,7 +63,7 @@ export function memo(options?: MemoDecoratorOptions) {
 
     return function (this: T, ...args: A): R {
       let group = SignalGroup.get(this);
-      let si = group?.getSignal(name);
+      let si = group?.signal(name);
       let siGet = si?.get;
       if (siGet == null) {
         group ??= SignalGroup.findOrCreate(this);
@@ -71,7 +71,7 @@ export function memo(options?: MemoDecoratorOptions) {
           attach: group,
           name,
         });
-        si = group.getSignal(name);
+        si = group.signal(name);
         storeAsObjectSignal(this, name, si);
       }
       return siGet();

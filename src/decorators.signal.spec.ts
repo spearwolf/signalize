@@ -5,7 +5,7 @@ import {
   destroyObjectSignals,
   destroySignal,
   findObjectSignalByName,
-  findObjectSignalKeys,
+  findObjectSignalNames,
   SignalGroup,
   value,
 } from './index.js';
@@ -108,7 +108,7 @@ describe('@signal is a class accessor decorator', () => {
 
     foo.foo = 123;
     expect(onFoo).toHaveBeenCalledTimes(1);
-    expect(onFoo2).not.toBeCalled();
+    expect(onFoo2).not.toHaveBeenCalled();
 
     foo2.foo = 456;
     expect(onFoo2).toHaveBeenCalledTimes(1);
@@ -136,19 +136,19 @@ describe('@signal is a class accessor decorator', () => {
 
     const group = SignalGroup.get(foo);
 
-    expect(group.getSignal('foo').value).toBe(666);
+    expect(group.signal('foo').value).toBe(666);
 
     foo.bar = 42;
 
     expect(foo.bar).toBe(42);
-    expect(group.getSignal('plah').value).toBe(42);
+    expect(group.signal('plah').value).toBe(42);
 
     foo.xyz = 'hello';
 
     expect(foo.xyz).toBe('hello');
-    expect(group.getSignal('xyz').value).toBe('hello');
+    expect(group.signal('xyz').value).toBe('hello');
 
-    expect(findObjectSignalKeys(foo).sort()).toEqual(
+    expect(findObjectSignalNames(foo).sort()).toEqual(
       ['foo', 'plah', 'xyz'].sort(),
     );
 

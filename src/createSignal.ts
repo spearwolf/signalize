@@ -2,13 +2,13 @@ import type {
   BeforeReadFunc,
   CompareFunc,
   ISignalImpl,
-  ValueChangedCallback,
   SignalLike,
   SignalParams,
   SignalReader,
   SignalValueParams,
   SignalWriter,
   SignalWriterParams,
+  ValueChangedCallback,
 } from './types.js';
 
 import {emit} from '@spearwolf/eventize';
@@ -191,7 +191,7 @@ export function createSignal<Type = unknown>(
   return signal.object;
 }
 
-export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
+export const destroySignal = (...signalLikes: SignalLike[]): void => {
   for (const sigLike of signalLikes) {
     const signal = signalImpl(sigLike);
     if (signal != null && !signal.destroyed) {
@@ -203,16 +203,14 @@ export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
   }
 };
 
-export const muteSignal = <Type = unknown>(
-  signalLike: SignalLike<Type>,
-): void => {
+export const muteSignal = <Type = any>(signalLike: SignalLike<Type>): void => {
   const signal = signalImpl(signalLike);
   if (signal != null) {
     signal.muted = true;
   }
 };
 
-export const unmuteSignal = <Type = unknown>(
+export const unmuteSignal = <Type = any>(
   signalLike: SignalLike<Type>,
 ): void => {
   const signal = signalImpl(signalLike);

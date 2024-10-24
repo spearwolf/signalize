@@ -15,7 +15,7 @@ export * from './link.js';
 export {
   destroyObjectSignals,
   findObjectSignalByName,
-  findObjectSignalKeys,
+  findObjectSignalNames,
   findObjectSignals,
 } from './object-signals.js';
 export {Signal} from './Signal.js';
