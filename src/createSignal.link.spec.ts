@@ -4,7 +4,7 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './assert-helpers.js';
-import {Destroy, Mute, Unmute, Value} from './constants.js';
+import {DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
 import {createSignal, destroySignal, link, touch, unlink} from './index.js';
 
 describe('connect signals', () => {
@@ -64,8 +64,8 @@ describe('connect signals', () => {
     const con = link(sigA, sigB);
 
     on(con, {
-      [Value]: valueMock,
-      [Destroy]: destroyMock,
+      [VALUE]: valueMock,
+      [DESTROY]: destroyMock,
     });
 
     // when we create a connection between two signals, the value of the source signal is immediately written to the target signal !!
@@ -169,8 +169,8 @@ describe('connect signals', () => {
     const con = link(sigA, sigB);
 
     on(con, {
-      [Mute]: muteMock,
-      [Unmute]: unmuteMock,
+      [MUTE]: muteMock,
+      [UNMUTE]: unmuteMock,
     });
 
     expect(con.isMuted).toBe(false);
@@ -222,8 +222,8 @@ describe('connect signals', () => {
 
     const destroyMock = jest.fn();
 
-    on(con0, Destroy, destroyMock);
-    on(con1, Destroy, destroyMock);
+    on(con0, DESTROY, destroyMock);
+    on(con1, DESTROY, destroyMock);
 
     setA(666);
 
@@ -265,7 +265,7 @@ describe('connect signals', () => {
 
     const con = link(sigA, sigB);
 
-    on(con, Value, valueMock);
+    on(con, VALUE, valueMock);
 
     expect(callingB).toHaveBeenCalledTimes(2);
     expect(valueMock).toHaveBeenCalledTimes(0);
