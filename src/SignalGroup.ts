@@ -144,6 +144,10 @@ export class SignalGroup {
     return signal;
   }
 
+  hasSignal(name: SignalNameType): boolean {
+    return this.#namedSignals.has(name) || this.#parentGroup?.hasSignal(name);
+  }
+
   signal<Type = any>(name: SignalNameType): Signal<Type> | undefined {
     if (this.#destroyed) return;
     return (

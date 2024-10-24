@@ -125,6 +125,7 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
     - `SignalGroup#attachSignal(🦋|λ)`
     - `SignalGroup#detachSignal(🦋|λ)`
     - `SignalGroup#attachSignalByName(name, 🦋|λ)`
+    - `SignalGroup#hasSignal(name)` &rarr; _boolean_
     - `SignalGroup#signal(name)` &rarr; `🦋`
     - `SignalGroup#attachEffect(🦄)`
     - `SignalGroup#runEffects()`

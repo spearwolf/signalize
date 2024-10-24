@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## `v0.18.1` (2024-10-24)
+
+- add `SignalGroup#hasSignal(name)` helper
+- refactor naming of internal constants
+
 ## `v0.18.0` (2024-10-24)
 
 - rename `SignalGroup#getSignal(name)` helper to `SignalGroup#signal(name)`
