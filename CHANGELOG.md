@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## `v0.18.0` (2024-10-24)
+
+- rename `SignalGroup#getSignal(name)` helper to `SignalGroup#signal(name)`
+- remove obsolete *type SignalFuncs*
+- improve README and CHANGELOG &rarr; Migration Guide to v0.17.0
+
 ## `v0.17.1` (2024-10-23)
 
 - minor maintenance release
@@ -81,7 +87,7 @@ class Foo {
 
 const f = new Foo();
 
-const bar = SignalGroup.get(f).getSignal('bar');
+const bar = findObjectSignalByName(f, 'bar');
 
 bar.onChange((val) => {
   console.log('bar changed to', val);
@@ -147,14 +153,30 @@ class Foo {
   }
 
   destroy() {
-    SignalGroup.destroy(this);
+    destroyObjectSignals(this);
   }
 }
 ```
 
+#### Replace `SignalObject` with `Signal`
+
+Replace all occurrences of `SignalObject` (which was introduced in version v0.14.0) with `Signal`. The methods have not changed.
+
 #### Refactor `connect()` and `unconnect()` usages
 
-The *connection* api is now replaced by the `class SignalGroup` and the `link()` and `unlink()` functions..
+The legacy *connection api* is now replaced by the *signal group* feature and the `link()` and `unlink()` utility functions:
+
+In most cases, it should be sufficient to simply replace the `connect()` calls with `link()` calls. Similarly, `unlink()` replaces the function `unconnect()`, although `unlink()` is often not necessary at all; _links_ between signals are automatically cleaned up when one of the signals is destroyed.
+
+Links to _object signals_ must be adapted, e.g. with:
+```js
+link(sigFoo, findObjectSignalByName('bar'))
+```
+
+.. or by using the new *group api*:
+```js
+link(groupA.getSignal('foo'), groupB.getSignal('bar'))
+```
 
 
 ## `v0.16.0` (2024-08-04)

@@ -87,7 +87,7 @@ export class EffectImpl {
           switch (typeof dep) {
             case 'string':
             case 'symbol':
-              return group.getSignal(dep);
+              return group.signal(dep);
             default:
               return dep;
           }

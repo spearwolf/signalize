@@ -37,10 +37,10 @@ Type definitions and source maps also included.
 
 The whole API of `@spearwolf/signalize` is about ..
 
-- __signals__
+- __Signals__
   - like state variables with hidden superpowers
   - when the value of a signal changes, all observers are automatically informed
-- __effects__
+- __Effects__
   - are functions that are _automatically executed_ when one or more signals change
   - just think of it as a next-gen and independent `useEffect()` hook (but without the limitations imposed by react :wink:)
 
@@ -81,31 +81,56 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
   - **destroy**
     - `🦋.destroy()`
     - `destroySignal(λ)`
+  - **object helpers**
+    - `findObjectSignalByName(🦋, name)`
+    - `findObjectSignalNames(🦋)`
+    - `findObjectSignals(🦋)`
+    - `destroyObjectSignals(🦋)`
 - **Effects**
-  - **dynamic**
-    - `🦄 = createEffect(callback)`
-    - `🦄 = createEffect(callback, options)`
-  - **static**
-    - `🦄 = createEffect(callback, [...dependencies])`
-    - `🦄 = createEffect(callback, options)`
-    - `🦋.onChange(callback)`
-    - `λ(callback)`
+  - **create**
+    - *dynamic*
+      - `🦄 = createEffect(callback)`
+      - `🦄 = createEffect(callback, options)`
+    - *static*
+      - `🦄 = createEffect(callback, [...dependencies])`
+      - `🦄 = createEffect(callback, options)`
+      - `🦋.onChange(callback)`
+      - `λ(callback)`
+  - **api**
+    - `🦄.run()`
+    - `🦄.destroy()`
 - **Memo**
   - `λ = createMemo(callback)`
   - `@memo() compute() { .. }`
-- **Building Blocks & Components**
-  - attach to _groups_ &rarr; `class SignalGroup`
-  - `γ = link(src, trgt)`
-    - `γ.nextValue(): Promise`
-    - `γ.asyncValues(): yield*`
-    - `γ.touch()`
-    - `γ.mute()`
-    - `γ.unmute()`
-    - `γ.toggle()`
-    - `γ.isMuted`
-    - `γ.destroy()`
-    - `γ.isDestroyed`
-  - `unlink()`
+- **Building Blocks**
+  - *connections between signals*
+    - `γ = link(src, trgt)`
+      - `γ.nextValue(): Promise`
+      - `γ.asyncValues(): yield*`
+      - `γ.touch()`
+      - `γ.mute()`
+      - `γ.unmute()`
+      - `γ.toggle()`
+      - `γ.isMuted`
+      - `γ.destroy()`
+      - `γ.isDestroyed`
+    - `unlink()`
+  - _signal groups_
+    - `SignalGroup.get(obj)` &rarr; *group*
+    - `SignalGroup.findOrCreate(obj)` &rarr; *group*
+    - `SignalGroup.destroy(obj)`
+    - `SignalGroup.clear()`
+    - `SignalGroup#attachGroup(group)`
+    - `SignalGroup#detachGroup(group)`
+    - `SignalGroup#attachSignal(🦋|λ)`
+    - `SignalGroup#detachSignal(🦋|λ)`
+    - `SignalGroup#attachSignalByName(name, 🦋|λ)`
+    - `SignalGroup#signal(name)` &rarr; `🦋`
+    - `SignalGroup#attachEffect(🦄)`
+    - `SignalGroup#runEffects()`
+    - `SignalGroup#attachLink(link)`
+    - `SignalGroup#detachLink(link)`
+    - `SignalGroup#destroy()`
 - **utils**
   - `isSignal(🦋|λ)`
   - `muteSignal(🦋|λ)`

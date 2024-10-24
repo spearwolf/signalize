@@ -32,7 +32,7 @@ export const findObjectSignals = <O extends object>(
   return undefined;
 };
 
-export const findObjectSignalKeys = <O extends object>(
+export const findObjectSignalNames = <O extends object>(
   obj: O,
 ): (string | symbol)[] | undefined => {
   const signals = g_objectStores.get(obj)?.signals;

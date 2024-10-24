@@ -144,10 +144,10 @@ export class SignalGroup {
     return signal;
   }
 
-  getSignal<Type = any>(name: SignalNameType): Signal<Type> | undefined {
+  signal<Type = any>(name: SignalNameType): Signal<Type> | undefined {
     if (this.#destroyed) return;
     return (
-      this.#namedSignals.get(name)?.object ?? this.#parentGroup?.getSignal(name)
+      this.#namedSignals.get(name)?.object ?? this.#parentGroup?.signal(name)
     );
   }
 
