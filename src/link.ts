@@ -1,5 +1,5 @@
 import {once} from '@spearwolf/eventize';
-import {Destroy} from './constants.js';
+import {DESTROY} from './constants.js';
 import {signalImpl} from './createSignal.js';
 import {Signal} from './Signal.js';
 import {
@@ -70,7 +70,7 @@ export function link<ValueType>(
   const _target = targetSignal ?? target;
   links.set(_target, link);
 
-  once(link, Destroy, () => {
+  once(link, DESTROY, () => {
     links.delete(_target);
     if (links.size === 0) {
       gLinks.delete(sourceSignal);
