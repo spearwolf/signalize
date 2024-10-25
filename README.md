@@ -47,7 +47,7 @@ The whole API of `@spearwolf/signalize` is about ..
 A __functional API__ is provided, as well as a __class-based API that uses decorators__.
 
 > [!NOTE]
-> Under the hood the event-driven library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used!
+> Under the hood the event-driven micro-library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used 😍
 
 
 # 📖 Usage
