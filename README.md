@@ -14,20 +14,20 @@
   ![signalize hero](hero.gif)
 </figure>
 
----
-
 `@spearwolf/signalize` is a javascript library for creating __signals__ and __effects__.
 
-- a standalone javascript library that is framework agnostic
-- without side-effects and targets `ES2022` based environments
-- written in typescript v5 and uses the new [tc39 decorators](https://github.com/tc39/proposal-decorators) :rocket:
-- however, it is optional and not necessary to use the decorators
+- a __standalone__ javascript library that is framework agnostic
+- __without side-effects__ and targets `ES2022` based environments
+- written in __typescript__ v5 and uses the new [tc39 decorators](https://github.com/tc39/proposal-decorators) :rocket:
+  - however, it is optional and not necessary to use the decorators
 
 > [!NOTE]
 > This library is under rapid development and some features are not yet finalised.
 > Please try it on non-production projects and report any issues you encounter.
 > Expect to see some major changes on the way to a stable v1.0.0 release.
 > Contributors are welcome.
+>
+> There is also a [CHANGELOG](https://github.com/spearwolf/signalize/blob/main/CHANGELOG.md) available.
 
 # ⚙️ Install
 
@@ -35,14 +35,9 @@
 npm install @spearwolf/signalize
 ```
 
-Packaged as `ES2022` and exported as _unbundled_ ESM-only javascript modules.
+Packaged as `ES2022` and exported as _unbundled_ __ESM-only__ javascript modules.
 Type definitions and source maps also included.
 
-> [!NOTE]
-> Since `v0.5` there is also a [CHANGELOG](https://github.com/spearwolf/signalize/blob/main/CHANGELOG.md) 🎉
-
-> [!CAUTION]
-> Since `v0.7` _commonjs_ modules are no longer exported❗
 
 # Overview 👀
 
