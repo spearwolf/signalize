@@ -18,6 +18,12 @@ signals and effects for all 📢
 - written in typescript v5 and uses the new [tc39 decorators](https://github.com/tc39/proposal-decorators) :rocket:
 - however, it is optional and not necessary to use the decorators
 
+> [!NOTE]
+> This library is under rapid development and some features are not yet finalised.
+> Please try it on non-production projects and report any issues you encounter.
+> Expect to see some major changes on the way to a stable v1.0.0 release.
+> Contributors are welcome.
+
 # ⚙️ Install
 
 ```shell
