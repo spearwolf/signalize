@@ -1,15 +1,20 @@
-# @spearwolf/signalize
+`@spearwolf/signalize`
 
-signals and effects for all 📢
-
-![signalize hero image](hero.gif)
-<small><em>Image created at the request of spearwolf using OpenAI's DALL-E, guided by ChatGPT, animated by KLING AI and converted by Ezgif.com.</em></small>
-
----
+# 📢 **signals and effects for all**
 
 ![npm (scoped)](https://img.shields.io/npm/v/%40spearwolf/signalize)
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/spearwolf/signalize/main.yml)
 ![GitHub](https://img.shields.io/github/license/spearwolf/signalize)
+
+<figure>
+  <figcaption>
+    <sub>Image created at the request of spearwolf using OpenAI's DALL-E, guided by ChatGPT, animated by KLING AI and converted by Ezgif.com</sub>
+  </figcaption>
+
+  ![signalize hero](hero.gif)
+</figure>
+
+---
 
 `@spearwolf/signalize` is a javascript library for creating __signals__ and __effects__.
 
