@@ -53,6 +53,21 @@ describe('SignalAutoMap', () => {
     sm.clear();
   });
 
+  it('updateFromProps() from prototype chain', () => {
+    const Base = class {
+      a = 1;
+      b = 2;
+      c = 3;
+    };
+    const Derived = new (class extends Base {
+      d = 4;
+    })();
+    const sm = SignalAutoMap.fromProps(Derived, ['a', 'd']);
+    expect(sm.get('a').value).toBe(1);
+    expect(sm.get('d').value).toBe(4);
+    sm.clear();
+  });
+
   it('signals() iterator', () => {
     const sm = SignalAutoMap.fromProps({a: 1, b: 2, c: 3}, ['a', 'b']);
     const signals = Array.from(sm.signals());
