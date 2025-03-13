@@ -121,6 +121,17 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
       - `γ.destroy()`
       - `γ.isDestroyed`
     - `unlink()`
+  - _signal maps_
+    - `SignalAutoMap.fromProps(obj, keys?)` &rarr; *sigMap*
+    - `new SignalAutoMap()` &rarr; *sigMap*
+    - `SignalAutoMap#keys()` &rarr; *Iterator*
+    - `SignalAutoMap#signals()` &rarr; *Iterator*
+    - `SignalAutoMap#entries()` &rarr; *Iterator*
+    - `SignalAutoMap#has(key)` &rarr; *boolean*
+    - `SignalAutoMap#get(key)` &rarr; 🦋
+    - `SignalAutoMap#update(Map)`
+    - `SignalAutoMap#updateFromProps(obj, keys?)`
+    - `SignalAutoMap#clear()`
   - _signal groups_
     - `SignalGroup.get(obj)` &rarr; *group*
     - `SignalGroup.findOrCreate(obj)` &rarr; *group*

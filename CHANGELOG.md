@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `v0.19.0` (2025-03-13)
+
+- add `SignalAutoMap` class
+
 ## `v0.18.1` (2024-10-24)
 
 - add `SignalGroup#hasSignal(name)` helper
