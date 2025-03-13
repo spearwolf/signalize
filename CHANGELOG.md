@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## `v0.19.1` (2025-03-13)
+
+- improve `SignalAutoMap` _from props_ behavior:
+  - always create signals even if values are _undefined_ when using the `fromProps` or `updateFromProps` functions
+- update `SignalAutoMap` key _types_ (which is now _string_ or _symbol_ &mdash; period.)
+
 ## `v0.19.0` (2025-03-13)
 
 - add `SignalAutoMap` class

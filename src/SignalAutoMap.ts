@@ -2,29 +2,26 @@ import {batch} from './batch.js';
 import {createSignal} from './createSignal.js';
 import {Signal} from './Signal.js';
 
-export class SignalAutoMap<KeyType = string | symbol> {
+export type SignalAutoMapKeyType = string | symbol;
+
+export class SignalAutoMap {
   static fromProps<PropsObjectType extends object>(
     obj: PropsObjectType,
     propKeys?: (keyof PropsObjectType)[],
-  ): SignalAutoMap<keyof PropsObjectType> {
-    const sm = new SignalAutoMap<keyof PropsObjectType>();
+  ): SignalAutoMap {
+    const sm = new SignalAutoMap();
     const entries = propKeys
-      ? propKeys
-          .map((key) => [key, obj[key]])
-          .filter(([, val]) => val !== undefined)
+      ? propKeys.map((key) => [key, obj[key]])
       : Object.entries(obj);
     for (const [key, value] of entries) {
-      sm.#signals.set(
-        key as any,
-        createSignal(() => value as unknown, {lazy: true}),
-      );
+      sm.#signals.set(key as any, createSignal(value as unknown));
     }
     return sm;
   }
 
-  #signals = new Map<KeyType, Signal<any>>();
+  #signals = new Map<SignalAutoMapKeyType, Signal<any>>();
 
-  keys(): IterableIterator<KeyType> {
+  keys(): IterableIterator<SignalAutoMapKeyType> {
     return this.#signals.keys();
   }
 
@@ -32,7 +29,7 @@ export class SignalAutoMap<KeyType = string | symbol> {
     return this.#signals.values();
   }
 
-  entries(): IterableIterator<[KeyType, Signal<any>]> {
+  entries(): IterableIterator<[SignalAutoMapKeyType, Signal<any>]> {
     return this.#signals.entries();
   }
 
@@ -43,14 +40,14 @@ export class SignalAutoMap<KeyType = string | symbol> {
     this.#signals.clear();
   }
 
-  has(key: KeyType): boolean {
+  has(key: SignalAutoMapKeyType): boolean {
     return this.#signals.has(key);
   }
 
   /**
    * will always return a signal, if it doesn't exist it will be created
    */
-  get<T = unknown>(key: KeyType): Signal<T> {
+  get<T = unknown>(key: SignalAutoMapKeyType): Signal<T> {
     if (!this.#signals.has(key)) {
       const signal = createSignal<T>();
       this.#signals.set(key, signal);
@@ -78,9 +75,7 @@ export class SignalAutoMap<KeyType = string | symbol> {
         ? propKeys.map((key) => [key, obj[key]])
         : Object.entries(obj);
       for (const [key, value] of entries) {
-        if (value !== undefined || this.#signals.has(key as any)) {
-          this.get(key as any).set(value);
-        }
+        this.get(key as any).set(value);
       }
     });
   }
