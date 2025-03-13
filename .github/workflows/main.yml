@@ -17,7 +17,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9.10.0
+          version: 10.6.2
           run_install: true
 
       - run: pnpm lint
@@ -45,7 +45,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9.10.0
+          version: 10.6.2
           run_install: true
 
       - run: pnpm dist
