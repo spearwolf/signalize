@@ -28,10 +28,24 @@ describe('SignalAutoMap', () => {
   });
 
   it('fromProps()', () => {
-    const sm = SignalAutoMap.fromProps({a: 1, b: 2, c: 3}, ['a', 'b']);
-    expect(sm.has('c')).toBe(false);
+    const sm = SignalAutoMap.fromProps({a: 1, b: 2, c: 3, d: undefined}, [
+      'a',
+      'b',
+      'd',
+    ]);
     expect(sm.get('a').value).toBe(1);
     expect(sm.get('b').value).toBe(2);
+    expect(sm.has('c')).toBe(false);
+    expect(sm.has('d')).toBe(true);
+    sm.clear();
+  });
+
+  it('fromProps() without explicit keys', () => {
+    const sm = SignalAutoMap.fromProps({a: 1, b: 2, c: 3, d: undefined});
+    expect(sm.get('a').value).toBe(1);
+    expect(sm.get('b').value).toBe(2);
+    expect(sm.has('c')).toBe(true);
+    expect(sm.has('d')).toBe(true);
     sm.clear();
   });
 
@@ -45,11 +59,23 @@ describe('SignalAutoMap', () => {
   });
 
   it('updateFromProps()', () => {
-    const sm = SignalAutoMap.fromProps({a: 1, b: 2, c: 3}, ['a', 'b']);
-    sm.updateFromProps({a: 4, b: 5, c: 6}, ['a', 'c']);
+    const sm = SignalAutoMap.fromProps({a: 1, b: 2, c: 3, d: undefined}, [
+      'a',
+      'b',
+      'd',
+    ]);
+    sm.updateFromProps({a: 4, b: 5, c: 6, e: undefined, f: 7}, [
+      'a',
+      'c',
+      'e',
+      'f',
+    ]);
     expect(sm.get('a').value).toBe(4);
     expect(sm.get('b').value).toBe(2);
     expect(sm.get('c').value).toBe(6);
+    expect(sm.has('d')).toBeTruthy();
+    expect(sm.has('e')).toBeTruthy();
+    expect(sm.has('f')).toBeTruthy();
     sm.clear();
   });
 
