@@ -9,7 +9,9 @@ export class SignalAutoMap<KeyType = string | symbol> {
   ): SignalAutoMap<keyof PropsObjectType> {
     const sm = new SignalAutoMap<keyof PropsObjectType>();
     const entries = propKeys
-      ? Object.entries(obj).filter(([key]) => propKeys.includes(key as any))
+      ? propKeys
+          .map((key) => [key, obj[key]])
+          .filter(([, val]) => val !== undefined)
       : Object.entries(obj);
     for (const [key, value] of entries) {
       sm.#signals.set(
@@ -73,10 +75,12 @@ export class SignalAutoMap<KeyType = string | symbol> {
   ): void {
     batch(() => {
       const entries = propKeys
-        ? Object.entries(obj).filter(([key]) => propKeys.includes(key as any))
+        ? propKeys.map((key) => [key, obj[key]])
         : Object.entries(obj);
       for (const [key, value] of entries) {
-        this.get(key as any).set(value);
+        if (value !== undefined || this.#signals.has(key as any)) {
+          this.get(key as any).set(value);
+        }
       }
     });
   }
