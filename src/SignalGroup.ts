@@ -13,25 +13,23 @@ type SignalNameType = string | symbol;
 // TODO add tests for SignalGroup
 
 export class SignalGroup {
-  #groups = new Set<SignalGroup>();
+  readonly #groups = new Set<SignalGroup>();
 
-  #signals = new Set<ISignalImpl>();
-  #namedSignals = new Map<SignalNameType, ISignalImpl>();
+  readonly #signals = new Set<ISignalImpl>();
+  readonly #namedSignals = new Map<SignalNameType, ISignalImpl>();
 
-  #signalKeys = new WeakMap<ISignalImpl<any>, Set<SignalNameType>>();
-  #otherSignals = new Map<SignalNameType, ISignalImpl[]>();
+  readonly #signalKeys = new WeakMap<ISignalImpl<any>, Set<SignalNameType>>();
+  readonly #otherSignals = new Map<SignalNameType, ISignalImpl[]>();
 
-  #effects = new Set<EffectImpl>();
+  readonly #effects = new Set<EffectImpl>();
 
-  #links = new Set<SignalLink<any>>();
-
-  #destroyed = false;
+  readonly #links = new Set<SignalLink<any>>();
 
   #parentGroup?: SignalGroup;
 
   static get(object: object) {
     if (object == null) return undefined;
-    if (object instanceof SignalGroup && !object.#destroyed) {
+    if (object instanceof SignalGroup) {
       return object;
     }
     return store.get(object);
@@ -45,7 +43,15 @@ export class SignalGroup {
   }
 
   static destroy(object: object) {
-    store.get(object)?.destroy();
+    // eslint-disable-next-line no-console
+    console.warn(
+      'SignalGroup.destroy(obj) is deprecated. Use SignalGroup.delete(obj) instead.',
+    );
+    SignalGroup.delete(object);
+  }
+
+  static delete(object: object) {
+    store.get(object)?.clear();
   }
 
   static clear() {
@@ -56,7 +62,7 @@ export class SignalGroup {
   }
 
   private constructor(object?: object) {
-    if (object != null && object instanceof SignalGroup && !object.#destroyed) {
+    if (object != null && object instanceof SignalGroup) {
       return object;
     }
     object ??= this;
@@ -68,9 +74,6 @@ export class SignalGroup {
   }
 
   attachGroup(group: SignalGroup) {
-    if (this.#destroyed) {
-      throw new Error('Cannot attach a group to a destroyed group');
-    }
     if (group === this) {
       throw new Error('Cannot attach a group to itself');
     }
@@ -86,9 +89,6 @@ export class SignalGroup {
   }
 
   detachGroup(group: SignalGroup) {
-    if (this.#destroyed) {
-      throw new Error('Cannot detach a group from a destroyed group');
-    }
     if (group !== this && this.#groups.has(group)) {
       this.#groups.delete(group);
       group.#parentGroup = undefined;
@@ -97,10 +97,6 @@ export class SignalGroup {
   }
 
   attachSignal(signal: SignalLike) {
-    if (this.#destroyed) {
-      throw new Error('Cannot attach a signal to a destroyed group');
-    }
-
     const si = signalImpl(signal);
 
     if (si?.destroyed) {
@@ -115,10 +111,6 @@ export class SignalGroup {
   }
 
   attachSignalByName(name: SignalNameType, signal?: SignalLike) {
-    if (this.#destroyed) {
-      throw new Error('Cannot attach a named signal to a destroyed group');
-    }
-
     if (signal) {
       this.attachSignal(signal);
 
@@ -149,15 +141,12 @@ export class SignalGroup {
   }
 
   signal<Type = any>(name: SignalNameType): Signal<Type> | undefined {
-    if (this.#destroyed) return;
     return (
       this.#namedSignals.get(name)?.object ?? this.#parentGroup?.signal(name)
     );
   }
 
   detachSignal(signal: SignalLike) {
-    if (this.#destroyed) return signal;
-
     const si = signalImpl(signal);
 
     if (si) {
@@ -196,17 +185,11 @@ export class SignalGroup {
   }
 
   attachEffect(effect: EffectImpl) {
-    if (this.#destroyed) {
-      throw new Error('Cannot attach an effect to a destroyed group');
-    }
     this.#effects.add(effect);
     return effect;
   }
 
   runEffects() {
-    if (this.#destroyed) {
-      throw new Error('Cannot run effects on a destroyed group');
-    }
     for (const effect of this.#effects) {
       effect.run();
     }
@@ -216,10 +199,6 @@ export class SignalGroup {
   }
 
   attachLink(link: SignalLink<any>) {
-    if (this.#destroyed) {
-      throw new Error('Cannot attach a link to a destroyed group');
-    }
-
     if (link?.isDestroyed) {
       throw new Error('Cannot attach a destroyed link to a group');
     }
@@ -232,8 +211,6 @@ export class SignalGroup {
   }
 
   detachLink(link: SignalLink<any>) {
-    if (this.#destroyed) return link;
-
     if (link) {
       this.#links.delete(link);
     }
@@ -242,8 +219,14 @@ export class SignalGroup {
   }
 
   destroy() {
-    if (this.#destroyed) return;
+    // eslint-disable-next-line no-console
+    console.warn(
+      'SignalGroup#destroy is deprecated. Use SignalGroup#clear instead.',
+    );
+    this.clear();
+  }
 
+  clear() {
     emit(this, DESTROY, this);
     off(this);
 
@@ -273,17 +256,5 @@ export class SignalGroup {
     this.#parentGroup?.detachGroup(this);
 
     store.delete(this);
-
-    this.#destroyed = true;
-
-    this.#groups = undefined;
-    this.#signals = undefined;
-    this.#signalKeys = undefined;
-    this.#namedSignals = undefined;
-    this.#otherSignals = undefined;
-    this.#signalKeys = undefined;
-    this.#links = undefined;
-
-    Object.freeze(this);
   }
 }

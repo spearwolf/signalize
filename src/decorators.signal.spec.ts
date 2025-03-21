@@ -152,6 +152,6 @@ describe('@signal is a class accessor decorator', () => {
       ['foo', 'plah', 'xyz'].sort(),
     );
 
-    group.destroy();
+    group.clear();
   });
 });
