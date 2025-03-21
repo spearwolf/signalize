@@ -135,7 +135,7 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
   - _signal groups_
     - `SignalGroup.get(obj)` &rarr; *group*
     - `SignalGroup.findOrCreate(obj)` &rarr; *group*
-    - `SignalGroup.destroy(obj)`
+    - `SignalGroup.delete(obj)`
     - `SignalGroup.clear()`
     - `SignalGroup#attachGroup(group)`
     - `SignalGroup#detachGroup(group)`
@@ -148,7 +148,7 @@ A __functional API__ is provided, as well as a __class-based API that uses decor
     - `SignalGroup#runEffects()`
     - `SignalGroup#attachLink(link)`
     - `SignalGroup#detachLink(link)`
-    - `SignalGroup#destroy()`
+    - `SignalGroup#clear()`
 - **utils**
   - `isSignal(🦋|λ)`
   - `muteSignal(🦋|λ)`

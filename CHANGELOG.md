@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## `v0.20.0` (2025-03-21)
+
+- deprecated `SignalGroup.destroy(obj)` and `SignalGroup#.destroy()` functions
+  - a group can not be destroyed anymore &mdash; just clear it
+  - use the new `SignalGroup.delete(obj)` and `SignalGroup#clear()` functions instead
+
 ## `v0.19.1` (2025-03-13)
 
 - improve `SignalAutoMap` _from props_ behavior:
