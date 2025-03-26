@@ -1,8 +1,8 @@
 import {signalImpl, isSignal} from './createSignal.js';
 import {findObjectSignalByName} from './object-signals.js';
-import type {SignalLike} from './types.js';
+import type {SignalLike, SignalReader} from './types.js';
 
-function value<Type>(source: SignalLike<Type>): Type;
+function value<Type>(source: SignalLike<Type> | SignalReader<Type>): Type;
 
 function value<O extends object, K extends keyof O>(source: [O, K]): O[K];
 

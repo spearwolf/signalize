@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `v0.20.1` (2025-03-26)
+
+- improve `value(sig)` types: allow `SignalLike` and `SignalReader`
+
 ## `v0.20.0` (2025-03-21)
 
 - deprecated `SignalGroup.destroy(obj)` and `SignalGroup#.destroy()` functions
