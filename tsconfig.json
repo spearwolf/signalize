@@ -3,8 +3,8 @@
   "files": ["node_modules/jest-expect-message/types/index.d.ts"],
 
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
 
     "module": "NodeNext",
     "moduleResolution": "NodeNext",

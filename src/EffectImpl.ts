@@ -131,6 +131,8 @@ export class EffectImpl {
 
     const parentEffect = getCurrentEffect();
     if (parentEffect != null) {
+      // TODO feat: add `isolate: true` option to `createEffect()`
+      // TODO feat: add `isolate()` helper to run `createEffect()` in isolation
       effect = parentEffect.getCurrentChildEffect();
       if (effect == null) {
         effect = new EffectImpl(callback, options);
