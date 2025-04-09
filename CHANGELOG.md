@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## `v0.21.0` (not yet released)
+
+- TODO add `isolate()` helper function
+- TODO add `isolate: true` option to `createEffect()`
+- use `ES2023` as target for the build
+- update dependencies (patch and minor versions)
+
 ## `v0.20.1` (2025-03-26)
 
 - improve `value(sig)` types: allow `SignalLike` and `SignalReader`
