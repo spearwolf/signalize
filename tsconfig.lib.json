@@ -8,6 +8,6 @@
     "declaration": true,
     "declarationDir": "lib",
     "declarationMap": true,
-    "isolatedModules": false
+    "isolatedModules": true
   }
 }
