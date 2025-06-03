@@ -6,6 +6,7 @@
 - TODO add `isolate: true` option to `createEffect()`
 - use `ES2023` as target for the build
 - update dependencies (patch and minor versions)
+- build: use _isolated modules_ in tsconfig.json
 
 ## `v0.20.1` (2025-03-26)
 
