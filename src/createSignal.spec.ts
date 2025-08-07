@@ -60,7 +60,7 @@ describe('createSignal', () => {
 
     touch(signal);
 
-    expect(effect).toBeCalledWith(666);
+    expect(effect).toHaveBeenCalledWith(666);
 
     set(1001);
 
@@ -178,6 +178,40 @@ describe('createSignal', () => {
 
     expect(effect).toHaveBeenCalledWith(1001);
 
+    foo.destroy();
+  });
+
+  it('.value property read doesnt trigger dependencies, but write should do', () => {
+    const foo = createSignal(1);
+
+    let bar = 0;
+    let plah = 0;
+
+    foo.onChange((val) => {
+      bar = val;
+    });
+
+    const eff = createEffect(() => {
+      plah = foo.value; // Accessing .value should not trigger the effect
+    });
+
+    expect(foo.value).toBe(1);
+    expect(bar).toBe(0);
+    expect(plah).toBe(1);
+
+    foo.value = 2;
+
+    expect(foo.value).toBe(2);
+    expect(bar).toBe(2);
+    expect(plah).toBe(1);
+
+    foo.set(3);
+
+    expect(foo.value).toBe(3);
+    expect(bar).toBe(3);
+    expect(plah).toBe(1);
+
+    eff.destroy();
     foo.destroy();
   });
 });

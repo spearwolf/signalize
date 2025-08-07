@@ -1,7 +1,5 @@
 `@spearwolf/signalize`
 
-# 📢 **signals and effects for all**
-
 ![npm (scoped)](https://img.shields.io/npm/v/%40spearwolf/signalize)
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/spearwolf/signalize/main.yml)
 ![GitHub](https://img.shields.io/github/license/spearwolf/signalize)
@@ -14,7 +12,9 @@
   ![signalize hero](hero.gif)
 </figure>
 
-`@spearwolf/signalize` is a javascript library for creating __signals__ and __effects__.
+# 📢 "Signals and effects for all"
+
+`@spearwolf/signalize` is a javascript library for creating fine-grained reactivity through __signals__ and __effects__.
 
 - a __standalone__ javascript library that is framework agnostic
 - __without side-effects__ and targets `ES2023` based environments
@@ -22,473 +22,476 @@
   - however, it is optional and not necessary to use the decorators
 
 > [!NOTE]
-> This library is under rapid development and some features are not yet finalised.
-> Please try it on non-production projects and report any issues you encounter.
-> Expect to see some major changes on the way to a stable v1.0.0 release.
-> Contributors are welcome.
->
-> There is also a [CHANGELOG](https://github.com/spearwolf/signalize/blob/main/CHANGELOG.md) available.
+> Reactivity is the secret sauce to building modern, dynamic web apps. `@spearwolf/signalize` makes it easy. No frameworks, no boilerplate, just pure reactivity.
 
-# ⚙️ Install
+---
+
+## Table of Contents
+
+- [Introduction](#-introduction)
+  - [Core Concepts](#-core-concepts)
+- [Getting Started](#-getting-started)
+- [API Reference](#-api-reference)
+  - [Signals](#-signals)
+    - [`createSignal`](#createsignal)
+    - [Reading Signals](#reading-signals)
+    - [Writing Signals](#writing-signals)
+    - [Muting Signals](#muting-signals)
+    - [Destroying Signals](#destroying-signals)
+  - [Effects](#-effects)
+    - [`createEffect`](#createeffect)
+    - [Dynamic vs. Static Effects](#dynamic-vs-static-effects)
+    - [Cleanup Logic](#cleanup-logic)
+    - [Manual Control](#manual-control)
+  - [Memos (Computed Signals)](#-memos-computed-signals)
+    - [`createMemo`](#creatememo)
+  - [Decorators (Class-based API)](#-decorators-class-based-api)
+    - [`@signal`](#signal)
+    - [`@memo`](#memo)
+  - [Utilities](#-utilities)
+    - [`batch`](#batch)
+    - [`beQuiet` & `isQuiet`](#bequiet--isquiet)
+    - [`link` & `unlink`](#link--unlink)
+    - [`SignalGroup`](#signalgroup)
+    - [`SignalAutoMap`](#signalautomap)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+---
+
+## 🚀 Introduction
+
+`@spearwolf/signalize` brings the power of fine-grained reactivity to any JavaScript or TypeScript project.
+It's a lightweight, standalone library that helps you manage state and build data flows that automatically update when your data changes.
+
+Forget about manual DOM updates or complex state management logic. With signals, you create reactive values, and with effects, you create functions that automatically run whenever those values change. It's that simple.
+
+### Core Concepts
+
+- **Signals**: Think of them as reactive variables. When a signal's value changes, it automatically notifies everything that depends on it. It's like a spreadsheet cell that magically updates all formulas that use it.
+
+- **Effects**: These are the functions that "listen" to signals. An effect subscribes to one or more signals and re-executes automatically whenever any of its dependencies change, keeping your app perfectly in sync.
+
+- **Memos**: These are special signals whose values are computed from other signals. The library caches their result and only re-evaluates them when one of their dependencies changes, giving you performance for free.
+
+This library offers both a clean **functional API** and a convenient **class-based API using decorators**.
+
+## ⚙️ Getting Started
+
+First, install the package using your favorite package manager:
 
 ```shell
 npm install @spearwolf/signalize
 ```
 
-Packaged as `ES2023` and exported as _unbundled_ __ESM-only__ javascript modules.
-Type definitions and source maps also included.
-
-
-# Overview 👀
-
-The whole API of `@spearwolf/signalize` is about ..
-
-- __Signals__
-  - like state variables with hidden superpowers
-  - when the value of a signal changes, all observers are automatically informed
-- __Effects__
-  - are functions that are _automatically executed_ when one or more signals change
-  - just think of it as a next-gen and independent `useEffect()` hook (but without the limitations imposed by react :wink:)
-
-A __functional API__ is provided, as well as a __class-based API that uses decorators__.
-
-> [!NOTE]
-> Under the hood the event-driven micro-library [@spearwolf/eventize](https://github.com/spearwolf/eventize) is used 😍
-
-
-# 📖 Usage
-
-> [!WARNING] 
-> The core of the library is stable and fully tested, although the API is still partially evolving, and the same goes for the documentation ... there are some features that are not documented in detail here. The adventurous developer is encouraged to explore the source code and tests directly at this point.
-
-## API Overview
-
-- **Signals**
-  - **create**
-    - `🦋 = {get: λ, set: setλ} = createSignal()`
-    - `@signal() accessor α`
-  - **read**
-    - `🦋.get()`
-    - `λ()`
-    - `🦋.onChange(callback)`
-    - `λ(callback)`
-    - `🦋.value`
-    - `value(λ)`
-    - `beQuiet(callback)`
-  - **write**
-    - `🦋.set(value)`
-    - `setλ(value)`
-    - `🦋.touch()`
-    - `touch(λ)`
-    - `batch(callback)`
-    - `🦋.muted`
-    - `muteSignal(λ)`
-    - `unmuteSignal(λ)`
-  - **destroy**
-    - `🦋.destroy()`
-    - `destroySignal(λ)`
-  - **object helpers**
-    - `findObjectSignalByName(🦋, name)`
-    - `findObjectSignalNames(🦋)`
-    - `findObjectSignals(🦋)`
-    - `destroyObjectSignals(🦋)`
-- **Effects**
-  - **create**
-    - *dynamic*
-      - `🦄 = createEffect(callback)`
-      - `🦄 = createEffect(callback, options)`
-    - *static*
-      - `🦄 = createEffect(callback, [...dependencies])`
-      - `🦄 = createEffect(callback, options)`
-      - `🦋.onChange(callback)`
-      - `λ(callback)`
-  - **api**
-    - `🦄.run()`
-    - `🦄.destroy()`
-- **Memo**
-  - `λ = createMemo(callback)`
-  - `@memo() compute() { .. }`
-- **Building Blocks**
-  - *connections between signals*
-    - `γ = link(src, trgt)`
-      - `γ.nextValue(): Promise`
-      - `γ.asyncValues(): yield*`
-      - `γ.touch()`
-      - `γ.mute()`
-      - `γ.unmute()`
-      - `γ.toggle()`
-      - `γ.isMuted`
-      - `γ.destroy()`
-      - `γ.isDestroyed`
-    - `unlink()`
-  - _signal maps_
-    - `SignalAutoMap.fromProps(obj, keys?)` &rarr; *sigMap*
-    - `new SignalAutoMap()` &rarr; *sigMap*
-    - `SignalAutoMap#keys()` &rarr; *Iterator*
-    - `SignalAutoMap#signals()` &rarr; *Iterator*
-    - `SignalAutoMap#entries()` &rarr; *Iterator*
-    - `SignalAutoMap#has(key)` &rarr; *boolean*
-    - `SignalAutoMap#get(key)` &rarr; 🦋
-    - `SignalAutoMap#update(Map)`
-    - `SignalAutoMap#updateFromProps(obj, keys?)`
-    - `SignalAutoMap#clear()`
-  - _signal groups_
-    - `SignalGroup.get(obj)` &rarr; *group*
-    - `SignalGroup.findOrCreate(obj)` &rarr; *group*
-    - `SignalGroup.delete(obj)`
-    - `SignalGroup.clear()`
-    - `SignalGroup#attachGroup(group)`
-    - `SignalGroup#detachGroup(group)`
-    - `SignalGroup#attachSignal(🦋|λ)`
-    - `SignalGroup#detachSignal(🦋|λ)`
-    - `SignalGroup#attachSignalByName(name, 🦋|λ)`
-    - `SignalGroup#hasSignal(name)` &rarr; _boolean_
-    - `SignalGroup#signal(name)` &rarr; `🦋`
-    - `SignalGroup#attachEffect(🦄)`
-    - `SignalGroup#runEffects()`
-    - `SignalGroup#attachLink(link)`
-    - `SignalGroup#detachLink(link)`
-    - `SignalGroup#clear()`
-- **utils**
-  - `isSignal(🦋|λ)`
-  - `muteSignal(🦋|λ)`
-  - `unmuteSignal(🦋|λ)`
-- **testing**
-  - `getSignalsCount()`
-  - `getEffectsCount()`
-  - `getLinksCount()`
-
-
-## 📖 Signals
-
-Signals are mutable states that can trigger effects when changed.
-
-<table>
-  <tbody>
-    <tr>
-      <th>A standalone signal</th>
-      <th>A class with a signal</th>
-    </tr>
-    <tr>
-      <td valign="top">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-standalone-signal--dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-standalone-signal--light.png">
-          <img
-            src="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-standalone-signal--light.png"
-            alt="A standalone signal"
-            style="max-width: 100%;"
-          />
-        </picture>
-      </td>
-      <td valign="top">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-class-with-a-signal--dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-class-with-a-signal--light.png">
-          <img
-            src="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-class-with-a-signal--light.png"
-            alt="A class with a signal"
-            style="max-width: 100%;"
-          />
-        </picture>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
-### Create a signal
-
-#### API
-
-```js
-🦋 = {get: λ, set: setλ} = createSignal()
-
-⋯ = createSignal(initialValue)
-⋯ = createSignal(initialValue, options)
-```
-
-##### Return value
-
-`createSignal()` &rarr; `🦋 | {get: signalReader, set: signalWriter}` returns the _signal object_ (🦋), which contains the _signal reader_ and the _signal writer_ functions.
-
-If the _signal reader_ is called as a function, it returns the current _signal value_ as the return value: `λ(): value`
-
-If the _signal writer_ is called with a value, this value is set as the new _signal value_: `setλ(nextValue)`
-When the signal value _changes_, any _effects_ that depend on it will be executed.
-
-Reading and writing is always immediate. Any effects are called synchronously. However, it is possible to change this behavior using `batch()`, `beQuiet()`, `value()` or other methods of this library. 
-
-The _signal object_ (🦋) is a wrapper around it, providing a signal API beyond read and write:
-
-| 🦋-Methods | Description |
-|------------|-------------|
-| <code>.get()&nbsp;&rarr;&nbsp;value</code> | The _signal reader_ returns the value. If the method is called during a _dynamic effect_, the effect is informed of this and the next time the value changes, the effect is automatically repeated. |
-| `.set(value)` | The _signal writer_ sets the new value and informs the observers of the new value. |
-| `.value` | Just return the value. This is done without noticing any effect, as opposed to using `.get()` |
-| <code>.onChange((value)&nbsp;&rarr;&nbsp;void)</code> | ... |
-| `.muted` | ... |
-| `.touch()` | ... |
-| `.destroy()` | ... |
-
-
-> [!NOTE]
-> You can destroy the reactivity of a signal with `🦋.destroy()` or `destroySignal(λ)`.
-> **A destroyed signal will no longer trigger any effects**. But both the _signal reader_ and the _signal writer_ are still usable and will read and write the _signal value_.
-
-
-
-##### createSignal() Options
-
-| option         | type                | description |
-| -------------- | ------------------- | ----------- |
-| `compare`    | <code>(a,&nbsp;b)&nbsp;=>&nbsp;boolean</code> | Normally, the equality of two values is checked with the strict equality operator `===`. If you want to go a different way here, you can pass a function that does this. |
-| `lazy`         | `boolean`           | If this flag is set, it is assumed that the value is a function that _returns the current value_. This function is then executed _lazy_, i.e. only when the signal is read for the first time. At this point, however, it should be noted that the _signal value_ is initially only _lazy_. once resolved, it is no longer _lazy_. |
-| `beforeRead` | <code>()&nbsp;=>&nbsp;void</code> | the name says it all: a callback that is executed before the signal value is read. not intended for everyday use, but quite useful for edge cases and testing. |
-
-
-### Create a signal using decorators
-
-```js
-import {signal} from '@spearwolf/signalize/decorators';
-import {findObjectSignalByName} from '@spearwolf/signalize';
-
-class Foo {
-  @signal() accessor foo = 'bar';
-  @signal({readAsValue: true}) accessor xyz = 123;
-}
-
-const obj = new Foo();
-
-obj.foo;             // => 'bar'
-obj.foo = 'plah';    // set value to 'plah'
-
-obj.xyz;             // => 123
-obj.xyz = 456;       // set value to 456
-
-findObjectSignalByName.get(obj, 'xyz').value // => 456
-```
-
-#### API
-
-##### `@signal`
-
-```js
-class {
-  
-  @signal() accessor Λ = initialValue
-
-  @signal(options) accessor Λ = initialValue
-
-}
-```
-
-| option        | type                 | description |
-| ------------- | -------------------- | ----------- |
-| `name`        | `string`&nbsp;\|&nbsp;`symbol` | The name of the signal. setting a name is optional, the signal name is usually the same as the _accessor_ name. each object has an internal map of its signals, where the key is the signal name. the name is used later, for example, for `findObjectSignalByName()` or `destroySignal()` |
-| `readAsValue` | `boolean`            | If enabled, the value of the signal will be read without informing the dependencies, just like the `value(λ)` helper does. However, if the signal was defined as an object accessor using the decorator, it is not possible to access the signal object without the `findObjectSignalByName()` helper. |
-
-
-### Read signal value
-
+Now, let's see it in action. Here’s a simple example that automatically logs the signal value to the console whenever it changes.
 
 ```typescript
-λ(): val
-🦋.get(): val
-```
+import { createSignal, createEffect } from '@spearwolf/signalize';
 
-Calling the _signal reader_ without arguments returns the value of the signal. If this _is called up within a dynamic effect_, the effect remembers this signal and marks it as a dependent signal.
+// Create a signal with an initial value of 0.
+const count = createSignal(0);
 
-```js
-value(λ|🦋): val
-🦋.value
-```
-returns the value of the signal. in contrast to the previous variant, however, **no effect is notified here**. it really only returns the value, there are no side effects.
-
-```js
-beQuiet(callback)
-```
-executes the callback immediately. if a signal is read out within the callback, this is done without notifying an active dynamic effect. it does not matter whether the signal is read out directly or with the `value()` helper.
-
-
-### Write signal value
-
-```js
-setλ(value) 
-🦋.set(val)
-```
-Calling the _signal writer_ sets a new signal value. if the value changes (this is normally simply checked using the `===` operator), all effects that have marked this signal as a dependency are executed immediately.
-
-```js
-touch(λ|🦋)
-🦋.touch()
-```
-does not change the value of the signal. however, all dependent effects are still notified and executed.
-
-```js
-batch(callback)
-```
-executes the callback immediately. if values are changed within the callback signal, the values are changed immediately - but any dependent effects are only executed once after the end of the callback. this prevents effects with multiple dependencies from being triggered multiple times if several signals are written.
-
-See [The difference between the standard behavior of effects and the use of batching](./docs/AdvancedGuide.md#the-difference-between-the-standard-behavior-of-effects-and-the-use-of-batching) for more informations on this.
-
-
-### Destroy signal
-
-```js
-destroySignal(λ|🦋)
-🦋.destroy()
-```
-
-Destroys the _reactivity_ of the signal. This signal will no longer be able to cause any effects.
-However, the _signal reader_ and _signal writer_ functions will continue to work as expected.
-
-
-## 📖 Effects
-
-Effects are functions that react to changes in signals and are executed automatically.
-
-Without effects, signals are nothing more than ordinary variables.
-
-With effects, you can easily control behavior changes in your application without having to write complex dependency or monitoring logic.
-
-### Dynamic vs. Static effects
-
-<table>
-  <tbody>
-    <tr>
-      <th>A dynamic effect function</th>
-      <th>A class with a dynamic effect</th>
-    </tr>
-    <tr>
-      <td valign="top">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-standalone-effect-function--dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-standalone-effect-function--light.png">
-          <img
-            src="https://github.com/spearwolf/signalize/raw/main/docs/images/gists/a-standalone-effect-function--light.png"
-            alt="A standalone effect function"
-            style="max-width: 100%;"
-          />
-        </picture>
-      </td>
-      <td valign="top">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-class-with-an-effect-method--dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/spearwolf/signalize/main/docs/images/gists/a-class-with-an-effect-method--light.png">
-          <img
-            src="https://github.com/spearwolf/signalize/raw/main/docs/images/gists/a-class-with-an-effect-method--light.png"
-            alt="A class with an effect method"
-            style="max-width: 100%;"
-          />
-        </picture>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
-**Dynamic effects** are always executed the first time. During the execution of an effect callback function, the read signals are tracked. If one of the signals is changed afterwards, the effect is (automatically) called again.
-
-> [!NOTE]
-> The signals used are re-recorded each time the effect runs again.
-> This is why they are called _dynamic_ effects.
-
-**Static effects** do not track signals; instead, dependencies are defined in advance during effect creation:
-
-```js
+// Create an effect that runs whenever `count` changes.
 createEffect(() => {
-  const sum = a() + b();
-  console.log('sum of', a(), 'and', b(), 'is', sum);
-}, [a, b]);
+  // By calling count.get(), we establish a dependency on the `count` signal.
+  // The effect will re-run whenever its value changes.
+  console.log(`The count is now: ${count.get()}`);
+});
+// Console output: The count is now: 0
+
+// Update the signal's value.
+console.log('Setting count to 5...');
+count.set(5);
+// Console output: The count is now: 5
+
+count.set(5);
+// (no-console output here since the value didn't change)
+
+console.log('Setting count to 10...');
+count.set(10);
+// Console output: The count is now: 10
 ```
 
-It doesn't matter which signals are used within the effect function, the effect will be re-run whenever a signal in the signal dependencies list changes.
+That's it! No extra boilerplate, no framework dependencies. Just pure, simple reactivity.
 
+## 📖 API Reference
 
-### API
+This section provides a detailed overview of the `@spearwolf/signalize` API.
 
-#### Static Effects
+### ✨ Signals
 
-```js
-🦄 = {run, destroy} = createEffect(callback, [...dependencies])
-🦄 = {run, destroy} = createEffect(callback, options)
+Signals are the heart of the library. They hold state and allow you to create reactive data flows.
+
+#### `createSignal`
+
+Creates a new signal containing a value.
+
+```typescript
+createSignal<T>(initialValue?: T, options?: SignalParams<T>): Signal<T>
 ```
 
-| option      | type                          | description |
-| ----------- | ----------------------------- | ----------- |
-| `dependencies`      | `Array<` λ \| `string` \| `symbol` `>` | these are the signal dependencies that mark this as a _static_ effect. otherwise it is a _dynamic_ effect. the effect is only executed when the dependent signals change. in contrast to the dynamic effects, it does not matter which signals are used within the effect. |
-| `autorun`   | `boolean`                     | if _autorun_ is set to `false`, the effect callback will not be called automatically at any time! to call the effect, you must explicitly call the `run()` function. everything else behaves as expected for an effect. when `run()` is called, the effect is only executed when the signals have changed (or on the very first call). |
+- `initialValue`: The starting value of the signal.
+- `options`:
+  - `compare`: A custom function to compare old and new values to decide if a change should trigger effects. Defaults to strict equality (`===`).
+  - `lazy`: A boolean that, if true, treats the `initialValue` as a function to be executed lazily on the first read.
+  - `attach`: Attaches the signal to a `SignalGroup` for easier lifecycle management.
 
-```js
-λ(effectCallback)
+`createSignal` returns a `Signal` object with the following properties:
+
+- `value`: A getter/setter to read or write the signal's value. Reading via `.value` does **not** track dependencies in effects. Writing will trigger effects.
+- `get()`: A function to read the signal's value. Using `get()` inside an effect **creates a subscription**.
+- `set(newValue)`: A function to write a new value to the signal.
+- `onChange(callback)`: A simple way to create a static effect that runs when the signal changes. Returns a function to destroy the subscription.
+- `touch()`: Triggers all dependent effects without changing the signal's value.
+- `destroy()`: Destroys the signal and cleans up all its dependencies.
+
+**Example:**
+
+```typescript
+import { createSignal } from '@spearwolf/signalize';
+
+// A signal holding a number
+const count = createSignal(10);
+
+// A signal holding an object, with a custom comparison function
+const user = createSignal({ id: 1, name: 'Alice' }, {
+  compare: (a, b) => a.id === b.id,
+});
+
+console.log(count.value); // => 10
+
+count.value = 20;
+console.log(count.value); // => 20
+
+// This update will NOT trigger effects because the custom compare function returns true
+user.value = { id: 1, name: 'Alice V2' };
 ```
-alternatively, the _signal reader_ can also be called with an effect callback. this creates a _static_ effect that is called whenever the signal value changes. important here: the callback is not called automatically the first time, but only when the _signal value_ changes afterwards.
 
-> [!NOTE]
-> By the way, you cannot directly destroy an effect created in this way, this happens automatically when the signal is destroyed.
+#### Reading Signals
 
+It's important to understand the difference between dependency-tracking reads and non-tracking reads.
 
-#### Dynamic Effects
+1.  **`signal.get()`**: This is the primary way to read a signal's value and have an effect subscribe to its changes. You must call it as a function: `signal.get()`.
+2.  **`signal.value`**: This property provides direct access to the signal's value *without* creating a dependency. An effect that reads `.value` will not re-run when that signal changes.
+3.  **`value(signal)`**: This is a utility function that behaves identically to the `signal.value` property, providing a non-tracking read of the signal's value.
 
-```js
-🦄 = {run, destroy} = createEffect(callback)
-🦄 = {run, destroy} = createEffect(callback, options)
+**Choose wisely:** Use `.get()` when you want reactivity. Use `.value` or `value()` when you need to peek at a value without creating a subscription.
+
+```typescript
+import { createSignal, createEffect } from '@spearwolf/signalize';
+
+const name = createSignal('John');
+const age = createSignal(30);
+
+createEffect(() => {
+  // This effect depends on `name` (using .get()) but NOT on `age` (using .value)
+  console.log(`Name: ${name.get()}, Age: ${age.value}`);
+});
+// Console output: Name: John, Age: 30
+
+name.value = 'Jane'; // Triggers the effect because we used .get()
+// Console output: Name: Jane, Age: 30
+
+age.value = 31; // Does NOT trigger the effect, because we read it with .value
 ```
 
-| option      | type                          | description |
-| ----------- | ----------------------------- | ----------- |
-| `autorun`   | `boolean`                     | if _autorun_ is set to `false`, the effect callback will not be called automatically at any time! to call the effect, you must explicitly call the `run()` function. everything else behaves as expected for an effect. when `run()` is called, the effect is only executed when the signals have changed (or on the very first call). |
+#### Writing Signals
 
+1.  **`signal.value = newValue`**: The most direct way to set a new value.
+2.  **`signal.set(newValue)`**: The functional equivalent.
+3.  **`touch(signal)`**: Triggers effects without changing the value. Useful for forcing re-renders or re-evaluations.
 
-#### The return value of `createEffect()`
+#### Muting Signals
 
-The call to `createEffect()` returns an effect object.
+You can temporarily prevent a signal from triggering effects using `muteSignal` and `unmuteSignal`.
 
-Here you can find the `run()` function. When the _run_ function is called, the effect is executed, but only if the dependent signals have changed.
+```typescript
+import { createSignal, createEffect, muteSignal, unmuteSignal } from '@spearwolf/signalize';
 
-So this function is not really useful unless you use the `autorun: false` feature, which prevents the effect from being executed automatically.
+const sig = createSignal('hello');
 
-This is where the `run()` comes in, which explicitly executes the effect: for example, do you want to execute an effect only at a certain time (e.g. within a `setInterval()` or `requestAnimationFrame()` callback)? then `run()` is the way to go!
+createEffect(() => console.log(sig.get())); // => "hello"
 
-The effect object also contains the destroy callback, which destroys the effect when called.
+muteSignal(sig);
+sig.value = 'world'; // Nothing is logged
 
+unmuteSignal(sig);
+sig.value = 'world again'; // => "world again"
+```
 
-### The effect can optionally return a _cleanup_ function
+The `Signal` object also has a `.muted` property: `sig.muted = true`.
 
-Your _effect callback_ (which is your function that you pass to the effect as parameter) may also optionally return a _cleanup_ function.
+#### Destroying Signals
 
-Before calling an _effect_, a previously set _cleanup_ function is executed.
+To clean up a signal and all its associated effects and dependencies, use `destroySignal`.
 
-The effect cleanup function is reset each time the effect is executed. If the effect does not return a function, nothing will be called the next time the effect is called.
+```typescript
+destroySignal(mySignal, anotherSignal);
+```
 
-> [!NOTE]
-> Does this behavior look familiar? probably because this feature was inspired by [react's useEffect hook](https://react.dev/reference/react/useEffect)
+You can also call the `.destroy()` method on the signal object itself.
 
-#### Example: Use an effect _cleanup_ function
+### 🎭 Effects
 
-```js
-const {get: getSelector, set: makeInteractive} = createSignal();
+Effects are where the magic happens. They are self-managing functions that react to changes in your signals.
 
-function onClick(event) {
-  console.log('click! selector=', getSelector(), 'element=', event.target);
+#### `createEffect`
+
+Creates a new effect.
+
+```typescript
+createEffect(callback: () => void | (() => void), options?: EffectOptions): Effect
+```
+
+- `callback`: The function to execute. It can optionally return a *cleanup function*, which runs before the next effect execution or on destruction.
+- `options`:
+  - `dependencies`: An array of signals to subscribe to, creating a **static effect**. If omitted, the effect is **dynamic**.
+  - `autorun`: If `false`, the effect will not run automatically. You must call `.run()` manually.
+  - `attach`: Attaches the effect to a `SignalGroup`.
+
+`createEffect` returns an `Effect` object with two methods:
+- `run()`: Manually triggers the effect, respecting dependencies.
+- `destroy()`: Stops and cleans up the effect.
+
+#### Dynamic vs. Static Effects
+
+- **Dynamic (Default)**: The effect automatically tracks which signals are read during its execution and re-subscribes on each run. This is great for conditional logic.
+
+  ```typescript
+  const show = createSignal(false);
+  const data = createSignal('A');
+
+  createEffect(() => {
+    console.log('Effect running...');
+    if (show.get()) {
+      console.log(data.get()); // `data` is only a dependency when `show` is true
+    }
+  });
+
+  show.value = true; // Effect re-runs
+  data.value = 'B'; // Effect re-runs
+  show.value = false; // Effect re-runs
+  data.value = 'C'; // Effect does NOT re-run
+  ```
+
+- **Static**: You provide an explicit array of dependencies. The effect only runs when one of *those* signals changes, regardless of what's read inside.
+
+  ```typescript
+  const a = createSignal(1);
+  const b = createSignal(2);
+
+  // This effect ONLY depends on `a`, even though it reads `b`.
+  createEffect(() => {
+    console.log(`a=${a.get()}, b=${b.get()}`);
+  }, [a]); // Static dependency on `a`
+
+  b.value = 99; // Does NOT trigger the effect
+  a.value = 10; // Triggers the effect
+  ```
+
+#### Cleanup Logic
+
+An effect can return a function that will be executed to "clean up" its last run. This is perfect for managing subscriptions, timers, or other side effects.
+
+```typescript
+createEffect(() => {
+  const timerId = setInterval(() => {
+    console.log('tick');
+  }, 1000);
+
+  // This cleanup function runs when the effect is destroyed
+  return () => {
+    clearInterval(timerId);
+    console.log('Timer cleared!');
+  };
+});
+```
+
+#### Manual Control
+
+Set `autorun: false` to create an effect that you control. It will only track dependencies and run when you explicitly call its `run()` method.
+
+```typescript
+const sig = createSignal(0);
+const effect = createEffect(() => console.log(sig.get()), { autorun: false });
+
+console.log('Effect created, but not run.');
+
+effect.run(); // => 0
+
+sig.value = 10; // Does nothing
+effect.run(); // => 10
+
+sig.value = 10; // Does nothing
+effect.run(); //  Does nothing, because the value didn't change
+```
+
+### 🧠 Memos (Computed Signals)
+
+Memos are signals whose values are derived from other signals. They are lazy and only recompute when a dependency changes.
+
+#### `createMemo`
+
+Creates a new memoized signal.
+
+```typescript
+createMemo<T>(computer: () => T, options?: CreateMemoOptions): SignalReader<T>
+```
+
+- `computer`: The function that computes the value.
+- `options`:
+  - `attach`: Attaches the memo to a `SignalGroup`.
+  - `name`: Gives the memo a name within its group.
+
+It returns a `SignalReader` function, which you call to get the memo's current value.
+
+**Example:**
+
+```typescript
+import { createSignal, createMemo } from '@spearwolf/signalize';
+
+const firstName = createSignal('John');
+const lastName = createSignal('Doe');
+
+const fullName = createMemo(() => {
+  console.log('Computing full name...');
+  // We must use .get() to establish dependencies inside the memo
+  return `${firstName.get()} ${lastName.get()}`;
+});
+
+console.log(fullName()); // "Computing full name..." -> "John Doe"
+console.log(fullName()); // (no log, value is cached) -> "John Doe"
+
+firstName.value = 'Jane';
+console.log(fullName()); // "Computing full name..." -> "Jane Doe"
+```
+
+### 💎 Decorators (Class-based API)
+
+For those who prefer object-oriented patterns, `@spearwolf/signalize` provides decorators for creating signals and memos within classes.
+
+**Import decorators from the separate entry point:**
+
+```typescript
+import { signal, memo } from '@spearwolf/signalize/decorators';
+```
+
+#### `@signal`
+
+A class accessor decorator that turns a property into a signal.
+
+```typescript
+class User {
+  @signal() accessor name = 'Anonymous';
+  @signal() accessor age = 0;
 }
 
+const user = new User();
+console.log(user.name); // => "Anonymous"
+
 createEffect(() => {
-  if (getSelector()) {
-    const el = document.querySelector(getSelector());
+  console.log(`User is ${user.name}, age ${user.age}`);
+});
+// => "User is Anonymous, age 0"
 
-    el.addEventListener('click', onClick, false);
-
-    return () => {
-      el.removeEventListener('click', onClick, false);
-    };
-  }
-})
-
-makeInteractive('#foo');  // foo is now interactive
-makeInteractive('.bar');  // bar is now interactive, but foo is not
+user.name = 'Alice'; // Triggers the effect
+// => "User is Alice, age 0"
 ```
 
+#### `@memo`
 
----
+A class method decorator that turns a getter-like method into a memoized signal.
 
-_more docs coming!!_
+```typescript
+class User {
+  @signal() accessor firstName = 'John';
+  @signal() accessor lastName = 'Doe';
+
+  @memo()
+  fullName() {
+    console.log('Computing full name...');
+    return `${this.firstName} ${this.lastName}`;
+  }
+}
+
+const user = new User();
+console.log(user.fullName()); // "Computing full name..." -> "John Doe"
+console.log(user.fullName()); // (no log) -> "John Doe"
+```
+
+### 🛠️ Utilities
+
+#### `batch`
+
+The `batch` function allows you to apply multiple signal updates at once, but only trigger dependent effects a single time after all updates are complete. This is a powerful optimization to prevent unnecessary re-renders or computations.
+
+```typescript
+const a = createSignal(1);
+const b = createSignal(2);
+
+createEffect(() => console.log(`a=${a.get()}, b=${b.get()}`));
+// => a=1, b=2
+
+batch(() => {
+  a.value = 10; // Effect does not run yet
+  b.value = 20; // Effect does not run yet
+}); // Effect runs once at the end
+// => a=10, b=20
+```
+
+#### `beQuiet` & `isQuiet`
+
+`beQuiet` executes a function without creating any signal dependencies within it. `isQuiet` can be used to check if you are currently inside a `beQuiet` call.
+
+#### `link` & `unlink`
+
+`link` creates a one-way binding from a source signal to a target signal or a callback function. The target will be automatically updated whenever the source changes. `unlink` removes this connection.
+
+```typescript
+const source = createSignal('A');
+const target = createSignal('');
+
+const connection = link(source, target);
+console.log(target.value); // => "A" (value is synced on link)
+
+source.value = 'B';
+console.log(target.value); // => "B"
+
+// Stop the connection
+connection.destroy(); // or unlink(source, target);
+
+source.value = 'C';
+console.log(target.value); // => "B" (no longer updates)
+```
+
+#### `SignalGroup`
+
+A `SignalGroup` is a powerful utility for managing the lifecycle of a collection of signals, effects, and links, typically associated with a class instance or component. When you use decorators, a `SignalGroup` is automatically created. You can destroy all reactive elements in a group with a single call to `group.clear()`.
+
+#### `SignalAutoMap`
+
+A `Map`-like class that automatically creates a `Signal` for any key that is accessed but doesn't yet exist. This is useful for managing dynamic collections of reactive state.
+
+```typescript
+const map = new SignalAutoMap();
+
+// Accessing 'foo' for the first time creates a signal for it
+map.get('foo').value = 'hello';
+
+createEffect(() => {
+  console.log(map.get('foo').get());
+});
+// => "hello"
+
+map.get('foo').value = 'world';
+// => "world"
+```
+
+## ❤️ Contributing
+
+Contributions are welcome! If you find a bug or have a feature request, please open an issue. If you want to contribute code, please open a pull request.
+
+## 📜 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
