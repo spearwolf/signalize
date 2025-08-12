@@ -57,6 +57,10 @@
 - [Contributing](#-contributing)
 - [License](#-license)
 
+> [!IMPORTANT]
+> The documentation is a work in progress. Although every effort is made to ensure completeness and logical structure, there is always room for improvement, and some topics are not fully explained. Therefore, it is advisable to review the test specifications as well.
+> The API itself is almost stable and is already being used successfully in several internal projects.
+
 ---
 
 ## 🚀 Introduction

@@ -1,6 +1,6 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.21.0-dev",
+  "version": "0.21.0",
   "description": "signals and effects for all",
   "type": "module",
   "main": "lib/index.js",

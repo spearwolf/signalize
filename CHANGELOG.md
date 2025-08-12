@@ -2,8 +2,8 @@
 
 ## `v0.21.0` (not yet released)
 
-- TODO add `isolate()` helper function
-- TODO add `isolate: true` option to `createEffect()`
+_minor quality of live update_
+
 - use `ES2023` as target for the build
 - update dependencies (patch and minor versions)
 - build: use _isolated modules_ in tsconfig.json
@@ -36,7 +36,7 @@
 ## `v0.18.0` (2024-10-24)
 
 - rename `SignalGroup#getSignal(name)` helper to `SignalGroup#signal(name)`
-- remove obsolete *type SignalFuncs*
+- remove obsolete _type SignalFuncs_
 - improve README and CHANGELOG &rarr; Migration Guide to v0.17.0
 
 ## `v0.17.1` (2024-10-23)
@@ -83,6 +83,7 @@ The previous calls in the form `const [val, setVal] = createSignal()` can be tra
 
 Similarly, the `createEffect()` function now also returns an effect _object_.
 The previous call `const [run, destroy] = createEffect()` should be rewritten as follows: `const {run, destroy} = createEffect()`. Alternatively, simply use the effect object:
+
 ```ts
 const effect = createEffect(...)
 ...
@@ -131,7 +132,7 @@ bar.onChange((val) => {
 
 The `SignalGroup` API now replaces the mistakable `@effect` decorator.
 
-The necessity to call the methods annotated as `@effect()` in the constructor once has led to misunderstandings and ambiguities, especially when it was an effect with static dependencies. With the new `attach` option for effects, the behavior is now explicit and clear. 
+The necessity to call the methods annotated as `@effect()` in the constructor once has led to misunderstandings and ambiguities, especially when it was an effect with static dependencies. With the new `attach` option for effects, the behavior is now explicit and clear.
 
 Before:
 
@@ -139,12 +140,12 @@ Before:
 class Foo {
   @signal() accessor bar = 123;
   @signal() accessor plah = 'abc';
-  
+
   constructor() {
-    this.staticEffect(); 
-    this.dynamicEffect(); 
+    this.staticEffect();
+    this.dynamicEffect();
   }
-  
+
   @effect(['bar', 'plah'])
   staticEffect() {
     console.log('bar, plah :=', this.bar, this.plah);
@@ -153,7 +154,7 @@ class Foo {
   @effect() dynamicEffect() {
     console.log('plah, bar :=', this.plah, this.bar);
   }
-  
+
   destroy() {
     destroySignalsAndEffects(this);
   }
@@ -166,17 +167,15 @@ After:
 class Foo {
   @signal() accessor bar = 123;
   @signal() accessor plah = 'abc';
-  
-  constructor() {
-    createEffect(() => this.dynamicEffect(), { attach: this });
 
-    createEffect(
-      () => this.staticEffect(),
-      [ 'bar', 'plah' ],
-      { attach: this },
-    ).run();
+  constructor() {
+    createEffect(() => this.dynamicEffect(), {attach: this});
+
+    createEffect(() => this.staticEffect(), ['bar', 'plah'], {
+      attach: this,
+    }).run();
   }
-  
+
   staticEffect() {
     console.log('bar, plah :=', this.bar, this.plah);
   }
@@ -197,20 +196,21 @@ Replace all occurrences of `SignalObject` (which was introduced in version v0.14
 
 #### Refactor `connect()` and `unconnect()` usages
 
-The legacy *connection api* is now replaced by the *signal group* feature and the `link()` and `unlink()` utility functions:
+The legacy _connection api_ is now replaced by the _signal group_ feature and the `link()` and `unlink()` utility functions:
 
 In most cases, it should be sufficient to simply replace the `connect()` calls with `link()` calls. Similarly, `unlink()` replaces the function `unconnect()`, although `unlink()` is often not necessary at all; _links_ between signals are automatically cleaned up when one of the signals is destroyed.
 
 Links to _object signals_ must be adapted, e.g. with:
+
 ```js
-link(sigFoo, findObjectSignalByName('bar'))
+link(sigFoo, findObjectSignalByName('bar'));
 ```
 
-.. or by using the new *group api*:
-```js
-link(groupA.getSignal('foo'), groupB.getSignal('bar'))
-```
+.. or by using the new _group api_:
 
+```js
+link(groupA.getSignal('foo'), groupB.getSignal('bar'));
+```
 
 ## `v0.16.0` (2024-08-04)
 
@@ -226,7 +226,6 @@ _maintenance update_
 - BUT also updated the (only) runtime dependency [@spearwolf/eventize](https://github.com/spearwolf/eventize) to v4.x:
   and this is a ❗BREAKING CHANGE❗ since the new eventize api switches to the functional api by default
 - _so you may need to make adjustments to your codebase if you use the eventize api directly (independently of signalize)_
-  
 
 ## `v0.14.0` (2024-06-25)
 
