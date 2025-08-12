@@ -131,8 +131,6 @@ export class EffectImpl {
 
     const parentEffect = getCurrentEffect();
     if (parentEffect != null) {
-      // TODO feat: add `isolate: true` option to `createEffect()`
-      // TODO feat: add `isolate()` helper to run `createEffect()` in isolation
       effect = parentEffect.getCurrentChildEffect();
       if (effect == null) {
         effect = new EffectImpl(callback, options);
@@ -181,6 +179,7 @@ export class EffectImpl {
       curBatch.batch(this.id);
     } else {
       this.runCleanupCallback();
+
       this.curChildEffectSlot = 0;
       this.shouldRun = false;
 
@@ -234,6 +233,7 @@ export class EffectImpl {
       const cleanupCallback = this.#nextCleanupCallback;
       this.#nextCleanupCallback = undefined;
       if (isThenable(cleanupCallback)) {
+        // TODO abort the cleanupCallback promise
         Promise.resolve(cleanupCallback).then((cleanup) => {
           if (typeof cleanup === 'function') {
             cleanup();
