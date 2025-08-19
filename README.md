@@ -12,24 +12,29 @@
   ![signalize hero](hero.gif)
 </figure>
 
-# 📢 "Signals and effects for all"
+# 📢 Signals and Effects for All
 
 `@spearwolf/signalize` is a javascript library for creating fine-grained reactivity through __signals__ and __effects__.
 
-- a __standalone__ javascript library that is framework agnostic
+- a __standalone__ javascript library that is _framework agnostic_
 - __without side-effects__ and targets `ES2023` based environments
 - written in __typescript__ v5 and uses the new [tc39 decorators](https://github.com/tc39/proposal-decorators) :rocket:
-  - however, it is optional and not necessary to use the decorators
+  - _however, it is optional and not necessary to use the decorators_
 
 > [!NOTE]
-> Reactivity is the secret sauce to building modern, dynamic web apps. `@spearwolf/signalize` makes it easy. No frameworks, no boilerplate, just pure reactivity.
+> Reactivity is the secret sauce to building modern, dynamic web apps.
+> `@spearwolf/signalize` makes it easy. No frameworks, no boilerplate, just pure reactivity.
 
 ---
 
 ## Table of Contents
 
+> [!IMPORTANT]
+> The documentation is a work in progress. Although every effort is made to ensure completeness and logical structure, there is always room for improvement, and some topics are not fully explained. Therefore, it is advisable to review the test specifications as well.
+> The API itself is almost stable and is already being used successfully in several internal projects.
+
 - [Introduction](#-introduction)
-  - [Core Concepts](#-core-concepts)
+  - [Core Concepts](#core-concepts)
 - [Getting Started](#-getting-started)
 - [API Reference](#-api-reference)
   - [Signals](#-signals)
@@ -57,10 +62,6 @@
 - [Contributing](#-contributing)
 - [License](#-license)
 
-> [!IMPORTANT]
-> The documentation is a work in progress. Although every effort is made to ensure completeness and logical structure, there is always room for improvement, and some topics are not fully explained. Therefore, it is advisable to review the test specifications as well.
-> The API itself is almost stable and is already being used successfully in several internal projects.
-
 ---
 
 ## 🚀 Introduction
@@ -68,7 +69,7 @@
 `@spearwolf/signalize` brings the power of fine-grained reactivity to any JavaScript or TypeScript project.
 It's a lightweight, standalone library that helps you manage state and build data flows that automatically update when your data changes.
 
-Forget about manual DOM updates or complex state management logic. With signals, you create reactive values, and with effects, you create functions that automatically run whenever those values change. It's that simple.
+Forget about imperative DOM updates or complex state management logic. With signals, you create reactive values, and with effects, you create functions that automatically run whenever those values change. It's that simple.
 
 ### Core Concepts
 
