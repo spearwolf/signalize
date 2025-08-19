@@ -300,17 +300,28 @@ createEffect(callback: () => void | (() => void), options?: EffectOptions): Effe
 An effect can return a function that will be executed to "clean up" its last run. This is perfect for managing subscriptions, timers, or other side effects.
 
 ```typescript
+const milliseconds = createSignal(1000);
+
 createEffect(() => {
+  console.log(`Create timer with', ${milliseconds.get()}ms interval`);
+
   const timerId = setInterval(() => {
     console.log('tick');
-  }, 1000);
+  }, milliseconds.get());
 
   // This cleanup function runs when the effect is destroyed
   return () => {
     clearInterval(timerId);
-    console.log('Timer cleared!');
+    console.log('Previous timer cleared!');
   };
 });
+// => "Create timer with 1000ms interval"
+
+milliseconds.set(5000);  // Set interval to 5 seconds
+// => "Previous timer cleared!"
+// => "Create timer with 5000ms interval"
+
+// => "tick" ...
 ```
 
 #### Manual Control
