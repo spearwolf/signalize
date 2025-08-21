@@ -150,6 +150,7 @@ createSignal<T>(initialValue?: T, options?: SignalParams<T>): Signal<T>
 - `onChange(callback)`: A simple way to create a static effect that runs when the signal changes. Returns a function to destroy the subscription.
 - `touch()`: Triggers all dependent effects without changing the signal's value.
 - `destroy()`: Destroys the signal and cleans up all its dependencies.
+- `muted`: A boolean property that indicates whether the signal is currently muted. Muted signals do not trigger effects when their value changes.
 
 **Example:**
 
@@ -158,7 +159,8 @@ import { createSignal } from '@spearwolf/signalize';
 
 // A signal holding a vector
 const v3 = createSignal([1, 2, 3], {
-  compare: (a, b) => a == b || a?.every((val, index) => val === b[index]), // Custom compare function
+  // A custom compare function
+  compare: (a, b) => a == b || a?.every((val, index) => val === b[index]),
 });
 
 v3.onChange((v) => {
@@ -234,7 +236,8 @@ sig.value = 'world again';
 // => "world again"
 ```
 
-The `Signal` object also has a `.muted` property: `sig.muted = true`.
+> [!NOTE]
+> The `Signal` object also has a `.muted` property: `sig.muted = true`.
 
 #### Destroying Signals
 
@@ -385,7 +388,8 @@ const lastName = createSignal('Doe');
 
 const fullName = createMemo(() => {
   console.log('Computing full name...');
-  return `${firstName.get()} ${lastName.get()}`; // We use .get() to establish dependencies inside the memo
+  // We use .get() to establish dependencies inside the memo
+  return `${firstName.get()} ${lastName.get()}`;
 });
 // Nothing is logged
 
@@ -463,7 +467,7 @@ console.log(user.fullName()); // (no log) -> "John Doe"
 
 #### `batch`
 
-The `batch` function allows you to apply multiple signal updates at once, but only trigger dependent effects a single time after all updates are complete. This is a powerful optimization to prevent unnecessary re-renders or computations.
+The `batch()` function allows you to apply multiple signal updates at once, but only trigger dependent effects a single time after all updates are complete. This is a powerful optimization to prevent unnecessary re-renders or computations.
 
 ```typescript
 import { createSignal, createEffect, batch } from '@spearwolf/signalize';
@@ -524,6 +528,7 @@ const target = createSignal('');
 const connection = link(source, target);
 
 console.log(target.value); // => "A" (value is synced on link)
+console.log(connection.lastValue); // => "A"
 
 source.value = 'B';
 
@@ -536,6 +541,20 @@ source.value = 'C';
 
 console.log(target.value); // => "B" (no longer updates)
 ```
+
+`link()` returns a _connection_ object with the following properties:
+
+- `lastValue`: The last value that was set on the target when the source changed or the link was created.
+- `nextValue(): Promise<ValueType>`: The next value that will be set on the target when the source changes.
+- `*asyncValues(stopAction?: (value, index) => boolean)`: An async generator that yields the next values from the source signal until the connection is destroyed or stopped or the `stopAction` returns `true`.
+- `touch()`: Triggers the next value immediately, without waiting for the source to change.
+- `isMuted`: A boolean indicating whether the link is currently muted.
+- `mute()`: A method to temporarily stop the link from updating the target.
+- `unmute()`: A method to resume the link after it has been muted.
+- `toggle()`: A method to toggle the muted state of the link.
+- `attach(signalGroup)`: The `SignalGroup` to which the link is attached.
+- `destroy()`: A method to remove the link and clean up resources.
+
 
 #### `SignalGroup`
 
@@ -551,22 +570,24 @@ A `Map`-like class that automatically creates a `Signal` for any key that is acc
 ```typescript
 import {SignalAutoMap, createEffect} from '@spearwolf/signalize';
 
-const autoMap = new SignalAutoMap();
+const autoMap = SignalAutoMap.fromProps({bar: 'bar'});
 
 // Accessing 'foo' for the first time creates a signal for it
 autoMap.get('foo').value = 'hello';
 
 createEffect(() => {
-  console.log(autoMap.get('foo').get(), autoMap.get('bar').get() ?? '');
+  console.log(autoMap.get('foo').get(), autoMap.get('bar').get());
 });
-// => "hello"
+// => "hello bar"
 
 autoMap.get('bar').value = 'world';
 // => "hello world"
 
-autoMap.get('foo').value = 'hallo';
+autoMap.updateFromProps({foo: 'hallo'});
 // => "hallo world"
 ```
+
+_TODO: show details about `SignalAutoMap` methods._
 
 ## ❤️ Contributing
 

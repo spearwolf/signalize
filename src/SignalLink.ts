@@ -128,6 +128,7 @@ export abstract class SignalLink<ValueType = any> {
     return this;
   }
 
+  // TODO consider renaming to toggleMute()
   toggle(): boolean {
     if (!this.isDestroyed) {
       this.#muted = !this.#muted;
