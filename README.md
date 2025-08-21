@@ -341,17 +341,20 @@ Set `autorun: false` to create an effect that you control. It will only track de
 
 ```typescript
 const val = createSignal(0);
+
 const effect = createEffect(() => console.log(val.get()), { autorun: false });
+// No output yet, since autorun is false
 
 console.log('Effect created, but not run.');
 
 effect.run();
-// => 0
+// => Console output: 0
 
-val.set(10); // Does nothing, since we have deactivated autorun
+val.set(1); // Does nothing, since we have deactivated autorun
+val.set(10); // same
 
 effect.run();
-// => 10
+// => Console output: 10
 
 val.set(10); // Does nothing
 
