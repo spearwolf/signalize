@@ -1,4 +1,6 @@
-`@spearwolf/signalize`
+`@spearwolf/signalize` - A lightweight JavaScript library for signals & effects.
+Reactive programming, made simple. Works in Browser & Node.js.
+Type-safe. Fast. No framework lock-in.
 
 ![npm (scoped)](https://img.shields.io/npm/v/%40spearwolf/signalize)
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/spearwolf/signalize/main.yml)
