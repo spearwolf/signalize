@@ -4,7 +4,7 @@
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/spearwolf/signalize/main.yml)
 ![GitHub](https://img.shields.io/github/license/spearwolf/signalize)
 
-![signalize hero](hero.gif)
+![signalize hero](https://github.com/spearwolf/signalize/blob/main/hero.gif?raw=true)
 
 
 # 📢 Signals and Effects for All

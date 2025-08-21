@@ -16,10 +16,14 @@ tsconfig.*.json
 *.spec.ts
 *.spec.d.ts
 signaler-effectus-hero.png
-docs/gists
-docs/images
+docs/
 scripts
 rollup.config.*
 jest.config.*
 types
-hero.*
+hero.gif
+hero.png
+hero.webp
+hero-web.webp
+GEMINI.md
+foo.mjs
