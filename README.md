@@ -48,6 +48,7 @@
     - [Dynamic vs. Static Effects](#dynamic-vs-static-effects)
     - [Cleanup Logic](#cleanup-logic)
     - [Manual Control](#manual-control)
+    - [Nested Effects](#nested-effects)
   - [Memos (Computed Signals)](#-memos-computed-signals)
     - [`createMemo`](#creatememo)
   - [Decorators (Class-based API)](#-decorators-class-based-api)
@@ -359,6 +360,13 @@ val.set(10); // Does nothing
 effect.run(); //  Does nothing, because the value didn't change
 ```
 
+#### Nested Effects
+
+Effects can be nested, allowing you to create complex reactive flows. However, be cautious of circular dependencies, as they can lead to infinite loops.
+
+_TODO: Add more details about nested effects and circular dependencies._
+
+
 ### 🧠 Memos (Computed Signals)
 
 Memos are signals whose values are derived from other signals. They are lazy and only recompute when a dependency changes.
@@ -467,7 +475,8 @@ console.log(user.fullName()); // (no log) -> "John Doe"
 
 #### `batch`
 
-The `batch()` function allows you to apply multiple signal updates at once, but only trigger dependent effects a single time after all updates are complete. This is a powerful optimization to prevent unnecessary re-renders or computations.
+The `batch()` function allows you to apply multiple signal updates at once, but only trigger dependent effects a single time after all updates are complete.
+This is a powerful optimization to prevent unnecessary re-renders or computations.
 
 ```typescript
 import { createSignal, createEffect, batch } from '@spearwolf/signalize';
@@ -510,8 +519,6 @@ beQuiet(() => {
 
 console.log('a:', a.value, 'b:', b.value, 'isQuiet:', isQuiet());
 // => a: 100 b: 200 isQuiet: false
-const a = createSignal(1);
-const b = createSignal(2);
 ```
 
 #### `link` & `unlink`
@@ -586,8 +593,6 @@ autoMap.get('bar').value = 'world';
 autoMap.updateFromProps({foo: 'hallo'});
 // => "hallo world"
 ```
-
-_TODO: show details about `SignalAutoMap` methods._
 
 ## ❤️ Contributing
 
