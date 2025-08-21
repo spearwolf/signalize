@@ -4,13 +4,8 @@
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/spearwolf/signalize/main.yml)
 ![GitHub](https://img.shields.io/github/license/spearwolf/signalize)
 
-<figure>
-  <figcaption>
-    <sub>Image created at the request of spearwolf using OpenAI's DALL-E, guided by ChatGPT, animated by KLING AI and converted by Ezgif.com</sub>
-  </figcaption>
+![signalize hero](hero.gif)
 
-  ![signalize hero](hero.gif)
-</figure>
 
 # 📢 Signals and Effects for All
 
@@ -608,3 +603,5 @@ Contributions are welcome! If you find a bug or have a feature request, please o
 ## 📜 License
 
 This project is licensed under the Apache-2.0 License. See the [LICENSE](./LICENSE) file for details.
+
+The hero image above was created at the request of spearwolf using OpenAI's DALL-E and guided by ChatGPT. It was then animated by KLING AI and converted by Ezgif.com.
