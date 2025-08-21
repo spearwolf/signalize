@@ -250,6 +250,9 @@ destroySignal(mySignal, anotherSignal);
 
 You can also call the `.destroy()` method on the signal object itself.
 
+_**TODO** add an advanced section about signal objects, getter and setter functions._
+
+
 ### 🎭 Effects
 
 Effects are where the magic happens. They are self-managing functions that react to changes in your signals.
@@ -364,7 +367,7 @@ effect.run(); //  Does nothing, because the value didn't change
 
 Effects can be nested, allowing you to create complex reactive flows. However, be cautious of circular dependencies, as they can lead to infinite loops.
 
-_TODO: Add more details about nested effects and circular dependencies._
+_**TODO** Add more details about nested effects and circular dependencies._
 
 
 ### 🧠 Memos (Computed Signals)
@@ -427,6 +430,10 @@ For those who prefer object-oriented patterns, `@spearwolf/signalize` provides d
 ```typescript
 import { signal, memo } from '@spearwolf/signalize/decorators';
 ```
+
+> [!IMPORTANT]
+> The decorator API is still in the early stages of development and is not yet complete.
+> It only uses the new JavaScript standard decorators, not the legacy or experimental TypeScript ones.
 
 #### `@signal`
 
@@ -568,7 +575,7 @@ console.log(target.value); // => "B" (no longer updates)
 A `SignalGroup` is a helpful utility for managing the lifecycle of a collection of signals, effects, and links, typically associated with a class instance or component.
 When you use decorators, a `SignalGroup` is automatically created. You can destroy all reactive elements in a group with a single call to `group.clear()`.
 
-_TODO: add more details about `SignalGroup` and its methods._
+_**TODO** add more details about `SignalGroup` and its methods._
 
 #### `SignalAutoMap`
 
@@ -600,4 +607,4 @@ Contributions are welcome! If you find a bug or have a feature request, please o
 
 ## 📜 License
 
-This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
+This project is licensed under the Apache-2.0 License. See the [LICENSE](./LICENSE) file for details.
