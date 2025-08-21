@@ -598,7 +598,7 @@ autoMap.updateFromProps({foo: 'hallo'});
 
 ## ❤️ Contributing
 
-Contributions are welcome! If you find a bug or have a feature request, please open an issue. If you want to contribute code, please open a pull request.
+Contributions are welcome! If you find a bug or have a feature request, please open an issue. If you want to contribute code or documentation, please open a pull request.
 
 ## 📜 License
 
