@@ -1,6 +1,11 @@
 # CHANGELOG
 
-## `v0.21.0` (not yet released)
+## `v0.21.1` (2025-08-21)
+
+- improve documentation
+- remove docs/ folder and hero image from npm package archive
+
+## `v0.21.0` (2025-08-12)
 
 _minor quality of live update_
 
