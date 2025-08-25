@@ -214,4 +214,47 @@ describe('createSignal', () => {
     eff.destroy();
     foo.destroy();
   });
+
+  it('dynamic depencenies', () => {
+    const a = createSignal(true);
+    const b = createSignal(1);
+    const c = createSignal(20);
+
+    let val = 0;
+    let callCount = 0;
+
+    createEffect(() => {
+      ++callCount;
+      if (a.get()) {
+        val = b.get() + 1;
+      } else {
+        val = c.get() + 10;
+      }
+    });
+
+    expect(a.get()).toBe(true);
+    expect(val).toBe(2);
+    expect(callCount).toBe(1);
+
+    b.set(2);
+
+    expect(val).toBe(3);
+    expect(callCount).toBe(2);
+
+    a.set(false);
+
+    expect(val).toBe(30);
+    expect(callCount).toBe(3);
+
+    b.set(5);
+
+    expect(callCount).toBe(3);
+
+    a.destroy();
+    c.destroy();
+
+    assertEffectsCount(0, 'after [a,c].destroy()');
+
+    b.destroy();
+  });
 });

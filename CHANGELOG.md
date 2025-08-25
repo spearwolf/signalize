@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `v0.23.0` (2025-08-25)
+
+- Fixed an issue that prevented signals that were no longer used from being removed from the subscription list for dynamic effects.
+
 ## `v0.22.0` (2025-08-25)
 
 Memos are now _non-lazy_ by default.
