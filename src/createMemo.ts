@@ -8,6 +8,7 @@ import type {SignalReader} from './types.js';
 export interface CreateMemoOptions {
   attach?: object | SignalGroup;
   name?: string | symbol;
+  lazy?: boolean;
 }
 
 export function createMemo<Type>(
@@ -30,7 +31,7 @@ export function createMemo<Type>(
   }
 
   const e = createEffect(() => si.set(callback()), {
-    autorun: false,
+    autorun: !(options?.lazy ?? false),
     attach: group,
   });
 
