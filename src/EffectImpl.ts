@@ -1,6 +1,5 @@
 import {SignalGroup} from './SignalGroup.js';
 import type {EffectCallback, SignalLike, VoidFunc} from './types.js';
-
 import {emit, eventize, off, on, once} from '@spearwolf/eventize';
 import {Effect} from './Effect.js';
 import {UniqIdGen} from './UniqIdGen.js';
@@ -42,6 +41,8 @@ export class EffectImpl {
   #nextCleanupCallback?: VoidFunc;
 
   readonly #signals: Set<symbol> = new Set();
+  readonly #signalSubscriptions: Array<() => void> = [];
+
   readonly #destroyedSignals: Set<symbol> = new Set();
 
   parentEffect?: EffectImpl;
@@ -186,6 +187,7 @@ export class EffectImpl {
       if (this.hasStaticDeps()) {
         this.#nextCleanupCallback = this.callback() as VoidFunc;
       } else {
+        this.clearSignalSubscriptions();
         this.#nextCleanupCallback = runWithinEffect(this, this.callback);
       }
     }
@@ -211,8 +213,10 @@ export class EffectImpl {
   whenSignalIsRead(signalId: symbol): void {
     if (!this.#signals.has(signalId)) {
       this.#signals.add(signalId);
-      on(globalSignalQueue, signalId, 'recall', this);
-      once(globalDestroySignalQueue, signalId, $destroySignal, this);
+      this.#signalSubscriptions.push(
+        on(globalSignalQueue, signalId, 'recall', this),
+        once(globalDestroySignalQueue, signalId, $destroySignal, this),
+      );
     }
   }
 
@@ -226,6 +230,15 @@ export class EffectImpl {
         this.destroy();
       }
     }
+  }
+
+  private clearSignalSubscriptions(): void {
+    this.#signalSubscriptions.forEach((unsubscribe) => {
+      unsubscribe();
+    });
+    this.#signalSubscriptions.length = 0;
+    this.#signals.clear();
+    this.#destroyedSignals.clear();
   }
 
   private runCleanupCallback(): void {
@@ -262,6 +275,7 @@ export class EffectImpl {
     this.#destroyed = true;
 
     this.#signals.clear();
+    this.#signalSubscriptions.length = 0;
     this.#destroyedSignals.clear();
 
     this.childEffects.forEach((effect) => {
