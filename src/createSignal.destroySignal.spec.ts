@@ -7,6 +7,7 @@ import {
   saveEffectSubscriptionsCount,
   saveSignalDestroySubscriptionsCount,
 } from './assert-helpers.js';
+import {batch} from './batch.js';
 import {createMemo} from './createMemo.js';
 import {createSignal, destroySignal} from './createSignal.js';
 import {createEffect} from './effects.js';
@@ -85,7 +86,7 @@ describe('destroySignal', () => {
 
     assertEffectsCount(2, 'step-b');
     assertEffectSubscriptionsCountChange(1, 'step-b');
-    assertSignalDestroySubscriptionsCountChange(1, 'step-b');
+    assertSignalDestroySubscriptionsCountChange(3, 'step-b');
 
     expect(foo).toBe(1);
     expect(bar).toBe(2);
@@ -100,7 +101,7 @@ describe('destroySignal', () => {
     expect(bar).toBe(5);
     expect(plah()).toBe(9);
     expect(effectCallCount).toBe(3);
-    expect(memoCallCount).toBe(2);
+    expect(memoCallCount).toBe(3);
 
     destroySignal(getFoo);
 
@@ -108,28 +109,32 @@ describe('destroySignal', () => {
     assertEffectSubscriptionsCount(2, 'step-c');
     // assertSignalDestroySubscriptionsCountChange(-2, 'step-c');
 
-    setFoo(10);
-    setBar(11);
+    batch(() => {
+      setFoo(10);
+      setBar(11);
+    });
 
     expect(foo).toBe(10);
     expect(bar).toBe(11);
     expect(plah()).toBe(21);
     expect(effectCallCount).toBe(4);
-    expect(memoCallCount).toBe(3);
+    expect(memoCallCount).toBe(4);
 
     assertEffectsCount(2, 'step-d');
     assertEffectSubscriptionsCount(2, 'step-d');
 
     destroySignal(getBar);
 
-    setFoo(22);
-    setBar(23);
+    batch(() => {
+      setFoo(22);
+      setBar(23);
+    });
 
     expect(foo).toBe(10);
     expect(bar).toBe(11);
     expect(plah()).toBe(21);
     expect(effectCallCount).toBe(4);
-    expect(memoCallCount).toBe(3);
+    expect(memoCallCount).toBe(4);
 
     assertEffectsCount(0, 'step-e');
     assertEffectSubscriptionsCount(0, 'step-e');

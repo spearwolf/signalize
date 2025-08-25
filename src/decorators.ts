@@ -54,6 +54,9 @@ export interface MemoDecoratorOptions {
   name?: string | symbol;
 }
 
+/**
+ * NOTE: A memo created by this decorator is always lazy and never autorun!
+ */
 export function memo(options?: MemoDecoratorOptions) {
   return function <T extends object, A extends any[], R>(
     target: (this: T, ...args: A) => R,
@@ -68,6 +71,7 @@ export function memo(options?: MemoDecoratorOptions) {
       if (siGet == null) {
         group ??= SignalGroup.findOrCreate(this);
         siGet = createMemo<R>(() => target.call(this, ...args), {
+          lazy: true,
           attach: group,
           name,
         });

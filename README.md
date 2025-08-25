@@ -378,16 +378,29 @@ Memos are signals whose values are derived from other signals. They are lazy and
 
 Creates a new memoized signal.
 
+The default behavior of a memo is that of a _computed_ signal. If dependencies change, the memo value is recalculated and can in turn trigger dependent effects.
+
+Alternatively, a _lazy_ memo can be created by using the `autorun: false` option.
+A lazy memo works in the same way, with the difference that the memo value is _only calculated when the memo is read_. This means that effects dependent on the memo are also only executed when the memo has been read.
+
+
 ```typescript
 createMemo<T>(computer: () => T, options?: CreateMemoOptions): SignalReader<T>
 ```
 
 - `computer`: The function that computes the value.
 - `options`:
+  - `autorun`: If `false`, the memo will be lazy and only compute when accessed. Default is `true`. A non-lazy memo computes immediately and works like a _computed_ signal.
   - `attach`: Attaches the memo to a `SignalGroup`.
   - `name`: Gives the memo a name within its group.
 
-It returns a `SignalReader` function, which you call to get the memo's current value.
+It returns a _signal reader_ function, which you call to get the memo's current value.
+
+> [!TIP]
+>
+> Choose wisely:
+> - A non-lazy memo, aka computed signal, is the standard behavior and is most likely what users expect.
+> - A lazy memo, on the other hand, is more efficient: the calculation is only performed when it is read. However, a lazy effect does not automatically update dependent effects, but only after they are read, which can lead to unexpected behavior.
 
 **Example:**
 
@@ -397,11 +410,16 @@ import {createSignal, createMemo} from '@spearwolf/signalize';
 const firstName = createSignal('John');
 const lastName = createSignal('Doe');
 
-const fullName = createMemo(() => {
-  console.log('Computing full name...');
-  // We use .get() to establish dependencies inside the memo
-  return `${firstName.get()} ${lastName.get()}`;
-});
+const fullName = createMemo(
+  () => {
+    console.log('Computing full name...');
+    // We use .get() to establish dependencies inside the memo
+    return `${firstName.get()} ${lastName.get()}`;
+  },
+  {
+    lazy: true,
+  },
+);
 // Nothing is logged
 
 console.log('hello');
@@ -415,6 +433,8 @@ console.log(fullName());
 // => "John Doe"
 
 firstName.set('Jane'); // Nothing is logged
+
+console.log('after change');
 
 console.log(fullName());
 // => "Computing full name..."
@@ -460,6 +480,9 @@ user.name = 'Alice'; // Triggers the effect
 #### `@memo`
 
 A class method decorator that turns a getter-like method into a memoized signal.
+
+> [!IMPORTANT]
+> A memo created by this decorator is always lazy and never autorun!
 
 ```typescript
 class User {

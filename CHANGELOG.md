@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## `v0.22.0` (2025-08-25)
+
+Memos are now _non-lazy_ by default.
+- Non-lazy memos are automatically recalculated when dependent signal values change. This also automatically updates any further effects that depend on the memo.
+- Non-lazy memos are therefore a fully-fledged equivalent to a _computed_ signal.
+- Non-lazy is the new standard because that is most likely the behavior most users expect from a computed signal.
+
+Lazy memos (as they were the default in previous library releases) are still available and can be created with the `lazy: true` option.
+- Lazy memos only recalculate when they are explicitly called (and the signal dependencies have changed).
+- Unlike computed signals (or non-lazy memos), effects that have a memo as a dependency are not automatically triggered. This only happens when the memo is read and the memo value changes as a result.
+- Lazy memos are of course still available and can be quite effective.
+
 ## `v0.21.1` (2025-08-21)
 
 - improve documentation
