@@ -380,7 +380,7 @@ Creates a new memoized signal.
 
 The default behavior of a memo is that of a _computed_ signal. If dependencies change, the memo value is recalculated and can in turn trigger dependent effects.
 
-Alternatively, a _lazy_ memo can be created by using the `autorun: false` option.
+Alternatively, a _lazy_ memo can be created by using the `lazy: true` option.
 A lazy memo works in the same way, with the difference that the memo value is _only calculated when the memo is read_. This means that effects dependent on the memo are also only executed when the memo has been read.
 
 
@@ -390,7 +390,7 @@ createMemo<T>(computer: () => T, options?: CreateMemoOptions): SignalReader<T>
 
 - `computer`: The function that computes the value.
 - `options`:
-  - `autorun`: If `false`, the memo will be lazy and only compute when accessed. Default is `true`. A non-lazy memo computes immediately and works like a _computed_ signal.
+  - `lazy`: If `true`, the memo will be lazy and only compute when accessed. Default is `false`. A non-lazy memo computes immediately and works like a _computed_ signal.
   - `attach`: Attaches the memo to a `SignalGroup`.
   - `name`: Gives the memo a name within its group.
 
