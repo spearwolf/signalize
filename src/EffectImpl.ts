@@ -3,10 +3,16 @@ import {Effect} from './Effect.js';
 import {SignalGroup} from './SignalGroup.js';
 import {UniqIdGen} from './UniqIdGen.js';
 import {getCurrentBatch} from './batch.js';
-import {$createEffect, $destroyEffect, $destroySignal} from './constants.js';
+import {
+  $createEffect,
+  $destroyEffect,
+  $destroySignal,
+  RECALL,
+} from './constants.js';
 import {signalImpl} from './createSignal.js';
 import {
   globalDestroySignalQueue,
+  globalEffectCalledQueue,
   globalEffectQueue,
   globalSignalQueue,
 } from './global-queues.js';
@@ -19,6 +25,7 @@ export interface EffectOptions {
   autorun?: boolean;
   dependencies?: EffectDeps;
   attach?: object | SignalGroup;
+  priority?: number;
 }
 
 const isThenable = (value: unknown): value is Promise<unknown> =>
@@ -54,6 +61,8 @@ export class EffectImpl {
 
   autorun = true;
   shouldRun = true;
+
+  readonly priority: number;
 
   #dependencies?: SignalLike<unknown>[];
 
@@ -100,7 +109,9 @@ export class EffectImpl {
     // a batch will call the effect by id to run the effect
     this.id = EffectImpl.idGen.make();
 
-    on(globalEffectQueue, this.id, 'recall', this);
+    this.priority = options?.priority ?? 0;
+
+    on(globalEffectQueue, this.id, RECALL, this);
 
     ++EffectImpl.count;
   }
@@ -179,12 +190,14 @@ export class EffectImpl {
 
     const curBatch = getCurrentBatch();
     if (curBatch) {
-      curBatch.batch(this.id);
+      curBatch.batch(this.id, this.priority);
     } else {
       this.runCleanupCallback();
 
       this.curChildEffectSlot = 0;
       this.shouldRun = false;
+
+      emit(globalEffectCalledQueue, this.id, this.id);
 
       if (this.hasStaticDeps()) {
         this.#nextCleanupCallback = this.callback() as VoidFunc;
@@ -207,7 +220,7 @@ export class EffectImpl {
    * - the effect has been initialized but has not yet run
    * - a signal used in the effect has changed
    */
-  recall() {
+  [RECALL]() {
     this.shouldRun = true;
     if (this.autorun) {
       this.run();
@@ -221,7 +234,7 @@ export class EffectImpl {
       this.#signals.add(signalId);
 
       this.#signalSubscriptions.set(signalId, [
-        on(globalSignalQueue, signalId, 'recall', this),
+        on(globalSignalQueue, signalId, this.priority, RECALL, this),
         once(globalDestroySignalQueue, signalId, $destroySignal, this),
       ]);
     }
@@ -248,7 +261,6 @@ export class EffectImpl {
   }
 
   private unsubscribeSignal(signalId: symbol): void {
-    // off(globalSignalQueue, signalId, this);
     if (this.#signalSubscriptions.has(signalId)) {
       this.#signalSubscriptions.get(signalId).forEach((unsubscribe) => {
         unsubscribe();

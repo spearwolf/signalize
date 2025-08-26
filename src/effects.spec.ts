@@ -157,20 +157,20 @@ describe('createEffect', () => {
     });
 
     expect(effectCallCount).toBe(1);
-    expect(valA).toBeCalledWith(123);
-    expect(valB).toBeCalledWith('abc');
+    expect(valA).toHaveBeenCalledWith(123);
+    expect(valB).toHaveBeenCalledWith('abc');
 
     setA(456);
 
     expect(effectCallCount).toBe(2); // well, just to be really sure
-    expect(valA).toBeCalledWith(456);
-    expect(valB).toBeCalledWith('abc');
+    expect(valA).toHaveBeenCalledWith(456);
+    expect(valB).toHaveBeenCalledWith('abc');
 
     setB('def');
 
     expect(effectCallCount).toBe(3);
-    expect(valA).toBeCalledWith(456);
-    expect(valB).toBeCalledWith('def');
+    expect(valA).toHaveBeenCalledWith(456);
+    expect(valB).toHaveBeenCalledWith('def');
 
     setB('def'); // no change: no effect should be called here
 
@@ -201,20 +201,20 @@ describe('createEffect', () => {
     setA(123);
 
     expect(effectCallCount).toBe(1);
-    expect(valA).toBeCalledWith(123);
-    expect(valB).toBeCalledWith('abc');
+    expect(valA).toHaveBeenCalledWith(123);
+    expect(valB).toHaveBeenCalledWith('abc');
 
     setA(456);
 
     expect(effectCallCount).toBe(2); // well, just to be really sure
-    expect(valA).toBeCalledWith(456);
-    expect(valB).toBeCalledWith('abc');
+    expect(valA).toHaveBeenCalledWith(456);
+    expect(valB).toHaveBeenCalledWith('abc');
 
     setB('def');
 
     expect(effectCallCount).toBe(3);
-    expect(valA).toBeCalledWith(456);
-    expect(valB).toBeCalledWith('def');
+    expect(valA).toHaveBeenCalledWith(456);
+    expect(valB).toHaveBeenCalledWith('def');
 
     setB('def'); // no change: no effect should be called here
 
@@ -287,31 +287,31 @@ describe('createEffect', () => {
     });
 
     assertEffectsCount(3, 'after first effect run');
-    expect(destroyEffectMock).toBeCalledTimes(0);
+    expect(destroyEffectMock).toHaveBeenCalledTimes(0);
 
     expect(firstEffectCallCount).toBe(1);
     expect(secondEffectCallCount).toBe(1);
     expect(thirdEffectCallCount).toBe(1);
-    expect(a).toBeCalledTimes(3);
-    expect(b).toBeCalledTimes(2);
-    expect(c).toBeCalledTimes(2);
-    expect(d).toBeCalledTimes(1);
-    expect(e).toBeCalledTimes(1);
+    expect(a).toHaveBeenCalledTimes(3);
+    expect(b).toHaveBeenCalledTimes(2);
+    expect(c).toHaveBeenCalledTimes(2);
+    expect(d).toHaveBeenCalledTimes(1);
+    expect(e).toHaveBeenCalledTimes(1);
     clearAllMocks();
 
     setA(456);
 
     assertEffectsCount(3, 'after second effect run');
-    expect(destroyEffectMock).toBeCalledTimes(0);
+    expect(destroyEffectMock).toHaveBeenCalledTimes(0);
 
     expect(firstEffectCallCount).toBe(1);
     expect(secondEffectCallCount).toBe(0);
     expect(thirdEffectCallCount).toBe(1);
-    expect(a).toBeCalledTimes(3);
-    expect(b).toBeCalledTimes(1);
-    expect(c).toBeCalledTimes(2);
-    expect(d).toBeCalledTimes(0);
-    expect(e).toBeCalledTimes(1);
+    expect(a).toHaveBeenCalledTimes(3);
+    expect(b).toHaveBeenCalledTimes(1);
+    expect(c).toHaveBeenCalledTimes(2);
+    expect(d).toHaveBeenCalledTimes(0);
+    expect(e).toHaveBeenCalledTimes(1);
     clearAllMocks();
 
     setB('def');
@@ -319,11 +319,11 @@ describe('createEffect', () => {
     expect(firstEffectCallCount).toBe(1);
     expect(secondEffectCallCount).toBe(1);
     expect(thirdEffectCallCount).toBe(0);
-    expect(a).toBeCalledTimes(2);
-    expect(b).toBeCalledTimes(2);
-    expect(c).toBeCalledTimes(1);
-    expect(d).toBeCalledTimes(1);
-    expect(e).toBeCalledTimes(0);
+    expect(a).toHaveBeenCalledTimes(2);
+    expect(b).toHaveBeenCalledTimes(2);
+    expect(c).toHaveBeenCalledTimes(1);
+    expect(d).toHaveBeenCalledTimes(1);
+    expect(e).toHaveBeenCalledTimes(0);
     clearAllMocks();
 
     setC('B');
@@ -331,11 +331,11 @@ describe('createEffect', () => {
     expect(firstEffectCallCount).toBe(1);
     expect(secondEffectCallCount).toBe(0);
     expect(thirdEffectCallCount).toBe(1);
-    expect(a).toBeCalledTimes(3);
-    expect(b).toBeCalledTimes(1);
-    expect(c).toBeCalledTimes(2);
-    expect(d).toBeCalledTimes(0);
-    expect(e).toBeCalledTimes(1);
+    expect(a).toHaveBeenCalledTimes(3);
+    expect(b).toHaveBeenCalledTimes(1);
+    expect(c).toHaveBeenCalledTimes(2);
+    expect(d).toHaveBeenCalledTimes(0);
+    expect(e).toHaveBeenCalledTimes(1);
     clearAllMocks();
 
     setD('bar');
@@ -343,11 +343,11 @@ describe('createEffect', () => {
     expect(firstEffectCallCount).toBe(0);
     expect(secondEffectCallCount).toBe(1);
     expect(thirdEffectCallCount).toBe(0);
-    expect(a).toBeCalledTimes(0);
-    expect(b).toBeCalledTimes(1);
-    expect(c).toBeCalledTimes(0);
-    expect(d).toBeCalledTimes(1);
-    expect(e).toBeCalledTimes(0);
+    expect(a).toHaveBeenCalledTimes(0);
+    expect(b).toHaveBeenCalledTimes(1);
+    expect(c).toHaveBeenCalledTimes(0);
+    expect(d).toHaveBeenCalledTimes(1);
+    expect(e).toHaveBeenCalledTimes(0);
     clearAllMocks();
 
     setE(false);
@@ -355,14 +355,14 @@ describe('createEffect', () => {
     expect(firstEffectCallCount).toBe(0);
     expect(secondEffectCallCount).toBe(0);
     expect(thirdEffectCallCount).toBe(1);
-    expect(a).toBeCalledTimes(1);
-    expect(b).toBeCalledTimes(0);
-    expect(c).toBeCalledTimes(1);
-    expect(d).toBeCalledTimes(0);
-    expect(e).toBeCalledTimes(1);
+    expect(a).toHaveBeenCalledTimes(1);
+    expect(b).toHaveBeenCalledTimes(0);
+    expect(c).toHaveBeenCalledTimes(1);
+    expect(d).toHaveBeenCalledTimes(0);
+    expect(e).toHaveBeenCalledTimes(1);
 
     effect.destroy();
 
-    expect(destroyEffectMock).toBeCalledTimes(3);
+    expect(destroyEffectMock).toHaveBeenCalledTimes(3);
   });
 });

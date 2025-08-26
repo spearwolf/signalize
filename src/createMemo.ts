@@ -1,4 +1,4 @@
-import {once} from '@spearwolf/eventize';
+import {once, Priority} from '@spearwolf/eventize';
 import {createSignal, signalImpl} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';
@@ -9,6 +9,7 @@ export interface CreateMemoOptions {
   attach?: object | SignalGroup;
   name?: string | symbol;
   lazy?: boolean;
+  priority?: number;
 }
 
 export function createMemo<Type>(
@@ -32,6 +33,7 @@ export function createMemo<Type>(
 
   const e = createEffect(() => si.set(callback()), {
     autorun: !(options?.lazy ?? false),
+    priority: options?.priority ?? Priority.C,
     attach: group,
   });
 

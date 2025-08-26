@@ -1,8 +1,10 @@
 # CHANGELOG
 
-## `v0.23.1` (2025-08-26)
+## `v0.24.0` (2025-08-26)
 
 - Optimize dynamic signal unsubscriptions for effects
+- Add a priority option to effects
+  - Memos by default have a higher prio then plain effects
 
 ## `v0.23.0` (2025-08-25)
 

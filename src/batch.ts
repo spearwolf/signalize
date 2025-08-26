@@ -1,18 +1,58 @@
-import {emit} from '@spearwolf/eventize';
-import {globalEffectQueue} from './global-queues.js';
+import {emit, on} from '@spearwolf/eventize';
+import {RECALL} from './constants.js';
+import {globalEffectCalledQueue, globalEffectQueue} from './global-queues.js';
 import type {VoidFunc} from './types.js';
 
 class Batch {
   static current?: Batch;
 
-  readonly #delayedEffects = new Set<symbol>();
+  readonly delayedEffects: Array<[number, Set<symbol>]> = [];
 
-  batch(effectId: symbol) {
-    this.#delayedEffects.add(effectId);
+  batch(effectId: symbol, priority: number) {
+    const len = this.delayedEffects.length;
+    for (let i = 0; i < len; i++) {
+      const [prio, effects] = this.delayedEffects[i];
+      if (prio > priority) {
+        continue;
+      } else if (prio === priority) {
+        effects.add(effectId);
+        return;
+      } else {
+        this.delayedEffects.splice(i, 0, [priority, new Set([effectId])]);
+        return;
+      }
+    }
+    this.delayedEffects.push([priority, new Set([effectId])]);
   }
 
   run() {
-    emit(globalEffectQueue, Array.from(this.#delayedEffects));
+    const alreadyBeenCalled = new Set<symbol>();
+
+    const unsubscribe = [
+      on(globalEffectQueue, (effectId, actionType) => {
+        if (actionType === RECALL) {
+          alreadyBeenCalled.add(effectId);
+        }
+      }),
+      on(globalEffectCalledQueue, (effectId) => {
+        alreadyBeenCalled.add(effectId);
+      }),
+    ];
+
+    const delayedEffects = this.delayedEffects.flatMap(([, effects]) =>
+      Array.from(effects),
+    );
+
+    for (const effectId of delayedEffects) {
+      if (alreadyBeenCalled.has(effectId)) {
+        continue;
+      }
+      emit(globalEffectQueue, effectId, effectId, RECALL);
+    }
+
+    unsubscribe.forEach((unsub) => {
+      unsub();
+    });
   }
 }
 

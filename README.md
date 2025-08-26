@@ -267,6 +267,7 @@ createEffect(callback: () => void | (() => void), options?: EffectOptions): Effe
   - `dependencies`: An array of signals to subscribe to, creating a **static effect**. If omitted, the effect is **dynamic**.
   - `autorun`: If `false`, the effect will not run automatically. You must call `.run()` manually.
   - `attach`: Attaches the effect to a `SignalGroup`.
+  - `priority`: Effects with higher priority are executed before others. Default is `0`.
 
 `createEffect` returns an `Effect` object with two methods:
 - `run()`: Manually triggers the effect, respecting dependencies.
@@ -392,6 +393,7 @@ createMemo<T>(computer: () => T, options?: CreateMemoOptions): SignalReader<T>
 - `options`:
   - `lazy`: If `true`, the memo will be lazy and only compute when accessed. Default is `false`. A non-lazy memo computes immediately and works like a _computed_ signal.
   - `attach`: Attaches the memo to a `SignalGroup`.
+  - `priority`: Memos with higher priority are executed before others effects. Default is `1000`.
   - `name`: Gives the memo a name within its group.
 
 It returns a _signal reader_ function, which you call to get the memo's current value.
