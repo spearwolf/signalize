@@ -1,7 +1,6 @@
-import {SignalGroup} from './SignalGroup.js';
-import type {EffectCallback, SignalLike, VoidFunc} from './types.js';
 import {emit, eventize, off, on, once} from '@spearwolf/eventize';
 import {Effect} from './Effect.js';
+import {SignalGroup} from './SignalGroup.js';
 import {UniqIdGen} from './UniqIdGen.js';
 import {getCurrentBatch} from './batch.js';
 import {$createEffect, $destroyEffect, $destroySignal} from './constants.js';
@@ -12,6 +11,7 @@ import {
   globalSignalQueue,
 } from './global-queues.js';
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
+import type {EffectCallback, SignalLike, VoidFunc} from './types.js';
 
 export type EffectDeps = (SignalLike<any> | string | symbol)[];
 
@@ -41,7 +41,9 @@ export class EffectImpl {
   #nextCleanupCallback?: VoidFunc;
 
   readonly #signals: Set<symbol> = new Set();
-  readonly #signalSubscriptions: Array<() => void> = [];
+
+  #lostSignals: Set<symbol> = new Set();
+  readonly #signalSubscriptions: Map<symbol, Array<() => void>> = new Map();
 
   readonly #destroyedSignals: Set<symbol> = new Set();
 
@@ -187,8 +189,10 @@ export class EffectImpl {
       if (this.hasStaticDeps()) {
         this.#nextCleanupCallback = this.callback() as VoidFunc;
       } else {
-        this.clearSignalSubscriptions();
+        this.#lostSignals = new Set(this.#signals);
         this.#nextCleanupCallback = runWithinEffect(this, this.callback);
+        this.cleanupLostSignals();
+        this.#destroyedSignals.clear();
       }
     }
   };
@@ -211,34 +215,46 @@ export class EffectImpl {
   }
 
   whenSignalIsRead(signalId: symbol): void {
+    this.#lostSignals.delete(signalId);
+
     if (!this.#signals.has(signalId)) {
       this.#signals.add(signalId);
-      this.#signalSubscriptions.push(
+
+      this.#signalSubscriptions.set(signalId, [
         on(globalSignalQueue, signalId, 'recall', this),
         once(globalDestroySignalQueue, signalId, $destroySignal, this),
-      );
+      ]);
     }
   }
 
   [$destroySignal](signalId: symbol): void {
     if (!this.#destroyedSignals.has(signalId) && this.#signals.has(signalId)) {
       this.#destroyedSignals.add(signalId);
-      off(globalSignalQueue, signalId, this);
-      const shouldDestroy = this.#destroyedSignals.size === this.#signals.size;
-      if (shouldDestroy) {
+
+      this.unsubscribeSignal(signalId);
+
+      if (this.#destroyedSignals.size === this.#signals.size) {
         // no signals left, so nobody can trigger this effect anymore
         this.destroy();
       }
     }
   }
 
-  private clearSignalSubscriptions(): void {
-    this.#signalSubscriptions.forEach((unsubscribe) => {
-      unsubscribe();
-    });
-    this.#signalSubscriptions.length = 0;
-    this.#signals.clear();
-    this.#destroyedSignals.clear();
+  private cleanupLostSignals(): void {
+    for (const signalId of this.#lostSignals) {
+      this.unsubscribeSignal(signalId);
+      this.#signals.delete(signalId);
+    }
+  }
+
+  private unsubscribeSignal(signalId: symbol): void {
+    // off(globalSignalQueue, signalId, this);
+    if (this.#signalSubscriptions.has(signalId)) {
+      this.#signalSubscriptions.get(signalId).forEach((unsubscribe) => {
+        unsubscribe();
+      });
+      this.#signalSubscriptions.delete(signalId);
+    }
   }
 
   private runCleanupCallback(): void {
@@ -275,7 +291,8 @@ export class EffectImpl {
     this.#destroyed = true;
 
     this.#signals.clear();
-    this.#signalSubscriptions.length = 0;
+    this.#lostSignals.clear();
+    this.#signalSubscriptions.clear();
     this.#destroyedSignals.clear();
 
     this.childEffects.forEach((effect) => {
