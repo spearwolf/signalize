@@ -508,6 +508,9 @@ console.log(user.fullName()); // (no log) -> "John Doe"
 The `batch()` function allows you to apply multiple signal updates at once, but only trigger dependent effects a single time after all updates are complete.
 This is a powerful optimization to prevent unnecessary re-renders or computations.
 
+> [!CAUTION]
+> `batch()` is a _hint_ not a _guarantee_ to run all effects in just _one_ strike!
+
 ```typescript
 import { createSignal, createEffect, batch } from '@spearwolf/signalize';
 
