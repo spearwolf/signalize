@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `v0.25.0` (not yet released)
+
+- Setting a memo value (the return value of a memo hook) now always happens automatically as a _batch_
+
 ## `v0.24.0` (2025-08-26)
 
 - Optimize dynamic signal unsubscriptions for effects

@@ -4,6 +4,7 @@ import {createEffect} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
 import type {SignalReader} from './types.js';
+import {batch} from './batch.js';
 
 export interface CreateMemoOptions {
   attach?: object | SignalGroup;
@@ -31,11 +32,18 @@ export function createMemo<Type>(
     }
   }
 
-  const e = createEffect(() => si.set(callback()), {
-    autorun: !(options?.lazy ?? false),
-    priority: options?.priority ?? Priority.C,
-    attach: group,
-  });
+  const e = createEffect(
+    () => {
+      batch(() => {
+        si.set(callback());
+      });
+    },
+    {
+      autorun: !(options?.lazy ?? false),
+      priority: options?.priority ?? Priority.C,
+      attach: group,
+    },
+  );
 
   const sImpl = signalImpl(si);
   sImpl.beforeRead = e.run;
