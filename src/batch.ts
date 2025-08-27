@@ -28,6 +28,13 @@ class Batch {
   run() {
     const alreadyBeenCalled = new Set<symbol>();
 
+    // TODO -> v0.25.0
+    // - track effects _output_ signals
+    //   - effects may have multiple output signals
+    //   - memos are effects they always have one output signal at minimum
+    // - create effects dependency graph to avoid re-calling effects that have already been called
+    // - call effects in topological order (respecting priorities)
+
     const unsubscribe = [
       on(globalEffectQueue, (effectId, actionType) => {
         if (actionType === RECALL) {
