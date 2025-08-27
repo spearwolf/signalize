@@ -391,7 +391,7 @@ createMemo<T>(computer: () => T, options?: CreateMemoOptions): SignalReader<T>
 
 - `computer`: The function that computes the value.
 - `options`:
-  - `lazy`: If `true`, the memo will be lazy and only compute when accessed. Default is `false`. A non-lazy memo computes immediately and works like a _computed_ signal.
+  - `lazy`: If `true`, the memo will be **lazy** and only compute when accessed. Default is `false`. A **non-lazy** memo computes immediately and works like a _computed_ signal.
   - `attach`: Attaches the memo to a `SignalGroup`.
   - `priority`: Memos with higher priority are executed before others effects. Default is `1000`.
   - `name`: Gives the memo a name within its group.
@@ -435,11 +435,13 @@ console.log(fullName());
 // => "John Doe"
 
 firstName.set('Jane'); // Nothing is logged
+// NOTE A _non-lazy_ memo (`lazy: false` or no options at all)
+//      would now trigger the recalculation at this point, generating the output => "Computing full name..."
 
 console.log('after change');
 
 console.log(fullName());
-// => "Computing full name..."
+// But since it's a lazy memo, the memo hook is only executed now => "Computing full name..."
 // => "Jane Doe"
 ```
 
