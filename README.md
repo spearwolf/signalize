@@ -200,7 +200,7 @@ createEffect(() => {
 name.value = 'Jane'; // Triggers the effect because we used .get()
 // Console output: Name: Jane, Age: 30
 
-age.value = 31; // Does NOT trigger the effect, because we read it with .value
+age.value = 31; // Does NOT trigger the effect, because we read it with .value inside the effect
 console.log(`Updated Age: ${age.value}`); // Outputs: Updated Age: 31
 
 name.touch(); // This will trigger the effect without changing the value
