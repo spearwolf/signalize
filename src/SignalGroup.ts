@@ -27,6 +27,8 @@ export class SignalGroup {
 
   #parentGroup?: SignalGroup;
 
+  #storeKey?: object;
+
   static get(object: object) {
     if (object == null) return undefined;
     if (object instanceof SignalGroup) {
@@ -69,6 +71,7 @@ export class SignalGroup {
     if (store.has(object)) {
       return store.get(object)!;
     }
+    this.#storeKey = object;
     store.set(object, this);
     eventize(this);
   }
@@ -137,7 +140,7 @@ export class SignalGroup {
   }
 
   hasSignal(name: SignalNameType): boolean {
-    return this.#namedSignals.has(name) || this.#parentGroup?.hasSignal(name);
+    return this.#namedSignals.has(name) || !!this.#parentGroup?.hasSignal(name);
   }
 
   signal<Type = any>(name: SignalNameType): Signal<Type> | undefined {
@@ -255,6 +258,9 @@ export class SignalGroup {
 
     this.#parentGroup?.detachGroup(this);
 
-    store.delete(this);
+    if (this.#storeKey) {
+      store.delete(this.#storeKey);
+      this.#storeKey = undefined;
+    }
   }
 }
