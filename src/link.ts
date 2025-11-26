@@ -80,8 +80,6 @@ export function link<ValueType>(
   return link;
 }
 
-// TODO add tests for unlink()
-
 export function unlink<ValueType>(
   source: LinkableSource<ValueType>,
   target?: LinkableTarget<ValueType>,
