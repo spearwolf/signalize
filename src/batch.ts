@@ -28,12 +28,11 @@ class Batch {
   run() {
     const alreadyBeenCalled = new Set<symbol>();
 
-    // TODO -> v0.25.0
-    // - track effects _output_ signals
-    //   - effects may have multiple output signals
-    //   - memos are effects they always have one output signal at minimum
-    // - create effects dependency graph to avoid re-calling effects that have already been called
-    // - call effects in topological order (respecting priorities)
+    // NOTE Effects are executed in priority order (highest first).
+    // Memos use Priority.C (1000) by default, while regular effects default to 0.
+    // This priority-based ordering ensures memos (computed signals) run before
+    // dependent effects, avoiding redundant effect calls during batch execution.
+    // Effects that have already been triggered during this batch run are skipped.
 
     const unsubscribe = [
       on(globalEffectQueue, (effectId, actionType) => {
