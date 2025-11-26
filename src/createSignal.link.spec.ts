@@ -199,7 +199,7 @@ describe('connect signals', () => {
     expect(muteMock).toHaveBeenCalledTimes(1);
     expect(unmuteMock).toHaveBeenCalledTimes(1);
 
-    con.toggle();
+    con.toggleMute();
 
     setA(7);
 
