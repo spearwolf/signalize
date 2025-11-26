@@ -10,8 +10,6 @@ const store = new Map<object, SignalGroup>();
 
 type SignalNameType = string | symbol;
 
-// TODO add tests for SignalGroup
-
 export class SignalGroup {
   readonly #groups = new Set<SignalGroup>();
 
