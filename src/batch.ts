@@ -29,7 +29,7 @@ class Batch {
     const alreadyBeenCalled = new Set<symbol>();
 
     // NOTE Effects are executed in priority order (highest first).
-    // Memos use Priority.C (1000) by default, while regular effects default to 0.
+    // Memos use a higher priority by default, while regular effects default to 0.
     // This priority-based ordering ensures memos (computed signals) run before
     // dependent effects, avoiding redundant effect calls during batch execution.
     // Effects that have already been triggered during this batch run are skipped.
