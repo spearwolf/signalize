@@ -3,10 +3,12 @@ name: Continuous Integration
 on:
   push:
     branches-ignore: [ "main" ]
+    paths-ignore:
+      - '**.md'
 
 jobs:
   test:
-    name: Run tests
+    name: Run all checks, linters and tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
