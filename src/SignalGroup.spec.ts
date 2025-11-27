@@ -698,4 +698,332 @@ describe('SignalGroup', () => {
       assertSignalsCount(0, 'all cleaned up');
     });
   });
+
+  describe('edge cases and additional code paths', () => {
+    it('SignalGroup.findOrCreate() returns the same group when passed a SignalGroup', () => {
+      const obj = {};
+      const group = SignalGroup.findOrCreate(obj);
+      const sameGroup = SignalGroup.findOrCreate(group);
+      expect(sameGroup).toBe(group);
+      group.clear();
+    });
+
+    it('SignalGroup.delete() does nothing for non-existent object', () => {
+      const obj = {};
+      // Should not throw when deleting a non-existent group
+      expect(() => SignalGroup.delete(obj)).not.toThrow();
+    });
+
+    it('attachSignal() returns the signal even when signal is null/undefined', () => {
+      const group = SignalGroup.findOrCreate({});
+      const result1 = group.attachSignal(null as any);
+      const result2 = group.attachSignal(undefined as any);
+      expect(result1).toBeNull();
+      expect(result2).toBeUndefined();
+      group.clear();
+    });
+
+    it('detachSignal() handles signal without named keys', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(42);
+
+      // Attach without name
+      group.attachSignal(signal);
+      assertSignalsCount(1, 'signal attached');
+
+      // Detach - should work without named keys
+      group.detachSignal(signal);
+      assertSignalsCount(1, 'signal still exists after detach');
+
+      signal.destroy();
+      group.clear();
+    });
+
+    it('detachSignal() handles null/undefined', () => {
+      const group = SignalGroup.findOrCreate({});
+      // Should not throw
+      expect(() => group.detachSignal(null as any)).not.toThrow();
+      expect(() => group.detachSignal(undefined as any)).not.toThrow();
+      group.clear();
+    });
+
+    it('attachSignalByName() allows same signal with multiple names', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(42);
+
+      group.attachSignalByName('name1', signal);
+      group.attachSignalByName('name2', signal);
+
+      expect(group.hasSignal('name1')).toBe(true);
+      expect(group.hasSignal('name2')).toBe(true);
+      expect(group.signal('name1')).toBe(signal);
+      expect(group.signal('name2')).toBe(signal);
+
+      group.clear();
+    });
+
+    it('detachSignal() removes all names when signal has multiple names', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(42);
+
+      group.attachSignalByName('name1', signal);
+      group.attachSignalByName('name2', signal);
+
+      group.detachSignal(signal);
+
+      expect(group.hasSignal('name1')).toBe(false);
+      expect(group.hasSignal('name2')).toBe(false);
+
+      signal.destroy();
+      group.clear();
+    });
+
+    it('detachSignal() reverts to previous signal when detaching non-active signal with same name', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal1 = createSignal(1);
+      const signal2 = createSignal(2);
+      const signal3 = createSignal(3);
+
+      // Attach three signals with the same name
+      group.attachSignalByName('mySignal', signal1);
+      group.attachSignalByName('mySignal', signal2);
+      group.attachSignalByName('mySignal', signal3);
+
+      // signal3 should be the active one
+      expect(group.signal('mySignal')).toBe(signal3);
+
+      // Detach signal1 (not the active one)
+      group.detachSignal(signal1);
+
+      // signal3 should still be active since we didn't detach it
+      expect(group.signal('mySignal')).toBe(signal3);
+      expect(group.hasSignal('mySignal')).toBe(true);
+
+      // Detach signal3 (the active one)
+      group.detachSignal(signal3);
+
+      // signal2 should now be active
+      expect(group.signal('mySignal')).toBe(signal2);
+
+      signal1.destroy();
+      signal3.destroy();
+      group.clear();
+    });
+
+    it('detachGroup() does nothing when group is not a child', () => {
+      const parent = SignalGroup.findOrCreate({});
+      const notChild = SignalGroup.findOrCreate({});
+
+      // notChild was never attached to parent
+      expect(() => parent.detachGroup(notChild)).not.toThrow();
+
+      parent.clear();
+      notChild.clear();
+    });
+
+    it('attachLink() handles null/undefined gracefully', () => {
+      const group = SignalGroup.findOrCreate({});
+      // Should not throw but also not add anything
+      const result1 = group.attachLink(null as any);
+      const result2 = group.attachLink(undefined as any);
+      expect(result1).toBeNull();
+      expect(result2).toBeUndefined();
+      group.clear();
+    });
+
+    it('detachLink() handles null/undefined gracefully', () => {
+      const group = SignalGroup.findOrCreate({});
+      // Should not throw
+      expect(() => group.detachLink(null as any)).not.toThrow();
+      expect(() => group.detachLink(undefined as any)).not.toThrow();
+      group.clear();
+    });
+
+    it('runEffects() runs all attached effects in order', () => {
+      const group = SignalGroup.findOrCreate({});
+      const results: number[] = [];
+
+      const signal1 = createSignal(1);
+      const signal2 = createSignal(2);
+
+      const effect1 = createEffect(
+        () => {
+          results.push(signal1.get());
+        },
+        {autorun: false},
+      );
+
+      const effect2 = createEffect(
+        () => {
+          results.push(signal2.get());
+        },
+        {autorun: false},
+      );
+
+      group.attachEffect(effect1[$effect]);
+      group.attachEffect(effect2[$effect]);
+      group.attachSignal(signal1);
+      group.attachSignal(signal2);
+
+      // Run all effects
+      group.runEffects();
+
+      expect(results).toEqual([1, 2]);
+
+      group.clear();
+    });
+
+    it('clear() properly detaches from parent before clearing store', () => {
+      const parent = SignalGroup.findOrCreate({});
+      const childObj = {};
+      const child = SignalGroup.findOrCreate(childObj);
+      const signal = createSignal(42);
+
+      child.attachSignal(signal);
+      parent.attachGroup(child);
+
+      // Clear child - should detach from parent and remove from store
+      child.clear();
+
+      expect(SignalGroup.get(childObj)).toBeUndefined();
+
+      // Parent should still exist
+      expect(SignalGroup.get(parent)).toBe(parent);
+
+      parent.clear();
+    });
+
+    it('attachSignalByName() with existing name but no other signals removes the name', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(42);
+
+      group.attachSignalByName('mySignal', signal);
+      expect(group.hasSignal('mySignal')).toBe(true);
+
+      // Detach the only signal with this name
+      group.detachSignal(signal);
+
+      // Name should be removed since there are no other signals
+      expect(group.hasSignal('mySignal')).toBe(false);
+      expect(group.signal('mySignal')).toBeUndefined();
+
+      signal.destroy();
+      group.clear();
+    });
+
+    it('signal() returns undefined for unknown name even with parent', () => {
+      const parent = SignalGroup.findOrCreate({});
+      const child = SignalGroup.findOrCreate({});
+      parent.attachGroup(child);
+
+      expect(child.signal('unknownSignal')).toBeUndefined();
+
+      parent.clear();
+    });
+
+    it('clear() calls deprecated destroy() on child groups', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const parent = SignalGroup.findOrCreate({});
+      const child = SignalGroup.findOrCreate({});
+      const signal = createSignal(42);
+
+      child.attachSignal(signal);
+      parent.attachGroup(child);
+
+      // Clear parent - this calls destroy() on child (deprecated)
+      parent.clear();
+
+      // destroy() was called on child
+      expect(warnSpy).toHaveBeenCalledWith(
+        'SignalGroup#destroy is deprecated. Use SignalGroup#clear instead.',
+      );
+
+      warnSpy.mockRestore();
+    });
+
+    it('attachSignal() with same signal multiple times only adds once', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(42);
+
+      group.attachSignal(signal);
+      group.attachSignal(signal);
+      group.attachSignal(signal);
+
+      // Signal should only be in the set once
+      assertSignalsCount(1, 'only one signal');
+
+      group.clear();
+    });
+
+    it('attachGroup() properly re-parents a group', () => {
+      const parent1 = SignalGroup.findOrCreate({});
+      const parent2 = SignalGroup.findOrCreate({});
+      const child = SignalGroup.findOrCreate({});
+      const signal = createSignal(42);
+
+      child.attachSignalByName('childSignal', signal);
+
+      // Attach to first parent
+      parent1.attachGroup(child);
+
+      // Verify child can access itself
+      expect(child.hasSignal('childSignal')).toBe(true);
+
+      // Re-parent to second parent
+      parent2.attachGroup(child);
+
+      // Clearing parent1 should NOT affect child since it was re-parented
+      parent1.clear();
+
+      // Signal in child should still exist
+      assertSignalsCount(1, 'signal still exists after clearing old parent');
+      expect(child.signal('childSignal')).toBe(signal);
+
+      parent2.clear();
+    });
+
+    it('detachSignal() with non-attached signal does nothing', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(42);
+
+      // Never attached to the group
+      expect(() => group.detachSignal(signal)).not.toThrow();
+
+      signal.destroy();
+      group.clear();
+    });
+
+    it('attachEffect() returns the effect', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(0);
+
+      const effect = createEffect(
+        () => {
+          signal.get();
+        },
+        {autorun: false},
+      );
+
+      const result = group.attachEffect(effect[$effect]);
+      expect(result).toBe(effect[$effect]);
+
+      group.attachSignal(signal);
+      group.clear();
+    });
+
+    it('handles createSignal with attach option', () => {
+      const obj = {};
+      createSignal(42, {attach: obj});
+
+      assertSignalsCount(1, 'signal attached via option');
+
+      const group = SignalGroup.get(obj);
+      expect(group).toBeDefined();
+
+      group!.clear();
+
+      assertSignalsCount(0, 'signal destroyed with group');
+    });
+  });
 });
