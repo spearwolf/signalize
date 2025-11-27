@@ -212,6 +212,84 @@ describe('connect signals', () => {
     destroySignal(sigA, sigB);
   });
 
+  it('toggleMute() should toggle between muted and unmuted states', () => {
+    const {get: sigA, set: setA} = createSignal(1);
+    const {get: sigB} = createSignal(-1);
+
+    const muteMock = jest.fn();
+    const unmuteMock = jest.fn();
+
+    const con = link(sigA, sigB);
+
+    on(con, {
+      [MUTE]: muteMock,
+      [UNMUTE]: unmuteMock,
+    });
+
+    expect(con.isMuted).toBe(false);
+
+    // Toggle from unmuted -> muted
+    let result = con.toggleMute();
+    expect(result).toBe(true);
+    expect(con.isMuted).toBe(true);
+    expect(muteMock).toHaveBeenCalledTimes(1);
+    expect(unmuteMock).toHaveBeenCalledTimes(0);
+
+    // Verify link is muted - changes should not propagate
+    setA(100);
+    expect(sigA()).toBe(100);
+    expect(sigB()).toBe(1); // Should remain at initial synced value
+
+    // Toggle from muted -> unmuted
+    result = con.toggleMute();
+    expect(result).toBe(false);
+    expect(con.isMuted).toBe(false);
+    expect(muteMock).toHaveBeenCalledTimes(1);
+    expect(unmuteMock).toHaveBeenCalledTimes(1);
+
+    // Verify link is unmuted - changes should propagate
+    setA(200);
+    expect(sigA()).toBe(200);
+    expect(sigB()).toBe(200);
+
+    // Multiple toggles in sequence
+    con.toggleMute(); // muted
+    con.toggleMute(); // unmuted
+    con.toggleMute(); // muted
+    expect(con.isMuted).toBe(true);
+    expect(muteMock).toHaveBeenCalledTimes(3);
+    expect(unmuteMock).toHaveBeenCalledTimes(2);
+
+    destroySignal(sigA, sigB);
+  });
+
+  it('toggleMute() should do nothing when link is destroyed', () => {
+    const {get: sigA} = createSignal(1);
+    const {get: sigB} = createSignal(-1);
+
+    const muteMock = jest.fn();
+    const unmuteMock = jest.fn();
+
+    const con = link(sigA, sigB);
+
+    on(con, {
+      [MUTE]: muteMock,
+      [UNMUTE]: unmuteMock,
+    });
+
+    con.destroy();
+
+    expect(con.isDestroyed).toBe(true);
+
+    // toggleMute should have no effect on destroyed link
+    const result = con.toggleMute();
+    expect(result).toBe(false); // Returns current muted state (false)
+    expect(muteMock).toHaveBeenCalledTimes(0);
+    expect(unmuteMock).toHaveBeenCalledTimes(0);
+
+    destroySignal(sigA, sigB);
+  });
+
   it('if the signal is destroyed, all connections from this signal should be disconnected automatically', () => {
     const {get: sigA, set: setA} = createSignal(1);
     const {get: sigB} = createSignal(-1);
