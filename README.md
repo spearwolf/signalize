@@ -606,6 +606,27 @@ This is useful when you need to:
 `link()` creates a one-way binding from a source signal to a target signal or a callback function.
 The target will be automatically updated whenever the source changes. `unlink()` removes this connection.
 
+**Function Signatures:**
+
+```typescript
+link<ValueType>(
+  source: SignalReader<ValueType> | Signal<ValueType>,
+  target: SignalReader<ValueType> | Signal<ValueType> | ((value: ValueType) => void),
+  options?: LinkOptions
+): SignalLink<ValueType>
+
+unlink<ValueType>(
+  source: SignalReader<ValueType> | Signal<ValueType>,
+  target?: SignalReader<ValueType> | Signal<ValueType> | ((value: ValueType) => void)
+): void
+```
+
+**Options:**
+
+- `attach`: Attaches the link to a `SignalGroup` for lifecycle management. The link will be destroyed when the group is cleared.
+
+**Basic Usage:**
+
 ```typescript
 import {createSignal, link, unlink} from '@spearwolf/signalize';
 
@@ -629,18 +650,158 @@ source.value = 'C';
 console.log(target.value); // => "B" (no longer updates)
 ```
 
-`link()` returns a _connection_ object with the following properties:
+**Linking to a Callback Function:**
 
-- `lastValue`: The last value that was set on the target when the source changed or the link was created.
-- `nextValue(): Promise<ValueType>`: The next value that will be set on the target when the source changes.
-- `*asyncValues(stopAction?: (value, index) => boolean)`: An async generator that yields the next values from the source signal until the connection is destroyed or stopped or the `stopAction` returns `true`.
-- `touch()`: Triggers the next value immediately, without waiting for the source to change.
-- `isMuted`: A boolean indicating whether the link is currently muted.
-- `mute()`: A method to temporarily stop the link from updating the target.
-- `unmute()`: A method to resume the link after it has been muted.
-- `toggleMute()`: A method to toggle the muted state of the link.
-- `attach(signalGroup)`: The `SignalGroup` to which the link is attached.
-- `destroy()`: A method to remove the link and clean up resources.
+You can also link a signal to a callback function instead of another signal:
+
+```typescript
+const counter = createSignal(0);
+
+const connection = link(counter, (value) => {
+  console.log(`Counter is now: ${value}`);
+});
+// => "Counter is now: 0"
+
+counter.set(1);
+// => "Counter is now: 1"
+
+connection.destroy(); // Stop receiving updates
+```
+
+**Singleton Behavior:**
+
+Links are singletons. Attempting to create a duplicate link returns the existing one:
+
+```typescript
+const sigA = createSignal(1);
+const sigB = createSignal(0);
+
+const con1 = link(sigA, sigB);
+const con2 = link(sigA, sigB);
+
+console.log(con1 === con2); // => true
+```
+
+**Muting Links:**
+
+You can temporarily pause a link without destroying it:
+
+```typescript
+const source = createSignal('A');
+const target = createSignal('');
+
+const connection = link(source, target);
+
+connection.mute();
+source.value = 'B';
+console.log(target.value); // => "A" (unchanged because link is muted)
+
+connection.unmute();
+source.value = 'C';
+console.log(target.value); // => "C"
+
+// Or use toggleMute() to switch between states
+connection.toggleMute();
+```
+
+**Using `unlink()`:**
+
+```typescript
+// Unlink a specific connection
+unlink(source, target);
+
+// Unlink ALL connections from a source
+unlink(source);
+```
+
+**Async Value Iteration:**
+
+Links provide powerful async APIs for reactive programming:
+
+```typescript
+const counter = createSignal(0);
+const display = createSignal(0);
+
+const connection = link(counter, display);
+
+// Wait for the next value
+counter.set(1);
+const nextVal = await connection.nextValue();
+console.log(nextVal); // => The next value after the promise was created
+
+// Iterate over values asynchronously
+for await (const value of connection.asyncValues((val) => val >= 5)) {
+  console.log(value); // Logs each value until 5 is reached
+}
+```
+
+**Attaching to a SignalGroup:**
+
+```typescript
+const groupOwner = {};
+const source = createSignal(1);
+const target = createSignal(0);
+
+// Attach during creation
+const connection = link(source, target, { attach: groupOwner });
+
+// Or attach later
+const connection2 = link(source, someCallback);
+connection2.attach(groupOwner);
+
+// When the group is cleared, all attached links are destroyed
+SignalGroup.get(groupOwner).clear();
+```
+
+**SignalLink Properties and Methods:**
+
+| Property / Method | Description |
+|-------------------|-------------|
+| `lastValue` | The last value that was synchronized to the target |
+| `source` | Reference to the source signal's internal implementation |
+| `isDestroyed` | Boolean indicating if the link has been destroyed |
+| `isMuted` | Boolean indicating if the link is currently muted |
+| `nextValue()` | Returns a Promise that resolves to the next value |
+| `asyncValues(stopAction?)` | Async generator yielding values until stopped or destroyed |
+| `touch()` | Forces the current value to be written to the target |
+| `mute()` | Pauses the link (returns the link for chaining) |
+| `unmute()` | Resumes the link (returns the link for chaining) |
+| `toggleMute()` | Toggles muted state, returns new muted state |
+| `attach(object)` | Attaches the link to a SignalGroup |
+| `destroy()` | Destroys the link and cleans up resources |
+
+**Events:**
+
+Links emit events that you can listen to using the `@spearwolf/eventize` library:
+
+```typescript
+import {on} from '@spearwolf/eventize';
+
+const connection = link(source, target);
+
+on(connection, 'value', (val) => console.log('New value:', val));
+on(connection, 'mute', () => console.log('Link muted'));
+on(connection, 'unmute', () => console.log('Link unmuted'));
+on(connection, 'destroy', () => console.log('Link destroyed'));
+```
+
+**Utility Function `getLinksCount()`:**
+
+```typescript
+import {getLinksCount} from '@spearwolf/signalize';
+
+// Get total count of all active links
+console.log(getLinksCount()); // => 0
+
+link(sigA, sigB);
+link(sigA, sigC);
+
+console.log(getLinksCount()); // => 2
+
+// Get count of links from a specific source
+console.log(getLinksCount(sigA)); // => 2
+console.log(getLinksCount(sigB)); // => 0 (sigB is not a source)
+```
 
 
 #### `SignalGroup`
