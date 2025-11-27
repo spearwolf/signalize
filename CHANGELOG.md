@@ -3,6 +3,7 @@
 ## `v0.25.0` (not yet released)
 
 - Setting a memo value (the return value of a memo hook) now always happens automatically as a _batch_
+- Rename `SignalLink#toggle()` to `SignalLink#toggleMute()` for clarity
 
 ## `v0.24.0` (2025-08-26)
 
