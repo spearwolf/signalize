@@ -54,6 +54,7 @@ Type-safe. Fast. No framework lock-in.
   - [Utilities](#-utilities)
     - [`batch`](#batch)
     - [`beQuiet` & `isQuiet`](#bequiet--isquiet)
+    - [`hibernate`](#hibernate)
     - [`link` & `unlink`](#link--unlink)
     - [`SignalGroup`](#signalgroup)
     - [`SignalAutoMap`](#signalautomap)
@@ -557,6 +558,48 @@ beQuiet(() => {
 console.log('a:', a.value, 'b:', b.value, 'isQuiet:', isQuiet());
 // => a: 100 b: 200 isQuiet: false
 ```
+
+#### `hibernate`
+
+`hibernate()` temporarily suspends all context states (`batch`, `beQuiet`, effect tracking) while executing a callback. This allows code inside the callback to run as if it were called at the top level, without any outer context influencing its behavior.
+
+After the callback completes (whether successfully or with an exception), all previous context states are automatically restored. `hibernate()` calls can be nested safely.
+
+```typescript
+import { createSignal, createEffect, batch, beQuiet, hibernate } from '@spearwolf/signalize';
+
+const count = createSignal(0);
+
+createEffect(() => {
+  console.log('count =', count.get());
+
+  hibernate(() => {
+    // Inside hibernate: no effect tracking, no batch delays
+    // This code runs as if called outside any context
+    const otherSignal = createSignal(100);
+    otherSignal.onChange((val) => console.log('other =', val));
+  });
+});
+// => count = 0
+
+batch(() => {
+  count.set(1); // Effect is delayed by batch
+
+  hibernate(() => {
+    // Inside hibernate: batch is suspended
+    count.set(2); // Effect runs immediately!
+    // => count = 2
+  });
+
+  count.set(3); // Effect is delayed again
+});
+// => count = 3
+```
+
+This is useful when you need to:
+- Create independent effects or signals inside an existing effect without inheriting the parent context
+- Execute code that should trigger effects immediately, even when inside a `batch()`
+- Read signals without creating dependencies in the current effect
 
 #### `link` & `unlink`
 

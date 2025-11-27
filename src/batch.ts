@@ -65,6 +65,14 @@ class Batch {
 
 export const getCurrentBatch = (): Batch | undefined => Batch.current;
 
+export const clearBatch = (): void => {
+  Batch.current = undefined;
+};
+
+export const restoreBatch = (batch: Batch | undefined): void => {
+  Batch.current = batch;
+};
+
 // XXX `batch()` is a _hint_ not a _guarantee_ to run all effects in just _one_ strike.
 
 export function batch(callback: VoidFunc): void {
