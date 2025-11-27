@@ -1,6 +1,6 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.25.0-dev",
+  "version": "0.25.0",
   "description": "signals and effects for all",
   "type": "module",
   "main": "lib/index.js",
@@ -70,7 +70,7 @@
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
-    "@spearwolf/eventize": "^4.0.1"
+    "@spearwolf/eventize": "^4.0.2"
   },
   "homepage": "https://github.com/spearwolf/signalize/",
   "license": "Apache-2.0",

@@ -1,16 +1,16 @@
 # CHANGELOG
 
-## `v0.25.0` (not yet released)
+## `v0.25.0` (2025-11-27)
 
-- Add comprehensive documentation for `SignalGroup` in README
-- Add comprehensive tests for `SignalGroup` API covering all code paths
-- Setting a memo value (the return value of a memo hook) now always happens automatically as a _batch_
-- Rename `SignalLink#toggle()` to `SignalLink#toggleMute()` for clarity
 - Add `hibernate(callback)` function to temporarily suspend all context states during callback execution
   - Clears batch, beQuiet, and effect stack contexts within the callback
   - All API calls function as if called without any context
   - Automatically restores previous states after callback completes (even if an exception occurs)
   - Supports nesting for complex use cases
+- Setting a memo value (the return value of a memo hook) now always happens automatically as a _batch_
+- Rename `SignalLink#toggle()` to `SignalLink#toggleMute()` for clarity
+- Add comprehensive documentation for `SignalGroup` in README
+- Add comprehensive tests for `SignalGroup` API covering all code paths
 
 ## `v0.24.0` (2025-08-26)
 
