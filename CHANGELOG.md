@@ -2,6 +2,8 @@
 
 ## `v0.25.0` (not yet released)
 
+- Add comprehensive documentation for `SignalGroup` in README
+- Add comprehensive tests for `SignalGroup` API covering all code paths
 - Setting a memo value (the return value of a memo hook) now always happens automatically as a _batch_
 - Rename `SignalLink#toggle()` to `SignalLink#toggleMute()` for clarity
 - Add `hibernate(callback)` function to temporarily suspend all context states during callback execution
