@@ -18,3 +18,15 @@ export const runWithinEffect = (
     globalEffectStack.pop();
   }
 };
+
+export const getGlobalEffectStackSnapshot = (): EffectImpl[] =>
+  globalEffectStack.slice();
+
+export const clearGlobalEffectStack = (): void => {
+  globalEffectStack.length = 0;
+};
+
+export const restoreGlobalEffectStack = (snapshot: EffectImpl[]): void => {
+  globalEffectStack.length = 0;
+  globalEffectStack.push(...snapshot);
+};
