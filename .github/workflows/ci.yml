@@ -1,0 +1,31 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches-ignore: [ "main" ]
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.5
+          run_install: true
+
+      - run: pnpm lint
+        name: Run lintings
+
+      - run: pnpm prettier:check
+        name: Run prettier checks
+
+      - run: pnpm test
+        name: Run tests
+

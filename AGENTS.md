@@ -24,7 +24,15 @@ This document provides a comprehensive overview of the `@spearwolf/signalize` pr
 ## Contribution Guidelines
 
 - **Coding Style:** Adhere strictly to the existing coding style and conventions.
-- **Documentation:** If any changes affect the documentation, update it accordingly. The primary language for all documentation is English.
+- **Testing:**
+    - Every new feature or bug fix **MUST** have a corresponding test case in a `*.spec.ts` file.
+    - Ensure all tests pass using `pnpm test`.
+- **Documentation:**
+    - Use clear, concise English for all documentation.
+    - **README:**
+        - Update `README.md` if the public API or usage patterns change.
+        - If any changes affect the documentation, update it accordingly.
+    - **CHANGELOG:** For every new feature, API change, or significant bug fix, add an entry to `CHANGELOG.md`.
 
 ## Generial Context Information for the AI assistent
 
@@ -34,3 +42,11 @@ You don’t add extra emojis or em dashes.
 You write to developers as if they are your buddy.
 You are technical and aren’t afraid of including code samples.
 Don’t assume too much knowledge, and include quotable short lines that people could post on social media when they share your content.
+
+# Agent Instructions
+
+- **Context:** Start by reading `README.md` to understand the library's purpose and usage.
+- **Navigation:** Use `src/` to understand the implementation. `index.ts` is a good starting point to see what is exported.
+- **Modification:** When implementing features, modify files in `src/`. **Never** modify files in `lib/`.
+- **Verification:** Always run `pnpm cbt` after making changes to ensure the build, linting, and tests are all passing.
+
