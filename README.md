@@ -652,7 +652,113 @@ _**TODO** add more details about `SignalGroup` and its methods._
 
 #### `SignalAutoMap`
 
-A `Map`-like class that automatically creates a `Signal` for any key that is accessed but doesn't yet exist. This is useful for managing dynamic collections of reactive state.
+A `Map`-like class that automatically creates a `Signal` for any key that is accessed but doesn't yet exist. This is useful for managing dynamic collections of reactive state, especially when you don't know all the keys upfront.
+
+**Key Features:**
+- Auto-creates signals on first access
+- Supports both string and symbol keys
+- Batches updates for better performance
+- Integrates seamlessly with effects
+
+**Creating a SignalAutoMap:**
+
+```typescript
+import {SignalAutoMap} from '@spearwolf/signalize';
+
+// Create an empty map
+const map = new SignalAutoMap();
+
+// Or create from an object with initial values
+const props = SignalAutoMap.fromProps({name: 'John', age: 30});
+
+// With explicit keys (only creates signals for specified keys)
+const partial = SignalAutoMap.fromProps({a: 1, b: 2, c: 3}, ['a', 'b']);
+// Only 'a' and 'b' have signals, 'c' is ignored
+```
+
+**Accessing and Modifying Signals:**
+
+```typescript
+const map = new SignalAutoMap();
+
+// get() returns an existing signal or creates a new one
+const nameSignal = map.get<string>('name');
+nameSignal.value = 'Alice';
+
+// Accessing the same key returns the same signal
+const sameSignal = map.get('name');
+console.log(sameSignal === nameSignal); // true
+
+// Check if a key exists
+console.log(map.has('name')); // true
+console.log(map.has('unknown')); // false
+```
+
+**Using Symbol Keys:**
+
+```typescript
+const map = new SignalAutoMap();
+const myKey = Symbol('myKey');
+
+map.get(myKey).value = 'secret value';
+console.log(map.get(myKey).value); // 'secret value'
+```
+
+**Batch Updates:**
+
+The `update()` and `updateFromProps()` methods batch multiple signal updates together, ensuring that effects only run once after all updates are complete.
+
+```typescript
+import {SignalAutoMap, createEffect} from '@spearwolf/signalize';
+
+const map = SignalAutoMap.fromProps({x: 0, y: 0, z: 0});
+
+createEffect(() => {
+  console.log(`Position: ${map.get('x').get()}, ${map.get('y').get()}, ${map.get('z').get()}`);
+});
+// => Position: 0, 0, 0
+
+// Update multiple values at once - effect runs only once
+map.update(new Map([['x', 10], ['y', 20], ['z', 30]]));
+// => Position: 10, 20, 30
+
+// Or update from an object
+map.updateFromProps({x: 100, y: 200});
+// => Position: 100, 200, 30
+```
+
+**Iterating Over the Map:**
+
+```typescript
+const map = SignalAutoMap.fromProps({a: 1, b: 2, c: 3});
+
+// Iterate over keys
+for (const key of map.keys()) {
+  console.log(key); // 'a', 'b', 'c'
+}
+
+// Iterate over signals
+for (const signal of map.signals()) {
+  console.log(signal.value); // 1, 2, 3
+}
+
+// Iterate over entries (key-signal pairs)
+for (const [key, signal] of map.entries()) {
+  console.log(`${key}: ${signal.value}`);
+}
+```
+
+**Cleanup:**
+
+When you're done with a SignalAutoMap, call `clear()` to destroy all signals and free resources:
+
+```typescript
+const map = SignalAutoMap.fromProps({a: 1, b: 2});
+// ... use the map ...
+map.clear(); // Destroys all signals
+```
+
+**Full Example with Effects:**
 
 ```typescript
 import {SignalAutoMap, createEffect} from '@spearwolf/signalize';
