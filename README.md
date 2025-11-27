@@ -805,10 +805,198 @@ console.log(getLinksCount(sigB)); // => 0 (sigB is not a source)
 
 #### `SignalGroup`
 
-A `SignalGroup` is a helpful utility for managing the lifecycle of a collection of signals, effects, and links, typically associated with a class instance or component.
-When you use decorators, a `SignalGroup` is automatically created. You can destroy all reactive elements in a group with a single call to `group.clear()`.
+A `SignalGroup` is a powerful utility for managing the lifecycle of a collection of signals, effects, and links. It's typically associated with a class instance or component, allowing you to destroy all reactive elements in a group with a single call to `group.clear()`.
 
-_**TODO** add more details about `SignalGroup` and its methods._
+When you use decorators like `@signal` or `@memo`, a `SignalGroup` is automatically created and associated with your class instance.
+
+**Getting or Creating a SignalGroup:**
+
+```typescript
+import { SignalGroup, createSignal, createEffect, link } from '@spearwolf/signalize';
+
+// Get an existing group (returns undefined if none exists)
+const existingGroup = SignalGroup.get(myObject);
+
+// Get or create a group for an object
+const group = SignalGroup.findOrCreate(myObject);
+
+// Or use the attach option when creating signals, effects, or links
+const signal = createSignal(42, { attach: myObject });
+const effect = createEffect(() => console.log(signal.get()), { attach: myObject });
+const connection = link(sourceSignal, targetSignal, { attach: myObject });
+```
+
+**Attaching Signals, Effects, and Links:**
+
+```typescript
+const group = SignalGroup.findOrCreate({});
+
+// Attach signals
+const count = createSignal(0);
+group.attachSignal(count);
+
+// Attach named signals (can be looked up by name)
+const name = createSignal('John');
+group.attachSignalByName('userName', name);
+
+// Now you can retrieve it by name
+group.hasSignal('userName');  // => true
+group.signal('userName');     // => the name signal
+
+// Attach effects
+const effect = createEffect(() => console.log(count.get()), { autorun: false });
+group.attachEffect(effect[$effect]);  // $effect is imported from constants
+
+// Attach links
+const target = createSignal(0);
+const connection = link(count, target);
+group.attachLink(connection);
+```
+
+**Named Signal Behavior:**
+
+Named signals support a powerful stacking mechanism. You can assign multiple signals to the same name, and the most recently attached signal becomes the "active" one.
+
+```typescript
+const group = SignalGroup.findOrCreate({});
+const signal1 = createSignal(1);
+const signal2 = createSignal(2);
+
+group.attachSignalByName('myValue', signal1);
+group.signal('myValue');  // => signal1
+
+group.attachSignalByName('myValue', signal2);
+group.signal('myValue');  // => signal2 (most recent)
+
+// Detaching signal2 reverts to signal1
+group.detachSignal(signal2);
+group.signal('myValue');  // => signal1
+
+signal2.destroy();
+group.clear();
+```
+
+**Nested Groups:**
+
+Groups can be nested in a parent-child hierarchy. Child groups inherit named signals from their parents.
+
+```typescript
+const parent = SignalGroup.findOrCreate({});
+const child = SignalGroup.findOrCreate({});
+
+const sharedConfig = createSignal({ theme: 'dark' });
+parent.attachSignalByName('config', sharedConfig);
+
+parent.attachGroup(child);
+
+// Child can access parent's named signals
+child.hasSignal('config');  // => true
+child.signal('config');     // => sharedConfig
+
+// Child signals shadow parent signals with the same name
+const childConfig = createSignal({ theme: 'light' });
+child.attachSignalByName('config', childConfig);
+child.signal('config');     // => childConfig (child's own)
+
+// Clearing parent also destroys all children
+parent.clear();
+```
+
+**Running Effects:**
+
+You can manually trigger all effects in a group (and its child groups):
+
+```typescript
+const group = SignalGroup.findOrCreate({});
+const value = createSignal(0);
+
+const effect = createEffect(() => {
+  console.log('Value:', value.get());
+}, { autorun: false });
+
+group.attachEffect(effect[$effect]);
+group.attachSignal(value);
+
+value.set(42);
+
+// Manually run all effects in the group
+group.runEffects();  // => logs "Value: 42"
+```
+
+**Cleanup with clear():**
+
+When you're done with a group, call `clear()` to destroy all attached signals, effects, links, and child groups:
+
+```typescript
+const group = SignalGroup.findOrCreate(myComponent);
+
+// ... attach signals, effects, links ...
+
+// When the component is destroyed:
+group.clear();  // Destroys everything attached to this group
+```
+
+**Static Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `SignalGroup.get(object)` | Returns the SignalGroup for an object, or `undefined` if none exists |
+| `SignalGroup.findOrCreate(object)` | Gets or creates a SignalGroup for an object |
+| `SignalGroup.delete(object)` | Clears and removes the SignalGroup for an object |
+| `SignalGroup.clear()` | Clears all SignalGroups globally |
+
+**Instance Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `attachSignal(signal)` | Adds a signal to the group |
+| `attachSignalByName(name, signal?)` | Associates a signal with a name, or removes the name if signal is omitted |
+| `detachSignal(signal)` | Removes a signal from the group (but doesn't destroy it) |
+| `hasSignal(name)` | Returns true if a signal with the given name exists (checks parent groups too) |
+| `signal(name)` | Returns the signal with the given name (checks parent groups too) |
+| `attachEffect(effect)` | Adds an effect to the group |
+| `runEffects()` | Runs all attached effects (and child group effects) |
+| `attachLink(link)` | Adds a link to the group |
+| `detachLink(link)` | Removes a link from the group (but doesn't destroy it) |
+| `attachGroup(group)` | Adds a child group (re-parents if already attached elsewhere) |
+| `detachGroup(group)` | Removes a child group |
+| `clear()` | Destroys all attached signals, effects, links, and child groups |
+
+**Typical Usage Pattern:**
+
+```typescript
+import { signal, memo } from '@spearwolf/signalize/decorators';
+import { SignalGroup, createEffect } from '@spearwolf/signalize';
+
+class UserProfile {
+  @signal() accessor name = '';
+  @signal() accessor age = 0;
+
+  @memo()
+  displayText() {
+    return `${this.name} (${this.age} years old)`;
+  }
+
+  constructor() {
+    // Effects are automatically attached to the group via the 'attach' option
+    createEffect(() => {
+      console.log('Profile updated:', this.displayText());
+    }, { attach: this });
+  }
+
+  destroy() {
+    // Clean up all signals, effects, and memos in one call
+    SignalGroup.get(this)?.clear();
+  }
+}
+
+const profile = new UserProfile();
+profile.name = 'Alice';
+profile.age = 30;
+// => logs "Profile updated: Alice (30 years old)"
+
+profile.destroy();  // Clean up everything
+```
 
 #### `SignalAutoMap`
 
