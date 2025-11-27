@@ -595,7 +595,7 @@ console.log(target.value); // => "B" (no longer updates)
 - `isMuted`: A boolean indicating whether the link is currently muted.
 - `mute()`: A method to temporarily stop the link from updating the target.
 - `unmute()`: A method to resume the link after it has been muted.
-- `toggle()`: A method to toggle the muted state of the link.
+- `toggleMute()`: A method to toggle the muted state of the link.
 - `attach(signalGroup)`: The `SignalGroup` to which the link is attached.
 - `destroy()`: A method to remove the link and clean up resources.
 
