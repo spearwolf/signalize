@@ -29,6 +29,11 @@ export function hibernate<T>(callback: () => T): T {
   clearBeQuiet();
   clearGlobalEffectStack();
 
+  // Flush the saved batch after clearing (so effects actually run instead of being re-batched)
+  if (savedBatch) {
+    savedBatch.flush();
+  }
+
   try {
     return callback();
   } finally {

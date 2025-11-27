@@ -46,22 +46,24 @@ describe('hibernate', () => {
         // Within batch, effect should not have been called yet
         expect(effectCallCount).toBe(1);
 
-        // Within hibernate, a new batch context is started
-        // Changes to signals should trigger effects immediately after hibernate
+        // When hibernate is called, it flushes the current batch first
+        // Then clears the batch context and executes the callback
         hibernate(() => {
+          // The batch was flushed before hibernate callback, so effect already ran for setA(1)
+          expect(effectCallCount).toBe(2);
           setA(2);
           // Since we're not in a batch anymore, effect runs immediately
-          expect(effectCallCount).toBe(2);
+          expect(effectCallCount).toBe(3);
         });
 
         // After hibernate, we're back in the batch context
         setA(3);
         // Effect still delayed because we're in the outer batch
-        expect(effectCallCount).toBe(2);
+        expect(effectCallCount).toBe(3);
       });
 
       // After batch completes, the final effect should run
-      expect(effectCallCount).toBe(3);
+      expect(effectCallCount).toBe(4);
       expect(a()).toBe(3);
 
       effect.destroy();
@@ -90,6 +92,50 @@ describe('hibernate', () => {
 
       effect.destroy();
       destroySignal(a);
+    });
+
+    it('flushes batched effects before hibernate callback executes', () => {
+      const {get: a, set: setA} = createSignal(0);
+      const {get: b, set: setB} = createSignal(0);
+
+      let effectCallCount = 0;
+      const effectValues: number[] = [];
+      const effect = createEffect(() => {
+        effectCallCount++;
+        effectValues.push(a());
+      });
+
+      expect(effectCallCount).toBe(1);
+      expect(effectValues).toEqual([0]);
+
+      batch(() => {
+        setA(1);
+        setA(2);
+        setA(3);
+        // All changes are batched, effect not yet called
+        expect(effectCallCount).toBe(1);
+
+        hibernate(() => {
+          // Batch was flushed before callback - effect ran once for the latest value (3)
+          expect(effectCallCount).toBe(2);
+          expect(effectValues).toEqual([0, 3]);
+
+          // Changes inside hibernate are immediate (no batch context)
+          setB(100); // Different signal, no effect
+          expect(effectCallCount).toBe(2);
+        });
+
+        // Back in batch context, batch is restored (but was flushed, so it's empty now)
+        setA(4);
+        expect(effectCallCount).toBe(2); // Still batched
+      });
+
+      // After batch completes, final effect runs
+      expect(effectCallCount).toBe(3);
+      expect(effectValues).toEqual([0, 3, 4]);
+
+      effect.destroy();
+      destroySignal(a, b);
     });
   });
 
@@ -281,19 +327,21 @@ describe('hibernate', () => {
 
         expect(() => {
           hibernate(() => {
-            setA(2);
+            // The batch was flushed before hibernate callback, so effect already ran for setA(1)
             expect(effectCallCount).toBe(2);
+            setA(2);
+            expect(effectCallCount).toBe(3);
             throw new Error('test error');
           });
         }).toThrow('test error');
 
         // Back in batch context after exception
         setA(3);
-        expect(effectCallCount).toBe(2);
+        expect(effectCallCount).toBe(3);
       });
 
       // Batch runs after completing
-      expect(effectCallCount).toBe(3);
+      expect(effectCallCount).toBe(4);
       expect(a()).toBe(3);
 
       effect.destroy();
