@@ -47,5 +47,4 @@ export interface SignalValueParams {
 }
 
 export interface SignalWriterParams<T>
-  extends SignalParams<T>,
-    SignalValueParams {}
+  extends SignalParams<T>, SignalValueParams {}
