@@ -57,6 +57,11 @@ Type-safe. Fast. No framework lock-in.
     - [`link` & `unlink`](#link--unlink)
     - [`SignalGroup`](#signalgroup)
     - [`SignalAutoMap`](#signalautomap)
+    - [Debugging & Inspection](#debugging--inspection)
+  - [Advanced API](#-advanced-api)
+    - [Effect Lifecycle Hooks](#effect-lifecycle-hooks)
+    - [Object Signals API](#object-signals-api)
+  - [TypeScript Types Reference](#-typescript-types-reference)
 - [Contributing](#-contributing)
 - [License](#-license)
 
@@ -1127,6 +1132,322 @@ autoMap.get('bar').value = 'world';
 autoMap.updateFromProps({foo: 'hallo'});
 // => "hallo world"
 ```
+
+#### Debugging & Inspection
+
+Signalize provides utilities to inspect and debug your reactive system. These are particularly useful during development, testing, and troubleshooting.
+
+**`isSignal(value)`**
+
+Checks if a value is a signal. Useful for type checking and conditional logic.
+
+```typescript
+import { createSignal, isSignal } from '@spearwolf/signalize';
+
+const count = createSignal(0);
+const notSignal = 42;
+
+console.log(isSignal(count));      // => true
+console.log(isSignal(notSignal));  // => false
+
+// Useful in conditional logic
+function processValue(value: unknown) {
+  if (isSignal(value)) {
+    return value.get(); // It's a signal, read it
+  }
+  return value; // It's a regular value
+}
+```
+
+**`getSignalsCount()`**
+
+Returns the total number of currently active signals in your application. This is helpful for debugging memory leaks or understanding the reactive state of your app.
+
+```typescript
+import { createSignal, getSignalsCount } from '@spearwolf/signalize';
+
+console.log(getSignalsCount()); // => 0
+
+const a = createSignal(1);
+const b = createSignal(2);
+console.log(getSignalsCount()); // => 2
+
+a.destroy();
+console.log(getSignalsCount()); // => 1
+
+b.destroy();
+console.log(getSignalsCount()); // => 0
+```
+
+**`getEffectsCount()`**
+
+Returns the total number of currently active effects. Like `getSignalsCount()`, this is valuable for debugging and monitoring.
+
+```typescript
+import { createSignal, createEffect, getEffectsCount } from '@spearwolf/signalize';
+
+console.log(getEffectsCount()); // => 0
+
+const count = createSignal(0);
+const effect = createEffect(() => console.log(count.get()));
+console.log(getEffectsCount()); // => 1
+
+effect.destroy();
+console.log(getEffectsCount()); // => 0
+```
+
+These debugging utilities are particularly useful for:
+- **Memory leak detection**: Monitor signal and effect counts to ensure proper cleanup
+- **Testing**: Assert expected numbers of active signals/effects
+- **Performance analysis**: Track reactive overhead in different parts of your app
+- **Type checking**: Use `isSignal()` for runtime type guards
+
+### 🔧 Advanced API
+
+This section covers advanced features primarily intended for framework integration, debugging tools, and specialized use cases.
+
+#### Effect Lifecycle Hooks
+
+For advanced scenarios like building devtools, analytics, or framework integrations, you can hook into the global effect lifecycle.
+
+**`onCreateEffect(callback)`**
+
+Registers a callback that fires whenever any effect is created in your application.
+
+```typescript
+import { createEffect, onCreateEffect } from '@spearwolf/signalize';
+
+onCreateEffect((effect) => {
+  console.log('Effect created:', effect.id);
+});
+
+createEffect(() => console.log('Hello'));
+// => "Effect created: Symbol(ef:1)"
+// => "Hello"
+```
+
+**`onDestroyEffect(callback)`**
+
+Registers a callback that fires whenever any effect is destroyed.
+
+```typescript
+import { createEffect, onDestroyEffect } from '@spearwolf/signalize';
+
+onDestroyEffect((effect) => {
+  console.log('Effect destroyed:', effect.id);
+});
+
+const effect = createEffect(() => console.log('Hello'));
+effect.destroy();
+// => "Effect destroyed: Symbol(ef:1)"
+```
+
+> [!WARNING]
+> These hooks are **global** and persist for the lifetime of your application. Use them sparingly and primarily for debugging, development tools, or framework integration layers.
+
+**Common use cases:**
+- Building reactive debugging tools and browser devtools extensions
+- Tracking effect creation for testing and assertions
+- Implementing logging and analytics for reactive behavior
+- Creating framework integration layers that need to monitor reactivity
+
+#### Object Signals API
+
+These low-level functions support the decorator API and allow direct manipulation of signals attached to objects. Most users won't need these, but they're available for advanced use cases.
+
+```typescript
+import {
+  findObjectSignalByName,
+  findObjectSignals,
+  findObjectSignalNames,
+  destroyObjectSignals
+} from '@spearwolf/signalize';
+```
+
+**`findObjectSignalByName(object, name)`**
+
+Find a signal by name on an object. Returns the signal or `undefined`.
+
+**`findObjectSignals(object)`**
+
+Get an array of all signals attached to an object.
+
+**`findObjectSignalNames(object)`**
+
+Get an array of names (strings or symbols) of all signals on an object.
+
+**`destroyObjectSignals(...objects)`**
+
+Destroy all signals attached to one or more objects.
+
+> [!NOTE]
+> These functions are primarily used internally by the `@signal` and `@memo` decorators to manage class-based reactive state.
+
+### 📘 TypeScript Types Reference
+
+This section documents the key TypeScript types exported by `@spearwolf/signalize`. Understanding these types is helpful when working with TypeScript or when you need precise type information.
+
+#### Core Signal Types
+
+**`Signal<T>`**
+
+The main signal class with getter, setter, and utility methods. See the [Signals](#-signals) section for complete details on its properties and methods.
+
+**`SignalReader<T>`**
+
+A function type for reading signal values with automatic dependency tracking.
+
+```typescript
+type SignalReader<T> = (callback?: ValueChangedCallback<T>) => T;
+```
+
+This is the type of the `.get` property on a `Signal<T>`. When called inside an effect, it establishes a dependency. You can also pass an optional callback for change notifications.
+
+```typescript
+import { createSignal } from '@spearwolf/signalize';
+
+const count = createSignal(0);
+const reader: SignalReader<number> = count.get;
+
+// Read with dependency tracking
+const value = reader(); // or count.get()
+
+// Read with change callback
+reader((newValue) => console.log('Changed to:', newValue));
+```
+
+**`SignalWriter<T>`**
+
+A function type for writing signal values.
+
+```typescript
+type SignalWriter<T> = (value: T | (() => T), params?: SignalWriterParams<T>) => void;
+```
+
+This is the type of the `.set` property on a `Signal<T>`. It accepts either a direct value or a function that returns a value.
+
+**`SignalLike<T>`**
+
+An interface representing objects that contain a signal implementation. Both `Signal<T>` and signal reader functions implement this interface.
+
+```typescript
+interface SignalLike<T> {
+  [$signal]: ISignalImpl<T>;
+}
+```
+
+#### Effect Types
+
+**`Effect`**
+
+The effect class returned by `createEffect()`. It has two key methods:
+- `run()`: Manually trigger the effect
+- `destroy()`: Stop and clean up the effect
+
+**`EffectCallback`**
+
+The callback function type for effects. Can optionally return a cleanup function.
+
+```typescript
+type EffectCallback = () => void | (() => void);
+```
+
+```typescript
+import { createEffect, EffectCallback } from '@spearwolf/signalize';
+
+const callback: EffectCallback = () => {
+  console.log('Effect runs');
+  return () => console.log('Cleanup runs');
+};
+
+createEffect(callback);
+```
+
+**`EffectOptions`**
+
+Options for creating effects with `createEffect()`.
+
+```typescript
+interface EffectOptions {
+  autorun?: boolean;              // Run immediately (default: true)
+  dependencies?: EffectDeps;      // Static dependencies array
+  attach?: object | SignalGroup;  // Lifecycle management
+  priority?: number;              // Execution priority (default: 0)
+}
+```
+
+#### Callback Types
+
+**`ValueChangedCallback<T>`**
+
+Callback type for signal change notifications, such as in `signal.onChange()`.
+
+```typescript
+type ValueChangedCallback<T> = (value: T) => void | (() => void);
+```
+
+**`CompareFunc<T>`**
+
+Custom comparison function for signal values. Return `true` if values are considered equal (no change notification).
+
+```typescript
+type CompareFunc<T> = (a: T, b: T) => boolean;
+
+// Example: deep equality for arrays
+const arraySignal = createSignal([1, 2, 3], {
+  compare: (a, b) => a?.every((val, idx) => val === b?.[idx]) && a.length === b.length
+});
+```
+
+#### Parameter Types
+
+**`SignalParams<T>`**
+
+Options for creating signals with `createSignal()`.
+
+```typescript
+interface SignalParams<T> {
+  lazy?: boolean;                 // Lazy initialization
+  compare?: CompareFunc<T>;       // Custom equality check
+  beforeRead?: () => void;        // Hook called before reading
+  attach?: object | SignalGroup;  // Lifecycle management
+}
+```
+
+**`CreateMemoOptions`**
+
+Options for creating memos with `createMemo()`.
+
+```typescript
+interface CreateMemoOptions {
+  lazy?: boolean;                 // Lazy evaluation (default: false)
+  attach?: object | SignalGroup;  // Lifecycle management
+  priority?: number;              // Execution priority (default: 1000)
+  name?: string | symbol;         // Name within SignalGroup
+}
+```
+
+**`LinkOptions`**
+
+Options for creating links with `link()`.
+
+```typescript
+interface LinkOptions {
+  attach?: object | SignalGroup;  // Attach link to a group for lifecycle management
+}
+```
+
+#### Utility Types
+
+**`VoidFunc`**
+
+A simple function type that takes no arguments and returns nothing.
+
+```typescript
+type VoidFunc = () => void;
+```
+
+Used for cleanup functions, unsubscribe callbacks, etc.
 
 ## ❤️ Contributing
 

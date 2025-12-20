@@ -10,7 +10,12 @@ export {
   unmuteSignal,
 } from './createSignal.js';
 export {Effect} from './Effect.js';
-export {createEffect, getEffectsCount} from './effects.js';
+export {
+  createEffect,
+  getEffectsCount,
+  onCreateEffect,
+  onDestroyEffect,
+} from './effects.js';
 export {hibernate} from './hibernate.js';
 export * from './link.js';
 export {
