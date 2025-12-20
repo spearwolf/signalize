@@ -504,7 +504,7 @@ createEffect(() => {
   console.log('Outer effect running');
   
   if (enabled.get()) {
-    // This inner effect is a child of the outer effect
+    // This creates a nested effect that will become a child of the outer effect
     createEffect(() => {
       console.log('Inner effect, value:', value.get());
     });
@@ -626,11 +626,19 @@ createEffect(() => {
 3. **Rethink Your Design**: Often, circular dependencies indicate that your reactive graph needs restructuring. Consider using memos or reorganizing your state:
 
 ```typescript
-// Instead of two signals updating each other:
-const celsius = createSignal(0);
-const fahrenheit = createSignal(32);
+// ❌ BAD: Two signals updating each other
+const celsius1 = createSignal(0);
+const fahrenheit1 = createSignal(32);
 
-// Use one signal and a memo:
+createEffect(() => {
+  fahrenheit1.set((celsius1.get() * 9/5) + 32);
+});
+createEffect(() => {
+  celsius1.set((fahrenheit1.get() - 32) * 5/9);
+});
+// Circular dependency!
+
+// ✅ GOOD: Use one signal and a memo
 const celsius = createSignal(0);
 const fahrenheit = createMemo(() => (celsius.get() * 9/5) + 32);
 
