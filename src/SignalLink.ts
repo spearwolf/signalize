@@ -77,18 +77,21 @@ export abstract class SignalLink<ValueType = any> {
   async *asyncValues(
     stopAction?: (value: ValueType, index: number) => boolean,
   ) {
-    let i = 0;
-    while (!this.isDestroyed) {
-      try {
-        const next = await this.nextValue();
-        if (stopAction && stopAction(next, i++)) break;
-        retain(this, VALUE);
-        yield next;
-      } catch {
-        break;
+    retain(this, VALUE);
+    try {
+      let i = 0;
+      while (!this.isDestroyed) {
+        try {
+          const next = await this.nextValue();
+          if (stopAction && stopAction(next, i++)) break;
+          yield next;
+        } catch {
+          break;
+        }
       }
+    } finally {
+      retainClear(this, VALUE);
     }
-    retainClear(this, VALUE);
   }
 
   destroy() {
