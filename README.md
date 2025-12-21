@@ -252,7 +252,124 @@ destroySignal(mySignal, anotherSignal);
 
 You can also call the `.destroy()` method on the signal object itself.
 
-_**TODO** add an advanced section about signal objects, getter and setter functions._
+#### Signal Objects, Getters, and Setters
+
+When you call `createSignal()`, it returns a `Signal` object that provides several ways to interact with your reactive value. Understanding these different approaches helps you choose the right tool for each situation.
+
+**The Signal Object**
+
+The `Signal<T>` object returned by `createSignal()` is your primary interface for working with reactive values. It provides:
+
+```typescript
+import { createSignal } from '@spearwolf/signalize';
+
+const count = createSignal(42);
+
+// These are all different properties/methods on the signal object:
+count.get      // A function for reading with dependency tracking
+count.set      // A function for writing values
+count.value    // A getter/setter property for direct access
+count.onChange // A method to create simple effects
+count.touch    // A method to trigger effects without changing the value
+count.destroy  // A method to clean up the signal
+count.muted    // A boolean property to mute/unmute the signal
+```
+
+**Getter and Setter Functions**
+
+The `.get` and `.set` properties are actually functions that you can pass around independently:
+
+```typescript
+import { createSignal, createEffect } from '@spearwolf/signalize';
+
+const temperature = createSignal(20);
+
+// Extract the getter and setter functions
+const getTemp = temperature.get;
+const setTemp = temperature.set;
+
+// Use them independently
+createEffect(() => {
+  console.log(`Temperature: ${getTemp()}°C`);
+});
+// => "Temperature: 20°C"
+
+setTemp(25);
+// => "Temperature: 25°C"
+```
+
+This is particularly useful when you want to expose read-only or write-only access to a signal:
+
+```typescript
+class Thermometer {
+  #temp = createSignal(20);
+  
+  // Expose only the getter, keeping write access private
+  get temperature() {
+    return this.#temp.get;
+  }
+  
+  // Internal method that can write
+  calibrate(offset: number) {
+    this.#temp.set(this.#temp.value + offset);
+  }
+}
+
+const thermo = new Thermometer();
+
+createEffect(() => {
+  // Users can read the temperature
+  console.log(thermo.temperature());
+});
+
+// But they cannot write to it directly
+// thermo.temperature.set(100); // This would work if we exposed .set
+```
+
+**Working with Signal Types**
+
+The library provides TypeScript types for different aspects of signals:
+
+- `Signal<T>`: The complete signal object with all methods
+- `SignalReader<T>`: Just the getter function type
+- `SignalWriter<T>`: Just the setter function type
+- `SignalLike<T>`: An interface for objects containing a signal
+
+```typescript
+import { createSignal, SignalReader, SignalWriter } from '@spearwolf/signalize';
+
+const name = createSignal('Alice');
+
+// You can type parameters to accept only readers or writers
+function logValue(reader: SignalReader<string>) {
+  console.log(reader());
+}
+
+function setValue(writer: SignalWriter<string>, value: string) {
+  writer(value);
+}
+
+logValue(name.get);  // Works!
+setValue(name.set, 'Bob');  // Works!
+```
+
+**Advanced: Accessing the Internal Implementation**
+
+While you typically won't need this, you can access the internal signal implementation using the `$signal` symbol:
+
+```typescript
+import { createSignal, $signal } from '@spearwolf/signalize';
+
+const count = createSignal(0);
+
+// Access the internal implementation (advanced use case)
+const impl = count[$signal];
+console.log(impl.id);        // The unique symbol ID
+console.log(impl.muted);     // Muted state
+console.log(impl.destroyed); // Destroyed state
+```
+
+This is primarily used by the library's internal utilities and advanced framework integrations, not for typical application code.
 
 
 ### 🎭 Effects
@@ -371,9 +488,188 @@ effect.run(); //  Does nothing, because the value didn't change
 
 #### Nested Effects
 
-Effects can be nested, allowing you to create complex reactive flows. However, be cautious of circular dependencies, as they can lead to infinite loops.
+Effects can be nested, allowing you to create complex reactive flows where one effect creates another. This is a powerful feature for building dynamic, hierarchical reactive systems.
 
-_**TODO** Add more details about nested effects and circular dependencies._
+**How Nested Effects Work**
+
+When you create an effect inside another effect, the inner effect becomes a "child" of the outer effect:
+
+```typescript
+import { createSignal, createEffect } from '@spearwolf/signalize';
+
+const enabled = createSignal(true);
+const value = createSignal(0);
+
+createEffect(() => {
+  console.log('Outer effect running');
+  
+  if (enabled.get()) {
+    // This creates a nested effect that will become a child of the outer effect
+    createEffect(() => {
+      console.log('Inner effect, value:', value.get());
+    });
+  }
+});
+// => "Outer effect running"
+// => "Inner effect, value: 0"
+
+value.set(1);
+// => "Inner effect, value: 1"
+
+enabled.set(false);
+// => "Outer effect running"
+// (Inner effect is destroyed because the outer effect re-ran)
+
+value.set(2);
+// (Nothing happens - the inner effect was destroyed)
+```
+
+**Key Behaviors of Nested Effects**
+
+1. **Automatic Lifecycle Management**: When a parent effect re-runs, its child effects are automatically destroyed and recreated. This prevents memory leaks and ensures consistency.
+
+2. **Isolation**: Child effects created during a parent effect's run are isolated. They track their own dependencies independently of the parent.
+
+3. **Cleanup**: When a parent effect is destroyed, all its child effects are automatically destroyed too.
+
+```typescript
+const outerSignal = createSignal('A');
+const innerSignal = createSignal(1);
+
+const parentEffect = createEffect(() => {
+  console.log('Parent:', outerSignal.get());
+  
+  createEffect(() => {
+    console.log('Child:', innerSignal.get());
+  });
+  
+  return () => console.log('Parent cleanup');
+});
+// => "Parent: A"
+// => "Child: 1"
+
+outerSignal.set('B');
+// => "Parent cleanup"
+// => "Parent: B"
+// => "Child: 1"
+// (Note: Child effect is recreated, not re-run)
+
+parentEffect.destroy();
+// => "Parent cleanup"
+// (Both parent and child are destroyed)
+```
+
+**Avoiding Circular Dependencies**
+
+While nested effects are powerful, you must be careful to avoid circular dependencies that cause infinite loops. A circular dependency occurs when:
+
+1. Effect A depends on Signal X
+2. Effect A modifies Signal Y (often in a nested effect)
+3. Effect B depends on Signal Y
+4. Effect B modifies Signal X
+
+Here's an example of what **NOT** to do:
+
+```typescript
+// ❌ BAD: Creates an infinite loop!
+const a = createSignal(0);
+const b = createSignal(0);
+
+createEffect(() => {
+  const valA = a.get();
+  console.log('A changed to:', valA);
+  b.set(valA + 1); // Triggers effect B
+});
+
+createEffect(() => {
+  const valB = b.get();
+  console.log('B changed to:', valB);
+  a.set(valB + 1); // Triggers effect A again!
+});
+// => Infinite loop! A -> B -> A -> B -> ...
+```
+
+**How to Avoid Circular Dependencies**
+
+1. **Use Guards**: Add conditions to prevent unnecessary updates:
+
+```typescript
+const a = createSignal(0);
+const b = createSignal(0);
+
+createEffect(() => {
+  const valA = a.get();
+  // Only update b if the value is actually different
+  if (b.value !== valA + 1) {
+    b.set(valA + 1);
+  }
+});
+```
+
+2. **Use `batch()`**: Group related updates together:
+
+```typescript
+import { batch } from '@spearwolf/signalize';
+
+const x = createSignal(0);
+const y = createSignal(0);
+
+createEffect(() => {
+  const valX = x.get();
+  batch(() => {
+    // Both updates happen together, effects run once
+    y.set(valX * 2);
+  });
+});
+```
+
+3. **Rethink Your Design**: Often, circular dependencies indicate that your reactive graph needs restructuring. Consider using memos or reorganizing your state:
+
+```typescript
+// ❌ BAD: Two signals updating each other
+const celsius1 = createSignal(0);
+const fahrenheit1 = createSignal(32);
+
+createEffect(() => {
+  fahrenheit1.set((celsius1.get() * 9/5) + 32);
+});
+createEffect(() => {
+  celsius1.set((fahrenheit1.get() - 32) * 5/9);
+});
+// Circular dependency!
+
+// ✅ GOOD: Use one signal and a memo
+const celsius = createSignal(0);
+const fahrenheit = createMemo(() => (celsius.get() * 9/5) + 32);
+
+// Now there's only one source of truth
+celsius.set(100);
+console.log(fahrenheit()); // => 212
+```
+
+4. **Use `beQuiet()`**: Temporarily disable effect tracking for specific updates:
+
+```typescript
+import { beQuiet } from '@spearwolf/signalize';
+
+const a = createSignal(0);
+const b = createSignal(0);
+
+createEffect(() => {
+  const valA = a.get();
+  // Update b without triggering effects
+  beQuiet(() => {
+    b.set(valA + 1);
+  });
+});
+```
+
+**Best Practices**
+
+- Keep your reactive dependency graph **acyclic** (one-directional)
+- Use **memos** for derived values instead of effects that update signals
+- Think of effects as the **"edge"** of your system (DOM updates, logging, etc.), not for internal state synchronization
+- When in doubt, draw your dependency graph on paper to visualize the flow
 
 
 ### 🧠 Memos (Computed Signals)
