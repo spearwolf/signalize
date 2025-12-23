@@ -1039,6 +1039,310 @@ When you use decorators like `@signal` or `@memo`, a `SignalGroup` is automatica
 
 This is essential for building modular architectures where groups of signals act as nodes or modules that can be connected and managed together.
 
+### 🛠️ Utilities
+
+#### `batch`
+
+The `batch()` function allows you to apply multiple signal updates at once, but only trigger dependent effects a single time after all updates are complete.
+This is a powerful optimization to prevent unnecessary re-renders or computations.
+
+> [!CAUTION]
+> `batch()` is a _hint_ not a _guarantee_ to run all effects in just _one_ strike!
+
+```typescript
+import { createSignal, createEffect, batch } from '@spearwolf/signalize';
+
+const a = createSignal(1);
+const b = createSignal(2);
+
+createEffect(() => console.log(`a=${a.get()}, b=${b.get()}`));
+// => a=1, b=2
+
+batch(() => {
+  a.set(10); // Effect does not run yet
+  b.set(20); // Effect does not run yet
+}); // Effect runs once at the end
+// => a=10, b=20
+```
+
+#### `beQuiet` & `isQuiet`
+
+`beQuiet()` executes a function without creating any signal dependencies within it.
+
+> [!NOTE]
+> `isQuiet()` can be used to check if you are currently inside a `beQuiet` call.
+
+```typescript
+import { createSignal, createEffect, beQuiet, isQuiet } from '@spearwolf/signalize';
+
+const a = createSignal(1);
+const b = createSignal(2);
+
+createEffect(() => console.log(`a=${a.get()}, b=${b.get()}`));
+// => a=1, b=2
+
+beQuiet(() => {
+  a.set(100); // Effect does not run
+  b.set(200); // Effect does not run
+  console.log('Inside beQuiet, isQuiet=', isQuiet());
+  // => Inside beQuiet, isQuiet= true
+}); // Effect does not run at all
+
+console.log('a:', a.value, 'b:', b.value, 'isQuiet:', isQuiet());
+// => a: 100 b: 200 isQuiet: false
+```
+
+#### `hibernate`
+
+`hibernate()` temporarily suspends all context states (`batch`, `beQuiet`, effect tracking) while executing a callback. This allows code inside the callback to run as if it were called at the top level, without any outer context influencing its behavior.
+
+After the callback completes (whether successfully or with an exception), all previous context states are automatically restored. `hibernate()` calls can be nested safely.
+
+```typescript
+import { createSignal, createEffect, batch, beQuiet, hibernate } from '@spearwolf/signalize';
+
+const count = createSignal(0);
+
+createEffect(() => {
+  console.log('count =', count.get());
+
+  hibernate(() => {
+    // Inside hibernate: no effect tracking, no batch delays
+    // This code runs as if called outside any context
+    const otherSignal = createSignal(100);
+    otherSignal.onChange((val) => console.log('other =', val));
+  });
+});
+// => count = 0
+
+batch(() => {
+  count.set(1); // Effect is delayed by batch
+
+  hibernate(() => {
+    // Inside hibernate: batch is suspended
+    count.set(2); // Effect runs immediately!
+    // => count = 2
+  });
+
+  count.set(3); // Effect is delayed again
+});
+// => count = 3
+```
+
+This is useful when you need to:
+- Create independent effects or signals inside an existing effect without inheriting the parent context
+- Execute code that should trigger effects immediately, even when inside a `batch()`
+- Read signals without creating dependencies in the current effect
+
+#### `link` & `unlink`
+
+`link()` creates a one-way binding from a source signal to a target signal or a callback function.
+The target will be automatically updated whenever the source changes. `unlink()` removes this connection.
+
+**Function Signatures:**
+
+```typescript
+link<ValueType>(
+  source: SignalReader<ValueType> | Signal<ValueType>,
+  target: SignalReader<ValueType> | Signal<ValueType> | ((value: ValueType) => void),
+  options?: LinkOptions
+): SignalLink<ValueType>
+
+unlink<ValueType>(
+  source: SignalReader<ValueType> | Signal<ValueType>,
+  target?: SignalReader<ValueType> | Signal<ValueType> | ((value: ValueType) => void)
+): void
+```
+
+**Options:**
+
+- `attach`: Attaches the link to a `SignalGroup` for lifecycle management. The link will be destroyed when the group is cleared.
+
+**Basic Usage:**
+
+```typescript
+import {createSignal, link, unlink} from '@spearwolf/signalize';
+
+const source = createSignal('A');
+const target = createSignal('');
+
+const connection = link(source, target);
+
+console.log(target.value); // => "A" (value is synced on link)
+console.log(connection.lastValue); // => "A"
+
+source.value = 'B';
+
+console.log(target.value); // => "B"
+
+// Stop the connection
+unlink(source, target); // or connection.destroy()
+
+source.value = 'C';
+
+console.log(target.value); // => "B" (no longer updates)
+```
+
+**Linking to a Callback Function:**
+
+You can also link a signal to a callback function instead of another signal:
+
+```typescript
+const counter = createSignal(0);
+
+const connection = link(counter, (value) => {
+  console.log(`Counter is now: ${value}`);
+});
+// => "Counter is now: 0"
+
+counter.set(1);
+// => "Counter is now: 1"
+
+connection.destroy(); // Stop receiving updates
+```
+
+**Singleton Behavior:**
+
+Links are singletons. Attempting to create a duplicate link returns the existing one:
+
+```typescript
+const sigA = createSignal(1);
+const sigB = createSignal(0);
+
+const con1 = link(sigA, sigB);
+const con2 = link(sigA, sigB);
+
+console.log(con1 === con2); // => true
+```
+
+**Muting Links:**
+
+You can temporarily pause a link without destroying it:
+
+```typescript
+const source = createSignal('A');
+const target = createSignal('');
+
+const connection = link(source, target);
+
+connection.mute();
+source.value = 'B';
+console.log(target.value); // => "A" (unchanged because link is muted)
+
+connection.unmute();
+source.value = 'C';
+console.log(target.value); // => "C"
+
+// Or use toggleMute() to switch between states
+connection.toggleMute();
+```
+
+**Using `unlink()`:**
+
+```typescript
+// Unlink a specific connection
+unlink(source, target);
+
+// Unlink ALL connections from a source
+unlink(source);
+```
+
+**Async Value Iteration:**
+
+Links provide powerful async APIs for reactive programming:
+
+```typescript
+const counter = createSignal(0);
+const display = createSignal(0);
+
+const connection = link(counter, display);
+
+// Wait for the next value
+counter.set(1);
+const nextVal = await connection.nextValue();
+console.log(nextVal); // => The next value after the promise was created
+
+// Iterate over values asynchronously
+for await (const value of connection.asyncValues((val) => val >= 5)) {
+  console.log(value); // Logs each value until 5 is reached
+}
+```
+
+**Attaching to a SignalGroup:**
+
+```typescript
+const groupOwner = {};
+const source = createSignal(1);
+const target = createSignal(0);
+
+// Attach during creation
+const connection = link(source, target, { attach: groupOwner });
+
+// Or attach later
+const connection2 = link(source, someCallback);
+connection2.attach(groupOwner);
+
+// When the group is cleared, all attached links are destroyed
+SignalGroup.get(groupOwner).clear();
+```
+
+**SignalLink Properties and Methods:**
+
+| Property / Method | Description |
+|-------------------|-------------|
+| `lastValue` | The last value that was synchronized to the target |
+| `source` | Reference to the source signal's internal implementation |
+| `isDestroyed` | Boolean indicating if the link has been destroyed |
+| `isMuted` | Boolean indicating if the link is currently muted |
+| `nextValue()` | Returns a Promise that resolves to the next value |
+| `asyncValues(stopAction?)` | Async generator yielding values until stopped or destroyed |
+| `touch()` | Forces the current value to be written to the target |
+| `mute()` | Pauses the link (returns the link for chaining) |
+| `unmute()` | Resumes the link (returns the link for chaining) |
+| `toggleMute()` | Toggles muted state, returns new muted state |
+| `attach(object)` | Attaches the link to a SignalGroup |
+| `destroy()` | Destroys the link and cleans up resources |
+
+**Events:**
+
+Links emit events that you can listen to using the `@spearwolf/eventize` library:
+
+```typescript
+import {on} from '@spearwolf/eventize';
+
+const connection = link(source, target);
+
+on(connection, 'value', (val) => console.log('New value:', val));
+on(connection, 'mute', () => console.log('Link muted'));
+on(connection, 'unmute', () => console.log('Link unmuted'));
+on(connection, 'destroy', () => console.log('Link destroyed'));
+```
+
+**Utility Function `getLinksCount()`:**
+
+```typescript
+import {getLinksCount} from '@spearwolf/signalize';
+
+// Get total count of all active links
+console.log(getLinksCount()); // => 0
+
+link(sigA, sigB);
+link(sigA, sigC);
+
+console.log(getLinksCount()); // => 2
+
+// Get count of links from a specific source
+console.log(getLinksCount(sigA)); // => 2
+console.log(getLinksCount(sigB)); // => 0 (sigB is not a source)
+```
+
+
+#### `SignalGroup`
+
+A `SignalGroup` is a powerful utility for managing the lifecycle of a collection of signals, effects, and links. It's typically associated with a class instance or component, allowing you to destroy all reactive elements in a group with a single call to `group.clear()`.
+
+When you use decorators like `@signal` or `@memo`, a `SignalGroup` is automatically created and associated with your class instance.
+
 **Getting or Creating a SignalGroup:**
 
 ```typescript
@@ -1357,101 +1661,6 @@ autoMap.get('bar').value = 'world';
 autoMap.updateFromProps({foo: 'hallo'});
 // => "hallo world"
 ```
-
-### 🛠️ Utilities
-
-#### `batch`
-
-The `batch()` function allows you to apply multiple signal updates at once, but only trigger dependent effects a single time after all updates are complete.
-This is a powerful optimization to prevent unnecessary re-renders or computations.
-
-> [!CAUTION]
-> `batch()` is a _hint_ not a _guarantee_ to run all effects in just _one_ strike!
-
-```typescript
-import { createSignal, createEffect, batch } from '@spearwolf/signalize';
-
-const a = createSignal(1);
-const b = createSignal(2);
-
-createEffect(() => console.log(`a=${a.get()}, b=${b.get()}`));
-// => a=1, b=2
-
-batch(() => {
-  a.set(10); // Effect does not run yet
-  b.set(20); // Effect does not run yet
-}); // Effect runs once at the end
-// => a=10, b=20
-```
-
-#### `beQuiet` & `isQuiet`
-
-`beQuiet()` executes a function without creating any signal dependencies within it.
-
-> [!NOTE]
-> `isQuiet()` can be used to check if you are currently inside a `beQuiet` call.
-
-```typescript
-import { createSignal, createEffect, beQuiet, isQuiet } from '@spearwolf/signalize';
-
-const a = createSignal(1);
-const b = createSignal(2);
-
-createEffect(() => console.log(`a=${a.get()}, b=${b.get()}`));
-// => a=1, b=2
-
-beQuiet(() => {
-  a.set(100); // Effect does not run
-  b.set(200); // Effect does not run
-  console.log('Inside beQuiet, isQuiet=', isQuiet());
-  // => Inside beQuiet, isQuiet= true
-}); // Effect does not run at all
-
-console.log('a:', a.value, 'b:', b.value, 'isQuiet:', isQuiet());
-// => a: 100 b: 200 isQuiet: false
-```
-
-#### `hibernate`
-
-`hibernate()` temporarily suspends all context states (`batch`, `beQuiet`, effect tracking) while executing a callback. This allows code inside the callback to run as if it were called at the top level, without any outer context influencing its behavior.
-
-After the callback completes (whether successfully or with an exception), all previous context states are automatically restored. `hibernate()` calls can be nested safely.
-
-```typescript
-import { createSignal, createEffect, batch, beQuiet, hibernate } from '@spearwolf/signalize';
-
-const count = createSignal(0);
-
-createEffect(() => {
-  console.log('count =', count.get());
-
-  hibernate(() => {
-    // Inside hibernate: no effect tracking, no batch delays
-    // This code runs as if called outside any context
-    const otherSignal = createSignal(100);
-    otherSignal.onChange((val) => console.log('other =', val));
-  });
-});
-// => count = 0
-
-batch(() => {
-  count.set(1); // Effect is delayed by batch
-
-  hibernate(() => {
-    // Inside hibernate: batch is suspended
-    count.set(2); // Effect runs immediately!
-    // => count = 2
-  });
-
-  count.set(3); // Effect is delayed again
-});
-// => count = 3
-```
-
-This is useful when you need to:
-- Create independent effects or signals inside an existing effect without inheriting the parent context
-- Execute code that should trigger effects immediately, even when inside a `batch()`
-- Read signals without creating dependencies in the current effect
 
 #### Debugging & Inspection
 
