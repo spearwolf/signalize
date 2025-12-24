@@ -7,6 +7,7 @@ This guide provides a comprehensive overview of `@spearwolf/signalize`, organize
 - [Signals](#signals)
 - [Effects](#effects)
 - [Memos (Computed Values)](#memos-computed-values)
+- [Links (Signal Connections)](#links-signal-connections)
 - [Decorators (Class API)](#decorators-class-api)
 - [Utilities](#utilities)
 - [Advanced Patterns](#advanced-patterns)
@@ -203,6 +204,188 @@ const heavy = createMemo(() => heavyComputation(), { lazy: true });
 
 ---
 
+## Links (Signal Connections)
+
+Links are the fourth core concept in `@spearwolf/signalize`, enabling you to build modular, graph-like reactive architectures. Inspired by visual programming tools like Unreal Engine's Blueprints and Blender's shader graph editor, links create explicit one-way data flows between signals.
+
+### Why Use Links?
+
+While effects are perfect for side effects (DOM updates, logging, API calls), **links excel at propagating state between signals** in a structured way. They provide:
+
+- **Explicit data flow**: Clear input/output relationships like wires in a visual graph
+- **Modular architecture**: Build reusable signal modules that connect together
+- **Lifecycle management**: Group related signals and links for easy cleanup
+- **Declarative connections**: No manual effect wiring needed
+
+### Basic Link Usage
+
+Create a link to automatically sync a source signal to a target:
+
+```typescript
+import { createSignal, link } from '@spearwolf/signalize';
+
+const source = createSignal(10);
+const target = createSignal(0);
+
+// Create a one-way connection: source → target
+const connection = link(source, target);
+
+console.log(target.value); // => 10 (synced immediately)
+
+source.set(42);
+console.log(target.value); // => 42 (target updates automatically)
+
+// Clean up when done
+connection.destroy();
+```
+
+### Links to Callbacks
+
+You can also link signals to callback functions for custom handling:
+
+```typescript
+const temperature = createSignal(20);
+
+const connection = link(temperature, (temp) => {
+  console.log(`Temperature: ${temp}°C`);
+});
+// => "Temperature: 20°C"
+
+temperature.set(25);
+// => "Temperature: 25°C"
+```
+
+### Building Modular Architectures with SignalGroup
+
+`SignalGroup` is essential for organizing signals into modules or nodes. It manages the lifecycle of signals, effects, and links as a cohesive unit:
+
+```typescript
+import { SignalGroup, createSignal, link } from '@spearwolf/signalize';
+
+// Create a module/node
+class AudioNode {
+  group = SignalGroup.findOrCreate(this);
+  
+  // Inputs
+  input = createSignal(0, { attach: this });
+  
+  // Outputs  
+  output = createSignal(0, { attach: this });
+  
+  constructor() {
+    // Internal processing
+    link(this.input, this.output, { attach: this });
+  }
+  
+  destroy() {
+    this.group.clear(); // Destroys all signals and links
+  }
+}
+
+// Create and connect nodes
+const nodeA = new AudioNode();
+const nodeB = new AudioNode();
+
+// Connect nodes: nodeA.output → nodeB.input
+link(nodeA.output, nodeB.input);
+
+nodeA.input.set(100);
+console.log(nodeB.output.value); // => 100
+
+// Clean up
+nodeA.destroy();
+nodeB.destroy();
+```
+
+### Named Signals in Groups
+
+Groups support named signals for module-level inputs/outputs:
+
+```typescript
+const group = SignalGroup.findOrCreate({});
+
+const volume = createSignal(0.5);
+group.attachSignalByName('volume', volume);
+
+// Access by name
+const vol = group.signal('volume');
+vol.set(0.8);
+```
+
+### Link Control
+
+Links provide fine-grained control:
+
+```typescript
+const connection = link(source, target);
+
+// Pause/resume
+connection.mute();
+source.set(999); // target doesn't update
+connection.unmute();
+
+// Force sync
+connection.touch();
+
+// Check status
+console.log(connection.isMuted); // => false
+console.log(connection.lastValue); // => last synced value
+```
+
+### Async Value Iteration
+
+Links support async patterns for reactive programming:
+
+```typescript
+const counter = createSignal(0);
+const display = createSignal(0);
+const connection = link(counter, display);
+
+// Wait for next value
+const nextValue = await connection.nextValue();
+
+// Iterate until condition
+for await (const value of connection.asyncValues((v) => v >= 10)) {
+  console.log(value);
+}
+```
+
+### Use Cases
+
+**Game Engines & Audio Processing**
+- Build node-based processing graphs
+- Connect audio/visual effect modules
+- Manage complex state pipelines
+
+**Plugin Architectures**
+- Define clear module interfaces
+- Connect plugins via input/output signals
+- Hot-reload modules without breaking connections
+
+**Data Flow Visualization**
+- Represent reactive graphs visually
+- Debug complex state flows
+- Build visual programming tools
+
+### Best Practices
+
+1. **Use links for state propagation between modules**
+   - Not for side effects (use effects instead)
+   
+2. **Organize related signals in SignalGroups**
+   - Makes lifecycle management simple
+   - Enables hierarchical architectures
+   
+3. **Name your signals in groups**
+   - Provides clear module interfaces
+   - Enables dynamic signal lookup
+
+4. **Clean up with group.clear()**
+   - Destroys all signals, effects, and links together
+   - Prevents memory leaks
+
+---
+
 ## Decorators (Class API)
 
 If you use classes, decorators provide a clean syntax.
@@ -281,54 +464,6 @@ createEffect(() => {
     });
   });
 });
-```
-
----
-
-## Connections between Signals
-
-### `link`
-
-Connect a source signal to a target signal (or callback).
-
-```typescript
-import { link } from '@spearwolf/signalize';
-
-const source = createSignal(1);
-const target = createSignal(0);
-
-link(source, target); // target will now mirror source
-```
-
-### `SignalGroup`
-
-Manage the lifecycle of multiple signals and effects. Useful for components.
-
-```typescript
-import { SignalGroup } from '@spearwolf/signalize';
-
-const group = SignalGroup.findOrCreate(myComponent);
-
-// Attach resources to the group
-createEffect(() => { ... }, { attach: group });
-
-// Clean up everything at once
-group.clear();
-```
-
-### `SignalAutoMap`
-
-A map that automatically creates signals for keys when they are accessed. Great for dynamic collections.
-
-```typescript
-import { SignalAutoMap } from '@spearwolf/signalize';
-
-const settings = new SignalAutoMap();
-
-// Automatically creates a signal for 'theme'
-createEffect(() => console.log(settings.get('theme').get()));
-
-settings.get('theme').set('dark');
 ```
 
 ---

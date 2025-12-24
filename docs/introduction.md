@@ -14,7 +14,7 @@ It is built to be **framework-agnostic**, meaning you can use it in any JavaScri
 
 ## Core Concepts
 
-The library revolves around three main concepts:
+The library revolves around four main concepts:
 
 ### 1. Signals 📢
 Signals are the atoms of state. They hold values that can change over time. When a signal's value changes, it notifies any "listeners" that depend on it. Think of them as reactive variables.
@@ -24,6 +24,9 @@ Effects are functions that automatically run whenever the signals they depend on
 
 ### 3. Memos 🧠
 Memos (or computed signals) are values derived from other signals. They are automatically updated when their dependencies change, but they are also cached—so they only re-compute when necessary.
+
+### 4. Links (Connections) 🔗
+Inspired by visual programming environments like Unreal Engine's Blueprints and Blender's shader graph editor, links create explicit one-way data flows between signals. They enable you to build modular, graph-like architectures where signals act as nodes with inputs and outputs. Combined with Signal Groups, you can organize signals into reusable modules and manage complex reactive systems with clear, declarative connections.
 
 ## Why @spearwolf/signalize?
 
