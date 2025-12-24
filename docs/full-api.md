@@ -5,11 +5,9 @@
 - [Signals](#signals)
 - [Effects](#effects)
 - [Memos](#memos)
+- [Links (Signal Connections)](#links-signal-connections)
 - [Decorators](#decorators)
 - [Utilities](#utilities)
-- [Connections between Signals](#connections-between-signals)
-- [SignalGroup](#signalgroup)
-- [SignalAutoMap](#signalautomap)
 - [Object Signals API](#object-signals-api)
 
 ## Signals
@@ -128,54 +126,134 @@ Helper to read a signal's value without tracking (equivalent to `signal.value`).
 
 ---
 
-## Connections between Signals
+## Links (Signal Connections)
+
+Links create explicit one-way data flows between signals, inspired by visual programming tools. They enable modular, graph-like reactive architectures.
 
 ### `link(source, target, options?)`
-Creates a one-way binding.
-- **source**: Signal or Reader.
-- **target**: Signal or Callback.
-- **options**: `{ attach?: object }`
-- **Returns**: `SignalLink`
+Creates a one-way binding from source to target.
+
+- **source**: `SignalReader<T> | Signal<T>` - The signal to read from.
+- **target**: `SignalReader<T> | Signal<T> | (value: T) => void` - The signal or callback to write to.
+- **options**: 
+  - `attach?: object` - Attach the link to a SignalGroup for lifecycle management.
+- **Returns**: `SignalLink<T>` - The connection object.
+
+```typescript
+const source = createSignal(1);
+const target = createSignal(0);
+const connection = link(source, target);
+```
 
 ### `unlink(source, target?)`
-Removes a link.
+Removes a link between signals.
+
+- **source**: The source signal.
+- **target** (optional): The specific target to unlink. If omitted, unlinks all targets from the source.
+
+```typescript
+unlink(source, target); // Unlink specific connection
+unlink(source);         // Unlink all connections from source
+```
+
+### `getLinksCount(source?)`
+Returns the number of active links.
+
+- **source** (optional): If provided, returns count for this specific source. If omitted, returns total count of all links.
+
+```typescript
+console.log(getLinksCount());      // Total links
+console.log(getLinksCount(signal)); // Links from this signal
+```
+
+### `SignalLink<T>`
+The connection object returned by `link()`.
+
+**Properties:**
+- `lastValue: T` - The last value that was synchronized.
+- `source: ISignalImpl<T>` - Reference to the source signal implementation.
+- `isDestroyed: boolean` - Whether the link has been destroyed.
+- `isMuted: boolean` - Whether the link is currently muted.
+
+**Methods:**
+- `touch(): this` - Forces the current value to be written to the target.
+- `mute(): this` - Pauses the link without destroying it.
+- `unmute(): this` - Resumes the link.
+- `toggleMute(): boolean` - Toggles muted state, returns new state.
+- `attach(object): SignalGroup` - Attaches the link to a group.
+- `destroy(): void` - Destroys the link and cleans up.
+- `nextValue(): Promise<T>` - Returns a promise that resolves to the next value.
+- `asyncValues(stopAction?): AsyncGenerator<T>` - Async generator yielding values.
+
+**Events** (using `@spearwolf/eventize`):
+- `'value'` - Emitted when a new value is synchronized.
+- `'mute'` - Emitted when the link is muted.
+- `'unmute'` - Emitted when the link is unmuted.
+- `'destroy'` - Emitted when the link is destroyed.
 
 ---
 
 ## SignalGroup
 
-Helper for managing collections of reactive objects.
+A utility for managing the lifecycle of collections of signals, effects, and links. Essential for building modular architectures where groups act as nodes or modules.
 
-### `SignalGroup.findOrCreate(object)`
+### Static Methods
+
+#### `SignalGroup.findOrCreate(object)`
 Gets or creates a group associated with an object.
 
-### `SignalGroup.get(object)`
-Gets existing group or undefined.
+#### `SignalGroup.get(object)`
+Gets existing group or returns `undefined`.
 
-### `SignalGroup.clear()`
+#### `SignalGroup.delete(object)`
+Clears and removes the group for an object.
+
+#### `SignalGroup.clear()`
 Clears all groups globally.
 
 ### Instance Methods
-- **`attachSignal(signal)`**
-- **`attachEffect(effect)`**
-- **`attachLink(link)`**
-- **`clear()`**: Destroys everything in the group.
-- **`runEffects()`**: Manually runs all effects in the group.
+
+- **`attachSignal(signal)`** - Adds a signal to the group.
+- **`attachSignalByName(name, signal?)`** - Associates a signal with a name.
+- **`detachSignal(signal)`** - Removes a signal (doesn't destroy it).
+- **`hasSignal(name)`** - Checks if a named signal exists.
+- **`signal(name)`** - Returns the signal with the given name.
+- **`attachEffect(effect)`** - Adds an effect to the group.
+- **`attachLink(link)`** - Adds a link to the group.
+- **`detachLink(link)`** - Removes a link (doesn't destroy it).
+- **`attachGroup(group)`** - Adds a child group.
+- **`detachGroup(group)`** - Removes a child group.
+- **`clear()`** - Destroys everything in the group.
+- **`runEffects()`** - Manually runs all effects in the group.
 
 ---
 
 ## SignalAutoMap
 
-A Map implementation that auto-creates signals for keys.
+A Map-like class that automatically creates signals for accessed keys. Useful for dynamic collections.
 
 ### `new SignalAutoMap()`
-### `SignalAutoMap.fromProps(props)`
+Creates an empty auto-map.
+
+### `SignalAutoMap.fromProps(props, keys?)`
+Creates an auto-map from an object.
+- **props**: Object with initial values.
+- **keys** (optional): Array of specific keys to include.
+
 ### Instance Methods
-- **`get(key)`**: Returns (or creates) the signal for the key.
-- **`has(key)`**
-- **`update(map)`**
-- **`updateFromProps(props)`**
-- *Object Signals API
+
+- **`get<T>(key): Signal<T>`** - Returns (or creates) the signal for the key.
+- **`has(key): boolean`** - Checks if a key exists.
+- **`update(map: Map)`** - Batch updates from a Map (batched).
+- **`updateFromProps(props: object)`** - Batch updates from an object (batched).
+- **`keys(): IterableIterator`** - Iterates over keys.
+- **`signals(): IterableIterator`** - Iterates over signals.
+- **`entries(): IterableIterator`** - Iterates over [key, signal] pairs.
+- **`clear(): void`** - Destroys all signals.
+
+---
+
+## Object Signals API
 
 Advanced functions for managing signals attached to objects (used by decorators).
 

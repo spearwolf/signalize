@@ -50,13 +50,14 @@ Type-safe. Fast. No framework lock-in.
   - [Decorators (Class-based API)](#-decorators-class-based-api)
     - [`@signal`](#signal)
     - [`@memo`](#memo)
+  - [Signal Links & Connections](#-signal-links--connections)
+    - [`link` & `unlink`](#link--unlink)
+    - [`SignalGroup`](#signalgroup)
+    - [`SignalAutoMap`](#signalautomap)
   - [Utilities](#-utilities)
     - [`batch`](#batch)
     - [`beQuiet` & `isQuiet`](#bequiet--isquiet)
     - [`hibernate`](#hibernate)
-    - [`link` & `unlink`](#link--unlink)
-    - [`SignalGroup`](#signalgroup)
-    - [`SignalAutoMap`](#signalautomap)
     - [Debugging & Inspection](#debugging--inspection)
   - [Advanced API](#-advanced-api)
     - [Effect Lifecycle Hooks](#effect-lifecycle-hooks)
@@ -81,6 +82,8 @@ Forget about imperative DOM updates or complex state management logic. With sign
 - **Effects**: These are the functions that "listen" to signals. An effect subscribes to one or more signals and re-executes automatically whenever any of its dependencies change, keeping your app perfectly in sync.
 
 - **Memos**: These are special signals whose values are computed from other signals. The library caches their result and only re-evaluates them when one of their dependencies changes, giving you performance for free.
+
+- **Links (Connections)**: Inspired by visual programming tools like Unreal Engine's Blueprints and Blender's shader graph editor, links create explicit one-way data flows between signals. They let you build modular, graph-like architectures where signals act as nodes with inputs and outputs. Combined with Signal Groups, you can organize signals into reusable modules and manage their lifecycles together—perfect for building complex reactive systems without manual wiring.
 
 This library offers both a clean **functional API** and a convenient **class-based API using decorators**.
 
@@ -806,100 +809,24 @@ console.log(user.fullName()); // "Computing full name..." -> "John Doe"
 console.log(user.fullName()); // (no log) -> "John Doe"
 ```
 
-### 🛠️ Utilities
+### 🔗 Signal Links & Connections
 
-#### `batch`
+Signal Links are the fourth core concept in `@spearwolf/signalize`, drawing inspiration from visual programming environments like Unreal Engine's Blueprints and Blender's shader graph editor. They enable you to build modular, graph-like reactive architectures where signals become nodes with explicit input and output connections.
 
-The `batch()` function allows you to apply multiple signal updates at once, but only trigger dependent effects a single time after all updates are complete.
-This is a powerful optimization to prevent unnecessary re-renders or computations.
+Think of signals as nodes in a visual graph, and links as the wires connecting them. This paradigm makes it natural to:
+- Create explicit one-way data flows between signals
+- Build modular architectures with clear inputs and outputs
+- Organize signals into groups that act as reusable modules
+- Manage signal lifecycles together through SignalGroup
+- Create complex reactive pipelines without manually writing effects
 
-> [!CAUTION]
-> `batch()` is a _hint_ not a _guarantee_ to run all effects in just _one_ strike!
+**Why Links Matter**
 
-```typescript
-import { createSignal, createEffect, batch } from '@spearwolf/signalize';
-
-const a = createSignal(1);
-const b = createSignal(2);
-
-createEffect(() => console.log(`a=${a.get()}, b=${b.get()}`));
-// => a=1, b=2
-
-batch(() => {
-  a.set(10); // Effect does not run yet
-  b.set(20); // Effect does not run yet
-}); // Effect runs once at the end
-// => a=10, b=20
-```
-
-#### `beQuiet` & `isQuiet`
-
-`beQuiet()` executes a function without creating any signal dependencies within it.
-
-> [!NOTE]
-> `isQuiet()` can be used to check if you are currently inside a `beQuiet` call.
-
-```typescript
-import { createSignal, createEffect, beQuiet, isQuiet } from '@spearwolf/signalize';
-
-const a = createSignal(1);
-const b = createSignal(2);
-
-createEffect(() => console.log(`a=${a.get()}, b=${b.get()}`));
-// => a=1, b=2
-
-beQuiet(() => {
-  a.set(100); // Effect does not run
-  b.set(200); // Effect does not run
-  console.log('Inside beQuiet, isQuiet=', isQuiet());
-  // => Inside beQuiet, isQuiet= true
-}); // Effect does not run at all
-
-console.log('a:', a.value, 'b:', b.value, 'isQuiet:', isQuiet());
-// => a: 100 b: 200 isQuiet: false
-```
-
-#### `hibernate`
-
-`hibernate()` temporarily suspends all context states (`batch`, `beQuiet`, effect tracking) while executing a callback. This allows code inside the callback to run as if it were called at the top level, without any outer context influencing its behavior.
-
-After the callback completes (whether successfully or with an exception), all previous context states are automatically restored. `hibernate()` calls can be nested safely.
-
-```typescript
-import { createSignal, createEffect, batch, beQuiet, hibernate } from '@spearwolf/signalize';
-
-const count = createSignal(0);
-
-createEffect(() => {
-  console.log('count =', count.get());
-
-  hibernate(() => {
-    // Inside hibernate: no effect tracking, no batch delays
-    // This code runs as if called outside any context
-    const otherSignal = createSignal(100);
-    otherSignal.onChange((val) => console.log('other =', val));
-  });
-});
-// => count = 0
-
-batch(() => {
-  count.set(1); // Effect is delayed by batch
-
-  hibernate(() => {
-    // Inside hibernate: batch is suspended
-    count.set(2); // Effect runs immediately!
-    // => count = 2
-  });
-
-  count.set(3); // Effect is delayed again
-});
-// => count = 3
-```
-
-This is useful when you need to:
-- Create independent effects or signals inside an existing effect without inheriting the parent context
-- Execute code that should trigger effects immediately, even when inside a `batch()`
-- Read signals without creating dependencies in the current effect
+While effects are great for side effects (like updating the DOM), links shine when you need to propagate state between signals in a structured, declarative way. They're perfect for:
+- Building data flow graphs for game engines, audio processing, or visual programming
+- Creating plugin architectures where modules connect their inputs/outputs
+- Managing complex state synchronization without effect spaghetti
+- Building reusable reactive components that expose clear interfaces
 
 #### `link` & `unlink`
 
@@ -1109,6 +1036,8 @@ console.log(getLinksCount(sigB)); // => 0 (sigB is not a source)
 A `SignalGroup` is a powerful utility for managing the lifecycle of a collection of signals, effects, and links. It's typically associated with a class instance or component, allowing you to destroy all reactive elements in a group with a single call to `group.clear()`.
 
 When you use decorators like `@signal` or `@memo`, a `SignalGroup` is automatically created and associated with your class instance.
+
+This is essential for building modular architectures where groups of signals act as nodes or modules that can be connected and managed together.
 
 **Getting or Creating a SignalGroup:**
 
@@ -1428,6 +1357,101 @@ autoMap.get('bar').value = 'world';
 autoMap.updateFromProps({foo: 'hallo'});
 // => "hallo world"
 ```
+
+### 🛠️ Utilities
+
+#### `batch`
+
+The `batch()` function allows you to apply multiple signal updates at once, but only trigger dependent effects a single time after all updates are complete.
+This is a powerful optimization to prevent unnecessary re-renders or computations.
+
+> [!CAUTION]
+> `batch()` is a _hint_ not a _guarantee_ to run all effects in just _one_ strike!
+
+```typescript
+import { createSignal, createEffect, batch } from '@spearwolf/signalize';
+
+const a = createSignal(1);
+const b = createSignal(2);
+
+createEffect(() => console.log(`a=${a.get()}, b=${b.get()}`));
+// => a=1, b=2
+
+batch(() => {
+  a.set(10); // Effect does not run yet
+  b.set(20); // Effect does not run yet
+}); // Effect runs once at the end
+// => a=10, b=20
+```
+
+#### `beQuiet` & `isQuiet`
+
+`beQuiet()` executes a function without creating any signal dependencies within it.
+
+> [!NOTE]
+> `isQuiet()` can be used to check if you are currently inside a `beQuiet` call.
+
+```typescript
+import { createSignal, createEffect, beQuiet, isQuiet } from '@spearwolf/signalize';
+
+const a = createSignal(1);
+const b = createSignal(2);
+
+createEffect(() => console.log(`a=${a.get()}, b=${b.get()}`));
+// => a=1, b=2
+
+beQuiet(() => {
+  a.set(100); // Effect does not run
+  b.set(200); // Effect does not run
+  console.log('Inside beQuiet, isQuiet=', isQuiet());
+  // => Inside beQuiet, isQuiet= true
+}); // Effect does not run at all
+
+console.log('a:', a.value, 'b:', b.value, 'isQuiet:', isQuiet());
+// => a: 100 b: 200 isQuiet: false
+```
+
+#### `hibernate`
+
+`hibernate()` temporarily suspends all context states (`batch`, `beQuiet`, effect tracking) while executing a callback. This allows code inside the callback to run as if it were called at the top level, without any outer context influencing its behavior.
+
+After the callback completes (whether successfully or with an exception), all previous context states are automatically restored. `hibernate()` calls can be nested safely.
+
+```typescript
+import { createSignal, createEffect, batch, beQuiet, hibernate } from '@spearwolf/signalize';
+
+const count = createSignal(0);
+
+createEffect(() => {
+  console.log('count =', count.get());
+
+  hibernate(() => {
+    // Inside hibernate: no effect tracking, no batch delays
+    // This code runs as if called outside any context
+    const otherSignal = createSignal(100);
+    otherSignal.onChange((val) => console.log('other =', val));
+  });
+});
+// => count = 0
+
+batch(() => {
+  count.set(1); // Effect is delayed by batch
+
+  hibernate(() => {
+    // Inside hibernate: batch is suspended
+    count.set(2); // Effect runs immediately!
+    // => count = 2
+  });
+
+  count.set(3); // Effect is delayed again
+});
+// => count = 3
+```
+
+This is useful when you need to:
+- Create independent effects or signals inside an existing effect without inheriting the parent context
+- Execute code that should trigger effects immediately, even when inside a `batch()`
+- Read signals without creating dependencies in the current effect
 
 #### Debugging & Inspection
 
