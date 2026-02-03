@@ -10,11 +10,11 @@ Type-safe. Fast. No framework lock-in.
 
 # 📢 Signals and Effects for All
 
-`@spearwolf/signalize` is a javascript library for creating fine-grained reactivity through __signals__ and __effects__.
+`@spearwolf/signalize` is a javascript library for creating fine-grained reactivity through **signals** and **effects**.
 
-- a __standalone__ javascript library that is _framework agnostic_
-- __without side-effects__ and targets `ES2023` based environments
-- written in __typescript__ v5 and uses the new [tc39 decorators](https://github.com/tc39/proposal-decorators) :rocket:
+- a **standalone** javascript library that is _framework agnostic_
+- **without side-effects** and targets `ES2023` based environments
+- written in **typescript** v5 and uses the new [tc39 decorators](https://github.com/tc39/proposal-decorators) :rocket:
   - _however, it is optional and not necessary to use the decorators_
 
 > [!NOTE]
@@ -98,7 +98,7 @@ npm install @spearwolf/signalize
 Now, let's see it in action. Here’s a simple example that automatically logs the signal value to the console whenever it changes.
 
 ```typescript
-import { createSignal, createEffect } from '@spearwolf/signalize';
+import {createSignal, createEffect} from '@spearwolf/signalize';
 
 // Create a signal with an initial value of 0.
 const count = createSignal(0);
@@ -146,6 +146,7 @@ createSignal<T>(initialValue?: T, options?: SignalParams<T>): Signal<T>
 - `options`:
   - `compare`: A custom function to compare old and new values to decide if a change should trigger effects. Defaults to strict equality (`===`).
   - `lazy`: A boolean that, if true, treats the `initialValue` as a function to be executed lazily on the first read.
+  - `beforeRead`: A callback function that is called every time before the signal's value is read via `get()`. Useful for triggering side effects or lazy computations.
   - `attach`: Attaches the signal to a `SignalGroup` for easier lifecycle management.
 
 `createSignal` returns a `Signal` object with the following properties:
@@ -161,7 +162,7 @@ createSignal<T>(initialValue?: T, options?: SignalParams<T>): Signal<T>
 **Example:**
 
 ```typescript
-import { createSignal } from '@spearwolf/signalize';
+import {createSignal} from '@spearwolf/signalize';
 
 // A signal holding a vector
 const v3 = createSignal([1, 2, 3], {
@@ -188,13 +189,13 @@ v3.value = [4, 5, 6];
 It's important to understand the difference between dependency-tracking reads and non-tracking reads.
 
 1. **`signal.get()`**: This is the primary way to read a signal's value and have an effect subscribe to its changes.
-2. **`signal.value`**: This property provides direct access to the signal's value *without* creating a dependency. An effect that reads `.value` will not re-run when that signal changes.
+2. **`signal.value`**: This property provides direct access to the signal's value _without_ creating a dependency. An effect that reads `.value` will not re-run when that signal changes.
 3. **`value(signal)`**: This is a utility function that behaves identically to the `signal.value` property, providing a non-tracking read of the signal's value.
 
 **Choose wisely:** Use `.get()` when you want reactivity. Use `.value` or `value()` when you need to peek at a value without creating a subscription.
 
 ```typescript
-import { createSignal, createEffect } from '@spearwolf/signalize';
+import {createSignal, createEffect} from '@spearwolf/signalize';
 
 const name = createSignal('John');
 const age = createSignal(30);
@@ -226,7 +227,12 @@ name.touch(); // This will trigger the effect without changing the value
 You can temporarily prevent a signal from triggering effects using `muteSignal` and `unmuteSignal`.
 
 ```typescript
-import { createSignal, createEffect, muteSignal, unmuteSignal } from '@spearwolf/signalize';
+import {
+  createSignal,
+  createEffect,
+  muteSignal,
+  unmuteSignal,
+} from '@spearwolf/signalize';
 
 const sig = createSignal('hello');
 
@@ -264,18 +270,18 @@ When you call `createSignal()`, it returns a `Signal` object that provides sever
 The `Signal<T>` object returned by `createSignal()` is your primary interface for working with reactive values. It provides:
 
 ```typescript
-import { createSignal } from '@spearwolf/signalize';
+import {createSignal} from '@spearwolf/signalize';
 
 const count = createSignal(42);
 
 // These are all different properties/methods on the signal object:
-count.get      // A function for reading with dependency tracking
-count.set      // A function for writing values
-count.value    // A getter/setter property for direct access
-count.onChange // A method to create simple effects
-count.touch    // A method to trigger effects without changing the value
-count.destroy  // A method to clean up the signal
-count.muted    // A boolean property to mute/unmute the signal
+count.get; // A function for reading with dependency tracking
+count.set; // A function for writing values
+count.value; // A getter/setter property for direct access
+count.onChange; // A method to create simple effects
+count.touch; // A method to trigger effects without changing the value
+count.destroy; // A method to clean up the signal
+count.muted; // A boolean property to mute/unmute the signal
 ```
 
 **Getter and Setter Functions**
@@ -283,7 +289,7 @@ count.muted    // A boolean property to mute/unmute the signal
 The `.get` and `.set` properties are actually functions that you can pass around independently:
 
 ```typescript
-import { createSignal, createEffect } from '@spearwolf/signalize';
+import {createSignal, createEffect} from '@spearwolf/signalize';
 
 const temperature = createSignal(20);
 
@@ -306,12 +312,12 @@ This is particularly useful when you want to expose read-only or write-only acce
 ```typescript
 class Thermometer {
   #temp = createSignal(20);
-  
+
   // Expose only the getter, keeping write access private
   get temperature() {
     return this.#temp.get;
   }
-  
+
   // Internal method that can write
   calibrate(offset: number) {
     this.#temp.set(this.#temp.value + offset);
@@ -339,7 +345,7 @@ The library provides TypeScript types for different aspects of signals:
 - `SignalLike<T>`: An interface for objects containing a signal
 
 ```typescript
-import { createSignal, SignalReader, SignalWriter } from '@spearwolf/signalize';
+import {createSignal, SignalReader, SignalWriter} from '@spearwolf/signalize';
 
 const name = createSignal('Alice');
 
@@ -352,8 +358,8 @@ function setValue(writer: SignalWriter<string>, value: string) {
   writer(value);
 }
 
-logValue(name.get);  // Works!
-setValue(name.set, 'Bob');  // Works!
+logValue(name.get); // Works!
+setValue(name.set, 'Bob'); // Works!
 ```
 
 **Advanced: Accessing the Internal Implementation**
@@ -361,19 +367,18 @@ setValue(name.set, 'Bob');  // Works!
 While you typically won't need this, you can access the internal signal implementation using the `$signal` symbol:
 
 ```typescript
-import { createSignal, $signal } from '@spearwolf/signalize';
+import {createSignal, $signal} from '@spearwolf/signalize';
 
 const count = createSignal(0);
 
 // Access the internal implementation (advanced use case)
 const impl = count[$signal];
-console.log(impl.id);        // The unique symbol ID
-console.log(impl.muted);     // Muted state
+console.log(impl.id); // The unique symbol ID
+console.log(impl.muted); // Muted state
 console.log(impl.destroyed); // Destroyed state
 ```
 
 This is primarily used by the library's internal utilities and advanced framework integrations, not for typical application code.
-
 
 ### 🎭 Effects
 
@@ -387,7 +392,7 @@ Creates a new effect.
 createEffect(callback: () => void | (() => void), options?: EffectOptions): Effect
 ```
 
-- `callback`: The function to execute. It can optionally return a *cleanup function*, which runs before the next effect execution or on destruction.
+- `callback`: The function to execute. It can optionally return a _cleanup function_, which runs before the next effect execution or on destruction.
 - `options`:
   - `dependencies`: An array of signals to subscribe to, creating a **static effect**. If omitted, the effect is **dynamic**.
   - `autorun`: If `false`, the effect will not run automatically. You must call `.run()` manually.
@@ -395,6 +400,7 @@ createEffect(callback: () => void | (() => void), options?: EffectOptions): Effe
   - `priority`: Effects with higher priority are executed before others. Default is `0`.
 
 `createEffect` returns an `Effect` object with two methods:
+
 - `run()`: Manually triggers the effect, respecting dependencies.
 - `destroy()`: Stops and cleans up the effect.
 
@@ -419,19 +425,27 @@ createEffect(callback: () => void | (() => void), options?: EffectOptions): Effe
   data.set('C'); // Effect does NOT re-run
   ```
 
-- **Static**: You provide an explicit array of dependencies. The effect only runs when one of *those* signals changes, regardless of what's read inside.
+- **Static**: You provide an explicit array of dependencies. The effect only runs when one of _those_ signals changes, regardless of what's read inside.
+
+  > [!IMPORTANT]
+  > Static effects do **not** run automatically on creation. They only run when a dependency changes. If you need the effect to run initially, call `.run()` manually.
 
   ```typescript
   const a = createSignal(1);
   const b = createSignal(2);
 
   // This effect ONLY depends on `a`, even though it reads `b`.
-  createEffect(() => {
+  const effect = createEffect(() => {
     console.log(`a=${a.get()}, b=${b.get()}`);
   }, [a]); // Static dependency on `a`
 
+  // Static effects don't run initially - call .run() if needed
+  effect.run();
+  // => "a=1, b=2"
+
   b.set(99); // Does NOT trigger the effect
   a.set(10); // Triggers the effect
+  // => "a=10, b=99"
   ```
 
 #### Cleanup Logic
@@ -456,7 +470,7 @@ createEffect(() => {
 });
 // => "Create timer with 1000ms interval"
 
-milliseconds.set(5000);  // Set interval to 5 seconds
+milliseconds.set(5000); // Set interval to 5 seconds
 // => "Previous timer cleared!"
 // => "Create timer with 5000ms interval"
 
@@ -470,7 +484,7 @@ Set `autorun: false` to create an effect that you control. It will only track de
 ```typescript
 const val = createSignal(0);
 
-const effect = createEffect(() => console.log(val.get()), { autorun: false });
+const effect = createEffect(() => console.log(val.get()), {autorun: false});
 // No output yet, since autorun is false
 
 console.log('Effect created, but not run.');
@@ -498,14 +512,14 @@ Effects can be nested, allowing you to create complex reactive flows where one e
 When you create an effect inside another effect, the inner effect becomes a "child" of the outer effect:
 
 ```typescript
-import { createSignal, createEffect } from '@spearwolf/signalize';
+import {createSignal, createEffect} from '@spearwolf/signalize';
 
 const enabled = createSignal(true);
 const value = createSignal(0);
 
 createEffect(() => {
   console.log('Outer effect running');
-  
+
   if (enabled.get()) {
     // This creates a nested effect that will become a child of the outer effect
     createEffect(() => {
@@ -541,11 +555,11 @@ const innerSignal = createSignal(1);
 
 const parentEffect = createEffect(() => {
   console.log('Parent:', outerSignal.get());
-  
+
   createEffect(() => {
     console.log('Child:', innerSignal.get());
   });
-  
+
   return () => console.log('Parent cleanup');
 });
 // => "Parent: A"
@@ -612,7 +626,7 @@ createEffect(() => {
 2. **Use `batch()`**: Group related updates together:
 
 ```typescript
-import { batch } from '@spearwolf/signalize';
+import {batch} from '@spearwolf/signalize';
 
 const x = createSignal(0);
 const y = createSignal(0);
@@ -634,16 +648,16 @@ const celsius1 = createSignal(0);
 const fahrenheit1 = createSignal(32);
 
 createEffect(() => {
-  fahrenheit1.set((celsius1.get() * 9/5) + 32);
+  fahrenheit1.set((celsius1.get() * 9) / 5 + 32);
 });
 createEffect(() => {
-  celsius1.set((fahrenheit1.get() - 32) * 5/9);
+  celsius1.set(((fahrenheit1.get() - 32) * 5) / 9);
 });
 // Circular dependency!
 
 // ✅ GOOD: Use one signal and a memo
 const celsius = createSignal(0);
-const fahrenheit = createMemo(() => (celsius.get() * 9/5) + 32);
+const fahrenheit = createMemo(() => (celsius.get() * 9) / 5 + 32);
 
 // Now there's only one source of truth
 celsius.set(100);
@@ -653,7 +667,7 @@ console.log(fahrenheit()); // => 212
 4. **Use `beQuiet()`**: Temporarily disable effect tracking for specific updates:
 
 ```typescript
-import { beQuiet } from '@spearwolf/signalize';
+import {beQuiet} from '@spearwolf/signalize';
 
 const a = createSignal(0);
 const b = createSignal(0);
@@ -674,7 +688,6 @@ createEffect(() => {
 - Think of effects as the **"edge"** of your system (DOM updates, logging, etc.), not for internal state synchronization
 - When in doubt, draw your dependency graph on paper to visualize the flow
 
-
 ### 🧠 Memos (Computed Signals)
 
 Memos are signals whose values are derived from other signals. They are lazy and only recompute when a dependency changes.
@@ -687,7 +700,6 @@ The default behavior of a memo is that of a _computed_ signal. If dependencies c
 
 Alternatively, a _lazy_ memo can be created by using the `lazy: true` option.
 A lazy memo works in the same way, with the difference that the memo value is _only calculated when the memo is read_. This means that effects dependent on the memo are also only executed when the memo has been read.
-
 
 ```typescript
 createMemo<T>(computer: () => T, options?: CreateMemoOptions): SignalReader<T>
@@ -705,6 +717,7 @@ It returns a _signal reader_ function, which you call to get the memo's current 
 > [!TIP]
 >
 > Choose wisely:
+>
 > - A non-lazy memo, aka computed signal, is the standard behavior and is most likely what users expect.
 > - A lazy memo, on the other hand, is more efficient: the calculation is only performed when it is read. However, a lazy effect does not automatically update dependent effects, but only after they are read, which can lead to unexpected behavior.
 
@@ -756,7 +769,7 @@ For those who prefer object-oriented patterns, `@spearwolf/signalize` provides d
 **Import decorators from the separate entry point:**
 
 ```typescript
-import { signal, memo } from '@spearwolf/signalize/decorators';
+import {signal, memo} from '@spearwolf/signalize/decorators';
 ```
 
 > [!IMPORTANT]
@@ -814,6 +827,7 @@ console.log(user.fullName()); // (no log) -> "John Doe"
 Signal Links are the fourth core concept in `@spearwolf/signalize`, drawing inspiration from visual programming environments like Unreal Engine's Blueprints and Blender's shader graph editor. They enable you to build modular, graph-like reactive architectures where signals become nodes with explicit input and output connections.
 
 Think of signals as nodes in a visual graph, and links as the wires connecting them. This paradigm makes it natural to:
+
 - Create explicit one-way data flows between signals
 - Build modular architectures with clear inputs and outputs
 - Organize signals into groups that act as reusable modules
@@ -823,6 +837,7 @@ Think of signals as nodes in a visual graph, and links as the wires connecting t
 **Why Links Matter**
 
 While effects are great for side effects (like updating the DOM), links shine when you need to propagate state between signals in a structured, declarative way. They're perfect for:
+
 - Building data flow graphs for game engines, audio processing, or visual programming
 - Creating plugin architectures where modules connect their inputs/outputs
 - Managing complex state synchronization without effect spaghetti
@@ -970,7 +985,7 @@ const source = createSignal(1);
 const target = createSignal(0);
 
 // Attach during creation
-const connection = link(source, target, { attach: groupOwner });
+const connection = link(source, target, {attach: groupOwner});
 
 // Or attach later
 const connection2 = link(source, someCallback);
@@ -982,20 +997,20 @@ SignalGroup.get(groupOwner).clear();
 
 **SignalLink Properties and Methods:**
 
-| Property / Method | Description |
-|-------------------|-------------|
-| `lastValue` | The last value that was synchronized to the target |
-| `source` | Reference to the source signal's internal implementation |
-| `isDestroyed` | Boolean indicating if the link has been destroyed |
-| `isMuted` | Boolean indicating if the link is currently muted |
-| `nextValue()` | Returns a Promise that resolves to the next value |
+| Property / Method          | Description                                                |
+| -------------------------- | ---------------------------------------------------------- |
+| `lastValue`                | The last value that was synchronized to the target         |
+| `source`                   | Reference to the source signal's internal implementation   |
+| `isDestroyed`              | Boolean indicating if the link has been destroyed          |
+| `isMuted`                  | Boolean indicating if the link is currently muted          |
+| `nextValue()`              | Returns a Promise that resolves to the next value          |
 | `asyncValues(stopAction?)` | Async generator yielding values until stopped or destroyed |
-| `touch()` | Forces the current value to be written to the target |
-| `mute()` | Pauses the link (returns the link for chaining) |
-| `unmute()` | Resumes the link (returns the link for chaining) |
-| `toggleMute()` | Toggles muted state, returns new muted state |
-| `attach(object)` | Attaches the link to a SignalGroup |
-| `destroy()` | Destroys the link and cleans up resources |
+| `touch()`                  | Forces the current value to be written to the target       |
+| `mute()`                   | Pauses the link (returns the link for chaining)            |
+| `unmute()`                 | Resumes the link (returns the link for chaining)           |
+| `toggleMute()`             | Toggles muted state, returns new muted state               |
+| `attach(object)`           | Attaches the link to a SignalGroup                         |
+| `destroy()`                | Destroys the link and cleans up resources                  |
 
 **Events:**
 
@@ -1030,7 +1045,6 @@ console.log(getLinksCount(sigA)); // => 2
 console.log(getLinksCount(sigB)); // => 0 (sigB is not a source)
 ```
 
-
 #### `SignalGroup`
 
 A `SignalGroup` is a powerful utility for managing the lifecycle of a collection of signals, effects, and links. It's typically associated with a class instance or component, allowing you to destroy all reactive elements in a group with a single call to `group.clear()`.
@@ -1042,7 +1056,12 @@ This is essential for building modular architectures where groups of signals act
 **Getting or Creating a SignalGroup:**
 
 ```typescript
-import { SignalGroup, createSignal, createEffect, link } from '@spearwolf/signalize';
+import {
+  SignalGroup,
+  createSignal,
+  createEffect,
+  link,
+} from '@spearwolf/signalize';
 
 // Get an existing group (returns undefined if none exists)
 const existingGroup = SignalGroup.get(myObject);
@@ -1051,9 +1070,11 @@ const existingGroup = SignalGroup.get(myObject);
 const group = SignalGroup.findOrCreate(myObject);
 
 // Or use the attach option when creating signals, effects, or links
-const signal = createSignal(42, { attach: myObject });
-const effect = createEffect(() => console.log(signal.get()), { attach: myObject });
-const connection = link(sourceSignal, targetSignal, { attach: myObject });
+const signal = createSignal(42, {attach: myObject});
+const effect = createEffect(() => console.log(signal.get()), {
+  attach: myObject,
+});
+const connection = link(sourceSignal, targetSignal, {attach: myObject});
 ```
 
 **Attaching Signals, Effects, and Links:**
@@ -1070,12 +1091,12 @@ const name = createSignal('John');
 group.attachSignalByName('userName', name);
 
 // Now you can retrieve it by name
-group.hasSignal('userName');  // => true
-group.signal('userName');     // => the name signal
+group.hasSignal('userName'); // => true
+group.signal('userName'); // => the name signal
 
 // Attach effects
-const effect = createEffect(() => console.log(count.get()), { autorun: false });
-group.attachEffect(effect[$effect]);  // $effect is imported from constants
+const effect = createEffect(() => console.log(count.get()), {autorun: false});
+group.attachEffect(effect[$effect]); // $effect is imported from constants
 
 // Attach links
 const target = createSignal(0);
@@ -1093,14 +1114,14 @@ const signal1 = createSignal(1);
 const signal2 = createSignal(2);
 
 group.attachSignalByName('myValue', signal1);
-group.signal('myValue');  // => signal1
+group.signal('myValue'); // => signal1
 
 group.attachSignalByName('myValue', signal2);
-group.signal('myValue');  // => signal2 (most recent)
+group.signal('myValue'); // => signal2 (most recent)
 
 // Detaching signal2 reverts to signal1
 group.detachSignal(signal2);
-group.signal('myValue');  // => signal1
+group.signal('myValue'); // => signal1
 
 signal2.destroy();
 group.clear();
@@ -1114,19 +1135,19 @@ Groups can be nested in a parent-child hierarchy. Child groups inherit named sig
 const parent = SignalGroup.findOrCreate({});
 const child = SignalGroup.findOrCreate({});
 
-const sharedConfig = createSignal({ theme: 'dark' });
+const sharedConfig = createSignal({theme: 'dark'});
 parent.attachSignalByName('config', sharedConfig);
 
 parent.attachGroup(child);
 
 // Child can access parent's named signals
-child.hasSignal('config');  // => true
-child.signal('config');     // => sharedConfig
+child.hasSignal('config'); // => true
+child.signal('config'); // => sharedConfig
 
 // Child signals shadow parent signals with the same name
-const childConfig = createSignal({ theme: 'light' });
+const childConfig = createSignal({theme: 'light'});
 child.attachSignalByName('config', childConfig);
-child.signal('config');     // => childConfig (child's own)
+child.signal('config'); // => childConfig (child's own)
 
 // Clearing parent also destroys all children
 parent.clear();
@@ -1140,9 +1161,12 @@ You can manually trigger all effects in a group (and its child groups):
 const group = SignalGroup.findOrCreate({});
 const value = createSignal(0);
 
-const effect = createEffect(() => {
-  console.log('Value:', value.get());
-}, { autorun: false });
+const effect = createEffect(
+  () => {
+    console.log('Value:', value.get());
+  },
+  {autorun: false},
+);
 
 group.attachEffect(effect[$effect]);
 group.attachSignal(value);
@@ -1150,7 +1174,7 @@ group.attachSignal(value);
 value.set(42);
 
 // Manually run all effects in the group
-group.runEffects();  // => logs "Value: 42"
+group.runEffects(); // => logs "Value: 42"
 ```
 
 **Cleanup with clear():**
@@ -1163,40 +1187,40 @@ const group = SignalGroup.findOrCreate(myComponent);
 // ... attach signals, effects, links ...
 
 // When the component is destroyed:
-group.clear();  // Destroys everything attached to this group
+group.clear(); // Destroys everything attached to this group
 ```
 
 **Static Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `SignalGroup.get(object)` | Returns the SignalGroup for an object, or `undefined` if none exists |
-| `SignalGroup.findOrCreate(object)` | Gets or creates a SignalGroup for an object |
-| `SignalGroup.delete(object)` | Clears and removes the SignalGroup for an object |
-| `SignalGroup.clear()` | Clears all SignalGroups globally |
+| Method                             | Description                                                          |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| `SignalGroup.get(object)`          | Returns the SignalGroup for an object, or `undefined` if none exists |
+| `SignalGroup.findOrCreate(object)` | Gets or creates a SignalGroup for an object                          |
+| `SignalGroup.delete(object)`       | Clears and removes the SignalGroup for an object                     |
+| `SignalGroup.clear()`              | Clears all SignalGroups globally                                     |
 
 **Instance Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `attachSignal(signal)` | Adds a signal to the group |
-| `attachSignalByName(name, signal?)` | Associates a signal with a name, or removes the name if signal is omitted |
-| `detachSignal(signal)` | Removes a signal from the group (but doesn't destroy it) |
-| `hasSignal(name)` | Returns true if a signal with the given name exists (checks parent groups too) |
-| `signal(name)` | Returns the signal with the given name (checks parent groups too) |
-| `attachEffect(effect)` | Adds an effect to the group |
-| `runEffects()` | Runs all attached effects (and child group effects) |
-| `attachLink(link)` | Adds a link to the group |
-| `detachLink(link)` | Removes a link from the group (but doesn't destroy it) |
-| `attachGroup(group)` | Adds a child group (re-parents if already attached elsewhere) |
-| `detachGroup(group)` | Removes a child group |
-| `clear()` | Destroys all attached signals, effects, links, and child groups |
+| Method                              | Description                                                                    |
+| ----------------------------------- | ------------------------------------------------------------------------------ |
+| `attachSignal(signal)`              | Adds a signal to the group                                                     |
+| `attachSignalByName(name, signal?)` | Associates a signal with a name, or removes the name if signal is omitted      |
+| `detachSignal(signal)`              | Removes a signal from the group (but doesn't destroy it)                       |
+| `hasSignal(name)`                   | Returns true if a signal with the given name exists (checks parent groups too) |
+| `signal(name)`                      | Returns the signal with the given name (checks parent groups too)              |
+| `attachEffect(effect)`              | Adds an effect to the group                                                    |
+| `runEffects()`                      | Runs all attached effects (and child group effects)                            |
+| `attachLink(link)`                  | Adds a link to the group                                                       |
+| `detachLink(link)`                  | Removes a link from the group (but doesn't destroy it)                         |
+| `attachGroup(group)`                | Adds a child group (re-parents if already attached elsewhere)                  |
+| `detachGroup(group)`                | Removes a child group                                                          |
+| `clear()`                           | Destroys all attached signals, effects, links, and child groups                |
 
 **Typical Usage Pattern:**
 
 ```typescript
-import { signal, memo } from '@spearwolf/signalize/decorators';
-import { SignalGroup, createEffect } from '@spearwolf/signalize';
+import {signal, memo} from '@spearwolf/signalize/decorators';
+import {SignalGroup, createEffect} from '@spearwolf/signalize';
 
 class UserProfile {
   @signal() accessor name = '';
@@ -1209,9 +1233,12 @@ class UserProfile {
 
   constructor() {
     // Effects are automatically attached to the group via the 'attach' option
-    createEffect(() => {
-      console.log('Profile updated:', this.displayText());
-    }, { attach: this });
+    createEffect(
+      () => {
+        console.log('Profile updated:', this.displayText());
+      },
+      {attach: this},
+    );
   }
 
   destroy() {
@@ -1225,7 +1252,7 @@ profile.name = 'Alice';
 profile.age = 30;
 // => logs "Profile updated: Alice (30 years old)"
 
-profile.destroy();  // Clean up everything
+profile.destroy(); // Clean up everything
 ```
 
 #### `SignalAutoMap`
@@ -1233,6 +1260,7 @@ profile.destroy();  // Clean up everything
 A `Map`-like class that automatically creates a `Signal` for any key that is accessed but doesn't yet exist. This is useful for managing dynamic collections of reactive state, especially when you don't know all the keys upfront.
 
 **Key Features:**
+
 - Auto-creates signals on first access
 - Supports both string and symbol keys
 - Batches updates for better performance
@@ -1292,12 +1320,20 @@ import {SignalAutoMap, createEffect} from '@spearwolf/signalize';
 const map = SignalAutoMap.fromProps({x: 0, y: 0, z: 0});
 
 createEffect(() => {
-  console.log(`Position: ${map.get('x').get()}, ${map.get('y').get()}, ${map.get('z').get()}`);
+  console.log(
+    `Position: ${map.get('x').get()}, ${map.get('y').get()}, ${map.get('z').get()}`,
+  );
 });
 // => Position: 0, 0, 0
 
 // Update multiple values at once - effect runs only once
-map.update(new Map([['x', 10], ['y', 20], ['z', 30]]));
+map.update(
+  new Map([
+    ['x', 10],
+    ['y', 20],
+    ['z', 30],
+  ]),
+);
 // => Position: 10, 20, 30
 
 // Or update from an object
@@ -1369,7 +1405,7 @@ This is a powerful optimization to prevent unnecessary re-renders or computation
 > `batch()` is a _hint_ not a _guarantee_ to run all effects in just _one_ strike!
 
 ```typescript
-import { createSignal, createEffect, batch } from '@spearwolf/signalize';
+import {createSignal, createEffect, batch} from '@spearwolf/signalize';
 
 const a = createSignal(1);
 const b = createSignal(2);
@@ -1392,7 +1428,12 @@ batch(() => {
 > `isQuiet()` can be used to check if you are currently inside a `beQuiet` call.
 
 ```typescript
-import { createSignal, createEffect, beQuiet, isQuiet } from '@spearwolf/signalize';
+import {
+  createSignal,
+  createEffect,
+  beQuiet,
+  isQuiet,
+} from '@spearwolf/signalize';
 
 const a = createSignal(1);
 const b = createSignal(2);
@@ -1418,7 +1459,13 @@ console.log('a:', a.value, 'b:', b.value, 'isQuiet:', isQuiet());
 After the callback completes (whether successfully or with an exception), all previous context states are automatically restored. `hibernate()` calls can be nested safely.
 
 ```typescript
-import { createSignal, createEffect, batch, beQuiet, hibernate } from '@spearwolf/signalize';
+import {
+  createSignal,
+  createEffect,
+  batch,
+  beQuiet,
+  hibernate,
+} from '@spearwolf/signalize';
 
 const count = createSignal(0);
 
@@ -1449,6 +1496,7 @@ batch(() => {
 ```
 
 This is useful when you need to:
+
 - Create independent effects or signals inside an existing effect without inheriting the parent context
 - Execute code that should trigger effects immediately, even when inside a `batch()`
 - Read signals without creating dependencies in the current effect
@@ -1462,13 +1510,13 @@ Signalize provides utilities to inspect and debug your reactive system. These ar
 Checks if a value is a signal. Useful for type checking and conditional logic.
 
 ```typescript
-import { createSignal, isSignal } from '@spearwolf/signalize';
+import {createSignal, isSignal} from '@spearwolf/signalize';
 
 const count = createSignal(0);
 const notSignal = 42;
 
-console.log(isSignal(count));      // => true
-console.log(isSignal(notSignal));  // => false
+console.log(isSignal(count)); // => true
+console.log(isSignal(notSignal)); // => false
 
 // Useful in conditional logic
 function processValue(value: unknown) {
@@ -1484,7 +1532,7 @@ function processValue(value: unknown) {
 Returns the total number of currently active signals in your application. This is helpful for debugging memory leaks or understanding the reactive state of your app.
 
 ```typescript
-import { createSignal, getSignalsCount } from '@spearwolf/signalize';
+import {createSignal, getSignalsCount} from '@spearwolf/signalize';
 
 console.log(getSignalsCount()); // => 0
 
@@ -1504,7 +1552,11 @@ console.log(getSignalsCount()); // => 0
 Returns the total number of currently active effects. Like `getSignalsCount()`, this is valuable for debugging and monitoring.
 
 ```typescript
-import { createSignal, createEffect, getEffectsCount } from '@spearwolf/signalize';
+import {
+  createSignal,
+  createEffect,
+  getEffectsCount,
+} from '@spearwolf/signalize';
 
 console.log(getEffectsCount()); // => 0
 
@@ -1517,6 +1569,7 @@ console.log(getEffectsCount()); // => 0
 ```
 
 These debugging utilities are particularly useful for:
+
 - **Memory leak detection**: Monitor signal and effect counts to ensure proper cleanup
 - **Testing**: Assert expected numbers of active signals/effects
 - **Performance analysis**: Track reactive overhead in different parts of your app
@@ -1535,7 +1588,7 @@ For advanced scenarios like building devtools, analytics, or framework integrati
 Registers a callback that fires whenever any effect is created in your application.
 
 ```typescript
-import { createEffect, onCreateEffect } from '@spearwolf/signalize';
+import {createEffect, onCreateEffect} from '@spearwolf/signalize';
 
 onCreateEffect((effect) => {
   console.log('Effect created:', effect.id);
@@ -1551,7 +1604,7 @@ createEffect(() => console.log('Hello'));
 Registers a callback that fires whenever any effect is destroyed.
 
 ```typescript
-import { createEffect, onDestroyEffect } from '@spearwolf/signalize';
+import {createEffect, onDestroyEffect} from '@spearwolf/signalize';
 
 onDestroyEffect((effect) => {
   console.log('Effect destroyed:', effect.id);
@@ -1566,6 +1619,7 @@ effect.destroy();
 > These hooks are **global** and persist for the lifetime of your application. Use them sparingly and primarily for debugging, development tools, or framework integration layers.
 
 **Common use cases:**
+
 - Building reactive debugging tools and browser devtools extensions
 - Tracking effect creation for testing and assertions
 - Implementing logging and analytics for reactive behavior
@@ -1580,7 +1634,7 @@ import {
   findObjectSignalByName,
   findObjectSignals,
   findObjectSignalNames,
-  destroyObjectSignals
+  destroyObjectSignals,
 } from '@spearwolf/signalize';
 ```
 
@@ -1624,7 +1678,7 @@ type SignalReader<T> = (callback?: ValueChangedCallback<T>) => T;
 This is the type of the `.get` property on a `Signal<T>`. When called inside an effect, it establishes a dependency. You can also pass an optional callback for change notifications.
 
 ```typescript
-import { createSignal } from '@spearwolf/signalize';
+import {createSignal} from '@spearwolf/signalize';
 
 const count = createSignal(0);
 const reader: SignalReader<number> = count.get;
@@ -1641,7 +1695,10 @@ reader((newValue) => console.log('Changed to:', newValue));
 A function type for writing signal values.
 
 ```typescript
-type SignalWriter<T> = (value: T | (() => T), params?: SignalWriterParams<T>) => void;
+type SignalWriter<T> = (
+  value: T | (() => T),
+  params?: SignalWriterParams<T>,
+) => void;
 ```
 
 This is the type of the `.set` property on a `Signal<T>`. It accepts either a direct value or a function that returns a value.
@@ -1661,6 +1718,7 @@ interface SignalLike<T> {
 **`Effect`**
 
 The effect class returned by `createEffect()`. It has two key methods:
+
 - `run()`: Manually trigger the effect
 - `destroy()`: Stop and clean up the effect
 
@@ -1673,7 +1731,7 @@ type EffectCallback = () => void | (() => void);
 ```
 
 ```typescript
-import { createEffect, EffectCallback } from '@spearwolf/signalize';
+import {createEffect, EffectCallback} from '@spearwolf/signalize';
 
 const callback: EffectCallback = () => {
   console.log('Effect runs');
@@ -1689,10 +1747,10 @@ Options for creating effects with `createEffect()`.
 
 ```typescript
 interface EffectOptions {
-  autorun?: boolean;              // Run immediately (default: true)
-  dependencies?: EffectDeps;      // Static dependencies array
-  attach?: object | SignalGroup;  // Lifecycle management
-  priority?: number;              // Execution priority (default: 0)
+  autorun?: boolean; // Run immediately (default: true)
+  dependencies?: EffectDeps; // Static dependencies array
+  attach?: object | SignalGroup; // Lifecycle management
+  priority?: number; // Execution priority (default: 0)
 }
 ```
 
@@ -1715,7 +1773,8 @@ type CompareFunc<T> = (a: T, b: T) => boolean;
 
 // Example: deep equality for arrays
 const arraySignal = createSignal([1, 2, 3], {
-  compare: (a, b) => a?.every((val, idx) => val === b?.[idx]) && a.length === b.length
+  compare: (a, b) =>
+    a?.every((val, idx) => val === b?.[idx]) && a.length === b.length,
 });
 ```
 
@@ -1727,10 +1786,10 @@ Options for creating signals with `createSignal()`.
 
 ```typescript
 interface SignalParams<T> {
-  lazy?: boolean;                 // Lazy initialization
-  compare?: CompareFunc<T>;       // Custom equality check
-  beforeRead?: () => void;        // Hook called before reading
-  attach?: object | SignalGroup;  // Lifecycle management
+  lazy?: boolean; // Lazy initialization
+  compare?: CompareFunc<T>; // Custom equality check
+  beforeRead?: () => void; // Hook called before reading
+  attach?: object | SignalGroup; // Lifecycle management
 }
 ```
 
@@ -1740,10 +1799,10 @@ Options for creating memos with `createMemo()`.
 
 ```typescript
 interface CreateMemoOptions {
-  lazy?: boolean;                 // Lazy evaluation (default: false)
-  attach?: object | SignalGroup;  // Lifecycle management
-  priority?: number;              // Execution priority (default: 1000)
-  name?: string | symbol;         // Name within SignalGroup
+  lazy?: boolean; // Lazy evaluation (default: false)
+  attach?: object | SignalGroup; // Lifecycle management
+  priority?: number; // Execution priority (default: 1000)
+  name?: string | symbol; // Name within SignalGroup
 }
 ```
 
@@ -1753,7 +1812,7 @@ Options for creating links with `link()`.
 
 ```typescript
 interface LinkOptions {
-  attach?: object | SignalGroup;  // Attach link to a group for lifecycle management
+  attach?: object | SignalGroup; // Attach link to a group for lifecycle management
 }
 ```
 

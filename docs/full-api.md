@@ -13,16 +13,21 @@
 ## Signals
 
 ### `createSignal<T>(initialValue?, options?)`
+
 Creates a new signal.
+
 - **initialValue**: The starting value.
 - **options**:
   - `compare`: `(a, b) => boolean` - Custom equality function.
   - `lazy`: `boolean` - If true, `initialValue` is treated as a factory function.
+  - `beforeRead`: `() => void` - Callback invoked before every `get()` call. Useful for side effects or lazy computations.
   - `attach`: `object | SignalGroup` - Attach to a group for lifecycle management.
 - **Returns**: `Signal<T>`
 
 ### `Signal<T>`
+
 The object returned by `createSignal`.
+
 - **`get()`**: Returns the value and tracks dependency.
 - **`set(value)`**: Updates the value.
 - **`value`**: Getter/Setter for the value (getter does NOT track dependency).
@@ -32,15 +37,19 @@ The object returned by `createSignal`.
 - **`muted`**: `boolean` - Check or set muted state.
 
 ### `isSignal(value)`
+
 Returns `true` if the value is a Signal instance.
 
 ### `muteSignal(signal)` / `unmuteSignal(signal)`
+
 Temporarily prevents a signal from triggering effects.
 
 ### `destroySignal(...signals)`
+
 Destroys one or more signals.
 
 ### `getSignalsCount()`
+
 Returns the number of active signals.
 
 ---
@@ -48,7 +57,9 @@ Returns the number of active signals.
 ## Effects
 
 ### `createEffect(callback, options?)`
+
 Creates a reactive effect.
+
 - **callback**: `() => void | (() => void)` - The function to run. Can return a cleanup function.
 - **options**:
   - `autorun`: `boolean` (default: `true`) - Run immediately?
@@ -58,13 +69,16 @@ Creates a reactive effect.
 - **Returns**: `Effect`
 
 ### `Effect`
+
 - **`run()`**: Manually runs the effect.
 - **`destroy()`**: Destroys the effect.
 
 ### `onCreateEffect(callback)` / `onDestroyEffect(callback)`
+
 Global hooks for debugging/profiling effect creation and destruction.
 
 ### `getEffectsCount()`
+
 Returns the number of active effects.
 
 ---
@@ -72,7 +86,9 @@ Returns the number of active effects.
 ## Memos
 
 ### `createMemo<T>(computer, options?)`
+
 Creates a computed signal.
+
 - **computer**: `() => T` - Function to compute the value.
 - **options**:
   - `lazy`: `boolean` (default: `false`) - If true, computes only on read.
@@ -84,44 +100,59 @@ Creates a computed signal.
 ---
 
 ## Decorators
-*Import from `@spearwolf/signalize/decorators`*
+
+_Import from `@spearwolf/signalize/decorators`_
+
+> [!IMPORTANT]
+> The decorator API is still in the early stages of development and is not yet complete.
+> It only uses the new JavaScript standard decorators, not the legacy or experimental TypeScript ones.
 
 ### `@signal(options?)`
+
 Accessor decorator. Turns a class field into a signal.
+
 - **options**:
   - `name`: `string | symbol` - Override the signal name (defaults to the property name).
-  - `readAsValue`: `boolean` (default: `false`) - If `true`, the getter returns the value *without* tracking dependencies (like `.value`). If `false`, it tracks dependencies (like `.get()`).
+  - `readAsValue`: `boolean` (default: `false`) - If `true`, the getter returns the value _without_ tracking dependencies (like `.value`). If `false`, it tracks dependencies (like `.get()`).
   - `compare`: `(a, b) => boolean` - Custom equality function.
   - `beforeRead`: `() => void` - Hook called before reading the signal.
 
 ### `@memo(options?)`
+
 Method decorator. Turns a method into a lazy computed property.
+
 - **options**:
   - `name`: `string | symbol` - Override the memo name (defaults to the method name).
-**Note:** Memos created via decorators are always **lazy** (calculated on read) and attached to the instance's `SignalGroup`.
+    **Note:** Memos created via decorators are always **lazy** (calculated on read) and attached to the instance's `SignalGroup`.
 
 ---
 
 ## Utilities
 
 ### `batch(callback)`
+
 Delays effect execution until the callback finishes. Useful for multiple updates.
 **Note:** This is a hint, not a guarantee. The library may still propagate changes in steps in certain situations.
 
 ### `beQuiet(callback)`
+
 Executes callback without tracking dependencies (even if signals are read).
 
 ### `isQuiet()`
+
 Returns `true` if currently inside a `beQuiet` block.
 
 ### `hibernate(callback)`
+
 Suspends all reactive context (batching, tracking, etc.) for the duration of the callback.
 **Note:** New contexts (like `batch` or effects) can still be created and will function normally within the callback.
 
 ### `touch(signal)`
+
 Manually triggers updates for a signal.
 
 ### `value(signal)`
+
 Helper to read a signal's value without tracking (equivalent to `signal.value`).
 
 ---
@@ -131,11 +162,12 @@ Helper to read a signal's value without tracking (equivalent to `signal.value`).
 Links create explicit one-way data flows between signals, inspired by visual programming tools. They enable modular, graph-like reactive architectures.
 
 ### `link(source, target, options?)`
+
 Creates a one-way binding from source to target.
 
 - **source**: `SignalReader<T> | Signal<T>` - The signal to read from.
 - **target**: `SignalReader<T> | Signal<T> | (value: T) => void` - The signal or callback to write to.
-- **options**: 
+- **options**:
   - `attach?: object` - Attach the link to a SignalGroup for lifecycle management.
 - **Returns**: `SignalLink<T>` - The connection object.
 
@@ -146,6 +178,7 @@ const connection = link(source, target);
 ```
 
 ### `unlink(source, target?)`
+
 Removes a link between signals.
 
 - **source**: The source signal.
@@ -153,29 +186,33 @@ Removes a link between signals.
 
 ```typescript
 unlink(source, target); // Unlink specific connection
-unlink(source);         // Unlink all connections from source
+unlink(source); // Unlink all connections from source
 ```
 
 ### `getLinksCount(source?)`
+
 Returns the number of active links.
 
 - **source** (optional): If provided, returns count for this specific source. If omitted, returns total count of all links.
 
 ```typescript
-console.log(getLinksCount());      // Total links
+console.log(getLinksCount()); // Total links
 console.log(getLinksCount(signal)); // Links from this signal
 ```
 
 ### `SignalLink<T>`
+
 The connection object returned by `link()`.
 
 **Properties:**
+
 - `lastValue: T` - The last value that was synchronized.
 - `source: ISignalImpl<T>` - Reference to the source signal implementation.
 - `isDestroyed: boolean` - Whether the link has been destroyed.
 - `isMuted: boolean` - Whether the link is currently muted.
 
 **Methods:**
+
 - `touch(): this` - Forces the current value to be written to the target.
 - `mute(): this` - Pauses the link without destroying it.
 - `unmute(): this` - Resumes the link.
@@ -186,6 +223,7 @@ The connection object returned by `link()`.
 - `asyncValues(stopAction?): AsyncGenerator<T>` - Async generator yielding values.
 
 **Events** (using `@spearwolf/eventize`):
+
 - `'value'` - Emitted when a new value is synchronized.
 - `'mute'` - Emitted when the link is muted.
 - `'unmute'` - Emitted when the link is unmuted.
@@ -200,15 +238,19 @@ A utility for managing the lifecycle of collections of signals, effects, and lin
 ### Static Methods
 
 #### `SignalGroup.findOrCreate(object)`
+
 Gets or creates a group associated with an object.
 
 #### `SignalGroup.get(object)`
+
 Gets existing group or returns `undefined`.
 
 #### `SignalGroup.delete(object)`
+
 Clears and removes the group for an object.
 
 #### `SignalGroup.clear()`
+
 Clears all groups globally.
 
 ### Instance Methods
@@ -233,10 +275,13 @@ Clears all groups globally.
 A Map-like class that automatically creates signals for accessed keys. Useful for dynamic collections.
 
 ### `new SignalAutoMap()`
+
 Creates an empty auto-map.
 
 ### `SignalAutoMap.fromProps(props, keys?)`
+
 Creates an auto-map from an object.
+
 - **props**: Object with initial values.
 - **keys** (optional): Array of specific keys to include.
 
@@ -258,15 +303,39 @@ Creates an auto-map from an object.
 Advanced functions for managing signals attached to objects (used by decorators).
 
 ### `findObjectSignalByName(object, name)`
+
 Returns the signal attached to the object with the given name, or `undefined`.
-SignalLike<T>`
-- `EffectCallback`
-- `EffectOptions`
-- `CreateMemoOptions`
-- `VoidFuncall signals attached to the object.
+
+### `findObjectSignals(object)`
+
+Returns an array of all signals attached to the object.
 
 ### `findObjectSignalNames(object)`
+
 Returns an array of names of all signals attached to the object.
 
 ### `destroyObjectSignals(...objects)`
+
 Destroys all signals attached to the given objects.
+
+---
+
+## TypeScript Types
+
+Key types exported by the library:
+
+- `Signal<T>` - The signal object type
+- `SignalReader<T>` - Function type for reading a signal
+- `SignalWriter<T>` - Function type for writing a signal
+- `SignalLike<T>` - Interface for signal-like objects
+- `Effect` - The effect object type
+- `EffectCallback` - Function type for effect callbacks: `() => void | (() => void)`
+- `EffectOptions` - Options for `createEffect()`
+- `CreateMemoOptions` - Options for `createMemo()`
+- `SignalParams<T>` - Options for `createSignal()`
+- `CompareFunc<T>` - Custom equality function type: `(a: T, b: T) => boolean`
+- `BeforeReadFunc` - Callback type for `beforeRead`: `() => void`
+- `VoidFunc` - Simple void function type: `() => void`
+- `ValueChangedCallback<T>` - Callback for signal changes: `(value: T) => void`
+- `SignalGroup` - Class for lifecycle management
+- `SignalAutoMap` - Auto-creating signal map class
