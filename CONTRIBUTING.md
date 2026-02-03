@@ -8,7 +8,7 @@ Please read our [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
 
 ### Prerequisites
 
-- Node.js (see `.nvmrc` for version)
+- Node.js (see `package.json` for version)
 - pnpm package manager
 
 ### Setup
