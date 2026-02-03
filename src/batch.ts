@@ -73,6 +73,15 @@ export const restoreBatch = (batch: Batch | undefined): void => {
 
 // XXX `batch()` is a _hint_ not a _guarantee_ to run all effects in just _one_ strike.
 
+/**
+ * Batch multiple signal updates together to defer effect execution.
+ * Effects are deduplicated and run once after the callback completes,
+ * improving performance when updating multiple signals at once.
+ *
+ * Batches can be nested - the effects only run when the outermost batch completes.
+ *
+ * @param callback - Function containing signal updates to batch
+ */
 export function batch(callback: VoidFunc): void {
   // if there is a current batch context, we use it, otherwise we just create a new one.
   // the batch is executed after the callback, but only if we have created the batch ourselves.

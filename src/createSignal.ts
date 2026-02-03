@@ -39,6 +39,11 @@ export function writeSignal(
   }
 }
 
+/**
+ * Check if a value is a signal (Signal, SignalReader, or SignalWriter).
+ * @param signalLike - The value to check
+ * @returns True if the value is a signal-like object
+ */
 export const isSignal = (signalLike: any): signalLike is SignalLike<unknown> =>
   signalLike != null && signalLike[$signal] != null;
 
@@ -167,6 +172,15 @@ export const signalImpl = <Type = unknown>(
   sig: SignalLike<Type>,
 ): ISignalImpl<Type> => sig?.[$signal];
 
+/**
+ * Create a new reactive signal with an optional initial value.
+ *
+ * If passed an existing signal, returns that signal without creating a new one.
+ *
+ * @param initialValue - Initial value, a function for lazy initialization, or an existing signal
+ * @param params - Optional configuration (lazy, compare, beforeRead, attach)
+ * @returns A Signal object with get/set methods
+ */
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalLike<Type> | (() => Type) = undefined,
   params?: SignalParams<Type>,
@@ -191,6 +205,11 @@ export function createSignal<Type = unknown>(
   return signal.object;
 }
 
+/**
+ * Destroy one or more signals, cleaning up all subscriptions and resources.
+ * Destroyed signals no longer trigger effects when read or written.
+ * @param signalLikes - Signals to destroy
+ */
 export const destroySignal = (...signalLikes: SignalLike[]): void => {
   for (const sigLike of signalLikes) {
     const signal = signalImpl(sigLike);
@@ -203,6 +222,11 @@ export const destroySignal = (...signalLikes: SignalLike[]): void => {
   }
 };
 
+/**
+ * Mute a signal so that value changes do not trigger dependent effects.
+ * The signal can still be read and written, but effects won't be notified.
+ * @param signalLike - The signal to mute
+ */
 export const muteSignal = <Type = any>(signalLike: SignalLike<Type>): void => {
   const signal = signalImpl(signalLike);
   if (signal != null) {
@@ -210,6 +234,10 @@ export const muteSignal = <Type = any>(signalLike: SignalLike<Type>): void => {
   }
 };
 
+/**
+ * Unmute a previously muted signal, restoring normal effect triggering.
+ * @param signalLike - The signal to unmute
+ */
 export const unmuteSignal = <Type = any>(
   signalLike: SignalLike<Type>,
 ): void => {
@@ -219,4 +247,9 @@ export const unmuteSignal = <Type = any>(
   }
 };
 
+/**
+ * Get the current count of active (non-destroyed) signals.
+ * Useful for debugging and testing to detect signal leaks.
+ * @returns The number of active signals
+ */
 export const getSignalsCount = () => SignalImpl.instanceCount;

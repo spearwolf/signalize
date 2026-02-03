@@ -23,6 +23,9 @@ type LinkableTarget<ValueType> =
 
 // TODO add two-way binding option to link(src, trgt, {twoWay: true}) ?
 
+/**
+ * Options for creating a signal link.
+ */
 export interface LinkOptions {
   /**
    * Attach the link to this group, so it will be destroyed when the group is destroyed
@@ -36,6 +39,16 @@ export interface LinkOptions {
   // twoWay?: boolean;
 }
 
+/**
+ * Create a one-way data flow connection from a source signal to a target.
+ * When the source signal changes, the target is automatically updated.
+ * The target can be another signal or a callback function.
+ *
+ * @param source - The source signal to link from
+ * @param target - The target signal or callback to link to
+ * @param options - Configuration options (attach)
+ * @returns A SignalLink object that can be destroyed to break the connection
+ */
 export function link<ValueType>(
   source: LinkableSource<ValueType>,
   target: LinkableTarget<ValueType>,
@@ -80,6 +93,13 @@ export function link<ValueType>(
   return link;
 }
 
+/**
+ * Remove a link between a source signal and a target.
+ * If no target is specified, all links from the source are removed.
+ *
+ * @param source - The source signal
+ * @param target - Optional specific target to unlink (if omitted, all targets are unlinked)
+ */
 export function unlink<ValueType>(
   source: LinkableSource<ValueType>,
   target?: LinkableTarget<ValueType>,
@@ -109,6 +129,14 @@ export function unlink<ValueType>(
   }
 }
 
+/**
+ * Get the count of active links.
+ * If a source is provided, returns only links from that source.
+ * If no source is provided, returns the total count of all links.
+ *
+ * @param source - Optional source signal to count links for
+ * @returns The number of active links
+ */
 export function getLinksCount(source?: SignalLike<any>): number {
   let counter = 0;
   if (source == null) {
