@@ -8,6 +8,14 @@
   - Previously, cleanup callbacks of nested effects were only called when the outer effect was destroyed, not when it re-ran
   - Now, `destroyChildEffects()` is called in `run()` before the effect callback executes
 
+### Chores
+
+- **Test refactoring**: Replace deprecated Jest matcher aliases with recommended alternatives
+  - `.toBeCalledWith()` → `.toHaveBeenCalledWith()` (31 occurrences)
+  - `.toBeCalledTimes()` → `.toHaveBeenCalledTimes()` (15 occurrences)
+  - Remove unnecessary `done` callback in synchronous test (1 occurrence)
+  - Affected files: `unsubscribeEffect.spec.ts`, `createSignal.spec.ts`, `createSignal.compareFn.spec.ts`, `batch.spec.ts`, `effects.onCreateEffect.spec.ts`, `globalEffectStack.spec.ts`
+
 ### Documentation
 
 - Restructure documentation: `README.md` is now a concise entry point with links to detailed `docs/`

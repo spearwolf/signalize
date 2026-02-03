@@ -26,8 +26,8 @@ describe('batch', () => {
 
     expect(effectCallCount0).toBe(1);
     expect(effectCallCount1).toBe(1);
-    expect(valA).toBeCalledWith(123);
-    expect(valB).toBeCalledWith('abc');
+    expect(valA).toHaveBeenCalledWith(123);
+    expect(valB).toHaveBeenCalledWith('abc');
 
     effectCallCount0 = 0;
     effectCallCount1 = 0;
@@ -43,16 +43,16 @@ describe('batch', () => {
     expect(batchCallCount).toBe(1);
     expect(effectCallCount0).toBe(1);
     expect(effectCallCount1).toBe(1);
-    expect(valA).toBeCalledWith(456);
-    expect(valB).toBeCalledWith('def');
+    expect(valA).toHaveBeenCalledWith(456);
+    expect(valB).toHaveBeenCalledWith('def');
 
     setB('plah!');
 
     expect(batchCallCount).toBe(1);
     expect(effectCallCount0).toBe(2);
     expect(effectCallCount1).toBe(2);
-    expect(valA).toBeCalledWith(456);
-    expect(valB).toBeCalledWith('plah!');
+    expect(valA).toHaveBeenCalledWith(456);
+    expect(valB).toHaveBeenCalledWith('plah!');
   });
 
   it('nested effects work as expected', () => {
@@ -74,9 +74,9 @@ describe('batch', () => {
     });
 
     expect(effectCallCount).toBe(1);
-    expect(valA).toBeCalledWith(123);
-    expect(valB).toBeCalledWith('abc');
-    expect(valC).toBeCalledWith(23);
+    expect(valA).toHaveBeenCalledWith(123);
+    expect(valB).toHaveBeenCalledWith('abc');
+    expect(valC).toHaveBeenCalledWith(23);
 
     effectCallCount = 0;
     let batchCallCount0 = 0;
@@ -87,37 +87,37 @@ describe('batch', () => {
 
       setA(456);
       expect(a()).toBe(456);
-      expect(valA).toBeCalledWith(123);
+      expect(valA).toHaveBeenCalledWith(123);
 
       batch(() => {
         ++batchCallCount1;
 
         setB('aaa');
         expect(b()).toBe('aaa');
-        expect(valB).toBeCalledWith('abc');
+        expect(valB).toHaveBeenCalledWith('abc');
 
         setC(42);
         expect(c()).toBe(42);
-        expect(valC).toBeCalledWith(23);
+        expect(valC).toHaveBeenCalledWith(23);
       });
 
       setB('def');
       expect(b()).toBe('def');
-      expect(valB).toBeCalledWith('abc');
+      expect(valB).toHaveBeenCalledWith('abc');
     });
 
     expect(batchCallCount0).toBe(1);
     expect(batchCallCount1).toBe(1);
     expect(effectCallCount).toBe(1);
-    expect(valA).toBeCalledWith(456);
-    expect(valB).toBeCalledWith('def');
-    expect(valC).toBeCalledWith(42);
+    expect(valA).toHaveBeenCalledWith(456);
+    expect(valB).toHaveBeenCalledWith('def');
+    expect(valC).toHaveBeenCalledWith(42);
 
     effectCallCount = 0;
 
     setB('end');
 
     expect(effectCallCount).toBe(1);
-    expect(valB).toBeCalledWith('end');
+    expect(valB).toHaveBeenCalledWith('end');
   });
 });
