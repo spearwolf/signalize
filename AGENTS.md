@@ -219,14 +219,17 @@ The documentation is organized in multiple locations that must be kept in sync w
 
 ### Documentation Locations
 
-| Location          | Purpose                                                 | Update When                                     |
-| ----------------- | ------------------------------------------------------- | ----------------------------------------------- |
-| `README.md`       | Brief introduction, quick start, links to detailed docs | Major API changes, new core concepts            |
-| `docs/`           | Comprehensive user documentation                        | Any API changes, new features, behavior changes |
-| `skills/`         | AI agent quick-reference guides                         | API signature changes, new functions/classes    |
-| `src/*.ts`        | JSDoc comments in source code                           | Any code changes to public API                  |
-| `CHANGELOG.md`    | Version history and migration guides                    | Every release, breaking changes                 |
-| `CONTRIBUTING.md` | Developer setup and contribution guidelines             | Build process or workflow changes               |
+| Location             | Purpose                                                 | Update When                                     |
+| -------------------- | ------------------------------------------------------- | ----------------------------------------------- |
+| `README.md`          | Brief introduction, quick start, links to detailed docs | Major API changes, new core concepts            |
+| `docs/`              | Comprehensive user documentation                        | Any API changes, new features, behavior changes |
+| `skills/`            | AI agent quick-reference guides                         | API signature changes, new functions/classes    |
+| `src/*.ts`           | JSDoc comments in source code                           | Any code changes to public API                  |
+| `CHANGELOG.md`       | Version history and migration guides                    | Every release, breaking changes                 |
+| `CONTRIBUTING.md`    | Developer setup and contribution guidelines             | Build process or workflow changes               |
+| `LICENSE`            | Apache-2.0 license text                                 | Rarely                                          |
+| `CODE_OF_CONDUCT.md` | Community guidelines                                    | When handling community interactions            |
+| `TODO.md`            | Internal backlog/known issues                           | When investigating bugs or planning features    |
 
 ### docs/ Folder Structure
 

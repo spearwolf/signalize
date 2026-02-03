@@ -177,7 +177,9 @@ For comprehensive documentation, see the **[docs/](./docs/)** folder:
 
 Contributions are welcome! If you find a bug or have a feature request, please open an issue. If you want to contribute code or documentation, please open a pull request.
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines and [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) for community guidelines.
+
+For version history and migration guides, see the [CHANGELOG](./CHANGELOG.md).
 
 ## License
 
