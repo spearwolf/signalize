@@ -213,6 +213,82 @@ Always run `pnpm cbt` after making changes to ensure build, linting, and tests p
 - **Documentation:** Update `README.md` for API changes, `CHANGELOG.md` for notable changes
 - **Commits:** Clear, concise messages explaining the "why"
 
+## Documentation Structure
+
+The documentation is organized in multiple locations that must be kept in sync when making changes to the source code or public API.
+
+### Documentation Locations
+
+| Location          | Purpose                                                 | Update When                                     |
+| ----------------- | ------------------------------------------------------- | ----------------------------------------------- |
+| `README.md`       | Brief introduction, quick start, links to detailed docs | Major API changes, new core concepts            |
+| `docs/`           | Comprehensive user documentation                        | Any API changes, new features, behavior changes |
+| `skills/`         | AI agent quick-reference guides                         | API signature changes, new functions/classes    |
+| `src/*.ts`        | JSDoc comments in source code                           | Any code changes to public API                  |
+| `CHANGELOG.md`    | Version history and migration guides                    | Every release, breaking changes                 |
+| `CONTRIBUTING.md` | Developer setup and contribution guidelines             | Build process or workflow changes               |
+
+### docs/ Folder Structure
+
+| File              | Content                                            |
+| ----------------- | -------------------------------------------------- |
+| `introduction.md` | Library overview, core concepts, design philosophy |
+| `quickstart.md`   | Installation, basic usage examples                 |
+| `guide.md`        | Comprehensive tutorial with all features           |
+| `full-api.md`     | Complete API reference with all options            |
+| `cheat-sheet.md`  | Quick reference for common patterns                |
+
+### skills/ Folder Structure
+
+Agent skills provide focused, quick-reference documentation for AI assistants:
+
+| Skill                   | Covers                                                                                    |
+| ----------------------- | ----------------------------------------------------------------------------------------- |
+| `signalize-signals/`    | `createSignal`, `destroySignal`, `isSignal`, `muteSignal`, `unmuteSignal`, `Signal` class |
+| `signalize-effects/`    | `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect`, `Effect` class    |
+| `signalize-memos/`      | `createMemo` and computed signals                                                         |
+| `signalize-links/`      | `link`, `unlink`, `getLinksCount`, `SignalLink` class                                     |
+| `signalize-groups/`     | `SignalGroup`, `SignalAutoMap` classes                                                    |
+| `signalize-utilities/`  | `batch`, `beQuiet`, `isQuiet`, `hibernate`, `touch`, `value`                              |
+| `signalize-decorators/` | `@signal`, `@memo` decorators (EXPERIMENTAL)                                              |
+| `signalize-testing/`    | Testing patterns, `getSignalsCount`, `getEffectsCount`, `getLinksCount`                   |
+
+### Documentation Update Checklist
+
+When modifying the public API, update documentation in this order:
+
+1. **Source Code JSDoc** (`src/*.ts`)
+   - Add/update JSDoc comments for all public functions, classes, and interfaces
+   - Include `@param` and `@returns` tags
+
+2. **Full API Reference** (`docs/full-api.md`)
+   - Document all parameters, options, and return types
+   - Include code examples for new features
+
+3. **Guide** (`docs/guide.md`)
+   - Add usage examples for new features
+   - Update existing examples if behavior changes
+
+4. **Skills** (`skills/*/SKILL.md`)
+   - Update relevant skill files with new API signatures
+   - Keep examples concise and focused
+
+5. **README.md**
+   - Update "API at a Glance" section if new exports are added
+   - Update quick start if core usage patterns change
+
+6. **CHANGELOG.md**
+   - Document all changes for the next release
+   - Include migration guides for breaking changes
+
+### Documentation Style Guidelines
+
+- **Code examples:** Use TypeScript, keep examples minimal and focused
+- **Consistency:** Match existing terminology and formatting
+- **Accuracy:** All code examples must be runnable and correct
+- **Completeness:** Document all public API options and parameters
+- **Cross-references:** Link between related documentation sections
+
 ## Agent Instructions
 
 1. **Context:** Read `README.md` to understand the library's purpose and public API
