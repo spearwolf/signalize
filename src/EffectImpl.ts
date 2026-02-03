@@ -282,7 +282,6 @@ export class EffectImpl {
       const cleanupCallback = this.#nextCleanupCallback;
       this.#nextCleanupCallback = undefined;
       if (isThenable(cleanupCallback)) {
-        // TODO abort the cleanupCallback promise
         Promise.resolve(cleanupCallback).then((cleanup) => {
           if (typeof cleanup === 'function') {
             cleanup();
