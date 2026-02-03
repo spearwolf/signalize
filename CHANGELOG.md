@@ -1,6 +1,12 @@
 # CHANGELOG
 
-## Unreleased
+## `v0.26.0` (2026-02-03)
+
+### Bug Fixes
+
+- **Nested effects cleanup**: When an outer effect re-runs, nested (child) effects are now properly destroyed before being recreated. This ensures that cleanup callbacks of nested effects are correctly invoked.
+  - Previously, cleanup callbacks of nested effects were only called when the outer effect was destroyed, not when it re-ran
+  - Now, `destroyChildEffects()` is called in `run()` before the effect callback executes
 
 ### Documentation
 

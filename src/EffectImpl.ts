@@ -193,6 +193,7 @@ export class EffectImpl {
       curBatch.batch(this.id, this.priority);
     } else {
       this.runCleanupCallback();
+      this.destroyChildEffects();
 
       this.curChildEffectSlot = 0;
       this.shouldRun = false;
@@ -260,6 +261,13 @@ export class EffectImpl {
     }
   }
 
+  private destroyChildEffects(): void {
+    for (const effect of this.childEffects) {
+      effect.destroy();
+    }
+    this.childEffects.length = 0;
+  }
+
   private unsubscribeSignal(signalId: symbol): void {
     if (this.#signalSubscriptions.has(signalId)) {
       this.#signalSubscriptions.get(signalId).forEach((unsubscribe) => {
@@ -295,6 +303,7 @@ export class EffectImpl {
     emit(globalEffectQueue, $destroyEffect, this);
 
     this.runCleanupCallback();
+    this.destroyChildEffects();
 
     off(globalSignalQueue, this);
     off(globalEffectQueue, this);
@@ -306,11 +315,6 @@ export class EffectImpl {
     this.#lostSignals.clear();
     this.#signalSubscriptions.clear();
     this.#destroyedSignals.clear();
-
-    this.childEffects.forEach((effect) => {
-      effect.destroy();
-    });
-    this.childEffects.length = 0;
 
     --EffectImpl.count;
   };

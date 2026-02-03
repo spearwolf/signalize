@@ -251,8 +251,7 @@ describe('createEffect', () => {
     const e = jest.fn(getE);
 
     const destroyEffectMock = jest.fn();
-
-    onDestroyEffect(destroyEffectMock);
+    const unsubDestroy = onDestroyEffect(destroyEffectMock);
 
     let firstEffectCallCount = 0;
     let secondEffectCallCount = 0;
@@ -299,58 +298,81 @@ describe('createEffect', () => {
     expect(e).toHaveBeenCalledTimes(1);
     clearAllMocks();
 
+    // When parent (first) effect re-runs due to signal A change:
+    // 1. Child effects are destroyed (cleanup is called)
+    // 2. New child effects are created and run
     setA(456);
 
     assertEffectsCount(3, 'after second effect run');
-    expect(destroyEffectMock).toHaveBeenCalledTimes(0);
+    // 2 child effects destroyed (second and third)
+    expect(destroyEffectMock).toHaveBeenCalledTimes(2);
 
     expect(firstEffectCallCount).toBe(1);
-    expect(secondEffectCallCount).toBe(0);
+    // Child effects are recreated and re-run
+    expect(secondEffectCallCount).toBe(1);
+    expect(thirdEffectCallCount).toBe(1);
+    expect(a).toHaveBeenCalledTimes(3); // 2 in first + 1 in third
+    expect(b).toHaveBeenCalledTimes(2); // 1 in first + 1 in second
+    expect(c).toHaveBeenCalledTimes(2); // 1 in first + 1 in third
+    expect(d).toHaveBeenCalledTimes(1); // 1 in second
+    expect(e).toHaveBeenCalledTimes(1); // 1 in third
+    clearAllMocks();
+
+    // When first effect re-runs due to signal B change:
+    // Child effects are destroyed and recreated
+    setB('def');
+
+    // 2 more child effects destroyed
+    expect(destroyEffectMock).toHaveBeenCalledTimes(2);
+
+    expect(firstEffectCallCount).toBe(1);
+    // Child effects recreated
+    expect(secondEffectCallCount).toBe(1);
     expect(thirdEffectCallCount).toBe(1);
     expect(a).toHaveBeenCalledTimes(3);
-    expect(b).toHaveBeenCalledTimes(1);
+    expect(b).toHaveBeenCalledTimes(2);
     expect(c).toHaveBeenCalledTimes(2);
-    expect(d).toHaveBeenCalledTimes(0);
+    expect(d).toHaveBeenCalledTimes(1);
     expect(e).toHaveBeenCalledTimes(1);
     clearAllMocks();
 
-    setB('def');
+    // When first effect re-runs due to signal C change:
+    // Child effects are destroyed and recreated
+    setC('B');
+
+    expect(destroyEffectMock).toHaveBeenCalledTimes(2);
 
     expect(firstEffectCallCount).toBe(1);
     expect(secondEffectCallCount).toBe(1);
-    expect(thirdEffectCallCount).toBe(0);
-    expect(a).toHaveBeenCalledTimes(2);
-    expect(b).toHaveBeenCalledTimes(2);
-    expect(c).toHaveBeenCalledTimes(1);
-    expect(d).toHaveBeenCalledTimes(1);
-    expect(e).toHaveBeenCalledTimes(0);
-    clearAllMocks();
-
-    setC('B');
-
-    expect(firstEffectCallCount).toBe(1);
-    expect(secondEffectCallCount).toBe(0);
     expect(thirdEffectCallCount).toBe(1);
     expect(a).toHaveBeenCalledTimes(3);
-    expect(b).toHaveBeenCalledTimes(1);
+    expect(b).toHaveBeenCalledTimes(2);
     expect(c).toHaveBeenCalledTimes(2);
-    expect(d).toHaveBeenCalledTimes(0);
+    expect(d).toHaveBeenCalledTimes(1);
     expect(e).toHaveBeenCalledTimes(1);
     clearAllMocks();
 
+    // Signal D only affects second effect, which is now a child
+    // When second effect re-runs, third effect (its child) is destroyed and recreated
     setD('bar');
+
+    // Only third effect is destroyed (child of second)
+    expect(destroyEffectMock).toHaveBeenCalledTimes(1);
 
     expect(firstEffectCallCount).toBe(0);
     expect(secondEffectCallCount).toBe(1);
-    expect(thirdEffectCallCount).toBe(0);
-    expect(a).toHaveBeenCalledTimes(0);
+    expect(thirdEffectCallCount).toBe(1); // Recreated when second re-runs
+    expect(a).toHaveBeenCalledTimes(1);
     expect(b).toHaveBeenCalledTimes(1);
-    expect(c).toHaveBeenCalledTimes(0);
+    expect(c).toHaveBeenCalledTimes(1);
     expect(d).toHaveBeenCalledTimes(1);
-    expect(e).toHaveBeenCalledTimes(0);
+    expect(e).toHaveBeenCalledTimes(1);
     clearAllMocks();
 
+    // Signal E only affects third effect, which has no children
     setE(false);
+
+    expect(destroyEffectMock).toHaveBeenCalledTimes(0);
 
     expect(firstEffectCallCount).toBe(0);
     expect(secondEffectCallCount).toBe(0);
@@ -363,6 +385,9 @@ describe('createEffect', () => {
 
     effect.destroy();
 
+    // 3 effects destroyed on final destroy
     expect(destroyEffectMock).toHaveBeenCalledTimes(3);
+
+    unsubDestroy();
   });
 });

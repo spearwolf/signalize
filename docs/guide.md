@@ -135,14 +135,11 @@ Sometimes you want an effect to run _only_ when specific signals change, regardl
 const trigger = createSignal(0);
 const data = createSignal('A');
 
-createEffect(
-  () => {
-    // This effect runs ONLY when `trigger` changes.
-    // It reads `data.get()`, but does NOT subscribe to it.
-    console.log(`Trigger ${trigger.get()} fired with data: ${data.get()}`);
-  },
-  [trigger],
-);
+createEffect(() => {
+  // This effect runs ONLY when `trigger` changes.
+  // It reads `data.get()`, but does NOT subscribe to it.
+  console.log(`Trigger ${trigger.get()} fired with data: ${data.get()}`);
+}, [trigger]);
 ```
 
 **Use cases for Static Effects:**
@@ -168,16 +165,29 @@ createEffect(() => {
 
 ### Nested Effects
 
-You can create effects inside other effects. Child effects are automatically destroyed when the parent effect re-runs or is destroyed.
+You can create effects inside other effects. Child effects are automatically destroyed (with their cleanup callbacks called) when the parent effect re-runs or is destroyed.
 
 ```typescript
 createEffect(() => {
   if (user.get()) {
     // This effect is created only when user exists
-    createEffect(() => console.log('User details:', user.get().details));
+    // It will be destroyed and recreated when the outer effect re-runs
+    createEffect(() => {
+      console.log('User details:', user.get().details);
+      return () => console.log('Inner effect cleanup');
+    });
   }
+
+  return () => console.log('Outer effect cleanup');
 });
 ```
+
+When the outer effect re-runs (e.g., when `user` changes), the sequence is:
+
+1. Outer cleanup runs
+2. Inner cleanup runs (inner effect is destroyed)
+3. Outer effect callback executes
+4. Inner effect is recreated and runs
 
 ---
 

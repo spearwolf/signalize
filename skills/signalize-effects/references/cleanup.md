@@ -139,9 +139,9 @@ await new Promise((resolve) => setTimeout(resolve, 0));
 
 ## Nested Effects and Cleanup
 
-### Critical Behavior
+### Behavior (v0.26.0+)
 
-When outer effect re-runs, inner effects are **recreated** (new instances), not re-run:
+When an outer effect re-runs, all nested (child) effects are **destroyed** (with their cleanup callbacks called) and then **recreated**:
 
 ```typescript
 createEffect(() => {
@@ -167,42 +167,104 @@ Inner runs
 
 ```
 Outer cleanup      ← Outer cleanup first
+Inner cleanup      ← Inner cleanup called (inner effect destroyed)
 Outer runs         ← Outer re-runs
 Inner runs         ← Inner is RECREATED (new instance)
 ```
 
-The old inner effect still exists until garbage collected. Its cleanup is NOT called until the new outer effect is destroyed.
+**On final destroy:**
 
-### Explicit Inner Cleanup
+```
+Outer cleanup
+Inner cleanup
+```
 
-For deterministic inner cleanup, manage it explicitly:
+### Deeply Nested Effects
+
+Cleanup cascades through all levels:
 
 ```typescript
 createEffect(() => {
-  const innerEffect = createEffect(() => {
-    // inner logic
-    return () => console.log('Inner cleanup');
+  // Level 1
+  createEffect(() => {
+    // Level 2
+    createEffect(() => {
+      // Level 3
+      return () => console.log('Level 3 cleanup');
+    });
+    return () => console.log('Level 2 cleanup');
   });
-
-  return () => {
-    innerEffect.destroy(); // Explicitly destroy inner
-    console.log('Outer cleanup');
-  };
+  return () => console.log('Level 1 cleanup');
 });
 ```
 
-Now when outer re-runs, inner cleanup is called before recreation.
+When Level 1 re-runs:
+
+```
+Level 1 cleanup
+Level 2 cleanup
+Level 3 cleanup
+Level 1 runs
+Level 2 runs
+Level 3 runs
+```
+
+### Multiple Sibling Effects
+
+All sibling child effects are cleaned up when parent re-runs:
+
+```typescript
+createEffect(() => {
+  createEffect(() => {
+    return () => console.log('Child A cleanup');
+  });
+
+  createEffect(() => {
+    return () => console.log('Child B cleanup');
+  });
+
+  return () => console.log('Parent cleanup');
+});
+```
+
+When parent re-runs:
+
+```
+Parent cleanup
+Child A cleanup
+Child B cleanup
+Parent runs
+Child A runs
+Child B runs
+```
+
+### Capturing Values in Nested Cleanup
+
+Child effect cleanup captures values from when it was created:
+
+```typescript
+createEffect(() => {
+  const parentValue = parentSignal.get();
+
+  createEffect(() => {
+    return () => {
+      // parentValue is captured from when THIS inner effect was created
+      console.log('Cleaning up for parent value:', parentValue);
+    };
+  });
+});
+```
 
 ## Cleanup Timing Table
 
-| Scenario                                 | Cleanup Called? | When?                            |
-| ---------------------------------------- | --------------- | -------------------------------- |
-| Signal changes, effect re-runs           | YES             | Before re-run                    |
-| `effect.destroy()` called                | YES             | Immediately                      |
-| Signal destroyed (last dependency)       | YES             | Effect also destroyed            |
-| `effect.destroy()` called multiple times | Only once       | First call                       |
-| Effect with `autorun: false`, never run  | NO              | Nothing to cleanup               |
-| Outer effect re-runs (nested)            | Outer YES       | Inner recreated, old not cleaned |
+| Scenario                                 | Cleanup Called? | When?                                      |
+| ---------------------------------------- | --------------- | ------------------------------------------ |
+| Signal changes, effect re-runs           | YES             | Before re-run                              |
+| `effect.destroy()` called                | YES             | Immediately                                |
+| Signal destroyed (last dependency)       | YES             | Effect also destroyed                      |
+| `effect.destroy()` called multiple times | Only once       | First call                                 |
+| Effect with `autorun: false`, never run  | NO              | Nothing to cleanup                         |
+| Outer effect re-runs (nested)            | YES (all)       | Parent cleanup, then children, then re-run |
 
 ## Pitfalls to Avoid
 
