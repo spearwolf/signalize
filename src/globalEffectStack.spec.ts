@@ -12,7 +12,7 @@ describe('globalEffectStack', () => {
       expect(getCurrentEffect()).toBeUndefined();
     });
 
-    it('should return the current effect if the method is called within an effect callback', (done) => {
+    it('should return the current effect if the method is called within an effect callback', () => {
       const effect = new EffectImpl(NOOP);
       runWithinEffect(effect, () => {
         expect(getCurrentEffect()).toBe(effect);
@@ -23,7 +23,6 @@ describe('globalEffectStack', () => {
         });
 
         expect(getCurrentEffect()).toBe(effect);
-        done();
       });
     });
   });

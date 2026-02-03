@@ -21,20 +21,20 @@ describe('onCreateEffect', () => {
 
     const effect = createEffect(() => {});
 
-    expect(effectCreated).toBeCalledTimes(1);
-    expect(effectDestroyed).toBeCalledTimes(0);
+    expect(effectCreated).toHaveBeenCalledTimes(1);
+    expect(effectDestroyed).toHaveBeenCalledTimes(0);
     expect(effectCreated.mock.calls[0][0]).toBeInstanceOf(EffectImpl);
 
     unsubscribeCreateEffect();
 
-    expect(effectCreated).toBeCalledTimes(1);
-    expect(effectDestroyed).toBeCalledTimes(0);
+    expect(effectCreated).toHaveBeenCalledTimes(1);
+    expect(effectDestroyed).toHaveBeenCalledTimes(0);
 
     assertEffectsCount(1);
 
     effect.destroy();
 
-    expect(effectDestroyed).toBeCalledTimes(1);
+    expect(effectDestroyed).toHaveBeenCalledTimes(1);
     expect(effectDestroyed.mock.calls[0][0]).toBe(
       effectCreated.mock.calls[0][0],
     );

@@ -64,7 +64,7 @@ describe('createSignal', () => {
 
     set(1001);
 
-    expect(effect).toBeCalledWith(1001);
+    expect(effect).toHaveBeenCalledWith(1001);
 
     destroySignal(signal);
   });

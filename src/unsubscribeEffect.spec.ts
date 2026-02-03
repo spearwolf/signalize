@@ -50,11 +50,11 @@ describe('unsubscribe as return function from effect callback', () => {
     expect(effectCallCount0).toBe(1);
     expect(effectCallCount1).toBe(1);
 
-    expect(valA).toBeCalledWith(123);
-    expect(valB).toBeCalledWith('abc');
+    expect(valA).toHaveBeenCalledWith(123);
+    expect(valB).toHaveBeenCalledWith('abc');
 
-    expect(unsubscribeA).toBeCalledTimes(0);
-    expect(unsubscribeB).toBeCalledTimes(0);
+    expect(unsubscribeA).toHaveBeenCalledTimes(0);
+    expect(unsubscribeB).toHaveBeenCalledTimes(0);
 
     clearAllMocks();
 
@@ -63,11 +63,11 @@ describe('unsubscribe as return function from effect callback', () => {
     expect(effectCallCount0).toBe(0);
     expect(effectCallCount1).toBe(1);
 
-    expect(valA).toBeCalledTimes(0);
-    expect(valB).toBeCalledWith('foo');
+    expect(valA).toHaveBeenCalledTimes(0);
+    expect(valB).toHaveBeenCalledWith('foo');
 
-    expect(unsubscribeA).toBeCalledTimes(0);
-    expect(unsubscribeB).toBeCalledWith('abc');
+    expect(unsubscribeA).toHaveBeenCalledTimes(0);
+    expect(unsubscribeB).toHaveBeenCalledWith('abc');
 
     expect(subscriptionOrder).toEqual(['abc']);
 
@@ -79,12 +79,12 @@ describe('unsubscribe as return function from effect callback', () => {
     // Inner effect is recreated and re-runs when parent re-runs
     expect(effectCallCount1).toBe(1);
 
-    expect(valA).toBeCalledWith(43);
-    expect(valB).toBeCalledWith('foo');
+    expect(valA).toHaveBeenCalledWith(43);
+    expect(valB).toHaveBeenCalledWith('foo');
 
-    expect(unsubscribeA).toBeCalledWith(123);
+    expect(unsubscribeA).toHaveBeenCalledWith(123);
     // Inner effect cleanup is called when parent re-runs (before it's destroyed and recreated)
-    expect(unsubscribeB).toBeCalledWith('foo');
+    expect(unsubscribeB).toHaveBeenCalledWith('foo');
 
     // Cleanup order: parent cleanup first, then child cleanup (child is destroyed before parent callback runs)
     expect(subscriptionOrder).toEqual([123, 'foo']);
