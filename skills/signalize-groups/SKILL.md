@@ -277,3 +277,10 @@ SignalGroup.delete(obj); // Resources destroyed, group removed
 3. **Use hierarchies for inheritance** - App-wide config accessible to children
 4. **Consider logical grouping** - Even without classes, group related state
 5. **Test cleanup** - Use `assertSignalsCount(0)` to verify no leaks
+
+## See Also
+
+- [references/signal-auto-map.md](references/signal-auto-map.md) - SignalAutoMap details
+- [Developer Guide](../../docs/guide.md) - Comprehensive guide to all features
+- [Full API Reference](../../docs/full-api.md) - Complete API documentation
+- [Cheat Sheet](../../docs/cheat-sheet.md) - Quick reference
