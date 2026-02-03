@@ -23,10 +23,10 @@ Signals are the core primitive of reactivity. They hold a value and notify subsc
 Use `createSignal` to create a new signal.
 
 ```typescript
-import { createSignal } from '@spearwolf/signalize';
+import {createSignal} from '@spearwolf/signalize';
 
 const count = createSignal(0);
-const user = createSignal({ name: 'Alice' });
+const user = createSignal({name: 'Alice'});
 ```
 
 ### Reading Values
@@ -61,7 +61,7 @@ By default, signals use strict equality (`===`) to check if a value has changed.
 
 ```typescript
 const list = createSignal([1, 2], {
-  compare: (a, b) => JSON.stringify(a) === JSON.stringify(b)
+  compare: (a, b) => JSON.stringify(a) === JSON.stringify(b),
 });
 
 list.set([1, 2]); // Will NOT trigger effects because values are "equal"
@@ -72,7 +72,7 @@ list.set([1, 2]); // Will NOT trigger effects because values are "equal"
 You can temporarily silence a signal so it doesn't trigger effects, even if its value changes.
 
 ```typescript
-import { muteSignal, unmuteSignal } from '@spearwolf/signalize';
+import {muteSignal, unmuteSignal} from '@spearwolf/signalize';
 
 muteSignal(count);
 count.set(100); // No effects run
@@ -88,7 +88,7 @@ Effects are functions that run in response to signal changes. They are the "obse
 ### Creating an Effect
 
 ```typescript
-import { createEffect } from '@spearwolf/signalize';
+import {createEffect} from '@spearwolf/signalize';
 
 createEffect(() => {
   console.log('Count is:', count.get());
@@ -101,7 +101,7 @@ When creating an effect, you can choose between two modes of dependency tracking
 
 #### Dynamic Effects (Auto-tracking)
 
-By default, `createEffect` tracks dependencies dynamically. This means it listens to *every* signal that is read (using `.get()`) during the execution of the function.
+By default, `createEffect` tracks dependencies dynamically. This means it listens to _every_ signal that is read (using `.get()`) during the execution of the function.
 
 Crucially, the dependencies are recalculated every time the effect runs. This allows for conditional dependencies.
 
@@ -121,27 +121,32 @@ createEffect(() => {
 ```
 
 In this example:
-1. Initially, `showDetails` is `false`. The effect runs, reads `showDetails`, prints "Hidden". It *only* subscribes to `showDetails`.
+
+1. Initially, `showDetails` is `false`. The effect runs, reads `showDetails`, prints "Hidden". It _only_ subscribes to `showDetails`.
 2. If `details` changes, the effect does **not** run (because it's not currently subscribed).
-3. If `showDetails` becomes `true`, the effect runs, reads `showDetails` AND `details`. Now it subscribes to *both*.
-4. Now if `details` changes, the effect *will* run.
+3. If `showDetails` becomes `true`, the effect runs, reads `showDetails` AND `details`. Now it subscribes to _both_.
+4. Now if `details` changes, the effect _will_ run.
 
 #### Static Effects (Explicit Dependencies)
 
-Sometimes you want an effect to run *only* when specific signals change, regardless of what other signals it reads. You can achieve this by passing a `dependencies` array in the options.
+Sometimes you want an effect to run _only_ when specific signals change, regardless of what other signals it reads. You can achieve this by passing a `dependencies` array in the options.
 
 ```typescript
 const trigger = createSignal(0);
 const data = createSignal('A');
 
-createEffect(() => {
-  // This effect runs ONLY when `trigger` changes.
-  // It reads `data.get()`, but does NOT subscribe to it.
-  console.log(`Trigger ${trigger.get()} fired with data: ${data.get()}`);
-}, { dependencies: [trigger] });
+createEffect(
+  () => {
+    // This effect runs ONLY when `trigger` changes.
+    // It reads `data.get()`, but does NOT subscribe to it.
+    console.log(`Trigger ${trigger.get()} fired with data: ${data.get()}`);
+  },
+  {dependencies: [trigger]},
+);
 ```
 
 **Use cases for Static Effects:**
+
 - **Performance optimization**: Prevent re-running expensive effects when minor data changes.
 - **Explicit control**: When you want to treat some signals as "triggers" and others as just "data".
 - **Avoiding loops**: When you need to read a signal that you might also be writing to (though `beQuiet` is often better for this).
@@ -181,7 +186,7 @@ createEffect(() => {
 Memos are signals that are derived from other signals. They are useful for caching expensive computations.
 
 ```typescript
-import { createMemo } from '@spearwolf/signalize';
+import {createMemo} from '@spearwolf/signalize';
 
 const firstName = createSignal('John');
 const lastName = createSignal('Doe');
@@ -199,7 +204,7 @@ console.log(fullName()); // "John Doe"
 - **Lazy (`lazy: true`)**: Only calculates when you read it.
 
 ```typescript
-const heavy = createMemo(() => heavyComputation(), { lazy: true });
+const heavy = createMemo(() => heavyComputation(), {lazy: true});
 ```
 
 ---
@@ -222,7 +227,7 @@ While effects are perfect for side effects (DOM updates, logging, API calls), **
 Create a link to automatically sync a source signal to a target:
 
 ```typescript
-import { createSignal, link } from '@spearwolf/signalize';
+import {createSignal, link} from '@spearwolf/signalize';
 
 const source = createSignal(10);
 const target = createSignal(0);
@@ -260,23 +265,23 @@ temperature.set(25);
 `SignalGroup` is essential for organizing signals into modules or nodes. It manages the lifecycle of signals, effects, and links as a cohesive unit:
 
 ```typescript
-import { SignalGroup, createSignal, link } from '@spearwolf/signalize';
+import {SignalGroup, createSignal, link} from '@spearwolf/signalize';
 
 // Create a module/node
 class AudioNode {
   group = SignalGroup.findOrCreate(this);
-  
+
   // Inputs
-  input = createSignal(0, { attach: this });
-  
-  // Outputs  
-  output = createSignal(0, { attach: this });
-  
+  input = createSignal(0, {attach: this});
+
+  // Outputs
+  output = createSignal(0, {attach: this});
+
   constructor() {
     // Internal processing
-    link(this.input, this.output, { attach: this });
+    link(this.input, this.output, {attach: this});
   }
-  
+
   destroy() {
     this.group.clear(); // Destroys all signals and links
   }
@@ -353,16 +358,19 @@ for await (const value of connection.asyncValues((v) => v >= 10)) {
 ### Use Cases
 
 **Game Engines & Audio Processing**
+
 - Build node-based processing graphs
 - Connect audio/visual effect modules
 - Manage complex state pipelines
 
 **Plugin Architectures**
+
 - Define clear module interfaces
 - Connect plugins via input/output signals
 - Hot-reload modules without breaking connections
 
 **Data Flow Visualization**
+
 - Represent reactive graphs visually
 - Debug complex state flows
 - Build visual programming tools
@@ -371,11 +379,9 @@ for await (const value of connection.asyncValues((v) => v >= 10)) {
 
 1. **Use links for state propagation between modules**
    - Not for side effects (use effects instead)
-   
 2. **Organize related signals in SignalGroups**
    - Makes lifecycle management simple
    - Enables hierarchical architectures
-   
 3. **Name your signals in groups**
    - Provides clear module interfaces
    - Enables dynamic signal lookup
@@ -390,10 +396,14 @@ for await (const value of connection.asyncValues((v) => v >= 10)) {
 
 If you use classes, decorators provide a clean syntax.
 
-**Note**: Import from `@spearwolf/signalize/decorators`.
+**Import from `@spearwolf/signalize/decorators`.**
+
+> [!IMPORTANT]
+> The decorator API is still in the early stages of development and is not yet complete.
+> It only uses the new JavaScript standard decorators, not the legacy or experimental TypeScript ones.
 
 ```typescript
-import { signal, memo } from '@spearwolf/signalize/decorators';
+import {signal, memo} from '@spearwolf/signalize/decorators';
 
 class Character {
   @signal() accessor health = 100;
@@ -420,7 +430,7 @@ Group multiple updates into a single re-render cycle.
 > **Note:** `batch()` is a **hint**, not a strict guarantee. While it typically defers effects until the batch completes, the library may still choose to propagate some signal changes in steps if necessary for internal consistency or other reasons.
 
 ```typescript
-import { batch } from '@spearwolf/signalize';
+import {batch} from '@spearwolf/signalize';
 
 batch(() => {
   firstName.set('Jane');
@@ -434,7 +444,7 @@ batch(() => {
 Run code without tracking dependencies.
 
 ```typescript
-import { beQuiet } from '@spearwolf/signalize';
+import {beQuiet} from '@spearwolf/signalize';
 
 createEffect(() => {
   // Read `count` without subscribing to it
@@ -450,7 +460,7 @@ Temporarily suspends all reactive context (batching, tracking, etc.) while execu
 **Crucially, while the outer context is suspended, you are free to create new contexts within the callback.** For example, you can start a new `batch()` or create a new effect that tracks its own dependencies, completely isolated from the surrounding code.
 
 ```typescript
-import { hibernate, batch } from '@spearwolf/signalize';
+import {hibernate, batch} from '@spearwolf/signalize';
 
 createEffect(() => {
   // ...
@@ -460,7 +470,7 @@ createEffect(() => {
 
     // You CAN create new contexts here:
     batch(() => {
-        // This batch works as expected
+      // This batch works as expected
     });
   });
 });
@@ -477,6 +487,7 @@ Be careful not to create loops where Effect A updates Signal X, which triggers E
 ---
 
 ## Object Signals
+
 - Use **Memos** for derived state instead of syncing signals with effects.
 - Use `batch` or `beQuiet` to control updates.
 
@@ -485,7 +496,7 @@ Be careful not to create loops where Effect A updates Signal X, which triggers E
 For advanced use cases (like building custom decorators), you can interact with signals attached to objects directly.
 
 ```typescript
-import { findObjectSignalByName } from '@spearwolf/signalize';
+import {findObjectSignalByName} from '@spearwolf/signalize';
 
 const sig = findObjectSignalByName(myObject, 'propertyName');
 ```
