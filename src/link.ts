@@ -21,8 +21,6 @@ type LinkableTarget<ValueType> =
   | Signal<ValueType>
   | ValueCallback<ValueType>;
 
-// TODO add two-way binding option to link(src, trgt, {twoWay: true}) ?
-
 /**
  * Options for creating a signal link.
  */
