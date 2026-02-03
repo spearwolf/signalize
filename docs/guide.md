@@ -141,7 +141,7 @@ createEffect(
     // It reads `data.get()`, but does NOT subscribe to it.
     console.log(`Trigger ${trigger.get()} fired with data: ${data.get()}`);
   },
-  {dependencies: [trigger]},
+  [trigger],
 );
 ```
 
