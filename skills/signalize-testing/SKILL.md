@@ -387,3 +387,9 @@ beforeAll(() => {
 5. **Use jest.fn()** to verify effect execution
 6. **Test cleanup callbacks** - they're critical for resource management
 7. **Handle async properly** with await or timers
+
+## See Also
+
+- [Developer Guide](../../docs/guide.md) - Comprehensive guide to all features
+- [Full API Reference](../../docs/full-api.md) - Complete API documentation
+- [Cheat Sheet](../../docs/cheat-sheet.md) - Quick reference
