@@ -60,17 +60,19 @@ Returns the number of active signals.
 
 Creates a reactive effect.
 
-- **callback**: `() => void | (() => void)` - The function to run. Can return a cleanup function.
+- **callback**: `() => void` - The function to run. Can return a cleanup function.
 - **options**:
   - `autorun`: `boolean` (default: `true`) - Run immediately?
   - `dependencies`: `Signal[]` - Explicit list of dependencies (static effect).
   - `attach`: `object | SignalGroup` - Lifecycle management.
   - `priority`: `number` (default: `0`) - Execution priority.
+  - Alternatively, instead of an `options` _object_, you can simply specify an array with the signal dependencies (static effect).
 - **Returns**: `Effect`
 
 ### `Effect`
 
 - **`run()`**: Manually runs the effect.
+  - The effect callback is, of course, only executed if at least one dependency has changed since the last time.
 - **`destroy()`**: Destroys the effect.
 
 ### `onCreateEffect(callback)` / `onDestroyEffect(callback)`
@@ -290,7 +292,7 @@ Creates an auto-map from an object.
 - **`get<T>(key): Signal<T>`** - Returns (or creates) the signal for the key.
 - **`has(key): boolean`** - Checks if a key exists.
 - **`update(map: Map)`** - Batch updates from a Map (batched).
-- **`updateFromProps(props: object)`** - Batch updates from an object (batched).
+- **`updateFromProps(props: object, keys?)`** - Batch updates from an object (batched).
 - **`keys(): IterableIterator`** - Iterates over keys.
 - **`signals(): IterableIterator`** - Iterates over signals.
 - **`entries(): IterableIterator`** - Iterates over [key, signal] pairs.
