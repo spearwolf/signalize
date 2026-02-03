@@ -10,6 +10,16 @@ const store = new Map<object, SignalGroup>();
 
 type SignalNameType = string | symbol;
 
+/**
+ * A container for managing the lifecycle of signals, effects, links, and child groups.
+ *
+ * SignalGroups provide automatic cleanup - when a group is cleared, all attached
+ * signals, effects, links, and child groups are destroyed. Groups can be nested
+ * hierarchically for scoped lifecycle management.
+ *
+ * Use `SignalGroup.findOrCreate(object)` to create or retrieve a group associated
+ * with any object, enabling component-based lifecycle management.
+ */
 export class SignalGroup {
   readonly #groups = new Set<SignalGroup>();
 
@@ -27,6 +37,11 @@ export class SignalGroup {
 
   #storeKey?: object;
 
+  /**
+   * Get an existing SignalGroup associated with an object, or undefined if none exists.
+   * @param object - The object to look up
+   * @returns The associated SignalGroup or undefined
+   */
   static get(object: object) {
     if (object == null) return undefined;
     if (object instanceof SignalGroup) {
@@ -35,6 +50,12 @@ export class SignalGroup {
     return store.get(object);
   }
 
+  /**
+   * Get or create a SignalGroup associated with an object.
+   * If the object already has an associated group, returns that group.
+   * @param object - The object to associate with a group
+   * @returns The SignalGroup (existing or newly created)
+   */
   static findOrCreate(object: object) {
     if (object == null) {
       throw new Error('Cannot create a group with a null object');
@@ -50,10 +71,17 @@ export class SignalGroup {
     SignalGroup.delete(object);
   }
 
+  /**
+   * Delete and clear the SignalGroup associated with an object.
+   * @param object - The object whose group should be deleted
+   */
   static delete(object: object) {
     store.get(object)?.clear();
   }
 
+  /**
+   * Clear and delete all SignalGroups in the global store.
+   */
   static clear() {
     for (const group of store.values()) {
       group.destroy();
@@ -74,6 +102,11 @@ export class SignalGroup {
     eventize(this);
   }
 
+  /**
+   * Attach a child group to this group. The child will be cleared when this group is cleared.
+   * @param group - The child group to attach
+   * @returns The attached group
+   */
   attachGroup(group: SignalGroup) {
     if (group === this) {
       throw new Error('Cannot attach a group to itself');
@@ -89,6 +122,11 @@ export class SignalGroup {
     return group;
   }
 
+  /**
+   * Detach a child group from this group.
+   * @param group - The child group to detach
+   * @returns The detached group
+   */
   detachGroup(group: SignalGroup) {
     if (group !== this && this.#groups.has(group)) {
       this.#groups.delete(group);
@@ -97,6 +135,11 @@ export class SignalGroup {
     return group;
   }
 
+  /**
+   * Attach a signal to this group. The signal will be destroyed when the group is cleared.
+   * @param signal - The signal to attach
+   * @returns The attached signal
+   */
   attachSignal(signal: SignalLike) {
     const si = signalImpl(signal);
 
@@ -111,6 +154,13 @@ export class SignalGroup {
     return signal;
   }
 
+  /**
+   * Attach a signal with a name for later retrieval via `signal(name)`.
+   * If signal is undefined, removes the name association.
+   * @param name - The name to associate with the signal
+   * @param signal - The signal to attach (or undefined to remove)
+   * @returns The attached signal
+   */
   attachSignalByName(name: SignalNameType, signal?: SignalLike) {
     if (signal) {
       this.attachSignal(signal);
@@ -137,16 +187,31 @@ export class SignalGroup {
     return signal;
   }
 
+  /**
+   * Check if a signal with the given name exists in this group or parent groups.
+   * @param name - The signal name to check
+   * @returns True if a signal with that name exists
+   */
   hasSignal(name: SignalNameType): boolean {
     return this.#namedSignals.has(name) || !!this.#parentGroup?.hasSignal(name);
   }
 
+  /**
+   * Get a signal by name from this group or parent groups.
+   * @param name - The signal name to look up
+   * @returns The Signal object or undefined if not found
+   */
   signal<Type = any>(name: SignalNameType): Signal<Type> | undefined {
     return (
       this.#namedSignals.get(name)?.object ?? this.#parentGroup?.signal(name)
     );
   }
 
+  /**
+   * Detach a signal from this group (does not destroy it).
+   * @param signal - The signal to detach
+   * @returns The detached signal
+   */
   detachSignal(signal: SignalLike) {
     const si = signalImpl(signal);
 
@@ -185,11 +250,19 @@ export class SignalGroup {
     return signal;
   }
 
+  /**
+   * Attach an effect to this group. The effect will be destroyed when the group is cleared.
+   * @param effect - The effect to attach
+   * @returns The attached effect
+   */
   attachEffect(effect: EffectImpl) {
     this.#effects.add(effect);
     return effect;
   }
 
+  /**
+   * Run all effects in this group and child groups.
+   */
   runEffects() {
     for (const effect of this.#effects) {
       effect.run();
@@ -199,6 +272,11 @@ export class SignalGroup {
     }
   }
 
+  /**
+   * Attach a link to this group. The link will be destroyed when the group is cleared.
+   * @param link - The link to attach
+   * @returns The attached link
+   */
   attachLink(link: SignalLink<any>) {
     if (link?.isDestroyed) {
       throw new Error('Cannot attach a destroyed link to a group');
@@ -211,6 +289,11 @@ export class SignalGroup {
     return link;
   }
 
+  /**
+   * Detach a link from this group (does not destroy it).
+   * @param link - The link to detach
+   * @returns The detached link
+   */
   detachLink(link: SignalLink<any>) {
     if (link) {
       this.#links.delete(link);
@@ -227,6 +310,10 @@ export class SignalGroup {
     this.clear();
   }
 
+  /**
+   * Clear this group, destroying all attached signals, effects, links, and child groups.
+   * Also removes this group from the global store and detaches from parent.
+   */
   clear() {
     emit(this, DESTROY, this);
     off(this);
