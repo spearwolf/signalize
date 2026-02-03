@@ -55,20 +55,27 @@ describe('nested effects', () => {
     expect(callingA, 'callingA').toHaveBeenCalledTimes(2);
     expect(cleanupA, 'cleanupA').toHaveBeenCalled();
 
-    // what we expect here is that the inner effect does not run
+    // When outer effect re-runs, inner effects are destroyed (with cleanup)
+    // and recreated. The new inner effect runs immediately due to autorun.
 
-    expect(valB, 'valB should be unchanged!').toBe(1);
-    expect(callingB, 'callingB').toHaveBeenCalledTimes(1);
-    expect(cleanupB, 'cleanupB').not.toHaveBeenCalled();
+    expect(valB, 'valB should be updated due to recreated inner effect!').toBe(
+      2,
+    );
+    expect(callingB, 'callingB').toHaveBeenCalledTimes(2);
+    expect(
+      cleanupB,
+      'cleanupB should be called when inner effect is destroyed',
+    ).toHaveBeenCalledTimes(1);
 
     b.set(2);
 
     expect(callingA, 'callingA').toHaveBeenCalledTimes(2);
     expect(cleanupA, 'cleanupA').toHaveBeenCalledTimes(1);
 
-    expect(valB, 'valB should be updated!').toBe(4);
-    expect(callingB, 'callingB').toHaveBeenCalledTimes(2);
-    expect(cleanupB, 'cleanupB').toHaveBeenCalledTimes(1);
+    // valB += b.get() + 1 => valB = 2 + 2 + 1 = 5
+    expect(valB, 'valB should be updated!').toBe(5);
+    expect(callingB, 'callingB').toHaveBeenCalledTimes(3);
+    expect(cleanupB, 'cleanupB').toHaveBeenCalledTimes(2);
 
     destroySignal(a);
 
@@ -76,6 +83,6 @@ describe('nested effects', () => {
 
     // after the outer effect destruction, the inner effect should be destroyed as well
 
-    expect(cleanupB, 'cleanupB').toHaveBeenCalledTimes(2);
+    expect(cleanupB, 'cleanupB').toHaveBeenCalledTimes(3);
   });
 });

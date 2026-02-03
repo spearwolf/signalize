@@ -150,11 +150,18 @@ createEffect(() => {
 
   createEffect(() => {
     console.log('Inner:', b.get());
+    return () => console.log('Inner cleanup');
   });
+
+  return () => console.log('Outer cleanup');
 });
 ```
 
-**Critical behavior:** When outer effect re-runs, inner effects are **recreated**, not re-run.
+**Critical behavior:** When outer effect re-runs, inner effects are **destroyed** (cleanup called) and **recreated**.
+
+- Outer cleanup runs first
+- Then all child effect cleanups run
+- Then outer callback executes (recreating child effects)
 
 See [references/cleanup.md](references/cleanup.md) for nested cleanup patterns.
 

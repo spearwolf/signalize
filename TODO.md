@@ -2,7 +2,11 @@
 
 ## Open issues to work on, fix or rethink
 
-- nested effects cleanup issue
-  - Critical behavior: When outer effect re-runs, inner effects are recreated, not re-run.
-  - inner effects are recreated
-  - only outer-effect run the destroy hook
+_No open issues at this time._
+
+## Resolved Issues
+
+- ~~nested effects cleanup issue~~
+  - **FIXED**: When outer effect re-runs, inner effects are now properly destroyed (with cleanup callbacks called) before being recreated.
+  - Previously: Inner effects were recreated without cleanup callbacks being called.
+  - Now: `destroyChildEffects()` is called in `run()` before the effect callback executes, ensuring all cleanup callbacks are properly invoked.

@@ -248,6 +248,46 @@ it('should call cleanup before re-run', () => {
 });
 ```
 
+### Verify Nested Effect Cleanup on Parent Re-run
+
+```typescript
+it('should call nested effect cleanup when parent re-runs', () => {
+  const parentSig = createSignal(0);
+  const childSig = createSignal(0);
+  const parentCleanup = jest.fn();
+  const childCleanup = jest.fn();
+
+  const parent = createEffect(() => {
+    parentSig.get();
+
+    createEffect(() => {
+      childSig.get();
+      return childCleanup;
+    });
+
+    return parentCleanup;
+  });
+
+  expect(parentCleanup).not.toHaveBeenCalled();
+  expect(childCleanup).not.toHaveBeenCalled();
+
+  // Trigger parent re-run
+  parentSig.set(1);
+
+  // Both cleanups should be called (parent first, then child)
+  expect(parentCleanup).toHaveBeenCalledTimes(1);
+  expect(childCleanup).toHaveBeenCalledTimes(1);
+
+  parent.destroy();
+
+  // Final cleanups
+  expect(parentCleanup).toHaveBeenCalledTimes(2);
+  expect(childCleanup).toHaveBeenCalledTimes(2);
+
+  destroySignal(parentSig, childSig);
+});
+```
+
 ## Testing Batches
 
 ```typescript

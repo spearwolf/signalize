@@ -76,15 +76,17 @@ describe('unsubscribe as return function from effect callback', () => {
     setA(43);
 
     expect(effectCallCount0).toBe(1);
-    expect(effectCallCount1).toBe(0);
+    // Inner effect is recreated and re-runs when parent re-runs
+    expect(effectCallCount1).toBe(1);
 
     expect(valA).toBeCalledWith(43);
-    // expect(valB).toBeCalledWith('foo');
+    expect(valB).toBeCalledWith('foo');
 
     expect(unsubscribeA).toBeCalledWith(123);
-    // expect(unsubscribeB).toBeCalledWith('foo');
+    // Inner effect cleanup is called when parent re-runs (before it's destroyed and recreated)
+    expect(unsubscribeB).toBeCalledWith('foo');
 
-    // expect(subscriptionOrder).toEqual([123, 'foo']);
-    expect(subscriptionOrder).toEqual([123]);
+    // Cleanup order: parent cleanup first, then child cleanup (child is destroyed before parent callback runs)
+    expect(subscriptionOrder).toEqual([123, 'foo']);
   });
 });

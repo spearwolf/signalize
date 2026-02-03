@@ -275,4 +275,169 @@ describe('effect cleanup hook on effect destruction', () => {
 
     destroySignal(a);
   });
+
+  it('nested effects cleanup hooks are called when parent re-runs', () => {
+    const {get: a, set: setA} = createSignal(1);
+    const {get: b} = createSignal(2);
+
+    const cleanupLog: string[] = [];
+    const runLog: string[] = [];
+
+    const parentEffect = createEffect(() => {
+      const aVal = a();
+      runLog.push(`parent:${aVal}`);
+
+      createEffect(() => {
+        const bVal = b();
+        runLog.push(`child:${bVal}`);
+        return () => cleanupLog.push(`child-cleanup:${bVal}`);
+      });
+
+      return () => cleanupLog.push(`parent-cleanup:${aVal}`);
+    });
+
+    // Initial run
+    expect(runLog).toEqual(['parent:1', 'child:2']);
+    expect(cleanupLog).toEqual([]);
+
+    // Update parent signal - should trigger cleanup of child effect
+    setA(10);
+
+    expect(runLog).toEqual(['parent:1', 'child:2', 'parent:10', 'child:2']);
+    // Parent cleanup is called, then child cleanup is called (child is destroyed before parent re-runs its callback)
+    expect(cleanupLog).toEqual(['parent-cleanup:1', 'child-cleanup:2']);
+
+    // Destroy parent effect
+    parentEffect.destroy();
+
+    expect(cleanupLog).toEqual([
+      'parent-cleanup:1',
+      'child-cleanup:2',
+      'parent-cleanup:10',
+      'child-cleanup:2',
+    ]);
+
+    destroySignal(a, b);
+  });
+
+  it('deeply nested effects cleanup hooks are called in correct order when parent re-runs', () => {
+    const {get: a, set: setA} = createSignal(1);
+    const {get: b} = createSignal(2);
+    const {get: c} = createSignal(3);
+
+    const cleanupLog: string[] = [];
+
+    const parentEffect = createEffect(() => {
+      a();
+
+      createEffect(() => {
+        b();
+
+        createEffect(() => {
+          c();
+          return () => cleanupLog.push('grandchild');
+        });
+
+        return () => cleanupLog.push('child');
+      });
+
+      return () => cleanupLog.push('parent');
+    });
+
+    expect(cleanupLog).toEqual([]);
+
+    // Update parent signal - should trigger cleanup of all nested effects
+    setA(10);
+
+    // Parent cleanup, then child cleanup (which triggers grandchild cleanup)
+    expect(cleanupLog).toEqual(['parent', 'child', 'grandchild']);
+
+    parentEffect.destroy();
+
+    // Second round of cleanups
+    expect(cleanupLog).toEqual([
+      'parent',
+      'child',
+      'grandchild',
+      'parent',
+      'child',
+      'grandchild',
+    ]);
+
+    destroySignal(a, b, c);
+  });
+
+  it('multiple nested effects cleanup hooks are all called when parent re-runs', () => {
+    const {get: a, set: setA} = createSignal(1);
+    const {get: b} = createSignal(2);
+    const {get: c} = createSignal(3);
+
+    const cleanupLog: string[] = [];
+
+    const parentEffect = createEffect(() => {
+      a();
+
+      createEffect(() => {
+        b();
+        return () => cleanupLog.push('child1');
+      });
+
+      createEffect(() => {
+        c();
+        return () => cleanupLog.push('child2');
+      });
+
+      return () => cleanupLog.push('parent');
+    });
+
+    expect(cleanupLog).toEqual([]);
+
+    // Update parent signal - should trigger cleanup of both nested effects
+    setA(10);
+
+    expect(cleanupLog).toEqual(['parent', 'child1', 'child2']);
+
+    parentEffect.destroy();
+
+    expect(cleanupLog).toEqual([
+      'parent',
+      'child1',
+      'child2',
+      'parent',
+      'child1',
+      'child2',
+    ]);
+
+    destroySignal(a, b, c);
+  });
+
+  it('nested effect cleanup receives correct values when parent re-runs multiple times', () => {
+    const {get: a, set: setA} = createSignal(1);
+
+    const cleanupValues: number[] = [];
+
+    const parentEffect = createEffect(() => {
+      const aVal = a();
+
+      createEffect(() => {
+        return () => cleanupValues.push(aVal);
+      });
+    });
+
+    expect(cleanupValues).toEqual([]);
+
+    setA(2);
+    expect(cleanupValues).toEqual([1]);
+
+    setA(3);
+    expect(cleanupValues).toEqual([1, 2]);
+
+    setA(4);
+    expect(cleanupValues).toEqual([1, 2, 3]);
+
+    parentEffect.destroy();
+    expect(cleanupValues).toEqual([1, 2, 3, 4]);
+
+    destroySignal(a);
+  });
 });
