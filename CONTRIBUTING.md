@@ -2,6 +2,8 @@
 
 Thank you for your interest in contributing! This document provides guidelines and information for contributors.
 
+Please read our [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
+
 ## Getting Started
 
 ### Prerequisites
