@@ -921,9 +921,7 @@ describe('SignalGroup', () => {
       parent.clear();
     });
 
-    it('clear() calls deprecated destroy() on child groups', () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
-
+    it('clear() properly clears child groups', () => {
       const parent = SignalGroup.findOrCreate({});
       const child = SignalGroup.findOrCreate({});
       const signal = createSignal(42);
@@ -931,15 +929,12 @@ describe('SignalGroup', () => {
       child.attachSignal(signal);
       parent.attachGroup(child);
 
-      // Clear parent - this calls destroy() on child (deprecated)
+      assertSignalsCount(1, 'signal attached to child');
+
+      // Clear parent - this should clear child groups too
       parent.clear();
 
-      // destroy() was called on child
-      expect(warnSpy).toHaveBeenCalledWith(
-        'SignalGroup#destroy is deprecated. Use SignalGroup#clear instead.',
-      );
-
-      warnSpy.mockRestore();
+      assertSignalsCount(0, 'signal destroyed when parent cleared');
     });
 
     it('attachSignal() with same signal multiple times only adds once', () => {

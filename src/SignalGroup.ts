@@ -84,7 +84,7 @@ export class SignalGroup {
    */
   static clear() {
     for (const group of store.values()) {
-      group.destroy();
+      group.clear();
     }
     store.clear();
   }
@@ -319,7 +319,7 @@ export class SignalGroup {
     off(this);
 
     for (const childGroup of this.#groups) {
-      childGroup.destroy();
+      childGroup.clear();
     }
 
     for (const effect of this.#effects) {
