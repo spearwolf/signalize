@@ -6,13 +6,29 @@ import {SignalGroup} from './SignalGroup.js';
 import type {SignalReader} from './types.js';
 import {batch} from './batch.js';
 
+/**
+ * Options for creating a memo (computed signal).
+ */
 export interface CreateMemoOptions {
+  /** Attach the memo to a SignalGroup for lifecycle management */
   attach?: object | SignalGroup;
+  /** Optional name for the memo when attached to a group */
   name?: string | symbol;
+  /** If true, the memo won't compute until first read (default: false) */
   lazy?: boolean;
+  /** Effect priority for dependency tracking (default: Priority.C = 1000) */
   priority?: number;
 }
 
+/**
+ * Create a memoized (computed) signal that derives its value from other signals.
+ * The memo automatically tracks dependencies and recomputes when they change.
+ * Results are cached until dependencies change.
+ *
+ * @param callback - Function that computes the derived value
+ * @param options - Configuration options (attach, name, lazy, priority)
+ * @returns A SignalReader function to get the computed value
+ */
 export function createMemo<Type>(
   callback: () => Type,
   options?: CreateMemoOptions,
