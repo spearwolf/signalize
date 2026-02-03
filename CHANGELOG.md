@@ -12,6 +12,22 @@
 - Add comprehensive documentation for `SignalGroup` in README
 - Add comprehensive tests for `SignalGroup` API covering all code paths
 
+### Documentation
+
+- Restructure documentation: `README.md` is now a concise entry point with links to detailed `docs/`
+- Add comprehensive documentation in `docs/` folder:
+  - `introduction.md` - Library overview and core concepts
+  - `quickstart.md` - Installation and basic usage
+  - `guide.md` - Comprehensive tutorial with all features
+  - `full-api.md` - Complete API reference
+  - `cheat-sheet.md` - Quick reference for common patterns
+- Add AI agent skills in `skills/` folder for assisted development
+- Add `CONTRIBUTING.md` with development guidelines
+- Add JSDoc comments to all public API functions and classes
+- Document `beforeRead` signal option
+- Clarify that static effects (with explicit dependencies) do NOT autorun
+- Add EXPERIMENTAL warning for `@signal` and `@memo` decorators
+
 ## `v0.24.0` (2025-08-26)
 
 - Optimize dynamic signal unsubscriptions for effects
@@ -25,11 +41,13 @@
 ## `v0.22.0` (2025-08-25)
 
 Memos are now _non-lazy_ by default.
+
 - Non-lazy memos are automatically recalculated when dependent signal values change. This also automatically updates any further effects that depend on the memo.
 - Non-lazy memos are therefore a fully-fledged equivalent to a _computed_ signal.
 - Non-lazy is the new standard because that is most likely the behavior most users expect from a computed signal.
 
 Lazy memos (as they were the default in previous library releases) are still available and can be created with the `lazy: true` option.
+
 - Lazy memos only recalculate when they are explicitly called (and the signal dependencies have changed).
 - Unlike computed signals (or non-lazy memos), effects that have a memo as a dependency are not automatically triggered. This only happens when the memo is read and the memo value changes as a result.
 - Lazy memos are of course still available and can be quite effective.
