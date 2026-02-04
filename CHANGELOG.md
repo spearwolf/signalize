@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `v0.27.2` (2026-02-04)
+
+- remove `AGENTS.md` from npm package output
+
 ## `v0.27.1` (2026-02-04)
 
 - remove `.github` folder from npm package output
