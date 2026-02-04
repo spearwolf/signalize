@@ -9,12 +9,12 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./lib/index.d.ts"
+      "types": "./lib/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./decorators": {
-      "import": "./dist/decorators.js",
-      "types": "./lib/decorators.d.ts"
+      "types": "./lib/decorators.d.ts",
+      "import": "./dist/decorators.js"
     }
   },
   "engines": {
