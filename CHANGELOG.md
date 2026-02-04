@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `v0.27.1` (2026-02-04)
+
+- remove `.github` folder from npm package output
+
 ## `v0.27.0` (2026-02-04)
 
 - __The npm build .js fragments are now bundled with rollup.__
