@@ -4,6 +4,10 @@ on:
   push:
     branches: [ "main" ]
 
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
+
 jobs:
   test:
     name: Run tests
@@ -53,5 +57,3 @@ jobs:
 
       - run: pnpm publish:pkg
         name: Publish package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
