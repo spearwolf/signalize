@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- chore: cleanup scripts folder
+- chore: update build dependencies
+
 ## `v0.26.0` (2026-02-03)
 
 ### Bug Fixes
