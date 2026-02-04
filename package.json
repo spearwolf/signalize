@@ -1,19 +1,19 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "description": "signals and effects for all",
   "type": "module",
-  "main": "lib/index.js",
-  "module": "lib/index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "lib/index.d.ts",
   "sideEffects": false,
   "exports": {
     ".": {
-      "import": "./lib/index.js",
+      "import": "./dist/index.js",
       "types": "./lib/index.d.ts"
     },
     "./decorators": {
-      "import": "./lib/decorators.js",
+      "import": "./dist/decorators.js",
       "types": "./lib/decorators.d.ts"
     }
   },
@@ -25,6 +25,7 @@
     "publish:pkg": "node scripts/publishPackage.cjs",
     "checkPkgTypes": "attw --pack",
     "compile": "tsc --project tsconfig.lib.json",
+    "bundle": "rollup -c rollup.config.mjs",
     "clean": "rimraf build types tests dist lib",
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "npm run lint -- --fix",
@@ -34,9 +35,9 @@
     "fix": "run-s -snl lint:fix prettier:write",
     "jest:debug": "cross-env NODE_ENV=test node --nolazy --inspect-brk ./node_modules/jest/bin/jest.js --runInBand --colors --verbose",
     "test": "cross-env NODE_ENV=test jest",
-    "cbt": "run-s -sn clean compile test",
-    "dist": "run-s -sn clean compile",
-    "world": "run-s -sn clean lint prettier:check compile test"
+    "cbt": "run-s -sn clean compile bundle test",
+    "dist": "run-s -sn clean compile bundle",
+    "world": "run-s -sn clean lint prettier:check compile bundle test"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
