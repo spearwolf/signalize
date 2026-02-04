@@ -23,7 +23,7 @@ describe('createSignal', () => {
   it('works as expected', () => {
     const {get: num, set: setNum} = createSignal(1);
     const {get: str, set: setStr} = createSignal('foo');
-    const {get: obj, set: setObj} = createSignal<Object>();
+    const {get: obj, set: setObj} = createSignal<object>();
 
     expect(num()).toBe(1);
     expect(str()).toBe('foo');

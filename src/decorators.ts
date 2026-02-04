@@ -17,7 +17,7 @@ export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'> &
   };
 
 export function signal<T>(options?: SignalDecoratorOptions<T>) {
-  return function <C extends Object>(
+  return function <C extends object>(
     _target: ClassAccessorDecoratorTarget<C, T>,
     context: ClassAccessorDecoratorContext<C, T>,
   ): ClassAccessorDecoratorResult<C, T> {
