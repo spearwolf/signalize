@@ -1,8 +1,9 @@
 # CHANGELOG
 
-## Unreleased
+## `v0.27.0` (2026-02-04)
 
-- chore: cleanup scripts folder
+- __The npm build .js fragments are now bundled with rollup.__
+- chore: cleanup obsolete scripts
 - chore: update build dependencies
 
 ## `v0.26.0` (2026-02-03)
