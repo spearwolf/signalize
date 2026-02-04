@@ -9,6 +9,7 @@ tests
 .prettierignore
 .prettierrc.yaml
 .size-snapshot.json
+.opencode
 jest.config.js
 rollup.config.js
 tsconfig.json
@@ -16,7 +17,6 @@ tsconfig.*.json
 *.spec.ts
 *.spec.d.ts
 signaler-effectus-hero.png
-docs/
 scripts
 rollup.config.*
 jest.config.*
@@ -25,6 +25,6 @@ hero.gif
 hero.png
 hero.webp
 hero-web.webp
-GEMINI.md
+hero-next.xcf
 foo.mjs
 diamond-example.mjs

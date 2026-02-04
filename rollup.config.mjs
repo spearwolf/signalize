@@ -17,15 +17,18 @@ const makeBanner = (build) => {
 
 export default {
   input: {
-    index: 'build/index.js',
+    index: 'lib/index.js',
+    decorators: 'lib/decorators.js',
   },
   output: [
     {
       banner: makeBanner('esm'),
       dir: 'dist',
       entryFileNames: '[name].js',
+      chunkFileNames: 'signalize.[hash].js',
       format: 'es',
     },
   ],
+  treeshake: 'smallest',
   external: ['@spearwolf/eventize'],
 };
