@@ -2,10 +2,11 @@
 
 ## Open issues to work on, fix or rethink
 
-- README: api at full glance: does not show all exported functions (add missing)
-  - double check if _all_ exported functions are fully documented
-
 ## Resolved Issues
+
+- ~~README: api at full glance: does not show all exported functions (add missing)~~
+  - ~~double check if _all_ exported functions are fully documented~~
+  - **FIXED**: Added missing "Object Signals" section to README "API at a Glance" with `destroyObjectSignals`, `findObjectSignalByName`, `findObjectSignalNames`, `findObjectSignals`. Full API (`docs/full-api.md`) was already complete.
 
 - ~~memos: non-lazy have default priority of 1000 which is fine, but lazy memos should have default priority of -1000 !~~
   - ~~verify: does this has an effect at all? not sure..~~
