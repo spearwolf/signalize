@@ -26,7 +26,7 @@ Effects are functions that automatically run whenever the signals they depend on
 
 ### 3. Memos 🧠
 
-Memos (or computed signals) are values derived from other signals. They are automatically updated when their dependencies change, but they are also cached—so they only re-compute when necessary.
+Memos (or computed signals) are values derived from other signals. They are cached and only re-compute when necessary. By default, memos recalculate **eagerly** whenever their dependencies change, making them act as computed signals that can trigger dependent effects. Alternatively, memos can be created as **lazy**, deferring recomputation until the value is actually read.
 
 ### 4. Links (Connections) 🔗
 
