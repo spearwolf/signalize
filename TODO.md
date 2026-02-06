@@ -9,7 +9,7 @@
 
 - ~~memos: non-lazy have default priority of 1000 which is fine, but lazy memos should have default priority of -1000 !~~
   - ~~verify: does this has an effect at all? not sure..~~
-  - Note: this has no effect at all, because memos are _not_ called by dependencies, only by the user, so priority does not matter. So this is not an issue at all, and lazy memos can have default priority of 1000 as well.
+  - Note: this has no effect at all, because lazy memos are _not_ called by dependencies, only by the user, so priority does not matter. So this is not an issue at all, and lazy memos can have default priority of 1000 as well.
 - ~~check TODO comments inside index.ts~~
 - ~~nested effects cleanup issue~~
   - **FIXED**: When outer effect re-runs, inner effects are now properly destroyed (with cleanup callbacks called) before being recreated.
