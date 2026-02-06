@@ -4,7 +4,7 @@
 
 - check TODO comments inside index.ts
 - README: api at full glance: does not show all exported functions (add missing)
-  - check if _all_ exported functions are fully documented
+  - double check if _all_ exported functions are fully documented
 
 ## Resolved Issues
 
