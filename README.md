@@ -161,13 +161,17 @@ For comprehensive documentation, see the **[docs/](./docs/)** folder:
 
 `link`, `unlink`, `getLinksCount`
 
+### Utilities
+
+`batch`, `beQuiet`, `isQuiet`, `hibernate`
+
 ### Groups & Collections
 
 `SignalGroup`, `SignalAutoMap`
 
-### Utilities
+### Object Signals
 
-`batch`, `beQuiet`, `isQuiet`, `hibernate`
+`destroyObjectSignals`, `findObjectSignalByName`, `findObjectSignalNames`, `findObjectSignals`
 
 ### Decorators (from `@spearwolf/signalize/decorators`)
 
