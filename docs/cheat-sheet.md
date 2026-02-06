@@ -71,19 +71,25 @@ fx.destroy();
 ## Memos
 
 ```typescript
-// Computed (Eager)
+// Non-Lazy (default) — recalculates immediately when dependencies change
+// Acts as a computed signal: triggers dependent effects automatically
 const double = createMemo(() => count.get() * 2);
 
+// Lazy — recalculates only when read
+// Does NOT trigger dependent effects on dependency change
+const lazyDouble = createMemo(() => count.get() * 2, { lazy: true });
+
 // Options
-const lazyDouble = createMemo(() => count.get() * 2, {
-  lazy: boolean,              // Default: false
+const memo = createMemo(() => count.get() * 2, {
+  lazy: boolean,              // Default: false (non-lazy / eager)
   attach: object,             // Lifecycle group
   priority: number,           // Default: 1000
   name: string | symbol,      // Debug name
 });
 
-// Read
+// Read (both lazy and non-lazy)
 console.log(double());
+console.log(lazyDouble());
 ```
 
 ## Decorators

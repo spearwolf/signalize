@@ -89,15 +89,70 @@ Returns the number of active effects.
 
 ### `createMemo<T>(computer, options?)`
 
-Creates a computed signal.
+Creates a computed signal (memo). A memo combines a signal with an effect: it tracks signal dependencies, caches the result, and can itself be read like a signal.
 
-- **computer**: `() => T` - Function to compute the value.
+- **computer**: `() => T` - Function to compute the value. Any signals read via `.get()` inside this function become dependencies.
 - **options**:
-  - `lazy`: `boolean` (default: `false`) - If true, computes only on read.
-  - `attach`: `object | SignalGroup`
-  - `priority`: `number`
-  - `name`: `string | symbol`
-- **Returns**: `SignalReader<T>` (a function that returns the value).
+  - `lazy`: `boolean` (default: `false`) - Controls when recomputation happens. See [Non-Lazy vs. Lazy Memos](#non-lazy-vs-lazy-memos) below.
+  - `attach`: `object | SignalGroup` - Attach to a group for lifecycle management.
+  - `priority`: `number` (default: `1000`) - Execution priority for the internal effect. Higher values run first.
+  - `name`: `string | symbol` - Name for the memo when attached to a group.
+- **Returns**: `SignalReader<Type>` (a function that returns the computed value).
+
+### Non-Lazy vs. Lazy Memos
+
+The `lazy` option determines **when** a memo recalculates its value. Choosing the right mode depends on how the memo is used in your reactive graph.
+
+#### Non-Lazy (Default: `lazy: false`)
+
+A non-lazy memo acts as a **computed signal**: it recalculates immediately whenever any of its signal dependencies change, even if nobody is currently reading it.
+
+This is the right choice when **effects or other memos depend on the memo's value**. Because the memo updates eagerly, any effect that reads it will always see the latest value and will be notified of changes just like with any other signal.
+
+```typescript
+const count = createSignal(1);
+
+// Non-lazy: recalculates immediately when `count` changes
+const doubled = createMemo(() => count.get() * 2);
+
+// This effect depends on `doubled` — it will re-run whenever `doubled` updates
+createEffect(() => {
+  console.log('Doubled value:', doubled());
+});
+// => "Doubled value: 2"
+
+count.set(5);
+// `doubled` recalculates immediately (now 10)
+// => "Doubled value: 10"
+```
+
+**When to use non-lazy memos:**
+- The memo is a dependency of one or more effects
+- The memo is read by other memos (chained computations)
+- You need the memo to behave like a regular signal that always stays up-to-date
+
+#### Lazy (`lazy: true`)
+
+A lazy memo **does not react** to dependency changes on its own. Instead, it defers recomputation until the memo is actually **read**. The recalculation happens at the latest possible moment.
+
+This is useful for expensive computations that may not be needed after every dependency change. However, because the memo does not eagerly update its value, **effects that depend on a lazy memo will not automatically re-run** when the memo's underlying dependencies change — the effect is only triggered when the memo is read and produces a new value.
+
+```typescript
+const count = createSignal(1);
+
+// Lazy: does NOT recalculate until read
+const doubled = createMemo(() => count.get() * 2, { lazy: true });
+
+count.set(5);
+// `doubled` has NOT recalculated yet
+
+console.log(doubled()); // => 10 (recalculates now, on read)
+```
+
+**When to use lazy memos:**
+- The computation is expensive and the result is not always needed
+- The memo is read on-demand (e.g., in response to user interaction) rather than observed by effects
+- You want to avoid unnecessary computations when dependencies change frequently
 
 ---
 
@@ -125,7 +180,7 @@ Method decorator. Turns a method into a lazy computed property.
 
 - **options**:
   - `name`: `string | symbol` - Override the memo name (defaults to the method name).
-    **Note:** Memos created via decorators are always **lazy** (calculated on read) and attached to the instance's `SignalGroup`.
+    **Note:** Memos created via decorators are always **lazy** (recomputed on read, not on dependency change) and attached to the instance's `SignalGroup`. See [Non-Lazy vs. Lazy Memos](#non-lazy-vs-lazy-memos) for details on what this means.
 
 ---
 

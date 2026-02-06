@@ -193,7 +193,7 @@ When the outer effect re-runs (e.g., when `user` changes), the sequence is:
 
 ## Memos (Computed Values)
 
-Memos are signals that are derived from other signals. They are useful for caching expensive computations.
+Memos are signals that are derived from other signals. They combine the reactivity of effects with the read interface of signals, and they cache their result so the computation only runs when dependencies actually change.
 
 ```typescript
 import {createMemo} from '@spearwolf/signalize';
@@ -208,14 +208,73 @@ const fullName = createMemo(() => {
 console.log(fullName()); // "John Doe"
 ```
 
-### Lazy vs. Eager
+### Non-Lazy vs. Lazy Memos
 
-- **Eager (Default for `createMemo` without options)**: Calculates immediately and updates whenever dependencies change.
-- **Lazy (`lazy: true`)**: Only calculates when you read it.
+When creating a memo, you can choose between two recomputation strategies using the `lazy` option. The right choice depends on how the memo is used in your reactive system.
+
+#### Non-Lazy (Default)
+
+By default, a memo is **non-lazy** (`lazy: false`). This means it behaves as a **computed signal**: it recalculates immediately whenever any of its signal dependencies change — even before anyone reads the new value.
+
+This is essential when **effects depend on the memo**. Because the memo eagerly updates, it triggers dependent effects just like a regular signal would. If your reactive graph looks like _Signal → Memo → Effect_, the non-lazy memo ensures the effect always sees the latest computed value and re-runs as expected.
 
 ```typescript
-const heavy = createMemo(() => heavyComputation(), {lazy: true});
+const price = createSignal(100);
+const taxRate = createSignal(0.2);
+
+// Non-lazy: recalculates immediately when `price` or `taxRate` changes
+const total = createMemo(() => price.get() * (1 + taxRate.get()));
+
+// This effect depends on `total` — it re-runs when `total` updates
+createEffect(() => {
+  console.log('Total:', total());
+});
+// => "Total: 120"
+
+price.set(200);
+// `total` recalculates immediately (now 240), then the effect re-runs
+// => "Total: 240"
 ```
+
+**Choose non-lazy when:**
+- Effects or other memos read this memo as a dependency
+- You need the memo to act as a computed signal in a reactive chain
+- The value should always be up-to-date, even before it is read
+
+#### Lazy
+
+A lazy memo (`lazy: true`) **does not react** to dependency changes. Instead, it defers recomputation to the moment the memo is actually **read**. The recalculation happens at the latest possible point in time.
+
+Because the memo does not eagerly update its underlying signal value, **effects that depend on a lazy memo will not automatically re-run** when the memo's source dependencies change. The effect only triggers when the lazy memo is read and produces a new value.
+
+This is a perfectly valid strategy for expensive computations that are consumed on-demand rather than observed continuously.
+
+```typescript
+const searchQuery = createSignal('');
+const allItems = createSignal([/* large dataset */]);
+
+// Lazy: does NOT recalculate until read
+const searchResults = createMemo(
+  () => {
+    const query = searchQuery.get().toLowerCase();
+    return allItems.get().filter(item =>
+      item.name.toLowerCase().includes(query)
+    );
+  },
+  { lazy: true },
+);
+
+searchQuery.set('foo');
+// `searchResults` has NOT recalculated yet — no computation wasted
+
+// Later, when the UI actually needs the results:
+console.log(searchResults()); // Recalculates now, on demand
+```
+
+**Choose lazy when:**
+- The computation is expensive and the result is not always needed
+- The memo is read on-demand (e.g., triggered by user interaction) rather than observed by effects
+- Dependencies change frequently but the value is consumed infrequently
 
 ---
 
