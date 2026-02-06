@@ -31,5 +31,3 @@ export type {SignalLink, ValueCallback} from './SignalLink.js';
 export {touch} from './touch.js';
 export type * from './types.js';
 export {value} from './value.js';
-
-// TODO build: prepend banner to index.js and decorators.js output fragments
