@@ -5,7 +5,7 @@
 - check TODO comments inside index.ts
 - README: api at full glance: does not show all exported functions (add missing)
   - double check if _all_ exported functions are fully documented
-- memos: non-lazy has default priority of 1000 which is fine, but lazy memos should have default priority of -1000 !
+- memos: non-lazy have default priority of 1000 which is fine, but lazy memos should have default priority of -1000 !
 
 ## Resolved Issues
 
