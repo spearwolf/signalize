@@ -40,7 +40,7 @@ fullName(); // 'Jane Doe'
 
 ### Non-Lazy (Default)
 
-Recomputes **immediately** when dependencies change:
+A non-lazy memo acts as a **computed signal**: it recomputes **immediately** when dependencies change — even before anyone reads it. This means effects and other memos that depend on it are automatically notified, just like with a regular signal.
 
 ```typescript
 let computeCount = 0;
@@ -60,11 +60,32 @@ doubled(); // Still cached
 // computeCount = 2
 ```
 
-**Use when:** The memo is read frequently and should always have the latest value ready.
+**Key behavior:** Because the memo eagerly updates its value, effects that read it will re-run when the value changes:
+
+```typescript
+const count = createSignal(1);
+const doubled = createMemo(() => count.get() * 2);
+
+createEffect(() => {
+  console.log('Doubled:', doubled());
+});
+// => "Doubled: 2"
+
+count.set(5);
+// memo recalculates (now 10), then the effect re-runs
+// => "Doubled: 10"
+```
+
+**Use when:**
+- The memo is a dependency of effects or other memos
+- You need it to behave like a computed signal in a reactive chain
+- The value should always be up-to-date
 
 ### Lazy
 
-Recomputes **only when read** after dependencies change:
+A lazy memo **does not react** to dependency changes on its own. It defers recomputation until the memo is actually **read**. The recalculation happens at the latest possible moment.
+
+Because it does not eagerly update, **effects that depend on a lazy memo will not automatically re-run** when the memo's source dependencies change.
 
 ```typescript
 let computeCount = 0;
@@ -89,7 +110,10 @@ doubled();
 // computeCount = 2 (recomputed on read)
 ```
 
-**Use when:** The computation is expensive and the memo might not be read after every change.
+**Use when:**
+- The computation is expensive and the memo might not be read after every change
+- The memo is consumed on-demand rather than observed by effects
+- Dependencies change frequently but the value is consumed infrequently
 
 ## createMemo Options
 
