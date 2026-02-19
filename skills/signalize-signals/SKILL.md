@@ -137,7 +137,36 @@ signal.set(anotherValue); // NOW notifications fire
 
 ## Pitfalls to Avoid
 
-### 1. Using .value inside effects
+### 1. Passing functions to .set() — the value IS the function
+
+**There is NO updater-function pattern.** Unlike React's `setState`, `.set()` always stores the given value directly. If you pass a function, the signal's value **becomes that function**.
+
+```typescript
+const count = createSignal(0);
+
+// BAD - signal value is now the function `s => s + 1`, NOT the number 1!
+count.set((s) => s + 1);
+console.log(count.value); // => [Function: s => s + 1]
+
+// GOOD - always compute the new value yourself
+count.set(count.value + 1);
+console.log(count.value); // => 1
+```
+
+**Rule: Always use `signal.set(signal.value + x)` to update based on the current value.**
+
+**Special case — `{lazy: true}`:** When you pass a function with the `lazy` option, the function is called lazily on the next read, and its **return value** becomes the signal value. This is an explicit opt-in and a different mechanism:
+
+```typescript
+count.set(() => expensiveCalc(), {lazy: true});
+// The function is NOT stored as value.
+// Instead, expensiveCalc() runs on the next .get() call,
+// and its result becomes the signal value.
+```
+
+Without `{lazy: true}`, the function itself is always stored as the value.
+
+### 2. Using .value inside effects
 
 ```typescript
 // BAD - effect won't re-run when count changes!
@@ -151,7 +180,7 @@ createEffect(() => {
 });
 ```
 
-### 2. Forgetting cleanup
+### 3. Forgetting cleanup
 
 ```typescript
 // Always destroy signals when done
@@ -160,12 +189,12 @@ const signal = createSignal(0);
 signal.destroy(); // or destroySignal(signal)
 ```
 
-### 3. Lazy flag not inherited
+### 4. Lazy flag not inherited
 
 ```typescript
 const {get, set} = createSignal(() => expensiveCalc(), {lazy: true});
-set(() => anotherCalc()); // NOT lazy! Function stored as value
-set(() => anotherCalc(), {lazy: true}); // Lazy - function called on read
+set(() => anotherCalc()); // NOT lazy! Function stored as value (see pitfall #1)
+set(() => anotherCalc(), {lazy: true}); // Lazy - function called on next read
 ```
 
 For detailed options and patterns, see:
