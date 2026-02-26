@@ -150,6 +150,53 @@ createEffect(() => {
 
 > **Note:** When you provide `dependencies`, automatic tracking is completely disabled for that effect.
 
+### Lazy Effects
+
+By default, an effect runs its callback immediately upon creation and re-runs automatically whenever a tracked signal changes. Sometimes, however, you want explicit control over _when_ the callback executes. This is what **lazy effects** are for.
+
+Set `autorun: false` to create a lazy effect:
+
+```typescript
+const position = createSignal({x: 0, y: 0});
+
+const effect = createEffect(
+  () => {
+    const pos = position.get();
+    renderSprite(pos.x, pos.y);
+  },
+  {autorun: false},
+);
+```
+
+With `autorun: false`, two things change:
+
+1. **No immediate execution.** The callback is _not_ called when the effect is created.
+2. **No automatic re-runs.** When a tracked signal changes, the effect notes that it needs to run (internally setting a `shouldRun` flag), but does _not_ execute the callback.
+
+The effect only runs when you call `effect.run()` manually — and only if at least one dependency has actually changed since the last execution:
+
+```typescript
+function gameLoop() {
+  // Update signals from input, physics, etc.
+  position.set({x: player.x, y: player.y});
+
+  // Run the effect — but only if `position` actually changed
+  effect.run();
+
+  requestAnimationFrame(gameLoop);
+}
+
+requestAnimationFrame(gameLoop);
+```
+
+This pattern is particularly useful when you need to synchronize reactive updates with an external timing mechanism:
+
+- **`requestAnimationFrame`** — render only once per frame, even if signals change multiple times
+- **Timers / intervals** — batch reactive updates into fixed time steps
+- **Manual triggers** — run effects in response to user actions or lifecycle events
+
+> **Tip:** A lazy effect still tracks dependencies like a normal effect. The only difference is _when_ the callback runs. On the first call to `effect.run()`, dependencies are discovered through automatic tracking (or set via `dependencies`), and from then on, `run()` only executes if something has changed.
+
 ### Cleanup
 
 Effects can return a cleanup function. This is useful for clearing timers, event listeners, or subscriptions.
@@ -188,6 +235,139 @@ When the outer effect re-runs (e.g., when `user` changes), the sequence is:
 2. Inner cleanup runs (inner effect is destroyed)
 3. Outer effect callback executes
 4. Inner effect is recreated and runs
+
+### Effect Options
+
+`createEffect` accepts an options object as its second argument (or as the third argument when passing a dependencies array). Here is the full list of available options:
+
+| Option         | Type                    | Default     | Description                                                                                                                                |
+| -------------- | ----------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `autorun`      | `boolean`               | `true`      | Whether the effect runs automatically on creation and when dependencies change. Set to `false` for [lazy effects](#lazy-effects).          |
+| `dependencies` | `Array`                 | `undefined` | Explicit list of signal dependencies. Disables automatic dependency tracking. See [Static Effects](#static-effects-explicit-dependencies). |
+| `priority`     | `number`                | `0`         | Execution priority. Higher values run first.                                                                                               |
+| `attach`       | `object \| SignalGroup` | `undefined` | Attach the effect to a `SignalGroup` for lifecycle management.                                                                             |
+
+#### Priority
+
+When multiple effects depend on the same signal, **priority** determines the order in which they execute. Effects with a higher numeric priority run first.
+
+```typescript
+const data = createSignal('initial');
+
+createEffect(
+  () => {
+    console.log('Low priority:', data.get());
+  },
+  {priority: 0},
+);
+
+createEffect(
+  () => {
+    console.log('High priority:', data.get());
+  },
+  {priority: 100},
+);
+
+data.set('updated');
+// => "High priority: updated"
+// => "Low priority: updated"
+```
+
+Priority also affects ordering inside a `batch()`: when the batch completes, queued effects are flushed in descending priority order.
+
+> **Note:** Memos use a default priority of `1000`, which ensures they recompute _before_ regular effects. This means that when an effect reads a memo, the memo's value is always up-to-date.
+
+#### Attach
+
+The `attach` option connects an effect to a `SignalGroup`, enabling automatic lifecycle management. When the group is cleared (`group.clear()`), all attached effects are destroyed.
+
+```typescript
+import {SignalGroup, createSignal, createEffect} from '@spearwolf/signalize';
+
+class GameEntity {
+  group = SignalGroup.findOrCreate(this);
+  health = createSignal(100, {attach: this});
+
+  constructor() {
+    createEffect(
+      () => {
+        console.log('Health:', this.health.get());
+      },
+      {attach: this},
+    );
+  }
+
+  destroy() {
+    this.group.clear(); // destroys the signal AND the effect
+  }
+}
+```
+
+When `attach` is used together with `dependencies`, you can reference signals by name (string or symbol) instead of by direct reference:
+
+```typescript
+const group = SignalGroup.findOrCreate(myObject);
+const speed = createSignal(10, {attach: myObject});
+group.attachSignalByName('speed', speed);
+
+createEffect(
+  () => {
+    console.log('Speed changed:', speed.get());
+  },
+  ['speed'],
+  {attach: myObject},
+);
+```
+
+### The Effect Object
+
+`createEffect()` returns an `Effect` object with two methods:
+
+#### `effect.run()`
+
+Manually executes the effect callback. The callback only runs if at least one dependency has changed since the last execution — calling `run()` on an effect whose dependencies haven't changed is a no-op.
+
+If called inside a `batch()`, the execution is deferred until the batch completes (respecting priority ordering).
+
+```typescript
+const count = createSignal(0);
+
+const effect = createEffect(
+  () => {
+    console.log('Count:', count.get());
+  },
+  {autorun: false},
+);
+
+count.set(5);
+effect.run(); // => "Count: 5"
+
+effect.run(); // nothing happens — count hasn't changed
+
+count.set(10);
+effect.run(); // => "Count: 10"
+```
+
+#### `effect.destroy()`
+
+Destroys the effect and cleans up all resources:
+
+1. The cleanup callback (if any) is executed.
+2. All child effects (from nested `createEffect()` calls) are destroyed.
+3. All signal subscriptions are removed.
+4. The effect is detached from its `SignalGroup` (if attached).
+
+After calling `destroy()`, the effect is inert — calling `run()` has no effect.
+
+```typescript
+const effect = createEffect(() => {
+  const timer = setInterval(() => tick(), 1000);
+  return () => clearInterval(timer); // cleanup
+});
+
+// Later, when no longer needed:
+effect.destroy(); // cleanup runs, subscriptions removed
+```
 
 ---
 
@@ -237,6 +417,7 @@ price.set(200);
 ```
 
 **Choose non-lazy when:**
+
 - Effects or other memos read this memo as a dependency
 - You need the memo to act as a computed signal in a reactive chain
 - The value should always be up-to-date, even before it is read
@@ -251,17 +432,19 @@ This is a perfectly valid strategy for expensive computations that are consumed 
 
 ```typescript
 const searchQuery = createSignal('');
-const allItems = createSignal([/* large dataset */]);
+const allItems = createSignal([
+  /* large dataset */
+]);
 
 // Lazy: does NOT recalculate until read
 const searchResults = createMemo(
   () => {
     const query = searchQuery.get().toLowerCase();
-    return allItems.get().filter(item =>
-      item.name.toLowerCase().includes(query)
-    );
+    return allItems
+      .get()
+      .filter((item) => item.name.toLowerCase().includes(query));
   },
-  { lazy: true },
+  {lazy: true},
 );
 
 searchQuery.set('foo');
@@ -272,6 +455,7 @@ console.log(searchResults()); // Recalculates now, on demand
 ```
 
 **Choose lazy when:**
+
 - The computation is expensive and the result is not always needed
 - The memo is read on-demand (e.g., triggered by user interaction) rather than observed by effects
 - Dependencies change frequently but the value is consumed infrequently
