@@ -2,6 +2,17 @@ import {createSignal} from './createSignal.js';
 import {touch} from './touch.js';
 
 describe('create signal with custom compare function', () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeAll(() => {
+    // Silence the deprecation warning for signalReader(callback) used below.
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+  });
+
+  afterAll(() => {
+    warnSpy.mockRestore();
+  });
+
   it('works as expected', () => {
     const mock = jest.fn();
 

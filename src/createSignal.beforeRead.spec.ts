@@ -2,6 +2,17 @@ import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 import {createSignal, destroySignal} from './createSignal.js';
 
 describe('createSignal({beforeRead})', () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeAll(() => {
+    // Silence the deprecation warning emitted by signalReader(callback) below.
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+  });
+
+  afterAll(() => {
+    warnSpy.mockRestore();
+  });
+
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');

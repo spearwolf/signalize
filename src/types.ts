@@ -28,6 +28,15 @@ export interface ISignalImpl<Type = any> extends SignalLike<Type> {
 }
 
 export interface SignalReader<T> extends SignalLike<T> {
+  /**
+   * Read the signal value.
+   *
+   * @param callback - **Deprecated.** Passing a callback creates an internal
+   *   effect but returns no handle, so the only way to clean it up is to
+   *   destroy the signal itself. Use {@link Signal.onChange} instead, which
+   *   returns an unsubscribe function. The callback form will be removed in
+   *   a future release.
+   */
   (callback?: ValueChangedCallback<T>): T;
 }
 

@@ -22,6 +22,16 @@ import {UniqIdGen} from './UniqIdGen.js';
 
 const idCreator = new UniqIdGen('si');
 
+let signalReaderCallbackDeprecationWarned = false;
+
+function warnSignalReaderCallbackDeprecated(): void {
+  if (signalReaderCallbackDeprecationWarned) return;
+  signalReaderCallbackDeprecationWarned = true;
+  console.warn(
+    'signalReader(callback) is deprecated and will be removed in a future release. Use Signal.onChange(callback) instead — it returns an unsubscribe function for proper cleanup.',
+  );
+}
+
 function readSignal(signalId: symbol) {
   if (!isQuiet()) {
     getCurrentEffect()?.whenSignalIsRead(signalId);
@@ -54,6 +64,7 @@ const createSignalReader = <Type>(
       signal.beforeRead?.();
     }
     if (callback) {
+      warnSignalReaderCallbackDeprecated();
       createEffect(() => {
         if (!signal.destroyed) {
           readSignal(signal.id);

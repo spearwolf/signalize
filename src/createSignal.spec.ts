@@ -10,6 +10,19 @@ import {createEffect} from './effects.js';
 import {touch} from './touch.js';
 
 describe('createSignal', () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeAll(() => {
+    // Several legacy tests below exercise signalReader(callback), which now
+    // emits a once-per-process deprecation warning. Silence it so the
+    // unrelated test output stays clean.
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+  });
+
+  afterAll(() => {
+    warnSpy.mockRestore();
+  });
+
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');
