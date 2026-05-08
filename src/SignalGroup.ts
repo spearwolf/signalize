@@ -6,7 +6,16 @@ import {Signal} from './Signal.js';
 import {SignalLink} from './SignalLink.js';
 import {ISignalImpl, SignalLike} from './types.js';
 
-const store = new Map<object, SignalGroup>();
+// Lookup map: user-object → SignalGroup. WeakMap so that user objects are not
+// kept alive by the registry — once the user object is unreachable, its entry
+// can be reclaimed.
+const store = new WeakMap<object, SignalGroup>();
+
+// Iteration set: holds every live SignalGroup so the static `clear()` can
+// walk all groups. The set holds SignalGroups, NOT user objects, so it does
+// not pin user objects in memory. SignalGroups remove themselves from this
+// set in their instance `clear()`.
+const allGroups = new Set<SignalGroup>();
 
 type SignalNameType = string | symbol;
 
@@ -39,7 +48,10 @@ export class SignalGroup {
 
   #parentGroup?: SignalGroup;
 
-  #storeKey?: object;
+  // Held weakly so that the SignalGroup does not pin the user object: if the
+  // user drops their reference, the user object becomes GC-eligible even
+  // though the SignalGroup is still referenced from `allGroups`.
+  #storeKey?: WeakRef<object>;
 
   /**
    * Get an existing SignalGroup associated with an object, or undefined if none exists.
@@ -86,10 +98,11 @@ export class SignalGroup {
    * Clear and delete all SignalGroups in the global store.
    */
   static clear() {
-    for (const group of store.values()) {
+    // Snapshot — each group.clear() mutates `allGroups`.
+    for (const group of [...allGroups]) {
       group.clear();
     }
-    store.clear();
+    allGroups.clear();
   }
 
   private constructor(object?: object) {
@@ -100,8 +113,9 @@ export class SignalGroup {
     if (store.has(object)) {
       return store.get(object)!;
     }
-    this.#storeKey = object;
+    this.#storeKey = new WeakRef(object);
     store.set(object, this);
+    allGroups.add(this);
     eventize(this);
   }
 
@@ -346,8 +360,12 @@ export class SignalGroup {
     this.#parentGroup?.detachGroup(this);
 
     if (this.#storeKey) {
-      store.delete(this.#storeKey);
+      const key = this.#storeKey.deref();
+      if (key !== undefined) {
+        store.delete(key);
+      }
       this.#storeKey = undefined;
     }
+    allGroups.delete(this);
   }
 }

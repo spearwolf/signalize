@@ -3,7 +3,7 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './assert-helpers.js';
-import {isSignal} from './createSignal.js';
+import {destroySignal, isSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {SignalAutoMap} from './SignalAutoMap.js';
 
@@ -303,5 +303,52 @@ describe('SignalAutoMap', () => {
     const keys = Array.from(sm.keys());
     expect(keys.length).toBe(0);
     sm.clear();
+  });
+
+  // Pins down the current behavior: SignalAutoMap caches signals by key and
+  // does NOT detect external destruction. A signal destroyed via
+  // destroySignal()/Signal#destroy() is still returned by get(), and reads
+  // observe the last cached value while writes become silent no-ops. If this
+  // ever changes (e.g. auto-recreate on destroy), update this test to match.
+  describe('externally destroyed signals', () => {
+    it('get() returns the same destroyed signal after destroySignal()', () => {
+      const sm = new SignalAutoMap();
+      const sig = sm.get<number>('a');
+      sig.value = 1;
+      assertSignalsCount(1, 'signal created');
+
+      destroySignal(sig);
+      assertSignalsCount(0, 'destroyed externally');
+
+      expect(sm.has('a')).toBe(true);
+      expect(sm.get<number>('a')).toBe(sig);
+
+      sm.clear();
+    });
+
+    it('reads from a destroyed signal return the last value, writes are silent', () => {
+      const sm = new SignalAutoMap();
+      const sig = sm.get<number>('a');
+      sig.value = 7;
+
+      let observed: number | undefined;
+      const effect = createEffect(() => {
+        observed = sm.get<number>('a').get();
+      });
+      expect(observed).toBe(7);
+
+      sig.destroy();
+
+      // Effect does not re-run for a destroyed signal.
+      sm.get<number>('a').set(99);
+      expect(observed).toBe(7);
+
+      // The destroyed signal still mutates its internal value bag, but
+      // nothing reactive observes it.
+      expect(sm.get<number>('a').value).toBe(99);
+
+      effect.destroy();
+      sm.clear();
+    });
   });
 });
