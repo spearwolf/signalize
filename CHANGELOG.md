@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## `v0.28.0` (2026-05-09)
+
 ### Deprecations
 
 - `signalReader(callback)` (the callback-form of `Signal.get` / the reader function) is deprecated and emits a once-per-process `console.warn`. Use `Signal.onChange(callback)` instead — it returns an unsubscribe function. The callback form will be removed in a future release.
