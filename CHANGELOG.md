@@ -2,13 +2,6 @@
 
 ## Unreleased
 
-### Documentation
-
-- Extend `skills/signalize-signals/SKILL.md` with new pitfall: `.set()` stores functions as values — there is no updater-function pattern like React's `setState`
-  - Clarify that `signal.set(fn)` stores the function itself, not the result of calling it
-  - Document the correct pattern: `signal.set(signal.value + x)`
-  - Document the `{lazy: true}` special case where the function is evaluated on next read
-
 ### Tests
 
 - Add test case documenting the updater-function pitfall: `set()` stores function as value
