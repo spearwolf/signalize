@@ -8,59 +8,6 @@
 
 ## 1. Bugs
 
-### 🔴 1.1 `EffectImpl.attachChildEffect` setzt `parentEffect` auf sich selbst
-**Datei:** `src/EffectImpl.ts:184-187`
-
-```ts
-private attachChildEffect(effect: EffectImpl): void {
-  this.childEffects.push(effect);
-  this.parentEffect = this;        // ← sollte: effect.parentEffect = this
-}
-```
-
-Der **Parent** bekommt sich selbst als Parent zugewiesen, statt dass das **Child** seinen Parent referenziert. Die Bug-Wirkung ist aktuell harmlos, weil `parentEffect` nirgends im Code **gelesen** wird (nur in Tests heißen lokale Variablen so). Effektiv ist das Feld also **toter Code** — es lügt zusätzlich noch.
-
-**Empfehlung:**
-- Entweder Fix: `effect.parentEffect = this;`
-- oder das Feld komplett entfernen (`#parentEffect`-Property + Zuweisung), wenn keine Verwendung geplant ist.
-
----
-
-### 🔴 1.2 `SignalImpl.writer` ignoriert `muted`/`destroyed` im Touch-Pfad
-**Datei:** `src/createSignal.ts:140-144`
-
-```ts
-if (!this.muted && !this.destroyed) {
-  writeSignal(this.id, this.#value);
-  return;
-}
-
-const touch = params?.touch ?? false;
-if (touch) {
-  writeSignal(this.id, this.#value, {touch: true});  // ← keine Prüfung!
-}
-```
-
-Wird `set(value, {touch: true})` auf einem **gemuteten** oder **zerstörten** Signal aufgerufen und der Wert ändert sich nicht (oder ändert sich, aber im muted-Pfad wird durchfall'd), dann wird der Touch trotzdem emittiert. `touch.ts` macht es korrekt; der Writer ist inkonsistent.
-
-**Empfehlung:** Bedingung um die zweite `writeSignal`-Stelle ergänzen:
-```ts
-if (touch && !this.muted && !this.destroyed) {
-  writeSignal(this.id, this.#value, {touch: true});
-}
-```
-
----
-
-### ✅ 1.3 `signalReader(callback)` leakt Effects — *erledigt*
-**Datei:** `src/createSignal.ts`
-
-Statt der Form einen Unsubscribe-Handle zu geben, ist sie nun **deprecated**. `signalReader(callback)` emittiert eine Once-per-Prozess `console.warn` und verweist auf `Signal.onChange()` als die saubere Alternative (gibt einen `unsubscribe` zurück). Tests in `createSignal.deprecation.spec.ts`. JSDoc auf `SignalReader<T>` aktualisiert; Eintrag im CHANGELOG unter `### Deprecations`.
-
-**Zusatz-Bug im selben Block** (beforeRead nur im else-Zweig): bereits in Commit `037521d` behoben — `signal.beforeRead?.()` steht jetzt am Anfang der Reader-Funktion und gilt für beide Pfade. Regressions-Test in `createSignal.beforeRead.spec.ts`.
-
----
-
 ### 🔴 1.4 `SignalGroup`-Store ist eine **starke** `Map`, kein `WeakMap`
 **Datei:** `src/SignalGroup.ts:9`
 
@@ -121,42 +68,21 @@ group.attachSignalByName('x', sig);   // sig taucht jetzt 2× in #otherSignals.g
 
 ---
 
-### 🟠 1.8 `Batch.run()` registriert globale Listener pro Batch-Lauf
-**Datei:** `src/batch.ts:33-44`
+### ~~🟠 1.8 `Batch.run()` registriert globale Listener pro Batch-Lauf~~ ✅ behoben
+**Datei:** `src/batch.ts`
 
-Bei jedem `flush()` werden zwei `on()`-Listener am `globalEffectQueue` und `globalEffectCalledQueue` neu registriert und am Ende abgemeldet. Bei nested Batches und Hibernate-Pfaden könnte das in der Theorie zu doppelten Listeners führen, falls eine Exception zwischen `on()` und der `unsubscribe.forEach()`-Schleife auftritt — die `on`-Calls werden nicht im `try/finally` geschützt.
-
-**Empfehlung:** `Batch.run()` mit `try { … } finally { unsubscribe.forEach(...) }` umschließen.
+`Batch.run()` umschließt das Registrieren der temporären Listener auf `globalEffectQueue` / `globalEffectCalledQueue` jetzt mit `try { … } finally { unsubscribe.forEach(...) }`. Wirft ein Effect-Callback während der Flush-Schleife, werden die zwei Listener trotzdem abgemeldet — kein Subscription-Leak mehr. Test in `batch.spec.ts` ("Batch.run() releases its temporary listeners even when an effect throws").
 
 ---
 
-### 🟡 1.9 `Batch.batch()` toter Branch + ineffiziente Insertion
-**Datei:** `src/batch.ts:11-25`
+### ~~🟡 1.9 `Batch.batch()` toter Branch + ineffiziente Insertion~~ ✅ teilweise behoben
+**Datei:** `src/batch.ts`
 
-```ts
-for (let i = 0; i < len; i++) {
-  const [prio, effects] = this.delayedEffects[i];
-  if (prio > priority) {
-                          // ← leerer Branch, fall through
-  } else if (prio === priority) { ... }
-  else { splice(i, 0, …); return; }
-}
-```
-
-Lesbar, aber:
-- Der leere `if`-Zweig ist nur als "skip" gedacht — explizit als `continue` schreiben oder in eine Bedingung umkippen.
-- `splice(i, 0, …)` ist O(n). Bei vielen Prioritätsstufen pro Batch O(n²). Praktisch wahrscheinlich harmlos, aber eine sortierte Insertion via Map<priority, Set<symbol>> + sortiertes Drainen wäre sauberer.
+Der leere `if`-Zweig wurde durch ein explizites `continue` ersetzt; die Schleife liest sich jetzt linear. Die `splice(i, 0, …)`-Insertion bleibt erhalten — praktisch unkritisch für die typische Anzahl an Prioritätsstufen pro Batch; ein `Map<priority, Set<symbol>>` lohnt erst, wenn Profiling-Daten den Aufwand rechtfertigen.
 
 ---
 
 ## 2. Inkonsistenzen / API-Schiefstand
-
-### ✅ 2.1 `beforeRead` wird im Reader-mit-Callback-Pfad nicht aufgerufen — *erledigt*
-**Datei:** `src/createSignal.ts`
-
-`signal.beforeRead?.()` wurde an den Anfang von `signalReader` gezogen und gilt jetzt für beide Pfade (Commit `037521d`). Regressions-Test: `createSignal.beforeRead.spec.ts` ("fires when reader is invoked with a callback").
-
----
 
 ### 🟠 2.2 `SignalImpl.value`-Getter mutiert (`lazy = false`, `valueFn = undefined`)
 **Datei:** `src/createSignal.ts:93-100`
@@ -250,10 +176,10 @@ Pro Re-Run wird ein neues `Set` allokiert (Größe = aktuelle Dependencies). Bei
 
 ---
 
-### 🟡 3.2 `Batch.run()` baut `delayedEffects` per `flatMap` neu auf
-**Datei:** `src/batch.ts:46-48`
+### ~~🟡 3.2 `Batch.run()` baut `delayedEffects` per `flatMap` neu auf~~ ✅ behoben
+**Datei:** `src/batch.ts`
 
-`flatMap` allokiert ein temporäres Array über alle Effects + `Array.from(set)`-Kopien. Bei großen Batches der zweitschwerste Pfad. Direkte Iteration über `delayedEffects` und Inline-Loop spart die Zwischenarrays.
+`flatMap` ist durch eine direkte verschachtelte Iteration über `this.delayedEffects` ersetzt — keine temporären Arrays, keine `Array.from(set)`-Kopien. Verhalten unverändert (Tests grün).
 
 ---
 
@@ -305,8 +231,8 @@ Die Tuple-Overloads sind in `value.ts`/`touch.ts` definiert, werden im Decorator
 ### 🟢 4.8 Kein Test für `destroySignal` *während* eines Effect-Callbacks
 Was, wenn der Effect-Callback ein Signal zerstört, das er gerade liest? Aktueller Code: `globalDestroySignalQueue` emittiert `signalId`, jeder Effect mit dieser Subscription führt `[$destroySignal]` synchron aus → räumt Subscriptions ab → wenn alle Signals weg → `destroy()` mitten in `run()`. Kein Spec deckt das.
 
-### 🟢 4.9 Reentrancy von `batch()` mit Throw in der Callback
-Tests prüfen Happy-Path-Nesting. Was, wenn der Callback wirft? Wird `Batch.current` korrekt resettet? (Ja — `finally`-Block — aber kein Test).
+### ~~🟢 4.9 Reentrancy von `batch()` mit Throw in der Callback~~ ✅ Test ergänzt
+Spezifiziert in `batch.spec.ts` durch zwei Tests: Top-Level-`batch(throw)` und genestetes `batch(batch(throw))`. Beide verifizieren, dass `getCurrentBatch()` nach dem Wurf wieder `undefined` ist und ein nachfolgender Batch normal funktioniert.
 
 ### 🟢 4.10 `globalEffectStack`-Tests lecken EffectImpls
 **Datei:** `src/globalEffectStack.spec.ts:11-26`
@@ -365,19 +291,19 @@ Zwei `console.warn` in `SignalGroup.ts` — kein Logger-Abstraction. Für eine L
 ### Längerfristig (architektonisch)
 
 11. **1.4** `SignalGroup.store`: `Map` → `WeakMap` + Set-Iteration.
-12. **3.1 / 3.2** Hot-Path-Allokationen in `EffectImpl.run` und `Batch.run` reduzieren.
+12. **3.1** Hot-Path-Allokation in `EffectImpl.run` reduzieren (`#lostSignals` wiederverwenden). ~~**3.2** `Batch.run` `flatMap`-Allokation~~ ✅ behoben.
 13. **3.4** Rekursionsbremse / Doku für Self-Triggernde Effects.
 14. **5.6** Modul-Zirkularität entzerren.
 
 ### Tests (Test-Schulden)
 
-15. Tests **4.1–4.9** ergänzen, insbesondere:
+15. Tests **4.1–4.8** ergänzen, insbesondere:
     - Lazy-Throw,
     - Touch-on-muted/destroyed,
     - Group-Leak-Detection (mit `--expose-gc`),
-    - `destroySignal` während Effect-Callback,
-    - Batch-Throw-Reset.
+    - `destroySignal` während Effect-Callback.
+    - ~~Batch-Throw-Reset~~ ✅ ergänzt (siehe 4.9).
 
 ---
 
-**Gesamtbewertung:** Architektur und API-Design sind solide, Tests umfangreich (228, Stand 2026-05-08), Subscription-Leak-Disziplin ist im `assert-helpers.ts` gut etabliert. Verbleibendes Hauptrisiko ist der **stille Memory-Leak** in `SignalGroup` (1.4); der Typo-Bug (1.1) und der Reader-Leak (1.3) sind adressiert (1.3 als Deprecation; eigentlicher Leak-Fix verbleibt zusammen mit der späteren Entfernung der Callback-Form). Keine kritischen Funktionsfehler — alles in Tests grün —, aber die Lücken zeigen sich erst in Langläufer- und Hot-Path-Szenarien.
+**Gesamtbewertung:** Architektur und API-Design sind solide, Tests umfangreich (231, Stand 2026-05-08), Subscription-Leak-Disziplin ist im `assert-helpers.ts` gut etabliert. Verbleibendes Hauptrisiko ist der **stille Memory-Leak** in `SignalGroup` (1.4); der Typo-Bug (1.1) und der Reader-Leak (1.3) sind adressiert (1.3 als Deprecation; eigentlicher Leak-Fix verbleibt zusammen mit der späteren Entfernung der Callback-Form). Der Batch-Pfad (1.8/1.9/3.2/4.9) ist gehärtet und allokationsärmer. Keine kritischen Funktionsfehler — alles in Tests grün —, aber die Lücken zeigen sich erst in Langläufer- und Hot-Path-Szenarien.
