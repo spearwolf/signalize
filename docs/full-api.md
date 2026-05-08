@@ -70,6 +70,8 @@ Creates a reactive effect.
   - Alternatively, instead of an `options` _object_, you can simply specify an array with the signal dependencies (static effect).
 - **Returns**: `Effect`
 
+If a callback writes to a signal it depends on, the effect re-enters itself synchronously. The recursion depth is bounded by `EffectImpl.maxDepth` (default `256`); exceeding it throws a descriptive `Error` rather than overflowing the JS stack. Tune via `EffectImpl.maxDepth = N` only if the recursion is intentional — normally the cycle should be broken (e.g. by guarding the write).
+
 ### `Effect`
 
 - **`run()`**: Manually runs the effect.

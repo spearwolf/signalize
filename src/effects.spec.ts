@@ -1,7 +1,8 @@
 import {emit, eventize, onceAsync} from '@spearwolf/eventize';
 import {assertEffectsCount} from './assert-helpers.js';
 import {createSignal, destroySignal} from './createSignal.js';
-import {createEffect, onDestroyEffect} from './effects.js';
+import {EffectImpl} from './EffectImpl.js';
+import {createEffect, onCreateEffect, onDestroyEffect} from './effects.js';
 
 describe('createEffect', () => {
   beforeEach(() => {
@@ -235,6 +236,33 @@ describe('createEffect', () => {
     expect(count()).toBe(23);
 
     effect.destroy();
+  });
+
+  it('runaway self-triggering effect throws once maxDepth is exceeded', () => {
+    const originalMaxDepth = EffectImpl.maxDepth;
+    EffectImpl.maxDepth = 8;
+
+    const {get: count, set: setCount} = createSignal(0);
+
+    // run() throws before the Effect wrapper escapes createEffect, so capture
+    // the underlying EffectImpl via onCreateEffect to clean it up afterwards.
+    let leaked: EffectImpl | undefined;
+    const unsubCreate = onCreateEffect((eff: EffectImpl) => {
+      leaked = eff;
+    });
+
+    try {
+      expect(() => {
+        createEffect(() => {
+          setCount(count() + 1);
+        });
+      }).toThrow(/maxDepth=8/);
+    } finally {
+      unsubCreate();
+      EffectImpl.maxDepth = originalMaxDepth;
+      leaked?.destroy();
+      destroySignal(count);
+    }
   });
 
   it('nested effects work as expected', () => {

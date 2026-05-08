@@ -1,6 +1,6 @@
 # Backlog — Code-Analyse `@spearwolf/signalize`
 
-> **Status:** Stand 2026-05-08 · alle 216 Tests grün (`pnpm test`) · Quelle: `src/`
+> **Status:** Stand 2026-05-08 · alle 232 Tests grün (`pnpm test`) · Quelle: `src/`
 >
 > Dieses Dokument fasst die Befunde einer vollständigen Source- und Spec-Analyse zusammen. Punkte sind nach **Schweregrad** geordnet (🔴 Bug / Leak · 🟠 Risiko / Inkonsistenz · 🟡 Verbesserung · 🟢 Test-Lücke · ⚪ Aufräumen).
 
@@ -165,14 +165,10 @@ Verbergt einen Typfehler. Eventize-`on` ist überladen, `unknown[]` ist zu locke
 
 ## 3. Performance / Skalierung
 
-### 🟡 3.1 `EffectImpl.run()` wirft bei jedem Run eine neue `Set<symbol>` weg
-**Datei:** `src/EffectImpl.ts:217`
+### ~~🟡 3.1 `EffectImpl.run()` wirft bei jedem Run eine neue `Set<symbol>` weg~~ ✅ behoben
+**Datei:** `src/EffectImpl.ts`
 
-```ts
-this.#lostSignals = new Set(this.#signals);
-```
-
-Pro Re-Run wird ein neues `Set` allokiert (Größe = aktuelle Dependencies). Bei Hot-Path-Effects und vielen Dependencies messbar. Eine wiederverwendete Mutation (`#lostSignals.clear(); for (s of #signals) #lostSignals.add(s);`) spart Allokationen. Dasselbe `#destroyedSignals.clear()` direkt darunter macht es richtig.
+`#lostSignals` wird jetzt wiederverwendet: `clear()` + `for (id of #signals) #lostSignals.add(id)` statt `new Set(this.#signals)`. Keine Per-Run-Allokation mehr; semantisch identisch zur alten "letztes Re-Run gewinnt"-Logik bei Self-Triggernden Effects.
 
 ---
 
@@ -183,25 +179,17 @@ Pro Re-Run wird ein neues `Set` allokiert (Größe = aktuelle Dependencies). Bei
 
 ---
 
-### 🟡 3.3 `link.ts` mehrfach `signalImpl(target)` berechnet
-**Datei:** `src/link.ts:60-82`
+### ~~🟡 3.3 `link.ts` mehrfach `signalImpl(target)` berechnet~~ ✅ behoben
+**Datei:** `src/link.ts`
 
-```ts
-const _target = signalImpl(target) ?? target;     // einmal in Singleton-Lookup
-...
-const targetSignal = signalImpl(target);          // erneut für Branch-Entscheidung
-```
-
-`signalImpl` ist günstig (Symbol-Get), aber der Code liest das gleiche zweimal und ist verwirrend. Lokale Variable wiederverwenden.
+`signalImpl(target)` wird einmal oben in `link()` berechnet und in `targetKey` (für Singleton-Lookup, Map-Eintrag und `once(DESTROY)`-Cleanup) sowie in der Branch-Entscheidung wiederverwendet. Verhalten unverändert (Tests grün).
 
 ---
 
-### 🟡 3.4 Keine Rekursionsbremse bei Self-Triggernden Effects
+### ~~🟡 3.4 Keine Rekursionsbremse bei Self-Triggernden Effects~~ ✅ behoben
 **Datei:** `src/EffectImpl.ts`
 
-Effekte, die Signale schreiben, von denen sie abhängen, lösen rekursive `run()`-Aufrufe aus (Test in `effects.spec.ts` setzt count bis 23). Bei höheren Schwellwerten Stack-Overflow.
-
-**Empfehlung:** Optional einen `maxDepth`-Schutz oder eine Detektor-Heuristik einbauen, die warnt; mindestens eine Doku-Notiz an `createEffect`.
+`EffectImpl.maxDepth` (Default `256`, statisch tunbar) deckelt die re-entrante `run()`-Tiefe. Beim Überschreiten wirft `run()` einen sprechenden `Error` (mit Effect-Id und Limit) statt den JS-Stack zu überlaufen. JSDoc an `EffectImpl.maxDepth`, `createEffect` und `docs/full-api.md` ergänzt; Spec in `effects.spec.ts` ("runaway self-triggering effect throws once maxDepth is exceeded").
 
 ---
 
@@ -291,8 +279,8 @@ Zwei `console.warn` in `SignalGroup.ts` — kein Logger-Abstraction. Für eine L
 ### Längerfristig (architektonisch)
 
 11. **1.4** `SignalGroup.store`: `Map` → `WeakMap` + Set-Iteration.
-12. **3.1** Hot-Path-Allokation in `EffectImpl.run` reduzieren (`#lostSignals` wiederverwenden). ~~**3.2** `Batch.run` `flatMap`-Allokation~~ ✅ behoben.
-13. **3.4** Rekursionsbremse / Doku für Self-Triggernde Effects.
+12. ~~**3.1** Hot-Path-Allokation in `EffectImpl.run` reduzieren~~ ✅ behoben. ~~**3.2** `Batch.run` `flatMap`-Allokation~~ ✅ behoben. ~~**3.3** `link.ts` doppelter `signalImpl`-Lookup~~ ✅ behoben.
+13. ~~**3.4** Rekursionsbremse für Self-Triggernde Effects~~ ✅ behoben (`EffectImpl.maxDepth = 256`).
 14. **5.6** Modul-Zirkularität entzerren.
 
 ### Tests (Test-Schulden)
@@ -306,4 +294,4 @@ Zwei `console.warn` in `SignalGroup.ts` — kein Logger-Abstraction. Für eine L
 
 ---
 
-**Gesamtbewertung:** Architektur und API-Design sind solide, Tests umfangreich (231, Stand 2026-05-08), Subscription-Leak-Disziplin ist im `assert-helpers.ts` gut etabliert. Verbleibendes Hauptrisiko ist der **stille Memory-Leak** in `SignalGroup` (1.4); der Typo-Bug (1.1) und der Reader-Leak (1.3) sind adressiert (1.3 als Deprecation; eigentlicher Leak-Fix verbleibt zusammen mit der späteren Entfernung der Callback-Form). Der Batch-Pfad (1.8/1.9/3.2/4.9) ist gehärtet und allokationsärmer. Keine kritischen Funktionsfehler — alles in Tests grün —, aber die Lücken zeigen sich erst in Langläufer- und Hot-Path-Szenarien.
+**Gesamtbewertung:** Architektur und API-Design sind solide, Tests umfangreich (232, Stand 2026-05-08), Subscription-Leak-Disziplin ist im `assert-helpers.ts` gut etabliert. Verbleibendes Hauptrisiko ist der **stille Memory-Leak** in `SignalGroup` (1.4); der Typo-Bug (1.1) und der Reader-Leak (1.3) sind adressiert (1.3 als Deprecation; eigentlicher Leak-Fix verbleibt zusammen mit der späteren Entfernung der Callback-Form). Der Batch-Pfad (1.8/1.9/3.2/4.9) ist gehärtet und allokationsärmer; der Effect-Hot-Path (3.1) und `link.ts` (3.3) sparen jetzt Allokationen, die Self-Trigger-Rekursion (3.4) ist durch `EffectImpl.maxDepth = 256` gedeckelt. Keine kritischen Funktionsfehler — alles in Tests grün —, aber die verbleibenden Lücken zeigen sich erst in Langläufer- und Hot-Path-Szenarien.
