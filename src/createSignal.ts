@@ -1,3 +1,11 @@
+import {emit} from '@spearwolf/eventize';
+import {isQuiet} from './bequiet.js';
+import {$signal} from './constants.js';
+import {createEffect} from './effects.js';
+import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
+import {getCurrentEffect} from './globalEffectStack.js';
+import {Signal} from './Signal.js';
+import {SignalGroup} from './SignalGroup.js';
 import type {
   BeforeReadFunc,
   CompareFunc,
@@ -10,15 +18,6 @@ import type {
   SignalWriterParams,
   ValueChangedCallback,
 } from './types.js';
-
-import {emit} from '@spearwolf/eventize';
-import {isQuiet} from './bequiet.js';
-import {$signal} from './constants.js';
-import {createEffect} from './effects.js';
-import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
-import {getCurrentEffect} from './globalEffectStack.js';
-import {Signal} from './Signal.js';
-import {SignalGroup} from './SignalGroup.js';
 import {UniqIdGen} from './UniqIdGen.js';
 
 const idCreator = new UniqIdGen('si');

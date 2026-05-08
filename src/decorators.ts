@@ -1,7 +1,7 @@
-import {SignalGroup} from './SignalGroup.js';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
 import {findObjectSignalByName, storeAsObjectSignal} from './object-signals.js';
+import {SignalGroup} from './SignalGroup.js';
 import type {SignalParams} from './types.js';
 
 // https://github.com/tc39/proposal-decorators

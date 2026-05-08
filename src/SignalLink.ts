@@ -1,4 +1,5 @@
 import {
+  type EventizedObject,
   emit,
   eventize,
   off,
@@ -6,7 +7,6 @@ import {
   once,
   retain,
   retainClear,
-  type EventizedObject,
 } from '@spearwolf/eventize';
 import {DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
 import {signalImpl} from './createSignal.js';
@@ -18,10 +18,9 @@ export type ValueCallback<ValueType = any> = (value: ValueType) => void;
 
 // Eventize injects EventizedObject members at runtime via eventize(this) in
 // the constructor — declaration merging tells TS the brand is present.
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unused-vars, @typescript-eslint/no-unsafe-declaration-merging
+// biome-ignore lint/correctness/noUnusedVariables: declaration merging requires the same type-parameter name as the class
 export interface SignalLink<ValueType = any> extends EventizedObject {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export abstract class SignalLink<ValueType = any> {
   #muted = false;
   #unsubscribe?: () => void;
@@ -90,7 +89,7 @@ export abstract class SignalLink<ValueType = any> {
       while (!this.isDestroyed) {
         try {
           const next = await this.nextValue();
-          if (stopAction && stopAction(next, i++)) break;
+          if (stopAction?.(next, i++)) break;
           yield next;
         } catch {
           break;

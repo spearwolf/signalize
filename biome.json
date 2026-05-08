@@ -1,0 +1,90 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "src/**/*.ts",
+      "rollup/**/*.mjs",
+      "scripts/**/*.cjs",
+      "*.mjs",
+      "*.cjs",
+      "*.js",
+      "!lib",
+      "!dist",
+      "!build",
+      "!node_modules"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 80
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "trailingCommas": "all",
+      "bracketSpacing": false,
+      "semicolons": "always",
+      "arrowParentheses": "always"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noEmptyBlockStatements": "off",
+        "noAssignInExpressions": "off",
+        "noConfusingVoidType": "off",
+        "noTsIgnore": "off",
+        "noUnsafeDeclarationMerging": "off",
+        "noAsyncPromiseExecutor": "off"
+      },
+      "complexity": {
+        "noBannedTypes": "off",
+        "noUselessConstructor": "off",
+        "noThisInStatic": "off",
+        "noForEach": "off",
+        "useArrowFunction": "off"
+      },
+      "style": {
+        "noParameterAssign": "off",
+        "noNonNullAssertion": "off",
+        "useImportType": "off",
+        "noUselessElse": "off"
+      },
+      "correctness": {
+        "noConstructorReturn": "off",
+        "noUnusedVariables": {
+          "level": "error",
+          "options": {
+            "ignoreRestSiblings": true
+          }
+        }
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/**/*.spec.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          },
+          "style": {
+            "useConst": "off"
+          }
+        }
+      }
+    }
+  ]
+}

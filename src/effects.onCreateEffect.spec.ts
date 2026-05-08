@@ -1,7 +1,6 @@
 import {assertEffectsCount} from './assert-helpers.js';
-import {createEffect, onCreateEffect, onDestroyEffect} from './effects.js';
-
 import {EffectImpl} from './EffectImpl.js';
+import {createEffect, onCreateEffect, onDestroyEffect} from './effects.js';
 
 describe('onCreateEffect', () => {
   beforeEach(() => {

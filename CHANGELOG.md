@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Build System
+
+- Upgrade TypeScript 5.9 → 6.0.3
+- Upgrade Jest 29 → 30 (`@types/jest` bumped to 30; `ts-jest` 29.4.9 retained)
+- Replace ESLint + Prettier with Biome 2.4 (`biome.json`); old configs removed
+- Bump `@types/node` 20 → 25, `sinon` 18 → 22, `@types/sinon` 17 → 21
+- Switch `npm-run-all` → `npm-run-all2`
+- Remove unused devDeps: `@babel/core`, `@babel/preset-typescript`, `core-js`, `exec-sh`
+- New scripts: `pnpm check`, `pnpm fix`, `pnpm format:write`; remove `lint`/`prettier*`/`fix` scripts
+- `pnpm world` now runs `clean + check + compile + bundle + test`
+- CI runs `pnpm check + pnpm test`
+
 ### Tests
 
 - Add test case documenting the updater-function pitfall: `set()` stores function as value

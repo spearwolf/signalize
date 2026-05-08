@@ -1,14 +1,11 @@
 import {
+  type EventizedObject,
   emit,
   eventize,
   off,
   on,
   once,
-  type EventizedObject,
 } from '@spearwolf/eventize';
-import {Effect} from './Effect.js';
-import {SignalGroup} from './SignalGroup.js';
-import {UniqIdGen} from './UniqIdGen.js';
 import {getCurrentBatch} from './batch.js';
 import {
   $createEffect,
@@ -17,6 +14,7 @@ import {
   RECALL,
 } from './constants.js';
 import {signalImpl} from './createSignal.js';
+import {Effect} from './Effect.js';
 import {
   globalDestroySignalQueue,
   globalEffectCalledQueue,
@@ -24,7 +22,9 @@ import {
   globalSignalQueue,
 } from './global-queues.js';
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
+import {SignalGroup} from './SignalGroup.js';
 import type {EffectCallback, SignalLike, VoidFunc} from './types.js';
+import {UniqIdGen} from './UniqIdGen.js';
 
 export type EffectDeps = (SignalLike<any> | string | symbol)[];
 
@@ -40,10 +40,8 @@ const isThenable = (value: unknown): value is Promise<unknown> =>
 
 // Eventize injects EventizedObject members at runtime via eventize(this) in
 // the constructor — declaration merging tells TS the brand is present.
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unsafe-declaration-merging
 export interface EffectImpl extends EventizedObject {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class EffectImpl {
   private static idGen = new UniqIdGen('ef');
 

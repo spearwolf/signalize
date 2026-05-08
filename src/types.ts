@@ -1,6 +1,6 @@
+import type {$signal} from './constants.js';
 import type {Signal} from './Signal.js';
 import {SignalGroup} from './SignalGroup.js';
-import type {$signal} from './constants.js';
 
 export type VoidFunc = () => void;
 export type EffectCallback = VoidFunc | (() => VoidFunc);
@@ -31,9 +31,10 @@ export interface SignalReader<T> extends SignalLike<T> {
   (callback?: ValueChangedCallback<T>): T;
 }
 
-export interface SignalWriter<T> {
-  (value: T | (() => T), params?: SignalWriterParams<T>): void;
-}
+export type SignalWriter<T> = (
+  value: T | (() => T),
+  params?: SignalWriterParams<T>,
+) => void;
 
 export interface SignalParams<T> {
   lazy?: boolean;
@@ -47,4 +48,5 @@ export interface SignalValueParams {
 }
 
 export interface SignalWriterParams<T>
-  extends SignalParams<T>, SignalValueParams {}
+  extends SignalParams<T>,
+    SignalValueParams {}

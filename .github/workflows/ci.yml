@@ -22,11 +22,8 @@ jobs:
           version: 10.6.5
           run_install: true
 
-      - run: pnpm lint
-        name: Run lintings
-
-      - run: pnpm prettier:check
-        name: Run prettier checks
+      - run: pnpm check
+        name: Run biome checks (lint + format)
 
       - run: pnpm test
         name: Run tests

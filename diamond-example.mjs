@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import {createEffect, createSignal, createMemo} from '@spearwolf/signalize';
+import {createEffect, createMemo, createSignal} from '@spearwolf/signalize';
 
 // see https://github.com/milomg/reactively/blob/main/Reactive-algorithms.md#reactive-algorithms
 

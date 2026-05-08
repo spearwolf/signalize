@@ -1,5 +1,4 @@
-export const createBanner =
-  ({name, description, version}) => `/*!
+export const createBanner = ({name, description, version}) => `/*!
 @file ${name} - ${description}
 @author Wolfger Schramm <wolfger@spearwolf.de>
 @version ${version}
