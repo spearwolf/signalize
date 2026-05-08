@@ -15,6 +15,7 @@
 - `set(value, {touch: true})` no longer emits a touch on muted or destroyed signals
 - `beforeRead` callback now also fires on the reader-with-callback path (previously only on plain reads)
 - `Batch.run()` releases its temporary `globalEffectQueue` / `globalEffectCalledQueue` listeners via `try/finally`, preventing leaks when an effect throws during a flush
+- `SignalGroup` no longer pins user objects: the global registry is a `WeakMap`, and the per-group `#storeKey` is a `WeakRef`; iteration uses a parallel `Set<SignalGroup>` that holds groups (not user objects), eliminating the strong-Map memory leak
 
 ### Chores
 
@@ -31,6 +32,8 @@
 - Add test for the `EffectImpl.maxDepth` recursion brake
 - Add test case documenting the updater-function pitfall: `set()` stores function as value
 - Add test case for `.set(fn, {lazy: true})` deferred evaluation behavior
+- Pin down `SignalAutoMap.get()` behavior after external `destroySignal()`: the destroyed signal stays cached, reads return the last value, writes are silent no-ops
+- Add `SignalGroup.gc.spec.ts` (skipped without `--expose-gc`) verifying the registry does not pin user objects
 
 ### Build System
 
@@ -43,6 +46,7 @@
 - New scripts: `pnpm check`, `pnpm fix`, `pnpm format:write`; remove `lint`/`prettier*`/`fix` scripts
 - `pnpm world` now runs `clean + check + compile + bundle + test`
 - CI runs `pnpm check + pnpm test`
+- New script `pnpm test:gc` (`NODE_OPTIONS=--expose-gc jest --runInBand`) for the GC-sensitive specs
 
 ## `v0.27.2` (2026-02-04)
 
