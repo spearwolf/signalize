@@ -1,6 +1,5 @@
-import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
-
 import {EffectImpl} from './EffectImpl.js';
+import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 
 const NOOP = () => {};
 

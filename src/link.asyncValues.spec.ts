@@ -1,4 +1,3 @@
-/* eslint-disable no-async-promise-executor */
 import {
   assertEffectsCount,
   assertLinksCount,

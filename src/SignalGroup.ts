@@ -1,9 +1,9 @@
-import {emit, eventize, off, type EventizedObject} from '@spearwolf/eventize';
+import {type EventizedObject, emit, eventize, off} from '@spearwolf/eventize';
+import {DESTROY} from './constants.js';
+import {destroySignal, signalImpl} from './createSignal.js';
 import {EffectImpl} from './EffectImpl.js';
 import {Signal} from './Signal.js';
 import {SignalLink} from './SignalLink.js';
-import {DESTROY} from './constants.js';
-import {destroySignal, signalImpl} from './createSignal.js';
 import {ISignalImpl, SignalLike} from './types.js';
 
 const store = new Map<object, SignalGroup>();
@@ -22,10 +22,8 @@ type SignalNameType = string | symbol;
  */
 // Eventize injects EventizedObject members at runtime via eventize(this) in
 // the constructor — declaration merging tells TS the brand is present.
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unsafe-declaration-merging
 export interface SignalGroup extends EventizedObject {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SignalGroup {
   readonly #groups = new Set<SignalGroup>();
 
@@ -70,7 +68,6 @@ export class SignalGroup {
   }
 
   static destroy(object: object) {
-    // eslint-disable-next-line no-console
     console.warn(
       'SignalGroup.destroy(obj) is deprecated. Use SignalGroup.delete(obj) instead.',
     );
@@ -309,7 +306,6 @@ export class SignalGroup {
   }
 
   destroy() {
-    // eslint-disable-next-line no-console
     console.warn(
       'SignalGroup#destroy is deprecated. Use SignalGroup#clear instead.',
     );

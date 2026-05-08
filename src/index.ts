@@ -1,6 +1,6 @@
 export {batch} from './batch.js';
 export {beQuiet, isQuiet} from './bequiet.js';
-export {createMemo, type CreateMemoOptions} from './createMemo.js';
+export {type CreateMemoOptions, createMemo} from './createMemo.js';
 export {
   createSignal,
   destroySignal,

@@ -13,7 +13,6 @@ class Batch {
     for (let i = 0; i < len; i++) {
       const [prio, effects] = this.delayedEffects[i];
       if (prio > priority) {
-        continue;
       } else if (prio === priority) {
         effects.add(effectId);
         return;

@@ -1,4 +1,4 @@
-import {signalImpl, isSignal, writeSignal} from './createSignal.js';
+import {isSignal, signalImpl, writeSignal} from './createSignal.js';
 import {findObjectSignalByName} from './object-signals.js';
 import type {SignalLike} from './types.js';
 

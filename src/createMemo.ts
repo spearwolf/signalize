@@ -1,10 +1,10 @@
 import {once, Priority} from '@spearwolf/eventize';
+import {batch} from './batch.js';
 import {createSignal, signalImpl} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
 import type {SignalReader} from './types.js';
-import {batch} from './batch.js';
 
 /**
  * Options for creating a memo (computed signal).

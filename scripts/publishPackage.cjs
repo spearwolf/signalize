@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 
-const {exec} = require('child_process');
-const process = require('process');
+const {exec} = require('node:child_process');
+const process = require('node:process');
 
 const pkgJson = require('../package.json');
 
