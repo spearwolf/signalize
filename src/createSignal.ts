@@ -50,6 +50,9 @@ const createSignalReader = <Type>(
   signal: ISignalImpl<Type>,
 ): SignalReader<Type> => {
   const signalReader = (callback?: ValueChangedCallback<Type>) => {
+    if (!signal.destroyed) {
+      signal.beforeRead?.();
+    }
     if (callback) {
       createEffect(() => {
         if (!signal.destroyed) {
@@ -58,7 +61,6 @@ const createSignalReader = <Type>(
         return callback(signal.value);
       }, [signalReader as SignalReader<Type>]);
     } else if (!signal.destroyed) {
-      signal.beforeRead?.();
       readSignal(signal.id);
     }
     return signal.value;
@@ -139,7 +141,7 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
 
     const touch = params?.touch ?? false;
 
-    if (touch) {
+    if (touch && !this.muted && !this.destroyed) {
       writeSignal(this.id, this.#value, {touch: true});
     }
   };

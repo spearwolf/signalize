@@ -11,6 +11,7 @@ import {
   $createEffect,
   $destroyEffect,
   $destroySignal,
+  DESTROY,
   RECALL,
 } from './constants.js';
 import {signalImpl} from './createSignal.js';
@@ -45,8 +46,6 @@ export interface EffectImpl extends EventizedObject {}
 export class EffectImpl {
   private static idGen = new UniqIdGen('ef');
 
-  static Destroy = 'destroy';
-
   /** global effect counter */
   static count = 0;
 
@@ -64,8 +63,6 @@ export class EffectImpl {
   readonly #signalSubscriptions: Map<symbol, Array<() => void>> = new Map();
 
   readonly #destroyedSignals: Set<symbol> = new Set();
-
-  parentEffect?: EffectImpl;
 
   private readonly childEffects: EffectImpl[] = [];
   private curChildEffectSlot = 0;
@@ -183,7 +180,6 @@ export class EffectImpl {
 
   private attachChildEffect(effect: EffectImpl): void {
     this.childEffects.push(effect);
-    this.parentEffect = this;
   }
 
   /**
@@ -307,7 +303,7 @@ export class EffectImpl {
   destroy = (): void => {
     if (this.#destroyed) return;
 
-    emit(this, EffectImpl.Destroy, this);
+    emit(this, DESTROY, this);
     off(this);
 
     emit(globalEffectQueue, $destroyEffect, this);
