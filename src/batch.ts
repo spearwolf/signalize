@@ -13,13 +13,14 @@ class Batch {
     for (let i = 0; i < len; i++) {
       const [prio, effects] = this.delayedEffects[i];
       if (prio > priority) {
-      } else if (prio === priority) {
+        continue;
+      }
+      if (prio === priority) {
         effects.add(effectId);
         return;
-      } else {
-        this.delayedEffects.splice(i, 0, [priority, new Set([effectId])]);
-        return;
       }
+      this.delayedEffects.splice(i, 0, [priority, new Set([effectId])]);
+      return;
     }
     this.delayedEffects.push([priority, new Set([effectId])]);
   }
@@ -32,31 +33,32 @@ class Batch {
   run() {
     const alreadyBeenCalled = new Set<symbol>();
 
-    const unsubscribe = [
-      on(globalEffectQueue, (effectId, actionType) => {
-        if (actionType === RECALL) {
+    const unsubscribe: VoidFunc[] = [];
+    try {
+      unsubscribe.push(
+        on(globalEffectQueue, (effectId, actionType) => {
+          if (actionType === RECALL) {
+            alreadyBeenCalled.add(effectId);
+          }
+        }),
+        on(globalEffectCalledQueue, (effectId) => {
           alreadyBeenCalled.add(effectId);
+        }),
+      );
+
+      for (const [, effects] of this.delayedEffects) {
+        for (const effectId of effects) {
+          if (alreadyBeenCalled.has(effectId)) {
+            continue;
+          }
+          emit(globalEffectQueue, effectId, effectId, RECALL);
         }
-      }),
-      on(globalEffectCalledQueue, (effectId) => {
-        alreadyBeenCalled.add(effectId);
-      }),
-    ];
-
-    const delayedEffects = this.delayedEffects.flatMap(([, effects]) =>
-      Array.from(effects),
-    );
-
-    for (const effectId of delayedEffects) {
-      if (alreadyBeenCalled.has(effectId)) {
-        continue;
       }
-      emit(globalEffectQueue, effectId, effectId, RECALL);
+    } finally {
+      for (const unsub of unsubscribe) {
+        unsub();
+      }
     }
-
-    unsubscribe.forEach((unsub) => {
-      unsub();
-    });
   }
 }
 

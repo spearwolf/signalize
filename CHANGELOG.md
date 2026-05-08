@@ -10,15 +10,20 @@
 
 - `set(value, {touch: true})` no longer emits a touch on muted or destroyed signals
 - `beforeRead` callback now also fires on the reader-with-callback path (previously only on plain reads)
+- `Batch.run()` releases its temporary `globalEffectQueue` / `globalEffectCalledQueue` listeners via `try/finally`, preventing leaks when an effect throws during a flush
 
 ### Chores
 
 - Remove dead `EffectImpl.parentEffect` field (never read; assignment was self-referential)
 - Replace internal `EffectImpl.Destroy` string constant with the shared `DESTROY` symbol from `constants.ts`
+- `Batch.batch()` clarifies the priority-insertion loop (explicit `continue` instead of empty branch) and `Batch.run()` iterates `delayedEffects` directly, dropping the intermediate `flatMap` allocation
 
 ### Tests
 
 - `globalEffectStack.spec.ts` now destroys created `EffectImpl` instances and asserts `effects-count = 0` in `before/afterEach`
+- Cover `batch()` reentrancy after a throw in the callback (top-level and nested) and verify `Batch.run()` listener cleanup when an effect throws
+- Add test case documenting the updater-function pitfall: `set()` stores function as value
+- Add test case for `.set(fn, {lazy: true})` deferred evaluation behavior
 
 ### Build System
 
@@ -31,11 +36,6 @@
 - New scripts: `pnpm check`, `pnpm fix`, `pnpm format:write`; remove `lint`/`prettier*`/`fix` scripts
 - `pnpm world` now runs `clean + check + compile + bundle + test`
 - CI runs `pnpm check + pnpm test`
-
-### Tests
-
-- Add test case documenting the updater-function pitfall: `set()` stores function as value
-- Add test case for `.set(fn, {lazy: true})` deferred evaluation behavior
 
 ## `v0.27.2` (2026-02-04)
 

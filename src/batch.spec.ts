@@ -1,6 +1,8 @@
-import {batch} from './batch.js';
-import {createSignal} from './createSignal.js';
+import {getSubscriptionCount} from '@spearwolf/eventize';
+import {batch, getCurrentBatch} from './batch.js';
+import {createSignal, destroySignal} from './createSignal.js';
 import {createEffect} from './effects.js';
+import {globalEffectCalledQueue, globalEffectQueue} from './global-queues.js';
 
 describe('batch', () => {
   it('delay the effect callback execution until the batch callback finished', () => {
@@ -119,5 +121,88 @@ describe('batch', () => {
 
     expect(effectCallCount).toBe(1);
     expect(valB).toHaveBeenCalledWith('end');
+  });
+
+  it('resets Batch.current when the callback throws (reentrancy)', () => {
+    expect(getCurrentBatch()).toBeUndefined();
+
+    expect(() => {
+      batch(() => {
+        throw new Error('boom in batch callback');
+      });
+    }).toThrow('boom in batch callback');
+
+    expect(getCurrentBatch()).toBeUndefined();
+
+    // a subsequent batch must work normally again
+    const {get: a, set: setA} = createSignal(0);
+    const seen: number[] = [];
+    const eff = createEffect(() => {
+      seen.push(a());
+    });
+
+    batch(() => {
+      setA(1);
+      setA(2);
+    });
+
+    expect(seen).toEqual([0, 2]);
+
+    eff.destroy();
+    destroySignal(a);
+  });
+
+  it('resets Batch.current after a throw in a nested batch callback', () => {
+    expect(getCurrentBatch()).toBeUndefined();
+
+    expect(() => {
+      batch(() => {
+        batch(() => {
+          throw new Error('boom from nested');
+        });
+      });
+    }).toThrow('boom from nested');
+
+    expect(getCurrentBatch()).toBeUndefined();
+  });
+
+  it('Batch.run() releases its temporary listeners even when an effect throws', () => {
+    const baselineEffect = getSubscriptionCount(globalEffectQueue);
+    const baselineCalled = getSubscriptionCount(globalEffectCalledQueue);
+
+    const {get: a, set: setA} = createSignal(0);
+    const eff = createEffect(() => {
+      const v = a();
+      if (v > 0) {
+        throw new Error('effect boom');
+      }
+    });
+
+    // sanity: the effect added exactly one subscription on globalEffectQueue
+    expect(getSubscriptionCount(globalEffectQueue) - baselineEffect).toBe(1);
+    expect(getSubscriptionCount(globalEffectCalledQueue) - baselineCalled).toBe(
+      0,
+    );
+
+    expect(() => {
+      batch(() => {
+        setA(1);
+      });
+    }).toThrow('effect boom');
+
+    // After the throw, the two temporary listeners registered by Batch.run()
+    // must have been removed; only the effect's own subscription remains.
+    expect(getSubscriptionCount(globalEffectQueue) - baselineEffect).toBe(1);
+    expect(getSubscriptionCount(globalEffectCalledQueue) - baselineCalled).toBe(
+      0,
+    );
+
+    eff.destroy();
+    destroySignal(a);
+
+    expect(getSubscriptionCount(globalEffectQueue) - baselineEffect).toBe(0);
+    expect(getSubscriptionCount(globalEffectCalledQueue) - baselineCalled).toBe(
+      0,
+    );
   });
 });
