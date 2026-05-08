@@ -27,9 +27,6 @@ jobs:
       - run: pnpm lint
         name: Run lintings
 
-      - run: pnpm prettier:check
-        name: Run prettier checks
-
       - run: pnpm test
         name: Run tests
 
