@@ -49,6 +49,23 @@ export class EffectImpl {
   /** global effect counter */
   static count = 0;
 
+  /**
+   * Maximum allowed re-entrant depth of `EffectImpl.run()`.
+   *
+   * Effects that synchronously write to a signal they depend on re-enter
+   * `run()` recursively. Without a guard, a runaway loop would terminate
+   * with a native `RangeError` (stack overflow) at an arbitrary depth.
+   *
+   * When the counter exceeds this limit, `run()` throws a descriptive
+   * `Error` instead, naming the effect id and the limit. The default of
+   * 256 is well above realistic legitimate fixpoint iterations and well
+   * below the JS stack limit on common engines.
+   *
+   * Tune via `EffectImpl.maxDepth = N` if you intentionally need deeper
+   * recursion — but prefer breaking the cycle.
+   */
+  static maxDepth = 256;
+
   /** unique effect id */
   readonly id: symbol;
 
@@ -75,6 +92,8 @@ export class EffectImpl {
   #dependencies?: SignalLike<unknown>[];
 
   #destroyed = false;
+
+  #runDepth = 0;
 
   /**
    * An effect subscribes to the _global effects queue_ by its `id`.
@@ -198,7 +217,19 @@ export class EffectImpl {
     const curBatch = getCurrentBatch();
     if (curBatch) {
       curBatch.batch(this.id, this.priority);
-    } else {
+      return;
+    }
+
+    if (this.#runDepth >= EffectImpl.maxDepth) {
+      throw new Error(
+        `[signalize] Effect ${this.id.toString()} exceeded maxDepth=${EffectImpl.maxDepth}: ` +
+          'an effect callback recursively re-triggered itself (likely by writing a signal it depends on). ' +
+          'Break the cycle, or raise EffectImpl.maxDepth if the recursion is intentional.',
+      );
+    }
+
+    this.#runDepth++;
+    try {
       this.runCleanupCallback();
       this.destroyChildEffects();
 
@@ -210,11 +241,16 @@ export class EffectImpl {
       if (this.hasStaticDeps()) {
         this.#nextCleanupCallback = this.callback() as VoidFunc;
       } else {
-        this.#lostSignals = new Set(this.#signals);
+        this.#lostSignals.clear();
+        for (const id of this.#signals) {
+          this.#lostSignals.add(id);
+        }
         this.#nextCleanupCallback = runWithinEffect(this, this.callback);
         this.cleanupLostSignals();
         this.#destroyedSignals.clear();
       }
+    } finally {
+      this.#runDepth--;
     }
   };
 

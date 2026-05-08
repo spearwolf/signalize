@@ -53,21 +53,21 @@ export function link<ValueType>(
   options?: LinkOptions,
 ): SignalLink<ValueType> {
   const sourceSignal = signalImpl(source);
-  let links: Map<object | Function, SignalLink<any>>;
+  const targetSignal = signalImpl(target as SignalLike<ValueType>);
+  const targetKey: object | Function =
+    targetSignal ?? (target as object | Function);
 
+  let links: Map<object | Function, SignalLink<any>>;
   if (gLinks.has(sourceSignal)) {
     links = gLinks.get(sourceSignal)!;
-
-    const _target = signalImpl(target as SignalLike<ValueType>) ?? target;
-    if (links.has(_target)) {
-      return links.get(_target);
+    if (links.has(targetKey)) {
+      return links.get(targetKey);
     }
   } else {
     links = new Map<object | Function, SignalLink<any>>();
     gLinks.set(sourceSignal, links);
   }
 
-  const targetSignal = signalImpl(target as SignalLike<ValueType>);
   const link =
     targetSignal != null
       ? new SignalLinkToSignal(source, targetSignal)
@@ -78,11 +78,10 @@ export function link<ValueType>(
     link.attach(attachToGroup);
   }
 
-  const _target = targetSignal ?? target;
-  links.set(_target, link);
+  links.set(targetKey, link);
 
   once(link, DESTROY, () => {
-    links.delete(_target);
+    links.delete(targetKey);
     if (links.size === 0) {
       gLinks.delete(sourceSignal);
     }

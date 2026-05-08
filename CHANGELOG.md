@@ -6,6 +6,10 @@
 
 - `signalReader(callback)` (the callback-form of `Signal.get` / the reader function) is deprecated and emits a once-per-process `console.warn`. Use `Signal.onChange(callback)` instead — it returns an unsubscribe function. The callback form will be removed in a future release.
 
+### Features
+
+- `EffectImpl.maxDepth` (default `256`) caps re-entrant `run()` recursion; runaway self-triggering effects now throw a descriptive error instead of overflowing the JS stack
+
 ### Bug Fixes
 
 - `set(value, {touch: true})` no longer emits a touch on muted or destroyed signals
@@ -17,11 +21,14 @@
 - Remove dead `EffectImpl.parentEffect` field (never read; assignment was self-referential)
 - Replace internal `EffectImpl.Destroy` string constant with the shared `DESTROY` symbol from `constants.ts`
 - `Batch.batch()` clarifies the priority-insertion loop (explicit `continue` instead of empty branch) and `Batch.run()` iterates `delayedEffects` directly, dropping the intermediate `flatMap` allocation
+- `EffectImpl.run()` reuses its `#lostSignals` Set across runs (`clear()` + re-fill) instead of allocating a fresh Set per re-run
+- `link()` computes `signalImpl(target)` once and reuses it for both the singleton lookup-key and the branch decision
 
 ### Tests
 
 - `globalEffectStack.spec.ts` now destroys created `EffectImpl` instances and asserts `effects-count = 0` in `before/afterEach`
 - Cover `batch()` reentrancy after a throw in the callback (top-level and nested) and verify `Batch.run()` listener cleanup when an effect throws
+- Add test for the `EffectImpl.maxDepth` recursion brake
 - Add test case documenting the updater-function pitfall: `set()` stores function as value
 - Add test case for `.set(fn, {lazy: true})` deferred evaluation behavior
 

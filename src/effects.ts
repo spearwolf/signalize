@@ -10,6 +10,13 @@ import {globalEffectQueue} from './global-queues.js';
  * By default, the effect runs immediately (autorun: true). Set autorun: false
  * to create a "static" effect that must be triggered manually via effect.run().
  *
+ * If a callback writes to a signal it depends on, the effect re-enters
+ * itself synchronously. The recursion depth is bounded by
+ * `EffectImpl.maxDepth` (default 256); exceeding it throws instead of
+ * silently overflowing the JS stack. Tune the cap via
+ * `EffectImpl.maxDepth = N` only if the recursion is intentional —
+ * normally the cycle should be broken (e.g. by guarding the write).
+ *
  * @param callback - The function to run reactively
  * @param dependencies - Optional array of signals to explicitly depend on
  * @param options - Configuration options (autorun, priority, attach)
