@@ -1,4 +1,11 @@
-import {emit, eventize, off, on, once} from '@spearwolf/eventize';
+import {
+  emit,
+  eventize,
+  off,
+  on,
+  once,
+  type EventizedObject,
+} from '@spearwolf/eventize';
 import {Effect} from './Effect.js';
 import {SignalGroup} from './SignalGroup.js';
 import {UniqIdGen} from './UniqIdGen.js';
@@ -31,6 +38,12 @@ export interface EffectOptions {
 const isThenable = (value: unknown): value is Promise<unknown> =>
   value != null && typeof (value as Promise<unknown>).then === 'function';
 
+// Eventize injects EventizedObject members at runtime via eventize(this) in
+// the constructor — declaration merging tells TS the brand is present.
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unsafe-declaration-merging
+export interface EffectImpl extends EventizedObject {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class EffectImpl {
   private static idGen = new UniqIdGen('ef');
 

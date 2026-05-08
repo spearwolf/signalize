@@ -1,4 +1,4 @@
-import {emit, eventize, off} from '@spearwolf/eventize';
+import {emit, eventize, off, type EventizedObject} from '@spearwolf/eventize';
 import {EffectImpl} from './EffectImpl.js';
 import {Signal} from './Signal.js';
 import {SignalLink} from './SignalLink.js';
@@ -20,6 +20,12 @@ type SignalNameType = string | symbol;
  * Use `SignalGroup.findOrCreate(object)` to create or retrieve a group associated
  * with any object, enabling component-based lifecycle management.
  */
+// Eventize injects EventizedObject members at runtime via eventize(this) in
+// the constructor — declaration merging tells TS the brand is present.
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unsafe-declaration-merging
+export interface SignalGroup extends EventizedObject {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SignalGroup {
   readonly #groups = new Set<SignalGroup>();
 

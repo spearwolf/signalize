@@ -18,8 +18,8 @@ importers:
         specifier: ^7.28.5
         version: 7.28.5(@babel/core@7.29.0)
       '@spearwolf/eventize':
-        specifier: ^4.0.2
-        version: 4.0.2
+        specifier: ^4.3.1
+        version: 4.3.1
       '@types/jest':
         specifier: ^29.5.12
         version: 29.5.14
@@ -698,8 +698,8 @@ packages:
   '@sinonjs/text-encoding@0.7.3':
     resolution: {integrity: sha512-DE427ROAphMQzU4ENbliGYrBSYPXF+TtLg9S8vzeA+OF4ZKzoDdzfL8sxuMUGS/lgRhM6j1URSk9ghf7Xo1tyA==}
 
-  '@spearwolf/eventize@4.0.2':
-    resolution: {integrity: sha512-CyyT2MXoRmp9yRVz2f7xyPhiSr3Gnn4m5Ofu9oN7VH4uS1Evlji5onP5UCdJW8H+ZMVn25DQn3OAJLGRi/ymLA==}
+  '@spearwolf/eventize@4.3.1':
+    resolution: {integrity: sha512-QrHS2anine6WGfkHh/jg3WPsKa5StLyrh343XR9t68FkX1SOZ9R9S1cnk37YqmvukCZNz44FOe/mWHPR9xbP8A==}
     engines: {node: '>=18.16'}
 
   '@types/babel__core@7.20.5':
@@ -3656,7 +3656,7 @@ snapshots:
 
   '@sinonjs/text-encoding@0.7.3': {}
 
-  '@spearwolf/eventize@4.0.2': {}
+  '@spearwolf/eventize@4.3.1': {}
 
   '@types/babel__core@7.20.5':
     dependencies:

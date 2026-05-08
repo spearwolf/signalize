@@ -43,7 +43,7 @@
     "@arethetypeswrong/cli": "^0.18.2",
     "@babel/core": "^7.29.0",
     "@babel/preset-typescript": "^7.28.5",
-    "@spearwolf/eventize": "^4.0.2",
+    "@spearwolf/eventize": "^4.3.1",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.14.11",
     "@types/sinon": "^17.0.4",
@@ -70,7 +70,7 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@spearwolf/eventize": "^4.0.2"
+    "@spearwolf/eventize": "^4.3.1"
   },
   "homepage": "https://github.com/spearwolf/signalize/",
   "license": "Apache-2.0",
