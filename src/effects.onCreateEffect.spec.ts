@@ -1,4 +1,5 @@
 import {assertEffectsCount} from './assert-helpers.js';
+import {$effect} from './constants.js';
 import {EffectImpl} from './EffectImpl.js';
 import {createEffect, onCreateEffect, onDestroyEffect} from './effects.js';
 
@@ -39,5 +40,29 @@ describe('onCreateEffect', () => {
     );
 
     unsubscribeDestroyEffect();
+  });
+
+  it('Effect wrapper clears its [$effect] reference after destroy', () => {
+    const effect = createEffect(() => {});
+
+    expect(effect[$effect]).toBeInstanceOf(EffectImpl);
+
+    effect.destroy();
+
+    // Internal listener (once on DESTROY) clears the impl reference so the
+    // wrapper does not pin a destroyed effect alive for GC.
+    expect(effect[$effect]).toBeUndefined();
+  });
+
+  it('Effect wrapper [$effect] is cleared even when impl is destroyed externally', () => {
+    const effect = createEffect(() => {});
+
+    expect(effect[$effect]).toBeInstanceOf(EffectImpl);
+
+    // Destroy via the underlying impl (the once-listener on DESTROY
+    // is what makes the wrapper reset, regardless of which side initiates).
+    effect[$effect].destroy();
+
+    expect(effect[$effect]).toBeUndefined();
   });
 });

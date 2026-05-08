@@ -1,5 +1,5 @@
 import {once} from '@spearwolf/eventize';
-import {$effect} from './constants.js';
+import {$effect, DESTROY} from './constants.js';
 import {EffectImpl} from './EffectImpl.js';
 
 export class Effect {
@@ -8,7 +8,7 @@ export class Effect {
   constructor(effect: EffectImpl) {
     this[$effect] = effect;
 
-    once(effect, EffectImpl.Destroy, () => {
+    once(effect, DESTROY, () => {
       this[$effect] = undefined;
     });
   }

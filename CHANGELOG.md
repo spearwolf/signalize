@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Bug Fixes
+
+- `set(value, {touch: true})` no longer emits a touch on muted or destroyed signals
+- `beforeRead` callback now also fires on the reader-with-callback path (previously only on plain reads)
+
+### Chores
+
+- Remove dead `EffectImpl.parentEffect` field (never read; assignment was self-referential)
+- Replace internal `EffectImpl.Destroy` string constant with the shared `DESTROY` symbol from `constants.ts`
+
+### Tests
+
+- `globalEffectStack.spec.ts` now destroys created `EffectImpl` instances and asserts `effects-count = 0` in `before/afterEach`
+
 ### Build System
 
 - Upgrade TypeScript 5.9 → 6.0.3

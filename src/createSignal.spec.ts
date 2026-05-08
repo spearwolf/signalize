@@ -120,6 +120,55 @@ describe('createSignal', () => {
     destroySignal(sigFoo);
   });
 
+  it('set(_, {touch: true}) does NOT emit when signal is muted', () => {
+    const sig = createSignal(1);
+    const effect = jest.fn();
+
+    sig.onChange(effect);
+
+    expect(effect).not.toHaveBeenCalled();
+
+    // baseline: touch on an unmuted signal triggers the effect
+    sig.set(1, {touch: true});
+    expect(effect).toHaveBeenCalledTimes(1);
+
+    // mute then touch with same value → no emit
+    muteSignal(sig);
+    sig.set(1, {touch: true});
+    expect(effect).toHaveBeenCalledTimes(1);
+
+    // mute then touch with different value → still no emit (writer stores new value, but mute blocks notification)
+    sig.set(2, {touch: true});
+    expect(effect).toHaveBeenCalledTimes(1);
+    expect(sig.value).toBe(2);
+
+    // unmute restores normal notification
+    unmuteSignal(sig);
+    sig.set(2, {touch: true});
+    expect(effect).toHaveBeenCalledTimes(2);
+
+    destroySignal(sig);
+  });
+
+  it('set(_, {touch: true}) does NOT emit when signal is destroyed', () => {
+    const sig = createSignal(1);
+    const effect = jest.fn();
+
+    sig.onChange(effect);
+
+    sig.set(1, {touch: true});
+    expect(effect).toHaveBeenCalledTimes(1);
+
+    destroySignal(sig);
+
+    // touch on destroyed signal must not emit
+    sig.set(1, {touch: true});
+    expect(effect).toHaveBeenCalledTimes(1);
+
+    sig.set(99, {touch: true});
+    expect(effect).toHaveBeenCalledTimes(1);
+  });
+
   it('mute, unmute with signal reader callback effect', () => {
     const {get: sigFoo, set: setFoo} = createSignal(666);
 
