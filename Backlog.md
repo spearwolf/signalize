@@ -52,22 +52,12 @@ if (touch && !this.muted && !this.destroyed) {
 
 ---
 
-### 🔴 1.3 `signalReader(callback)` leakt Effects
-**Datei:** `src/createSignal.ts:49-72`
+### ✅ 1.3 `signalReader(callback)` leakt Effects — *erledigt*
+**Datei:** `src/createSignal.ts`
 
-```ts
-const signalReader = (callback?: ValueChangedCallback<Type>) => {
-  if (callback) {
-    createEffect(() => { ... }, [signalReader]);   // ← keine Rückgabe!
-  } ...
-};
-```
+Statt der Form einen Unsubscribe-Handle zu geben, ist sie nun **deprecated**. `signalReader(callback)` emittiert eine Once-per-Prozess `console.warn` und verweist auf `Signal.onChange()` als die saubere Alternative (gibt einen `unsubscribe` zurück). Tests in `createSignal.deprecation.spec.ts`. JSDoc auf `SignalReader<T>` aktualisiert; Eintrag im CHANGELOG unter `### Deprecations`.
 
-Wird der Reader mit Callback aufgerufen, wird intern ein Effect erzeugt — **die Aufruferin bekommt keinen Handle**. Aufräumen geht nur über `destroySignal()`. `Signal.onChange()` macht es richtig (gibt `destroy` zurück). Dieselbe Mechanik existiert in zwei Varianten mit unterschiedlicher Disziplin.
-
-**Empfehlung:** Reader-mit-Callback-Form sollte ebenfalls eine `VoidFunc` zurückgeben, damit Konsumenten ohne Signal-Destroy aufräumen können. Alternativ Form **deprecaten** und ausschließlich `Signal.onChange` empfehlen.
-
-**Zusatz-Bug im selben Block:** `signal.beforeRead?.()` wird **nur im else-Zweig** aufgerufen, nicht beim Callback-Zweig. Das ist inkonsistent — siehe 2.1.
+**Zusatz-Bug im selben Block** (beforeRead nur im else-Zweig): bereits in Commit `037521d` behoben — `signal.beforeRead?.()` steht jetzt am Anfang der Reader-Funktion und gilt für beide Pfade. Regressions-Test in `createSignal.beforeRead.spec.ts`.
 
 ---
 
@@ -161,12 +151,10 @@ Lesbar, aber:
 
 ## 2. Inkonsistenzen / API-Schiefstand
 
-### 🟠 2.1 `beforeRead` wird im Reader-mit-Callback-Pfad nicht aufgerufen
-**Datei:** `src/createSignal.ts:52-63`
+### ✅ 2.1 `beforeRead` wird im Reader-mit-Callback-Pfad nicht aufgerufen — *erledigt*
+**Datei:** `src/createSignal.ts`
 
-Im else-Zweig `signal.beforeRead?.()` — im if-Zweig (mit Callback) **nicht**. `beforeRead` soll laut JSDoc/Typ vor jedem Read laufen, der Callback-Pfad ist ein Read.
-
-**Empfehlung:** `beforeRead?.()` an den Anfang der Funktion ziehen (vor das `if`).
+`signal.beforeRead?.()` wurde an den Anfang von `signalReader` gezogen und gilt jetzt für beide Pfade (Commit `037521d`). Regressions-Test: `createSignal.beforeRead.spec.ts` ("fires when reader is invoked with a callback").
 
 ---
 
@@ -368,7 +356,7 @@ Zwei `console.warn` in `SignalGroup.ts` — kein Logger-Abstraction. Für eine L
 
 ### Mittelfristig (API-Klarheit)
 
-6. **1.3** `signalReader(callback)` muss Unsubscribe zurückgeben — oder deprecaten.
+6. ~~**1.3** `signalReader(callback)` muss Unsubscribe zurückgeben — oder deprecaten.~~ ✅ deprecated mit Once-Warnung; verweist auf `Signal.onChange`.
 7. **1.5** `link()` Re-Use mit divergierender `attach`-Option behandeln.
 8. **1.6** `SignalAutoMap.get` muss zerstörte Signals neu erzeugen.
 9. **1.7** `attachSignalByName` Mehrfach-Eintrag verhindern.
@@ -392,4 +380,4 @@ Zwei `console.warn` in `SignalGroup.ts` — kein Logger-Abstraction. Für eine L
 
 ---
 
-**Gesamtbewertung:** Architektur und API-Design sind solide, Tests umfangreich (216), Subscription-Leak-Disziplin ist im `assert-helpers.ts` gut etabliert. Die größten Risiken sind die zwei **stillen Memory-Leaks** (1.3, 1.4) und ein klassischer **typo-Bug** (1.1). Keine kritischen Funktionsfehler — alles in Tests grün —, aber die Lücken zeigen sich erst in Langläufer- und Hot-Path-Szenarien.
+**Gesamtbewertung:** Architektur und API-Design sind solide, Tests umfangreich (228, Stand 2026-05-08), Subscription-Leak-Disziplin ist im `assert-helpers.ts` gut etabliert. Verbleibendes Hauptrisiko ist der **stille Memory-Leak** in `SignalGroup` (1.4); der Typo-Bug (1.1) und der Reader-Leak (1.3) sind adressiert (1.3 als Deprecation; eigentlicher Leak-Fix verbleibt zusammen mit der späteren Entfernung der Callback-Form). Keine kritischen Funktionsfehler — alles in Tests grün —, aber die Lücken zeigen sich erst in Langläufer- und Hot-Path-Szenarien.

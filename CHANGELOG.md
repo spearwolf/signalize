@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Deprecations
+
+- `signalReader(callback)` (the callback-form of `Signal.get` / the reader function) is deprecated and emits a once-per-process `console.warn`. Use `Signal.onChange(callback)` instead — it returns an unsubscribe function. The callback form will be removed in a future release.
+
 ### Bug Fixes
 
 - `set(value, {touch: true})` no longer emits a touch on muted or destroyed signals

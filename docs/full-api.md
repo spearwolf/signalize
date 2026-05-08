@@ -29,6 +29,7 @@ Creates a new signal.
 The object returned by `createSignal`.
 
 - **`get()`**: Returns the value and tracks dependency.
+- **`get(callback)`**: **Deprecated.** Subscribes a callback as an internal effect, but does **not** return an unsubscribe handle — the only cleanup path is destroying the signal. Use `onChange(callback)` instead. Will be removed in a future release.
 - **`set(value)`**: Updates the value.
 - **`value`**: Getter/Setter for the value (getter does NOT track dependency).
 - **`touch()`**: Triggers effects without changing value.
