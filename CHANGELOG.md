@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Documentation
+
+- Rewrite `docs/`: replace `introduction.md` / `guide.md` / `full-api.md` with `architecture.md`, `api.md`, `recipes.md`; rewrite `quickstart.md` and `cheat-sheet.md`; refresh `README.md`
+
 ## `v0.28.0` (2026-05-09)
 
 ### Deprecations

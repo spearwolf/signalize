@@ -44,7 +44,7 @@ For changes that touch subscribe/unsubscribe paths, assert no listener leaks. `s
 
 ## Documentation sync
 
-Public-API changes → `src/*.ts` JSDoc → `docs/full-api.md` → `docs/guide.md` → `README.md` "API at a Glance" → `CHANGELOG.md`. The previous top-level `skills/` folder was removed (commit `f08fb05`) — ignore older references to `SKILL.md` updates.
+Public-API changes → `src/*.ts` JSDoc → `docs/api.md` → `docs/recipes.md` (if a quirk/pattern is involved) → `docs/cheat-sheet.md` → `README.md` "API at a glance" → `CHANGELOG.md`. The previous top-level `skills/` folder was removed (commit `f08fb05`) — ignore older references to `SKILL.md` updates. Older doc filenames (`introduction.md`, `guide.md`, `full-api.md`) were superseded; do not recreate them.
 
 ## CHANGELOG discipline
 

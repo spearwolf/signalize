@@ -184,13 +184,13 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 
 | Path | Purpose |
 | --- | --- |
-| `README.md` | User-facing entry — quick start, API at a glance |
-| `docs/introduction.md` | Library overview, design philosophy |
-| `docs/quickstart.md` | Install + basic usage |
-| `docs/guide.md` | Comprehensive tutorial |
-| `docs/full-api.md` | Complete API reference with options |
-| `docs/cheat-sheet.md` | Quick reference patterns |
+| `README.md` | User-facing entry — minimal example + links to `docs/` |
+| `docs/quickstart.md` | Install + 5-minute tour |
+| `docs/architecture.md` | Concepts, reactivity flow, internals, source map |
+| `docs/api.md` | Complete API reference with all options |
+| `docs/recipes.md` | Patterns, quirks, gotchas |
+| `docs/cheat-sheet.md` | One-page lookup |
 | `CHANGELOG.md` | Version history + migration notes |
-| `TODO.md` | Active working backlog (updated frequently) |
+| `Backlog.md` | Active working backlog |
 
-When the public API changes, sync in this order: source JSDoc → `docs/full-api.md` → `docs/guide.md` → `README.md` "API at a Glance" → `CHANGELOG.md` "Unreleased". A previous top-level `skills/` folder was removed (commit `f08fb05`); ignore any stale references.
+When the public API changes, sync in this order: source JSDoc → `docs/api.md` → `docs/recipes.md` (when a quirk/pattern is involved) → `docs/cheat-sheet.md` → `README.md` "API at a glance" → `CHANGELOG.md` "Unreleased". Older doc filenames (`introduction.md`, `guide.md`, `full-api.md`) were superseded — do not recreate them. A previous top-level `skills/` folder was removed (commit `f08fb05`); ignore any stale references.
