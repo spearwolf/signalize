@@ -138,13 +138,15 @@ When changing the public API:
 
 ### Documentation Structure
 
-| Location              | Purpose                                      |
-| --------------------- | -------------------------------------------- |
-| `README.md`           | Quick overview and getting started           |
-| `docs/guide.md`       | Comprehensive developer guide                |
-| `docs/full-api.md`    | Complete API reference                       |
-| `docs/cheat-sheet.md` | Quick reference                              |
-| `AGENTS.md`           | AI assistant context (internal architecture) |
+| Location                | Purpose                                      |
+| ----------------------- | -------------------------------------------- |
+| `README.md`             | Quick overview and getting started           |
+| `docs/quickstart.md`    | Install + 5-minute tour                      |
+| `docs/architecture.md`  | Concepts, internals, source map              |
+| `docs/api.md`           | Complete API reference                       |
+| `docs/recipes.md`       | Patterns, quirks, gotchas                    |
+| `docs/cheat-sheet.md`   | One-page lookup                              |
+| `AGENTS.md`             | AI assistant context (internal architecture) |
 
 ## Pull Requests
 

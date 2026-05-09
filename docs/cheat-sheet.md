@@ -1,236 +1,174 @@
-# Cheat Sheet
+# Cheat sheet
+
+One-page lookup. For details see [api.md](api.md) and [recipes.md](recipes.md).
 
 ## Signals
 
-```typescript
-// Create
-const count = createSignal(0);
-const list = createSignal([], {
-  compare: (a, b) => boolean, // Custom equality
-  lazy: boolean,              // Lazy init
-  attach: object,             // Lifecycle group
-  beforeRead: () => void,     // Read hook
+```ts
+import {createSignal, destroySignal, isSignal, muteSignal, unmuteSignal,
+        getSignalsCount, value, touch} from '@spearwolf/signalize';
+
+const c = createSignal(0, {
+  lazy:       false,                // factory in initial when true
+  compare:    (a, b) => a === b,    // custom equality
+  beforeRead: () => {/* hook */},   // tracked-read only
+  attach:     obj,                  // SignalGroup lifecycle
 });
 
-// Read
-const val = count.get();   // Tracks dependency
-const val = count.value;   // No tracking
+c.get();           // tracked read
+c.value;           // untracked read
+c.set(1);          // write
+c.value = 1;       // setter
+c.set(fn, {lazy: true});       // store factory; evaluate on next read
+c.set(v,  {touch: true});      // notify even if equal
 
-// Write
-count.set(1);
-count.value = 1;
+c.touch(); c.destroy();
+c.muted = true;    c.muted = false;
+c.onChange(cb);    // → unsubscribe()
 
-// Manage
-count.touch();             // Trigger updates
-count.onChange(cb);        // Listen for changes
-count.destroy();           // Cleanup
-muteSignal(count);         // Pause
-unmuteSignal(count);       // Resume
-
-// Introspection
-isSignal(count);           // boolean
-getSignalsCount();         // number
-
-// Helpers
-value(count);              // Get value (untracked)
-touch(count);              // Trigger update
+isSignal(x); getSignalsCount();
+value(c); value([obj, 'prop']);  // untracked
+touch(c); touch([obj, 'prop']);  // notify
 ```
 
 ## Effects
 
-```typescript
-// Create
+```ts
+import {createEffect, getEffectsCount,
+        onCreateEffect, onDestroyEffect} from '@spearwolf/signalize';
+
 createEffect(() => {
-  console.log(count.get());
+  read(c.get());
+  return () => cleanup();
+}, {
+  autorun:      true,    // false → manual eff.run()
+  dependencies: [c],     // static deps; disables auto-tracking; no autorun
+  priority:     0,       // higher first
+  attach:       obj,
 });
 
-// Options
-createEffect(() => { ... }, {
-  autorun: boolean,           // Default: true
-  dependencies: Signal[],     // Static deps
-  attach: object,             // Lifecycle group
-  priority: number,           // Default: 0
+createEffect(cb, [c]);                 // shorthand → static
+createEffect(cb, ['name'], {attach: obj}); // by name (group lookup)
 
-  return () => console.log('cleanup');
-});
+const eff = createEffect(cb, {autorun: false});
+eff.run(); eff.destroy();
 
-// Static Dependencies
-createEffect(() => { ... }, { dependencies: [count] });
-
-
-// Introspection
-getEffectsCount();         // number
-onCreateEffect(fx => ...); // Global hook
-onDestroyEffect(fx => ...); // Global hook
-// Manual Control
-const fx = createEffect(() => { ... }, { autorun: false });
-fx.run();
-fx.destroy();
+// Recursion guard
+EffectImpl.maxDepth = 256;
 ```
 
 ## Memos
 
-```typescript
-// Non-Lazy (default) — recalculates immediately when dependencies change
-// Acts as a computed signal: triggers dependent effects automatically
-const double = createMemo(() => count.get() * 2);
+```ts
+import {createMemo} from '@spearwolf/signalize';
 
-// Lazy — recalculates only when read
-// Does NOT trigger dependent effects on dependency change
-const lazyDouble = createMemo(() => count.get() * 2, { lazy: true });
-
-// Options
-const memo = createMemo(() => count.get() * 2, {
-  lazy: boolean,              // Default: false (non-lazy / eager)
-  attach: object,             // Lifecycle group
-  priority: number,           // Default: 1000
-  name: string | symbol,      // Debug name
+const m = createMemo(() => a.get() * 2, {
+  lazy:     false,   // true: recompute on read; effects do NOT re-run
+  priority: 1000,
+  attach:   obj,
+  name:     'm',     // group registration
 });
-
-// Read (both lazy and non-lazy)
-console.log(double());
-console.log(lazyDouble());
-```
-
-## Decorators
-*`import { signal, memo } from '@spearwolf/signalize/decorators'`*
-
-```typescript
-class Store {
-  @signal({
-    name: string,             // Override name
-    readAsValue: boolean,     // No tracking in getter
-    compare: (a,b) => bool,   // Custom equality
-  })
-  accessor count = 0;
-
-  @memo({
-    name: string,             // Override name
-  })
-  double() {
-    return this.count * 2;
-  }
-}
-```
-
-## Object Signals
-
-```typescript
-// Access
-const sig = findObjectSignalByName(obj, 'prop');
-const allSignals = findObjectSignals(obj);   // Signal[]
-const allNames = findObjectSignalNames(obj); // (string | symbol)[]
-
-// Helpers
-value([obj, 'prop']);      // Get value (untracked)
-touch([obj, 'prop']);      // Trigger update
-
-// Cleanup
-destroyObjectSignals(obj);
-```
-
-## Utilities
-
-```typescript
-// Batching
-batch(() => {
-  count.set(1);
-  count.set(2);
-});
-isQuiet();                 // boolean
-
-// Silence Tracking
-beQuiet(() => {
-  const val = count.get(); // Not tracked
-});
-
-// Suspend Context
-hibernate(() => {
-  // No tracking, no batching
-});
-
-// Signal Helpers
-value(sig);                // Get value (untracked)
-touch(sig);                // Trigger update
-```
-
-## Groups
-
-```typescript
-// Static
-const group = SignalGroup.findOrCreate(obj);
-const existing = SignalGroup.get(obj);
-SignalGroup.delete(obj);
-SignalGroup.clear(); // Global clear
-
-// Instance
-group.attachSignal(sig);
-group.attachSignalByName('name', sig);
-group.detachSignal(sig);
-group.hasSignal('name');
-group.signal('name');
-
-group.attachEffect(effect);
-group.runEffects();
-
-group.attachLink(link);
-group.detachLink(link);
-
-group.attachGroup(childGroup);
-group.detachGroup(childGroup);
-
-group.clear(); // Destroy all attached
+m();                 // SignalReader
 ```
 
 ## Links
 
-```typescript
-// Create
-const linkRef = link(sourceSignal, targetSignal, {
-  attach: object,             // Lifecycle group
-});
+```ts
+import {link, unlink, getLinksCount} from '@spearwolf/signalize';
 
-// Unlink
-unlink(sourceSignal, targetSignal);
+const con = link(src, target, {attach: obj});  // target: signal | callback
+unlink(src, target);  unlink(src);
 
-// SignalLink Features
-linkRef.mute();            // Pause updates
-linkRef.unmute();          // Resume updates
-linkRef.toggleMute();      // Toggle pause/resume
-linkRef.isMuted;           // boolean
+con.lastValue; con.isMuted; con.isDestroyed;
+con.mute(); con.unmute(); con.toggleMute();
+con.touch(); con.destroy(); con.attach(obj);
 
-linkRef.touch();           // Force update
-linkRef.lastValue;         // Last synced value
-linkRef.destroy();         // Cleanup
-linkRef.isDestroyed;       // boolean
+await con.nextValue();
+for await (const v of con.asyncValues((v, i) => i >= 5)) {/* … */}
 
-linkRef.attach(obj);       // Attach to group
-
-// Async
-await linkRef.nextValue();
-for await (const val of linkRef.asyncValues()) { ... }
+getLinksCount(); getLinksCount(src);
 ```
 
-## AutoMap
+## Context modes
 
-```typescript
-// Create
-const map = new SignalAutoMap();
-const mapFromProps = SignalAutoMap.fromProps({ a: 1 }, ['a']);
+```ts
+import {batch, beQuiet, isQuiet, hibernate} from '@spearwolf/signalize';
 
-// Access (Auto-creates signal if missing)
-const sig = map.get('key');
-const exists = map.has('key');
+batch(() => { a.set(1); b.set(2); });   // dedup + priority flush
+beQuiet(() => a.get());                 // no track, no notify
+hibernate(() => { /* outer ctx suspended; new ctx allowed */ });
+isQuiet();
+```
 
-// Update (Batched)
-map.update(new Map([['key', 'value']]));
-map.updateFromProps({ key: 'value' });
+## SignalGroup
 
-// Iterate
-for (const key of map.keys()) { ... }
-for (const sig of map.signals()) { ... }
-for (const [key, sig] of map.entries()) { ... }
+```ts
+import {SignalGroup} from '@spearwolf/signalize';
 
-// Cleanup
-map.clear();
+const g = SignalGroup.findOrCreate(obj);   // throws on null
+SignalGroup.get(obj);                       // existing or undefined
+SignalGroup.delete(obj);                    // clear & remove
+SignalGroup.clear();                        // global
+
+g.attachSignal(s); g.attachSignalByName('n', s);
+g.detachSignal(s); g.signal('n'); g.hasSignal('n');
+g.attachEffect(e); g.runEffects();
+g.attachLink(l);   g.detachLink(l);
+g.attachGroup(c);  g.detachGroup(c);
+g.clear();
+```
+
+## SignalAutoMap
+
+```ts
+import {SignalAutoMap} from '@spearwolf/signalize';
+
+const m = new SignalAutoMap();
+const m2 = SignalAutoMap.fromProps({a: 1, b: 2}, ['a']);
+
+m.get('k');                      // auto-creates
+m.has('k');
+m.update(new Map([['k', 'v']]));         // batched
+m.updateFromProps({k: 'v'}, ['k']);      // batched
+for (const k of m.keys()) {}
+for (const s of m.signals()) {}
+for (const [k, s] of m.entries()) {}
+m.clear();
+```
+
+## Object signals
+
+```ts
+import {findObjectSignalByName, findObjectSignals, findObjectSignalNames,
+        destroyObjectSignals} from '@spearwolf/signalize';
+
+findObjectSignalByName(obj, 'prop');
+findObjectSignals(obj);          // Signal[] | undefined
+findObjectSignalNames(obj);      // (string|symbol)[] | undefined
+destroyObjectSignals(obj1, obj2);
+```
+
+## Decorators
+
+```ts
+import {signal, memo} from '@spearwolf/signalize/decorators';
+
+class Foo {
+  @signal({                         // all options optional
+    name:        'count',
+    readAsValue: false,             // true → getter is .value (untracked)
+    compare:     (a, b) => a === b,
+    beforeRead:  () => {},
+    attach:      something,
+  }) accessor count = 0;
+
+  @memo({name: 'doubled'})          // ALWAYS lazy
+  doubled() { return this.count * 2; }
+}
+```
+
+## Counters (debug / leak checks)
+
+```ts
+getSignalsCount(); getEffectsCount(); getLinksCount();
 ```

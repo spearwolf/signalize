@@ -1,194 +1,118 @@
 ![signalize hero](https://github.com/spearwolf/signalize/blob/main/hero.gif?raw=true)
 
 ![npm (scoped)](https://img.shields.io/npm/v/%40spearwolf/signalize)
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/spearwolf/signalize/main.yml)
-![GitHub](https://img.shields.io/github/license/spearwolf/signalize)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/spearwolf/signalize/main.yml)
+![License](https://img.shields.io/github/license/spearwolf/signalize)
 
-`@spearwolf/signalize` - A lightweight JavaScript library for signals & effects.
-Reactive programming, made simple. Works in Browser & Node.js.
-Type-safe. Fast. No framework lock-in.
+# @spearwolf/signalize
 
-# Signals and Effects for All
+Synchronous, fine-grained reactivity for JavaScript and TypeScript.
+Framework-agnostic. ESM-only. No magic, no scheduler, no virtual graph.
 
-`@spearwolf/signalize` is a JavaScript library for creating fine-grained reactivity through **signals** and **effects**.
+```typescript
+import {createSignal, createEffect} from '@spearwolf/signalize';
 
-- **Standalone** - Framework agnostic, works anywhere JavaScript runs
-- **Side-effect free** - Targets ES2023+ environments
-- **TypeScript-first** - Written in TypeScript v5 with full type support
-- **Modern decorators** - Optional [TC39 decorators](https://github.com/tc39/proposal-decorators) for class-based APIs
+const count = createSignal(0);
 
-> [!NOTE]
-> Reactivity is the secret sauce to building modern, dynamic web apps.
-> `@spearwolf/signalize` makes it easy. No frameworks, no boilerplate, just pure reactivity.
+createEffect(() => console.log('count =', count.get()));
+// => "count = 0"
 
-## Quick Start
+count.set(5);
+// => "count = 5"
+```
 
-### Installation
+## Why
+
+- **Four primitives** — signal, effect, memo, link. Composable.
+- **Synchronous** — `signal.set(x)` runs every dependent effect inline before
+  returning. No queues, no microtasks.
+- **Lifecycle bundles** — `SignalGroup` owns signals/effects/links and
+  destroys them together. Stored in a `WeakMap`, so it doesn't pin user
+  objects.
+- **Class-based opt-in** — TC39 standard `@signal` / `@memo` decorators in a
+  separate subpath; the core API does not depend on classes.
+- **TypeScript-first** — everything is typed, including `Signal<T>`,
+  `Effect`, `SignalReader<T>`, `SignalLink<T>`, options, and decorator
+  metadata.
+
+Runs anywhere modern JavaScript runs. Targets ES2023, requires Node `>=24.13`.
+
+## Install
 
 ```shell
 npm install @spearwolf/signalize
 ```
 
-### Hello World
+`@spearwolf/eventize` is a peer dependency.
 
-```typescript
-import {createSignal, createEffect} from '@spearwolf/signalize';
+## API at a glance
 
-// Create a signal with an initial value
-const count = createSignal(0);
+```ts
+// signals
+createSignal, destroySignal, isSignal, muteSignal, unmuteSignal,
+getSignalsCount, touch, value
 
-// Create an effect that runs whenever `count` changes
-createEffect(() => {
-  console.log(`The count is now: ${count.get()}`);
-});
-// => "The count is now: 0"
+// effects
+createEffect, getEffectsCount, onCreateEffect, onDestroyEffect
 
-// Update the signal
-count.set(5);
-// => "The count is now: 5"
+// memos
+createMemo
 
-count.set(10);
-// => "The count is now: 10"
+// links
+link, unlink, getLinksCount
+
+// context modes
+batch, beQuiet, isQuiet, hibernate
+
+// lifecycle / collections
+SignalGroup, SignalAutoMap
+
+// host-object signals
+findObjectSignalByName, findObjectSignals, findObjectSignalNames,
+destroyObjectSignals
+
+// decorators (subpath: '@spearwolf/signalize/decorators')
+signal, memo
 ```
 
-That's it! No extra boilerplate, no framework dependencies. Just pure, simple reactivity.
-
-## Core Concepts
-
-The library revolves around four main primitives:
-
-### Signals
-
-Reactive values that notify dependents when changed. Think of them as reactive variables.
-
-```typescript
-const name = createSignal('Alice');
-console.log(name.get()); // Read with tracking
-console.log(name.value); // Read without tracking
-name.set('Bob'); // Write
-```
-
-### Effects
-
-Functions that automatically re-run when their signal dependencies change.
-
-```typescript
-createEffect(() => {
-  // Automatically re-runs when `name` changes
-  console.log(`Hello, ${name.get()}!`);
-});
-```
-
-### Memos
-
-Computed signals - cached derived values that update when dependencies change.
-
-```typescript
-const firstName = createSignal('John');
-const lastName = createSignal('Doe');
-
-const fullName = createMemo(() => `${firstName.get()} ${lastName.get()}`);
-console.log(fullName()); // => "John Doe"
-```
-
-### Links
-
-Explicit one-way data flow connections between signals. Inspired by visual programming tools like Unreal Engine Blueprints.
-
-```typescript
-const source = createSignal(10);
-const target = createSignal(0);
-
-link(source, target);
-console.log(target.value); // => 10
-
-source.set(42);
-console.log(target.value); // => 42
-```
-
-## Class-based API with Decorators
-
-For those who prefer object-oriented patterns:
+## Class API
 
 ```typescript
 import {signal, memo} from '@spearwolf/signalize/decorators';
 
 class Counter {
   @signal() accessor value = 0;
-
-  @memo()
-  doubled() {
-    return this.value * 2;
-  }
-
-  increment() {
-    this.value++;
-  }
+  @memo() doubled() { return this.value * 2; }
+  inc() { this.value++; }
 }
 ```
 
-> [!IMPORTANT]
-> The decorator API is still in the early stages of development.
-> It only uses the new JavaScript standard decorators, not the legacy TypeScript ones.
+> The decorator API uses TC39 standard decorators (no `experimentalDecorators`).
+> Memos created via `@memo` are always lazy.
 
 ## Documentation
 
-For comprehensive documentation, see the **[docs/](./docs/)** folder:
+| Document                                  | Purpose                                     |
+| ----------------------------------------- | ------------------------------------------- |
+| [Quickstart](./docs/quickstart.md)        | Install + 5-minute tour.                    |
+| [Architecture](./docs/architecture.md)    | Concepts, internals, source map.            |
+| [API reference](./docs/api.md)            | Every export, every option.                 |
+| [Recipes & quirks](./docs/recipes.md)     | Patterns, gotchas, lifecycle.               |
+| [Cheat sheet](./docs/cheat-sheet.md)      | One-page lookup.                            |
 
-| Document                                 | Description                         |
-| ---------------------------------------- | ----------------------------------- |
-| [Introduction](./docs/introduction.md)   | Overview and key features           |
-| [Getting Started](./docs/quickstart.md)  | Installation and first steps        |
-| [Developer Guide](./docs/guide.md)       | Comprehensive guide to all features |
-| [Full API Reference](./docs/full-api.md) | Complete API documentation          |
-| [Cheat Sheet](./docs/cheat-sheet.md)     | Quick reference for all APIs        |
-
-## API at a Glance
-
-### Signals
-
-`createSignal`, `destroySignal`, `isSignal`, `getSignalsCount`, `muteSignal`, `unmuteSignal`, `touch`, `value`
-
-### Effects
-
-`createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect`
-
-### Memos
-
-`createMemo`
-
-### Links
-
-`link`, `unlink`, `getLinksCount`
-
-### Utilities
-
-`batch`, `beQuiet`, `isQuiet`, `hibernate`
-
-### Groups & Collections
-
-`SignalGroup`, `SignalAutoMap`
-
-### Object Signals
-
-`destroyObjectSignals`, `findObjectSignalByName`, `findObjectSignalNames`, `findObjectSignals`
-
-### Decorators (from `@spearwolf/signalize/decorators`)
-
-`@signal`, `@memo`
+For changes between releases, see [CHANGELOG.md](./CHANGELOG.md).
 
 ## Contributing
 
-Contributions are welcome! If you find a bug or have a feature request, please open an issue. If you want to contribute code or documentation, please open a pull request.
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines and [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) for community guidelines.
-
-For version history and migration guides, see the [CHANGELOG](./CHANGELOG.md).
+Issues and pull requests are welcome. See
+[CONTRIBUTING.md](./CONTRIBUTING.md) and
+[CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
 
 ## License
 
-This project is licensed under the Apache-2.0 License. See the [LICENSE](./LICENSE) file for details.
+Apache-2.0. See [LICENSE](./LICENSE).
 
 ---
 
-The hero image above was created at the request of spearwolf using OpenAI's DALL-E and guided by ChatGPT. It was then animated by KLING AI and converted by Ezgif.com.
+Hero image generated with DALL·E (guided by ChatGPT), animated by KLING AI,
+converted by Ezgif.com.
