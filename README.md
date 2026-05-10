@@ -21,7 +21,7 @@ count.set(5);
 // => "count = 5"
 ```
 
-## Why
+## Features
 
 - **Four primitives** — signal, effect, memo, link. Composable.
 - **Synchronous** — `signal.set(x)` runs every dependent effect inline before
@@ -36,6 +36,16 @@ count.set(5);
   metadata.
 
 Runs anywhere modern JavaScript runs. Targets ES2023, requires Node `>=24.13`.
+
+## 🚀 Why
+
+In complex interactive front-ends—such as **3D configurators, real-time dashboards, or gamified PWAs**—managing state with traditional tools often leads to "render hell" or unpredictable side effects. 
+
+`signalize` was architected to solve these specific challenges by providing a **precise and decoupled** reactive core that works independently of any UI framework. It is designed for developers who need full control over *when* and *how* state changes propagate through their systems.
+
+* **🔌 Zero Framework Lock-in:** Use it with React, Vue, Web Components, or Vanilla JS. It’s the "source of truth" that stays stable even if you migrate your UI layer.
+* **🎯 Precise Reactivity:** No global re-renders. Only the specific observers (effects) that depend on a changed signal are executed.
+* **🛠 Production-Ready:** Developed by a Software Artisan with 20+ years of experience to power mission-critical industrial applications.
 
 ## Install
 
