@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## `v0.29.0` (2026-05-13)
+
+### Build System
+
+- Upgrade @spearwolf/eventize 4.x → 5.0.0 "duck-typing"
+
 ### Documentation
 
 - Rewrite `docs/`: replace `introduction.md` / `guide.md` / `full-api.md` with `architecture.md`, `api.md`, `recipes.md`; rewrite `quickstart.md` and `cheat-sheet.md`; refresh `README.md`
