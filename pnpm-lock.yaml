@@ -15,8 +15,8 @@ importers:
         specifier: ^2.4.14
         version: 2.4.14
       '@spearwolf/eventize':
-        specifier: ^4.3.1
-        version: 4.3.1
+        specifier: ^5.0.0
+        version: 5.0.0
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
@@ -573,8 +573,8 @@ packages:
   '@sinonjs/samsam@10.0.2':
     resolution: {integrity: sha512-8lVwD1Df1BmzoaOLhMcGGcz/Jyr5QY2KSB75/YK1QgKzoabTeLdIVyhXNZK9ojfSKSdirbXqdbsXXqP9/Ve8+A==}
 
-  '@spearwolf/eventize@4.3.1':
-    resolution: {integrity: sha512-QrHS2anine6WGfkHh/jg3WPsKa5StLyrh343XR9t68FkX1SOZ9R9S1cnk37YqmvukCZNz44FOe/mWHPR9xbP8A==}
+  '@spearwolf/eventize@5.0.0':
+    resolution: {integrity: sha512-tFItU8RwEozY2HJkYBY/T/TgIx+ZJbWE1NEoxk8Hlx6iwqUcQGqhOJZIEbo//GktRwdtgU2TPZyyc7JZOMC34w==}
     engines: {node: '>=18.16'}
 
   '@tybys/wasm-util@0.10.2':
@@ -2379,7 +2379,7 @@ snapshots:
       '@sinonjs/commons': 3.0.1
       type-detect: 4.1.0
 
-  '@spearwolf/eventize@4.3.1': {}
+  '@spearwolf/eventize@5.0.0': {}
 
   '@tybys/wasm-util@0.10.2':
     dependencies:
