@@ -28,13 +28,15 @@ pnpm install
 
 | Command        | Description                                  |
 | -------------- | -------------------------------------------- |
-| `pnpm cbt`     | **Primary command** - clean + compile + test |
+| `pnpm cbt`     | **Primary command** - clean + compile + bundle + test |
+| `pnpm world`   | `clean + check + compile + bundle + test` — matches CI |
 | `pnpm test`    | Run tests only (Jest via ts-jest)            |
-| `pnpm lint`    | Run ESLint                                   |
+| `pnpm check`   | Run Biome (lint + format check)              |
+| `pnpm fix`     | Run Biome with auto-fix                      |
 | `pnpm compile` | TypeScript compilation only                  |
 | `pnpm clean`   | Remove build artifacts                       |
 
-**Always run `pnpm cbt` after making changes** to ensure build, linting, and tests pass.
+**Always run `pnpm cbt` after making changes** to ensure build and tests pass. Use `pnpm world` (or `pnpm check && pnpm cbt`) to also run Biome — this matches what CI runs.
 
 ### Project Structure
 
@@ -123,9 +125,9 @@ pnpm test -- createSignal.spec.ts
 
 ## Code Style
 
-- **ESLint** enforces coding rules - run `pnpm lint`
+- **Biome** enforces coding rules (lint + format) — run `pnpm check` (or `pnpm fix` to auto-fix)
 - Follow existing patterns in the codebase
-- Use TypeScript strict mode features appropriately
+- Use TypeScript strict mode features appropriately (note: `strictNullChecks: false` is intentional)
 - Prefer explicit types for public API, inference for internals
 
 ## Documentation

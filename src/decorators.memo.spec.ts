@@ -2,7 +2,7 @@ import {memo, signal} from './decorators.js';
 import {destroyObjectSignals, findObjectSignalByName, value} from './index.js';
 
 describe('@memo is a class method decorator', () => {
-  it('non-lazy by default', () => {
+  it('always lazy', () => {
     class Foo {
       @signal() accessor foo = 1;
 

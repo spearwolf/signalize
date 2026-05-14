@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Documentation
+
+- `README.md`: expand "Features", add "What makes it different" (synchronous inline propagation as the central trade-off), add "Examples" section (game-loop, batched writes, `SignalGroup` lifecycle, framework-agnostic domain model) and "Typical use cases"
+- `AGENTS.md`: fix stale peer-dep version (`^4.0.2` → `^5.0.0`); rewrite commands table and CI section to reflect Biome (replacing ESLint + Prettier); remove the deleted `Backlog.md` row
+- `CONTRIBUTING.md`: replace ESLint references with Biome (`pnpm check` / `pnpm fix`); document `pnpm world` and clarify what `pnpm cbt` actually runs
+
+### Tests
+
+- `decorators.memo.spec.ts`: rename misleading `'non-lazy by default'` → `'always lazy'` (the assertions verify lazy behavior)
+
 ## `v0.29.0` (2026-05-13)
 
 ### Build System
