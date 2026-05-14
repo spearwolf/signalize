@@ -8,7 +8,7 @@ Framework-agnostic signal/effect/memo/link library. Synchronous reactivity. Buil
 
 - Runtime: ESM-only, Node `>=24.13`, targets ES2023, `sideEffects: false`
 - TypeScript v5, `strict: true` **but `strictNullChecks: false`** (intentional — don't "fix" it)
-- Peer dep: `@spearwolf/eventize ^4.0.2`
+- Peer dep: `@spearwolf/eventize ^5.0.0`
 - Two entry points: `.` (`src/index.ts`) and `./decorators` (`src/decorators.ts`)
 
 ## Core concepts
@@ -145,21 +145,22 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | Command | Runs |
 | --- | --- |
 | `pnpm cbt` | `clean + compile + bundle + test` — local "done" gate |
-| `pnpm world` | `clean + lint + prettier:check + compile + bundle + test` — pre-release / matches CI scope |
+| `pnpm world` | `clean + check + compile + bundle + test` — pre-release / matches CI scope |
 | `pnpm test` | Jest (ts-jest ESM); roots = `src/` |
 | `pnpm test -- <pattern>` | single spec, e.g. `pnpm test -- createSignal.spec.ts` |
 | `pnpm test -- -t "<name>"` | filter by test name |
 | `pnpm compile` | `tsc --project tsconfig.lib.json` → `lib/` (types + sourcemaps) |
 | `pnpm bundle` | rollup → `dist/index.js`, `dist/decorators.js` |
 | `pnpm clean` | `rimraf build types tests dist lib` |
-| `pnpm lint` / `pnpm fix` | ESLint / lint:fix + prettier:write |
-| `pnpm prettier:check` | format check (CI runs this) |
+| `pnpm check` / `pnpm fix` | Biome lint+format check / Biome auto-fix |
+| `pnpm lint` | Biome lint only |
+| `pnpm format` / `pnpm format:write` | Biome format check / auto-fix |
 | `pnpm checkPkgTypes` | `attw --pack` package types audit |
 | `pnpm dist` | clean + compile + bundle (no test) |
 
 ### CI vs local
 
-`.github/workflows/ci.yml` runs `pnpm lint && pnpm prettier:check && pnpm test` — **not** `pnpm cbt`. To match CI locally use `pnpm world`. `pnpm cbt` skips `lint` and `prettier:check`.
+`.github/workflows/ci.yml` runs `pnpm check && pnpm test` — **not** `pnpm cbt`. To match CI locally use `pnpm world`. `pnpm cbt` skips `check`. Tooling is **Biome 2.x** (replaced ESLint + Prettier in v0.28).
 
 ## Repo conventions
 
@@ -191,6 +192,5 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | `docs/recipes.md` | Patterns, quirks, gotchas |
 | `docs/cheat-sheet.md` | One-page lookup |
 | `CHANGELOG.md` | Version history + migration notes |
-| `Backlog.md` | Active working backlog |
 
 When the public API changes, sync in this order: source JSDoc → `docs/api.md` → `docs/recipes.md` (when a quirk/pattern is involved) → `docs/cheat-sheet.md` → `README.md` "API at a glance" → `CHANGELOG.md` "Unreleased". Older doc filenames (`introduction.md`, `guide.md`, `full-api.md`) were superseded — do not recreate them. A previous top-level `skills/` folder was removed (commit `f08fb05`); ignore any stale references.
