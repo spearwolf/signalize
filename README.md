@@ -21,45 +21,26 @@ count.set(5);
 // => "count = 5"
 ```
 
-## Features
-
-- **Four composable primitives** — `signal`, `effect`, `memo`, `link`. Small
-  surface, no DSL.
-- **Synchronous inline propagation** — `signal.set(x)` runs every dependent
-  effect *before it returns*. No scheduler, no microtask queue, no virtual
-  graph. Reactivity finishes when `set()` finishes.
-- **Deterministic update order** — effects subscribe with a numeric priority
-  (memos run at `1000`, regular effects at `0`); higher priority runs first.
-  Re-runs are guarded by `maxDepth = 256` so self-triggering loops throw a
-  descriptive error instead of overflowing the stack.
-- **Subscribe-on-read with automatic cleanup** — dependencies that are no
-  longer read on a re-run are unsubscribed automatically; nested effects are
-  torn down with their cleanup callbacks before the parent re-runs.
-- **Lifecycle bundles** — `SignalGroup` owns signals/effects/links and
-  destroys them together. Stored in a `WeakMap`, so it doesn't pin user
-  objects.
-- **Context modes** — `batch()` coalesces a burst of writes into one
-  re-run-per-effect; `beQuiet()` mutates without notifying; `hibernate()`
-  suspends reactivity entirely; `value()` / `.value` read without tracking.
-- **Class-based opt-in** — TC39 standard `@signal` / `@memo` decorators in a
-  separate subpath; the core API does not depend on classes.
-- **Debug counters** — `getSignalsCount()`, `getEffectsCount()`,
-  `getLinksCount()` make subscription leaks easy to assert against in tests.
-- **TypeScript-first** — everything is typed, including `Signal<T>`,
-  `Effect`, `SignalReader<T>`, `SignalLink<T>`, options, and decorator
-  metadata.
-
-Runs anywhere modern JavaScript runs. Targets ES2023, requires Node `>=24.13`.
-
 ## What makes it different
 
-Most signal libraries (Solid, Vue Reactivity, MobX) batch updates implicitly
-through a microtask queue. That's convenient for UIs but opaque: by the time
-your code reads back, you can't be sure whether derived state has settled or
-not.
+All modern signal systems give you synchronously consistent **reads**: call
+`derived.get()` after a `set()` and you get the recomputed value, glitch-free.
+That part is table stakes — Solid, Vue, Angular, Svelte 5, Preact Signals,
+MobX, and `signalize` all guarantee it.
 
-`signalize` propagates **inline**. After `set()` returns, every dependent
-effect has already executed. This is the central design trade-off:
+What differs is **effects** — the observer callbacks you register to *react*
+to a change (write to the DOM, push to a socket, mutate an external system).
+Vue's `watch`/`watchEffect`, Angular's `effect()`, and Svelte 5's `$effect`
+defer these to a microtask or the next change-detection tick; MobX runs
+reactions at the end of the enclosing `action`. So while the *value* you'd
+read is already correct, the *side effects* that depend on it haven't fired
+yet — and you have no in-band hook to wait for them without yielding the
+call stack.
+
+`signalize` runs every dependent effect **inline**, in deterministic priority
+order, on the same call stack as the write — no scheduler, no microtask, no
+batch boundary. After `set()` returns, every observer has already executed.
+This is the central design trade-off:
 
 ```typescript
 const total = createSignal(0);
@@ -85,6 +66,29 @@ In complex interactive front-ends—such as **3D configurators, real-time dashbo
 * **🔌 Zero Framework Lock-in:** Use it with React, Vue, Web Components, or Vanilla JS. It’s the "source of truth" that stays stable even if you migrate your UI layer.
 * **🎯 Precise Reactivity:** No global re-renders. Only the specific observers (effects) that depend on a changed signal are executed.
 * **🛠 Production-Ready:** Developed by a Software Artisan with 20+ years of experience to power mission-critical industrial applications.
+
+## Features
+
+- **Four primitives** — `signal` (state), `effect` (observer), `memo`
+  (cached derive), `link` (signal-to-signal binding). Small surface, no DSL.
+- **Inline propagation** — `set()` runs every dependent effect before it
+  returns. No scheduler, no microtask, no virtual graph.
+- **Priority-ordered effects** — numeric priority (memos at `1000`, regular
+  effects at `0`); runaway loops fail loud at `maxDepth = 256`.
+- **Auto-tracked dependencies** — subscribe on read, unsubscribe when no
+  longer read; nested effects tear down before their parent re-runs.
+- **Lifecycle bundles** — `SignalGroup` ties signals, effects, and links to
+  a host object and disposes them in one call; counters like
+  `getSignalsCount()` make leaks assertable in tests.
+- **Context modes** — `batch()` to coalesce writes, `beQuiet()` for silent
+  mutation, `hibernate()` to pause reactivity, `value()` / `.value` for
+  untracked reads.
+- **Optional class API** — TC39 standard `@signal` / `@memo` decorators on
+  a separate subpath; the core has no class dependency.
+- **TypeScript-first** — every primitive, option, and decorator is fully
+  typed.
+
+Runs anywhere modern JavaScript runs. Targets ES2023, requires Node `>=24.13`.
 
 ## Install
 

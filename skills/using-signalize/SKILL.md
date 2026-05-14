@@ -5,7 +5,7 @@ description: Use when code imports `@spearwolf/signalize` or `@spearwolf/signali
 
 # @spearwolf/signalize — Quick Reference
 
-Synchronous, fine-grained reactivity. ESM-only, `sideEffects: false`, targets ES2023, Node `>=24.13`. Built on `@spearwolf/eventize` (peer dep). TypeScript `strict: true` but `strictNullChecks: false` (intentional in this codebase).
+Synchronous, fine-grained reactivity. ESM-only, `sideEffects: false`, targets ES2023, runs on Node `>=24.13` or any modern browser. Built on `@spearwolf/eventize` (peer dep). Fully typed for TypeScript.
 
 ## Mental model
 
@@ -26,6 +26,7 @@ Decorators are TC39 standard form (no `experimentalDecorators`). Use the `access
 ## Public API surface
 
 ```ts
+// --- runtime values ---
 // signals
 createSignal, destroySignal, isSignal, muteSignal, unmuteSignal,
 getSignalsCount, touch, value
@@ -34,18 +35,21 @@ createEffect, getEffectsCount, onCreateEffect, onDestroyEffect
 // memos
 createMemo
 // links
-link, unlink, getLinksCount, SignalLink, ValueCallback
+link, unlink, getLinksCount
 // context modes
 batch, beQuiet, isQuiet, hibernate
 // lifecycle / collections
-SignalGroup, SignalAutoMap, SignalAutoMapKeyType
+SignalGroup, SignalAutoMap
 // host-object signals
 findObjectSignalByName, findObjectSignals, findObjectSignalNames, destroyObjectSignals
-// classes / types
+// classes (exported for `instanceof` and as types)
 Signal, Effect
-// types: SignalReader, SignalWriter, SignalLike, SignalParams, SignalWriterParams,
-//        EffectOptions, EffectCallback, CreateMemoOptions,
-//        CompareFunc, BeforeReadFunc, VoidFunc, ValueChangedCallback
+
+// --- type-only re-exports (no runtime value) ---
+//   SignalReader, SignalWriter, SignalLike, SignalParams, SignalWriterParams,
+//   EffectOptions, EffectCallback, CreateMemoOptions, LinkOptions,
+//   SignalLink, ValueCallback, SignalAutoMapKeyType,
+//   CompareFunc, BeforeReadFunc, VoidFunc, ValueChangedCallback
 ```
 
 ## Signals
@@ -217,7 +221,7 @@ Each instance gets its own per-property signal. `@memo` is always lazy — for a
 
 11. **`set(v, {touch:true})` is suppressed on muted/destroyed signals.** Same for `signal.touch()`. If you need to force-emit on a muted signal, unmute first.
 
-12. **Nested effects are recreated on every parent rerun.** Cleanup of inner effect runs first, then it's destroyed, then parent re-executes, then a new inner effect is created. Don't capture the inner `Effect` handle in long-lived state.
+12. **Nested effects are recreated on every parent rerun.** Order on a re-run: parent's own cleanup → child effects destroyed (each child's cleanup runs as part of its destroy) → parent callback re-executes → fresh inner effects created. Don't capture the inner `Effect` handle in long-lived state.
 
 13. **Dynamic deps can shrink between runs.** Signals read in run N but not in run N+1 are unsubscribed at the end of run N+1. Conditional `if (a.get()) b.get()` is fine — that's the whole point of dynamic tracking.
 
