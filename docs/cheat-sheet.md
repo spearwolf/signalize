@@ -103,19 +103,21 @@ isQuiet();
 ## SignalGroup
 
 ```ts
-import {SignalGroup} from '@spearwolf/signalize';
+import {SignalGroup, getSignalGroupsCount} from '@spearwolf/signalize';
 
 const g = SignalGroup.findOrCreate(obj);   // throws on null
 SignalGroup.get(obj);                       // existing or undefined
 SignalGroup.delete(obj);                    // clear & remove
 SignalGroup.clear();                        // global
+getSignalGroupsCount();                     // live group count
 
 g.attachSignal(s); g.attachSignalByName('n', s);
 g.detachSignal(s); g.signal('n'); g.hasSignal('n');
 g.attachEffect(e); g.runEffects();
 g.attachLink(l);   g.detachLink(l);
 g.attachGroup(c);  g.detachGroup(c);
-g.clear();
+g.off();    // destroy attached effects/links, drop external subs, keep signals
+g.clear();  // full teardown
 ```
 
 ## SignalAutoMap

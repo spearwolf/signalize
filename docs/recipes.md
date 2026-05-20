@@ -216,7 +216,43 @@ class Player {
 - The group is created lazily on first `attach`.
 - `WeakMap` registry: the group does not keep `this` alive; once `this` is
   unreachable, the registry slot can be reclaimed.
+- A `FinalizationRegistry` runs `clear()` on the orphaned group when the user
+  object is GC'd — best-effort, non-deterministic; explicit cleanup is still
+  the right pattern.
 - Use `SignalGroup.findOrCreate(this).attachGroup(child)` to nest scopes.
+
+## Pausing a SignalGroup without destroying it (`off()`)
+
+`clear()` is destructive — it destroys the attached signals too. When you want
+to keep the signal identities and just rip out the subscriptions (e.g. to
+re-wire effects, swap renderers, pause a component), use `off()`:
+
+```ts
+const g = SignalGroup.findOrCreate(component);
+const count = createSignal(0, {attach: component});
+
+createEffect(() => render(count.get()), {attach: component});
+
+g.off();
+// effect is destroyed (its cleanup ran);
+// `count` is still alive — `count.value`, `count.set(...)` keep working.
+
+createEffect(() => analytics(count.get()), {attach: component});
+// fresh subscription on the same signal.
+```
+
+Semantics:
+
+- All effects/links attached to the group are destroyed (their cleanup
+  callbacks run).
+- External effects/links subscribed to group signals lose their subscription.
+  An external effect whose only dependency was a group signal is destroyed
+  automatically (cleanup runs); one with mixed deps survives and re-subscribes
+  to the group signal the next time it reads it (dynamic-deps self-healing).
+- Signals stay alive, retain their values, and remain reachable by name.
+- Child groups are `off()`'d recursively.
+- The group emits an `OFF` event and remains registered — new attaches work
+  immediately. Idempotent.
 
 ## Named signals & parent lookup
 

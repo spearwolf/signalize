@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Features
+
+- `SignalGroup#off()`: destroy attached effects/links and drop all external subscriptions on group signals; signals stay alive, the group remains reusable. Child groups are `off()`'d recursively. Emits an `OFF` event
+- `SignalGroup`: auto-cleanup via `FinalizationRegistry` — when the user object becomes unreachable without an explicit `SignalGroup.delete(obj)`, the group's `clear()` runs from the FR callback, reclaiming attached signals/effects/links (FR firing is non-deterministic; explicit cleanup remains preferred)
+- `getSignalGroupsCount()`: new top-level export for leak diagnostics
+
+### Bug Fixes
+
+- `SignalGroup.attachSignalByName`: deduplicate name→signal mapping (no more duplicate entries on repeated attach); internal `#otherSignals` is now `Map<name, Set<SignalImpl>>`
+
 ### Documentation
 
 - `README.md`: expand "Features", add "What makes it different" (synchronous inline propagation as the central trade-off), add "Examples" section (game-loop, batched writes, `SignalGroup` lifecycle, framework-agnostic domain model) and "Typical use cases"

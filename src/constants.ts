@@ -9,5 +9,6 @@ export const VALUE = 'value';
 export const MUTE = 'mute';
 export const UNMUTE = 'unmute';
 export const DESTROY = 'destroy';
+export const OFF = 'off';
 
 export const RECALL = Symbol.for('recall');
