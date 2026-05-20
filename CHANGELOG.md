@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## `v0.30.0` (2026-05-20)
+
 ### Features
 
 - `SignalGroup#off()`: destroy attached effects/links and drop all external subscriptions on group signals; signals stay alive, the group remains reusable. Child groups are `off()`'d recursively. Emits an `OFF` event
