@@ -810,6 +810,28 @@ describe('SignalGroup', () => {
       group.clear();
     });
 
+    it('attachSignalByName() is idempotent for the same (name, signal) pair', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(1);
+
+      // Re-attaching the same (name, signal) must not accumulate duplicates,
+      // so a single detachSignal() fully removes it. Before the fix this would
+      // leak: the otherSignals list kept 100 entries.
+      for (let i = 0; i < 100; i++) {
+        group.attachSignalByName('mySignal', signal);
+      }
+
+      expect(group.signal('mySignal')).toBe(signal);
+
+      group.detachSignal(signal);
+
+      expect(group.hasSignal('mySignal')).toBe(false);
+      expect(group.signal('mySignal')).toBeUndefined();
+
+      signal.destroy();
+      group.clear();
+    });
+
     it('detachGroup() does nothing when group is not a child', () => {
       const parent = SignalGroup.findOrCreate({});
       const notChild = SignalGroup.findOrCreate({});

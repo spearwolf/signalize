@@ -3,7 +3,9 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './assert-helpers.js';
-import {SignalGroup} from './SignalGroup.js';
+import {createSignal} from './createSignal.js';
+import {createEffect} from './effects.js';
+import {getSignalGroupsCount, SignalGroup} from './SignalGroup.js';
 
 // `globalThis.gc` is only available when Node is launched with --expose-gc
 // (e.g. via `pnpm test:gc`). Without it these tests would silently pass even
@@ -59,8 +61,56 @@ gcDescribe('SignalGroup GC behavior (requires --expose-gc)', () => {
 
     await forceGc();
 
-    // The SignalGroup itself is still alive (held by `allGroups`), but it
-    // must not transitively pin the user object.
+    // Eventually the FinalizationRegistry callback clears the group and its
+    // attached resources; the user object itself is reclaimable in either case.
     expect(hostRef.deref()).toBeUndefined();
+  });
+
+  it('FinalizationRegistry clears the orphaned group and its attached resources', async () => {
+    const baselineGroups = getSignalGroupsCount();
+
+    let host: object | null = {marker: 'fr-cleanup'};
+    const hostRef = new WeakRef(host);
+
+    const group = SignalGroup.findOrCreate(host);
+    group.attachSignal(createSignal(1, {attach: host}));
+    createEffect(() => {}, {attach: host});
+
+    expect(getSignalGroupsCount()).toBe(baselineGroups + 1);
+
+    host = null;
+
+    // GC the user object, then yield enough microtasks for the FR callback
+    // to flush. FR firing is non-deterministic, so retry within a budget.
+    for (let i = 0; i < 20 && getSignalGroupsCount() > baselineGroups; i += 1) {
+      await forceGc();
+    }
+
+    expect(hostRef.deref()).toBeUndefined();
+    expect(getSignalGroupsCount()).toBe(baselineGroups);
+    assertSignalsCount(0, 'after FR cleanup');
+    assertEffectsCount(0, 'after FR cleanup');
+  });
+
+  it('explicit clear() unregisters from FinalizationRegistry (no double-fire)', async () => {
+    const baselineGroups = getSignalGroupsCount();
+
+    let host: object | null = {marker: 'explicit-clear'};
+    const group = SignalGroup.findOrCreate(host);
+    group.attachSignal(createSignal(1, {attach: host}));
+
+    // Explicit cleanup BEFORE the user object is GC'd.
+    group.clear();
+
+    expect(getSignalGroupsCount()).toBe(baselineGroups);
+    assertSignalsCount(0, 'after explicit clear');
+
+    host = null;
+    await forceGc();
+
+    // Counters must remain at baseline — the FR callback must not fire
+    // again on the already-cleared group.
+    expect(getSignalGroupsCount()).toBe(baselineGroups);
+    assertSignalsCount(0, 'after GC of cleared group');
   });
 });

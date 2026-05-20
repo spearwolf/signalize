@@ -118,7 +118,7 @@ link, unlink, getLinksCount
 batch, beQuiet, isQuiet, hibernate
 
 // lifecycle / collections
-SignalGroup, SignalAutoMap
+SignalGroup, getSignalGroupsCount, SignalAutoMap
 
 // host-object signals
 findObjectSignalByName, findObjectSignals, findObjectSignalNames,

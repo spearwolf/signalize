@@ -232,6 +232,11 @@ does not pin user objects.
 | `SignalGroup.delete(obj)`           | Clear and remove the group.                                                    |
 | `SignalGroup.clear()`               | Clear all groups globally.                                                     |
 | `SignalGroup.destroy(obj)`          | **Deprecated.** Use `delete()`.                                                |
+| `getSignalGroupsCount()`            | Count of live `SignalGroup` instances (debugging / leak checks).               |
+
+When a user object becomes unreachable without an explicit `clear()` / `delete()`,
+a `FinalizationRegistry` callback runs `clear()` on the orphaned group. FR
+firing is non-deterministic — explicit cleanup remains preferred.
 
 ### Instance
 
@@ -245,6 +250,7 @@ does not pin user objects.
 | `attachEffect(eff)` / `runEffects()`    | Track an effect / run all attached and child effects.                  |
 | `attachLink(link)` / `detachLink(link)` | Track / untrack a link.                                                |
 | `attachGroup(child)` / `detachGroup(child)` | Nest groups.                                                       |
+| `off()`                                 | Destroy attached effects/links and drop all external subscriptions on group signals; signals stay alive, the group remains reusable. Child groups are `off()`'d recursively. Emits an `OFF` event. |
 | `clear()`                               | Destroy all attached signals / effects / links and child groups, detach from parent, remove from registry. |
 | `destroy()`                             | **Deprecated.** Use `clear()`.                                         |
 

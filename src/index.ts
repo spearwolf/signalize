@@ -26,7 +26,7 @@ export {
 } from './object-signals.js';
 export {Signal} from './Signal.js';
 export * from './SignalAutoMap.js';
-export {SignalGroup} from './SignalGroup.js';
+export {getSignalGroupsCount, SignalGroup} from './SignalGroup.js';
 export type {SignalLink, ValueCallback} from './SignalLink.js';
 export {touch} from './touch.js';
 export type * from './types.js';

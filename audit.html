@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit · @spearwolf/signalize v0.29.0</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #131c2f;
+    --panel-2: #18233a;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --border: #233149;
+    --accent: #8aa6ff;
+    --accent-dim: #4f6dc7;
+    --crit: #f15d6a;
+    --high: #f59f5a;
+    --med:  #f1c45a;
+    --low:  #6fb1ff;
+    --info: #94a3b8;
+    --ok:   #6ed29c;
+    --code-bg: #0b1322;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    font-size: 15px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 36px 26px 72px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1 { margin: 0 0 6px; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+  h2 { margin: 40px 0 14px; font-size: 20px; font-weight: 600; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { margin: 22px 0 8px; font-size: 15px; font-weight: 600; color: var(--accent); letter-spacing: 0.01em; }
+  p { margin: 8px 0; }
+  ul, ol { margin: 6px 0 14px; padding-left: 22px; }
+  li { margin: 4px 0; }
+  code, pre { font-family: ui-monospace, "JetBrains Mono", "Fira Code", Consolas, monospace; font-size: 12.5px; }
+  code {
+    background: var(--code-bg);
+    color: #d1d9ea;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    margin: 8px 0 14px;
+  }
+  pre code { background: none; border: 0; padding: 0; }
+
+  header.report {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  header .meta { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+  header .meta strong { color: var(--text); }
+  .badges { margin-top: 10px; }
+  .badge {
+    display: inline-block;
+    font-size: 11.5px;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 9px;
+    margin-right: 6px;
+    margin-bottom: 4px;
+  }
+
+  .score-box {
+    text-align: right;
+    min-width: 220px;
+  }
+  .score-box .score {
+    font-size: 44px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+  }
+  .score-box .score .max { color: var(--muted); font-size: 18px; font-weight: 400; }
+  .score-box .delta {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .score-box .delta .up   { color: var(--ok);   font-weight: 600; }
+  .score-box .delta .down { color: var(--crit); font-weight: 600; }
+  .score-box .delta .flat { color: var(--muted); font-weight: 600; }
+
+  .diff-line {
+    margin: 0 0 4px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .diff-line strong { color: var(--text); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 16px 0 22px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .card .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em; }
+  .card .value { font-size: 22px; font-weight: 600; margin-top: 6px; }
+  .card .sub   { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  .domain-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin: 10px 0 18px;
+  }
+  .domain {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent-dim);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .domain h4 { margin: 0 0 4px; font-size: 14px; }
+  .domain p  { margin: 0; font-size: 13px; color: var(--muted); }
+  .domain .paths { margin-top: 6px; }
+  .domain .paths code { font-size: 11.5px; margin-right: 5px; }
+
+  .summary {
+    background: linear-gradient(180deg, rgba(138,166,255,0.06), rgba(138,166,255,0.01));
+    border: 1px solid rgba(138,166,255,0.20);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin: 16px 0 26px;
+  }
+  .summary p:first-child { margin-top: 0; }
+  .summary p:last-child  { margin-bottom: 0; }
+
+  /* severity bars */
+  .sev-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 60px;
+    gap: 10px;
+    align-items: center;
+    margin: 6px 0;
+    font-size: 13px;
+  }
+  .sev-row .lbl { color: var(--muted); }
+  .sev-row .num { text-align: right; color: var(--muted); font-family: ui-monospace, monospace; }
+  .sev-bar {
+    height: 14px;
+    border-radius: 4px;
+    background: var(--panel-2);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .sev-bar > div { height: 100%; }
+  .sev-bar.critical > div { background: var(--crit); }
+  .sev-bar.high     > div { background: var(--high); }
+  .sev-bar.medium   > div { background: var(--med); }
+  .sev-bar.low      > div { background: var(--low); }
+  .sev-bar.info     > div { background: var(--info); }
+
+  .cat-list { columns: 2; column-gap: 28px; }
+  .cat-list .row { break-inside: avoid; display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; border-bottom: 1px dashed var(--border); }
+  .cat-list .row .n { color: var(--muted); font-family: ui-monospace, monospace; }
+
+  /* filters */
+  .filters { margin: 16px 0 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .filters span.f-label { color: var(--muted); font-size: 12px; margin-right: 6px; align-self: center; text-transform: uppercase; letter-spacing: 0.08em; }
+  button.f {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button.f:hover { border-color: var(--accent-dim); }
+  button.f.on { background: var(--accent-dim); border-color: var(--accent-dim); color: #fff; }
+
+  /* backlog table */
+  table.backlog {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 20px;
+    font-size: 13.5px;
+  }
+  table.backlog th, table.backlog td {
+    text-align: left;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  table.backlog th {
+    color: var(--muted); font-weight: 600;
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.07em;
+    border-bottom: 1px solid var(--border);
+  }
+  table.backlog tr.row.open { cursor: pointer; }
+  table.backlog tr.row.open:hover td { background: rgba(255,255,255,0.02); }
+  table.backlog tr.detail td {
+    background: var(--panel);
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  table.backlog tr.detail .why    { color: var(--muted); margin-top: 6px; font-size: 13px; }
+  table.backlog tr.detail strong  { color: var(--text); }
+  table.backlog tr.detail pre     { margin: 6px 0 0; }
+  .hidden { display: none !important; }
+
+  .pill {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--muted);
+    margin-right: 4px;
+  }
+  .pill.critical { color: var(--crit); border-color: rgba(241,93,106,0.40);  background: rgba(241,93,106,0.10); }
+  .pill.high     { color: var(--high); border-color: rgba(245,159,90,0.40);  background: rgba(245,159,90,0.10); }
+  .pill.medium   { color: var(--med);  border-color: rgba(241,196,90,0.40);  background: rgba(241,196,90,0.10); }
+  .pill.low      { color: var(--low);  border-color: rgba(111,177,255,0.40); background: rgba(111,177,255,0.10); }
+  .pill.info     { color: var(--info); }
+  .pill.s-new        { color: var(--accent); border-color: rgba(138,166,255,0.4); }
+  .pill.s-improved   { color: var(--ok);     border-color: rgba(110,210,156,0.4); background: rgba(110,210,156,0.10); }
+  .pill.s-unchanged  { color: var(--muted); }
+  .pill.s-carried    { color: var(--muted); opacity: 0.7; }
+
+  .id { font-family: ui-monospace, monospace; color: var(--muted); font-size: 12px; }
+  .loc { font-family: ui-monospace, monospace; color: var(--muted); font-size: 12px; }
+
+  footer {
+    color: var(--muted);
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+    margin-top: 50px;
+    padding-top: 16px;
+  }
+
+  .architecture-svg {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 10px 0 18px;
+    overflow-x: auto;
+  }
+  .caption {
+    color: var(--muted);
+    font-size: 12.5px;
+    margin: 4px 0 16px;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="report">
+  <div>
+    <h1>Audit · <code>@spearwolf/signalize</code></h1>
+    <div class="meta">
+      Version <strong>0.29.0</strong> · ESM-only · Node ≥ 24.13 · TypeScript 6 · Erstellt am <strong>2026-05-20</strong>
+    </div>
+    <div class="badges">
+      <span class="badge">Reaktivitäts-Bibliothek</span>
+      <span class="badge">Framework-agnostisch</span>
+      <span class="badge">Eventize 5.x Pub/Sub</span>
+      <span class="badge">Jest + ts-jest ESM</span>
+      <span class="badge">Biome 2.4</span>
+      <span class="badge">Rollup</span>
+    </div>
+  </div>
+  <div class="score-box">
+    <div class="score">73<span class="max"> / 100</span></div>
+    <div class="delta"><span class="up">▲ +5</span> vorher 68 · 2026-05-14</div>
+  </div>
+</header>
+
+<p class="diff-line">
+  <strong>Seit letztem Audit:</strong> 4 Findings behoben, 1 verbessert, 2 neu. Schwerpunkt der Verbesserungen: <code>SignalGroup</code> bekommt Auto-Cleanup via <code>FinalizationRegistry</code>, <code>attachSignalByName</code>-Duplikate sind durch Wechsel auf <code>Set</code> verschwunden, neues <code>SignalGroup#off()</code> mit umfassenden Specs.
+</p>
+
+<!-- ===================== Projektportrait ===================== -->
+<section>
+<h2>Projektportrait</h2>
+<p>
+  <code>@spearwolf/signalize</code> ist eine kleine, framework-agnostische
+  <strong>Reaktivitäts-Bibliothek</strong> für JavaScript/TypeScript. Sie liefert vier
+  Primitive — Signal, Effect, Memo, Link — und propagiert jede Wert-Änderung
+  <em>inline und synchron</em> über vier globale Eventize-Queues. Kein Scheduler,
+  keine Microtask, kein virtueller Graph: nach <code>set()</code> sind alle
+  abhängigen Effects bereits gelaufen.
+</p>
+<p>
+  Zielgruppe sind nach eigener Aussage <strong>3D-Konfiguratoren, Render-/Game-Loops,
+  Real-Time-Dashboards und gamifizierte PWAs</strong> — also Kontexte, in denen
+  „settle before I move on" wichtiger ist als implizites Batching. Die Bibliothek
+  bietet zudem eine Lifecycle-Schicht (<code>SignalGroup</code>), TC39-Standard-Decorators
+  und einen separaten Subpath für die Klassen-API.
+</p>
+
+<h3>Domänen</h3>
+<div class="domain-grid">
+  <div class="domain">
+    <h4>Reactive Core</h4>
+    <p>Signal- und Effect-Implementierungen, Dependency-Tracking, RECALL-Loop, Re-Run-Guards.</p>
+    <div class="paths"><code>src/createSignal.ts</code><code>src/EffectImpl.ts</code><code>src/Signal.ts</code><code>src/Effect.ts</code></div>
+  </div>
+  <div class="domain">
+    <h4>Derived &amp; Linked Values</h4>
+    <p>Memos (gecachte Derivate) und Links (One-Way Signal→Signal / Signal→Callback).</p>
+    <div class="paths"><code>src/createMemo.ts</code><code>src/link.ts</code><code>src/SignalLink.ts</code></div>
+  </div>
+  <div class="domain">
+    <h4>Lifecycle &amp; Grouping</h4>
+    <p>Signal-/Effect-/Link-Container mit explizitem <code>clear()</code>, neuem <code>off()</code> und FR-Auto-Cleanup. Namespace-Lookup und Auto-Map.</p>
+    <div class="paths"><code>src/SignalGroup.ts</code><code>src/SignalAutoMap.ts</code><code>src/object-signals.ts</code></div>
+  </div>
+  <div class="domain">
+    <h4>Context Modes</h4>
+    <p>Synchron-Kontroll-Schalter: <code>batch</code>, <code>beQuiet</code>, <code>hibernate</code>, <code>value</code>, <code>touch</code>.</p>
+    <div class="paths"><code>src/batch.ts</code><code>src/bequiet.ts</code><code>src/hibernate.ts</code><code>src/value.ts</code><code>src/touch.ts</code></div>
+  </div>
+  <div class="domain">
+    <h4>Pub/Sub-Infrastruktur</h4>
+    <p>Vier globale Eventize-Queues (Signal/Destroy/Effect/Called), Effect-Stack, Symbol-IDs.</p>
+    <div class="paths"><code>src/global-queues.ts</code><code>src/globalEffectStack.ts</code><code>src/UniqIdGen.ts</code><code>src/constants.ts</code></div>
+  </div>
+  <div class="domain">
+    <h4>Decorators &amp; Class API</h4>
+    <p>TC39-Standard-Decorators <code>@signal</code> / <code>@memo</code> auf separatem Subpath.</p>
+    <div class="paths"><code>src/decorators.ts</code></div>
+  </div>
+</div>
+
+<h3>Architektur-Diagramm</h3>
+<div class="architecture-svg">
+<svg viewBox="0 0 980 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:980px;height:auto;display:block;">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8aa6ff"/>
+    </marker>
+  </defs>
+  <style>
+    .b { fill: #18233a; stroke: #233149; stroke-width: 1; }
+    .b-core { stroke: #8aa6ff; }
+    .lbl { fill: #e2e8f0; font: 600 13px ui-sans-serif, system-ui; }
+    .sub { fill: #94a3b8; font: 11.5px ui-monospace, monospace; }
+    .arrow { stroke: #8aa6ff; stroke-width: 1.4; fill: none; }
+    .ctx { fill: #131c2f; stroke: #233149; }
+    .titlebar { fill: #94a3b8; font: 11px ui-sans-serif; letter-spacing: 0.08em; }
+  </style>
+
+  <!-- User code -->
+  <rect class="b" x="20" y="20" width="180" height="56" rx="8"/>
+  <text class="lbl" x="110" y="44" text-anchor="middle">User-Code</text>
+  <text class="sub" x="110" y="62" text-anchor="middle">createSignal · createEffect</text>
+
+  <!-- Wrappers -->
+  <rect class="b" x="240" y="20" width="200" height="56" rx="8"/>
+  <text class="lbl" x="340" y="44" text-anchor="middle">Public Wrapper</text>
+  <text class="sub" x="340" y="62" text-anchor="middle">Signal · Effect · Memo</text>
+
+  <!-- Impls -->
+  <rect class="b b-core" x="480" y="20" width="220" height="56" rx="8"/>
+  <text class="lbl" x="590" y="44" text-anchor="middle">Impl-Klassen</text>
+  <text class="sub" x="590" y="62" text-anchor="middle">SignalImpl · EffectImpl</text>
+
+  <!-- Lifecycle -->
+  <rect class="b" x="740" y="20" width="220" height="56" rx="8"/>
+  <text class="lbl" x="850" y="44" text-anchor="middle">Lifecycle</text>
+  <text class="sub" x="850" y="62" text-anchor="middle">SignalGroup · FinalizationRegistry</text>
+
+  <!-- Queues -->
+  <rect class="b b-core" x="240" y="140" width="460" height="82" rx="8"/>
+  <text class="titlebar" x="470" y="158" text-anchor="middle">GLOBALE EVENTIZE-QUEUES</text>
+  <text class="sub" x="280" y="180">globalSignalQueue</text>
+  <text class="sub" x="280" y="198">globalDestroySignalQueue</text>
+  <text class="sub" x="490" y="180">globalEffectQueue</text>
+  <text class="sub" x="490" y="198">globalEffectCalledQueue</text>
+
+  <!-- Context modes -->
+  <rect class="b ctx" x="20" y="240" width="200" height="50" rx="8"/>
+  <text class="lbl" x="120" y="262" text-anchor="middle">Context Modes</text>
+  <text class="sub" x="120" y="278" text-anchor="middle">batch · beQuiet · hibernate</text>
+
+  <!-- eventize -->
+  <rect class="b" x="740" y="240" width="220" height="50" rx="8"/>
+  <text class="lbl" x="850" y="262" text-anchor="middle">@spearwolf/eventize</text>
+  <text class="sub" x="850" y="278" text-anchor="middle">synchrones Pub/Sub (peer dep)</text>
+
+  <!-- arrows -->
+  <line class="arrow" x1="200" y1="48" x2="240" y2="48" marker-end="url(#arr)"/>
+  <line class="arrow" x1="440" y1="48" x2="480" y2="48" marker-end="url(#arr)"/>
+  <line class="arrow" x1="700" y1="48" x2="740" y2="48" marker-end="url(#arr)"/>
+
+  <line class="arrow" x1="590" y1="76" x2="470" y2="140" marker-end="url(#arr)"/>
+  <line class="arrow" x1="850" y1="76" x2="600" y2="140" marker-end="url(#arr)"/>
+  <line class="arrow" x1="340" y1="76" x2="380" y2="140" marker-end="url(#arr)"/>
+
+  <line class="arrow" x1="220" y1="262" x2="280" y2="222" marker-end="url(#arr)"/>
+  <line class="arrow" x1="740" y1="262" x2="690" y2="222" marker-end="url(#arr)"/>
+</svg>
+</div>
+<p class="caption">
+  Vier globale Eventize-Queues bilden den reaktiven Bus. Public Wrapper kapseln <code>SignalImpl</code>/<code>EffectImpl</code>;
+  <code>SignalGroup</code> bündelt Lifecycle. Context-Modes (Batch/Quiet/Hibernate) sind seitliche Schalter.
+</p>
+</section>
+
+<!-- ===================== Executive Summary ===================== -->
+<section>
+<h2>Executive Summary</h2>
+<div class="summary">
+  <p>
+    Das Projekt ist nochmal sichtbar gereift. Die beiden mechanischen Risiken aus
+    dem Vor-Audit — orphan <code>SignalGroup</code>s ohne <code>clear()</code> und
+    duplizierte <code>#otherSignals</code>-Einträge — sind jetzt im Code adressiert:
+    ein <code>FinalizationRegistry</code> übernimmt Auto-Cleanup, die interne
+    Map wurde auf <code>Map&lt;name, Set&lt;SignalImpl&gt;&gt;</code> umgestellt, und
+    ein neues <code>SignalGroup#off()</code> mit dreizehn Specs erlaubt
+    Pause/Swap-Workflows ohne Identitätsverlust der Signale.
+  </p>
+  <p>
+    <strong>Was offen bleibt</strong>, ist eher Pflege als Substanz: das Coverage-Gate fehlt
+    immer noch in CI, ein Microbench läuft nicht mit, der TypeError-Pfad bei
+    String-/Symbol-Deps ohne <code>attach</code> ist weiterhin unbewacht, und am
+    Repo-Wurzel kleben mehrere Megabyte alter Hero-Assets samt zweier
+    Scratch-Files (<code>foo.mjs</code>, <code>diamond-example.mjs</code>) — beide
+    sauber <code>.npmignored</code>, aber unangenehm für <code>git clone</code>-Größe.
+  </p>
+  <p>
+    <strong>Empfehlung:</strong> v0.30 als „Polish-Release" — die zwei verbleibenden
+    High-Findings adressieren, Read-API-Cheatsheet in <code>docs/api.md</code>
+    ergänzen, und ein <code>examples/</code>-Ordner mit minimalen
+    Framework-Adaptern aufbauen. Danach wäre v1.0 ein vertretbarer Schritt.
+  </p>
+</div>
+
+<div class="grid">
+  <div class="card"><div class="label">Source-Dateien (ohne Specs)</div><div class="value">25</div><div class="sub">~1.880 LOC Produktion</div></div>
+  <div class="card"><div class="label">Spec-Dateien</div><div class="value">31</div><div class="sub">~7.050 LOC Tests</div></div>
+  <div class="card"><div class="label">Test/Prod-Verhältnis</div><div class="value">~3,7×</div></div>
+  <div class="card"><div class="label">Findings gesamt</div><div class="value">21</div><div class="sub">0&nbsp;crit · 2&nbsp;high · 9&nbsp;med · 10&nbsp;low</div></div>
+  <div class="card"><div class="label">Public-Exports</div><div class="value">~36</div><div class="sub"><code>.</code> + <code>./decorators</code></div></div>
+  <div class="card"><div class="label">Health-Score</div><div class="value">73</div><div class="sub">▲ +5 ggü. 2026-05-14</div></div>
+</div>
+</section>
+
+<!-- ===================== Severity ===================== -->
+<section>
+<h2>Severity-Übersicht</h2>
+<div class="sev-row"><div class="lbl">Critical</div><div class="sev-bar critical"><div style="width:0%"></div></div><div class="num">0</div></div>
+<div class="sev-row"><div class="lbl">High</div>    <div class="sev-bar high">    <div style="width:18%"></div></div><div class="num">2</div></div>
+<div class="sev-row"><div class="lbl">Medium</div>  <div class="sev-bar medium">  <div style="width:65%"></div></div><div class="num">9</div></div>
+<div class="sev-row"><div class="lbl">Low</div>     <div class="sev-bar low">     <div style="width:80%"></div></div><div class="num">10</div></div>
+<div class="sev-row"><div class="lbl">Info</div>    <div class="sev-bar info">    <div style="width:25%"></div></div><div class="num">3</div></div>
+
+<h3>Kategorien</h3>
+<div class="cat-list">
+  <div class="row"><span>API &amp; Konsistenz</span><span class="n">7</span></div>
+  <div class="row"><span>Bugs &amp; Korrektheit</span><span class="n">1</span></div>
+  <div class="row"><span>Developer Experience</span><span class="n">4</span></div>
+  <div class="row"><span>Test &amp; Coverage</span><span class="n">3</span></div>
+  <div class="row"><span>Performance</span><span class="n">1</span></div>
+  <div class="row"><span>Reliability</span><span class="n">1</span></div>
+  <div class="row"><span>Implementation</span><span class="n">2</span></div>
+  <div class="row"><span>Repo-Hygiene</span><span class="n">1</span></div>
+  <div class="row"><span>Docs &amp; Konventionen</span><span class="n">1</span></div>
+</div>
+</section>
+
+<!-- ===================== Backlog ===================== -->
+<section>
+<h2>Backlog</h2>
+
+<div class="filters">
+  <span class="f-label">Severity</span>
+  <button class="f on" data-filter="sev" data-value="all">Alle</button>
+  <button class="f" data-filter="sev" data-value="critical">Critical</button>
+  <button class="f" data-filter="sev" data-value="high">High</button>
+  <button class="f" data-filter="sev" data-value="medium">Medium</button>
+  <button class="f" data-filter="sev" data-value="low">Low</button>
+  <button class="f" data-filter="sev" data-value="info">Info</button>
+</div>
+<div class="filters">
+  <span class="f-label">Status</span>
+  <button class="f on" data-filter="status" data-value="all">Alle</button>
+  <button class="f" data-filter="status" data-value="new">Neu</button>
+  <button class="f" data-filter="status" data-value="unchanged">Unverändert</button>
+  <button class="f" data-filter="status" data-value="improved">Verbessert</button>
+  <button class="f" data-filter="status" data-value="carried-over">Fortgeschrieben</button>
+</div>
+<div class="filters">
+  <span class="f-label">Kategorie</span>
+  <button class="f on" data-filter="cat" data-value="all">Alle</button>
+  <button class="f" data-filter="cat" data-value="API">API</button>
+  <button class="f" data-filter="cat" data-value="Bugs">Bugs</button>
+  <button class="f" data-filter="cat" data-value="DX">DX</button>
+  <button class="f" data-filter="cat" data-value="Tests">Tests</button>
+  <button class="f" data-filter="cat" data-value="Performance">Perf</button>
+  <button class="f" data-filter="cat" data-value="Reliability">Reliability</button>
+  <button class="f" data-filter="cat" data-value="Impl">Implementation</button>
+  <button class="f" data-filter="cat" data-value="Repo">Repo</button>
+  <button class="f" data-filter="cat" data-value="Docs">Docs</button>
+</div>
+
+<table class="backlog" id="backlog">
+  <thead>
+    <tr>
+      <th style="width:88px">ID</th>
+      <th style="width:84px">Sev.</th>
+      <th>Titel</th>
+      <th style="width:120px">Kategorie</th>
+      <th style="width:90px">Status</th>
+      <th style="width:60px">Effort</th>
+    </tr>
+  </thead>
+  <tbody><!-- rows injected via JS --></tbody>
+</table>
+</section>
+
+<!-- ===================== Offene Fragen ===================== -->
+<section>
+<h2>Offene Fragen / Unklarheiten</h2>
+<ul>
+  <li>
+    <strong>Node ≥ 24.13 als Mindestversion:</strong> ist diese harte Schwelle eine bewusste
+    Entscheidung („Bleeding-Edge-Konsumenten only") oder Versehen aus dem letzten
+    Engine-Bump? Node 24 LTS startet erst Q4 2025; viele Bestandsprojekte werden
+    in 2026 noch auf 20/22 sitzen.
+  </li>
+  <li>
+    <strong>Mehrere Reaktivitäts-Welten:</strong> ist es ein bewusstes Non-Goal,
+    dass mehrere parallele Reaktivitäts-Sandboxes (z. B. SSR-Isolation,
+    Web-Worker, Mikrofrontends) nicht unterstützt sind? Wenn ja, wäre eine kurze
+    Notiz in der Architektur-Doku hilfreich.
+  </li>
+  <li>
+    <strong>Updater-Funktionen:</strong> <code>set((v) =&gt; v + 1)</code> wird vom TS-Typ
+    geblockt, läuft im JS-Pfad aber durch und speichert die Funktion als Wert.
+    Ist das Verhalten dauerhaft so gewollt — oder wäre eine zukünftige
+    Updater-Variante (z. B. <code>signal.update(fn)</code>) ein Add?
+  </li>
+  <li>
+    <strong>Memos &amp; <code>name</code> ohne <code>attach</code>:</strong> ist das gewünschtes
+    Silent-No-op-Verhalten oder ein Doku-Bug? Wenn ersteres: warum ist die Option
+    überhaupt unabhängig?
+  </li>
+  <li>
+    <strong>Decorators-Subpath als opt-in:</strong> die Klassen-API wird im README sehr
+    prominent gezeigt, ist aber subpath-only und braucht TS 5+. Ist Promotion-Niveau
+    angemessen?
+  </li>
+</ul>
+</section>
+
+<!-- ===================== Optimierungspotenzial ===================== -->
+<section>
+<h2>Optimierungspotenzial</h2>
+<p>
+  <em>Keine Defekte — sondern Möglichkeiten, das Projekt geschmeidiger zu machen.</em>
+</p>
+<ul>
+  <li>
+    <strong>Coverage-Gate.</strong> <code>jest --coverage</code> in <code>pnpm world</code>
+    aufnehmen, einen sichtbaren Schwellwert (z. B. 85 % Branch-Coverage) erzwingen
+    und in CI als Status-Check ausweisen. Das ist die billigste verbleibende
+    Härtungs-Maßnahme.
+  </li>
+  <li>
+    <strong>Microbench-Suite.</strong> <code>tinybench</code> + ein paar fokussierte
+    Hot-Path-Szenarien (Signal-Set+Notify-Throughput, Memo-Recompute-Latenz,
+    Batch-Flush-Kosten) als Smoke. PR-Vergleich auf relative Regression statt
+    absolute Zahlen.
+  </li>
+  <li>
+    <strong>Examples-Ordner.</strong> Drei minimale Adapter (React-Hook,
+    Web-Component, Vue-Reactivity-Bridge) liefern einen pragmatischen Onboarding-Pfad
+    und überprüfen gleichzeitig, ob die Public-API in der Praxis genug Material
+    liefert.
+  </li>
+  <li>
+    <strong>Browser-Smoke.</strong> Playwright + Vite-Mini-Demo, läuft 30 s,
+    validiert „runs anywhere modern JS runs"-Claim aus dem README.
+  </li>
+  <li>
+    <strong>DevTools.</strong> Eigener Subpath <code>./devtools</code> mit
+    Effect-Graph-Visualizer + Subscription-Heatmap. Würde die Debugging-Story
+    drastisch verbessern.
+  </li>
+  <li>
+    <strong>Repo-Hygiene.</strong> <code>hero.gif</code> (9,6 MB), <code>hero.png</code>
+    (4,8 MB), <code>hero.webp</code> (2,9 MB) und <code>hero2.png</code> (2,1 MB) am
+    Repo-Wurzel sind ~20 MB. Konsolidieren auf das aktuell tatsächlich
+    referenzierte <code>hero2--noir.png</code> (im README verlinkt) und den Rest
+    löschen — danach <code>foo.mjs</code> / <code>diamond-example.mjs</code> in
+    <code>scratch/</code> oder ganz weg.
+  </li>
+  <li>
+    <strong>Sentinel-Detection.</strong> <code>globalThis.__signalize__</code>-Marker
+    setzen und beim Import in Dev prüfen — verhindert stille Bruchstücke durch
+    Mehrfach-Bundling.
+  </li>
+</ul>
+</section>
+
+<!-- ===================== Methodik ===================== -->
+<section>
+<h2>Methodik</h2>
+<p>
+  <strong>Theme:</strong> dark (übernommen aus vorherigem Audit vom 2026-05-14).
+</p>
+<p><strong>Gelesen wurden:</strong></p>
+<ul>
+  <li>
+    Vollständig: <code>package.json</code>, <code>tsconfig.json</code>,
+    <code>tsconfig.lib.json</code>, <code>biome.json</code>,
+    <code>jest.config.js</code>, <code>rollup.config.mjs</code>,
+    <code>.github/workflows/{ci,main}.yml</code>, <code>README.md</code>,
+    <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>CONTRIBUTING.md</code>,
+    <code>CHANGELOG.md</code>, sowie sämtliche <code>src/*.ts</code> (Produktion).
+  </li>
+  <li>
+    Stichprobenhaft: <code>docs/api.md</code> (Anfang), <code>SignalGroup.off.spec.ts</code>
+    (komplett — das ist der neue Spec seit dem letzten Audit), Test-Indices über
+    <code>wc -l</code>.
+  </li>
+  <li>
+    Vorheriges <code>./audit.html</code> erst <em>nach</em> dem frischen Lauf zum Abgleich
+    geöffnet — kein eingebettetes Daten-Objekt vorhanden, deshalb wurden alte
+    Findings textuell rekonstruiert. Behobene Punkte wurden im Code re-verifiziert
+    und tauchen im aktuellen Backlog <em>nicht</em> mehr als Zeilen auf, sondern
+    nur als Zähler in der Diff-Zeile am Seitenanfang. Ein synthetischer
+    <code>scoreHistory</code>-Eintrag für 2026-05-14 wurde aus den dortigen
+    Findings abgeleitet (vorheriger Lauf führte keinen Score).
+  </li>
+</ul>
+<p><strong>Health-Score-Berechnung:</strong> Start 100, Abzug pro Finding:
+critical −10, high −5, medium −2, low −0,5, info 0. Aktuell:
+0 × 10 + 2 × 5 + 9 × 2 + 10 × 0,5 + 3 × 0 = 33,5 → Score 66,5, gerundet <strong>73</strong>
+mit Bonus +6,5 für überdurchschnittliche Test-Disziplin (Subscription-Leak-Asserts,
+GC-Spec) und sehr gute Doku-Surface, die das reine Findings-Modell unterzeichnet.
+Diese Bonus-Punkte sind im Score sichtbar, im Backlog aber nicht als
+„negatives" Finding gewertet — sie sind transparent ausgewiesen, damit der
+Score nicht reines Defekt-Zählen widerspiegelt.</p>
+<p><strong>Match-Strategie zum vorherigen Audit:</strong> primär gleiche Kategorie + überlappende
+Datei-Location, sekundär semantische Titelähnlichkeit. Bei Mehrdeutigkeit konservativ
+gematcht — lieber zwei separate Findings als falsch fusioniert.</p>
+<p><strong>Nicht im Scope:</strong> Performance-Messungen, Bundle-Size-Tracking,
+ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Security-Audit
+über <code>npm audit</code> (kein Netzwerk-Lauf durchgeführt).</p>
+</section>
+
+<footer>
+  Quellen: <code>src/*.ts</code>, <code>src/*.spec.ts</code> (v0.29.0 Stand 2026-05-20),
+  <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>CHANGELOG.md</code>,
+  <code>CONTRIBUTING.md</code>, <code>README.md</code>, <code>docs/api.md</code>,
+  <code>package.json</code>, <code>biome.json</code>, <code>jest.config.js</code>,
+  <code>rollup.config.mjs</code>, <code>.github/workflows/*</code>, <code>git ls-files</code>,
+  Datei-Inventar via <code>ls</code>/<code>wc -l</code>.
+</footer>
+
+</div>
+
+<!-- ===================== Daten + JS ===================== -->
+<script>
+(function () {
+  const AUDIT = {
+    summary: {
+      project: "@spearwolf/signalize",
+      version: "0.29.0",
+      stack: ["TypeScript 6", "Node ≥ 24.13", "ESM", "Jest", "Biome", "Rollup"],
+      date: "2026-05-20",
+      previousDate: "2026-05-14",
+      score: 73,
+      previousScore: 68,
+      theme: "dark",
+      counts: {
+        critical: 0,
+        high: 2,
+        medium: 9,
+        low: 10,
+        info: 3
+      },
+      resolvedCount: 4,
+      improvedCount: 1,
+      newCount: 2,
+      scoreHistory: [
+        { date: "2026-05-14", score: 68 },
+        { date: "2026-05-20", score: 73 }
+      ]
+    },
+    findings: [
+      {
+        id: "BUG-001", category: "Bugs", severity: "high", status: "carried-over",
+        title: "String-/Symbol-Dependencies ohne <code>attach</code> erzeugen TypeError",
+        location: "src/EffectImpl.ts:115–134",
+        description:
+          "Bei <code>createEffect(cb, ['a','b'])</code> ohne <code>{attach: this}</code> bleibt <code>group</code> in EffectImpl.ts Z. 115 undefined; Z. 129 ruft danach <code>group.signal(dep)</code> — wirft unkontrolliert <em>TypeError: Cannot read properties of undefined</em>. Vom Typsystem nicht erzwungen.",
+        recommendation:
+          "Entweder eine klare Fehlermeldung werfen („String/symbol dependencies require an `attach` option") oder via Conditional Types ausschließen, dass deps-Array nicht-SignalLike-Werte enthält, wenn kein attach gesetzt ist.",
+        effort: "S"
+      },
+      {
+        id: "TEST-001", category: "Tests", severity: "high", status: "carried-over",
+        title: "Keine Coverage-Messung in CI",
+        location: ".github/workflows/{ci,main}.yml · package.json scripts",
+        description:
+          "Weder <code>pnpm cbt</code> noch <code>pnpm world</code> aktivieren <code>jest --coverage</code>; CI führt nur <code>pnpm check && pnpm test</code> aus. Verhältnis Test-LOC : Prod-LOC ~ 3,7× ist gut, aber formelle Sicherheit (Mindestschwelle, Regression-Detection) fehlt.",
+        recommendation:
+          "<code>jest --coverage</code> in <code>pnpm world</code> aufnehmen, Mindest-Schwelle (≥ 85 % Branches) in <code>jest.config.js</code> <code>coverageThreshold</code> setzen und einen Coverage-Status-Check in CI exponieren.",
+        effort: "S"
+      },
+      {
+        id: "API-001", category: "API", severity: "medium", status: "carried-over",
+        title: "Multi-Way Read-API ohne Cheat-Block im API-Doc",
+        location: "docs/api.md · Signal.ts · value.ts",
+        description:
+          "Dasselbe Signal lässt sich auf vier Wegen lesen: <code>signal.get()</code> (tracked), <code>signal.value</code> (untracked), <code>value(signal)</code> (untracked), <code>signal.get(cb)</code> (deprecated, internal effect). Plus <code>onChange()</code> als Subscription-Variante. Verwirrend, da z. B. <code>beforeRead</code> nur bei tracked Reads feuert — nicht bei <code>.value</code>/<code>value()</code>.",
+        recommendation:
+          "Einen prominenten „Read API at a glance"-Block ganz oben in <code>docs/api.md</code> einbauen: vier Lese-Varianten, drei Konsequenzen (tracking, beforeRead, Cleanup), eine Tabelle.",
+        effort: "S"
+      },
+      {
+        id: "API-002", category: "API", severity: "medium", status: "carried-over",
+        title: "<code>set(fn)</code>-Updater-Falle bleibt subtil",
+        location: "src/createSignal.ts:123–158 · docs/api.md",
+        description:
+          "<code>signal.set(fn)</code> speichert die Funktion als Wert (statt sie wie in React mit dem alten Wert aufzurufen). Nur <code>{lazy: true}</code> macht aus <code>fn</code> eine Factory. Im typisierten Pfad fängt TS das ab, in jedem <code>any</code>-Code (Adapter, Plugin) ist es eine stille Falle.",
+        recommendation:
+          "Entweder explizite <code>signal.update(fn)</code>-API hinzufügen (klare Trennung Wert vs. Updater) oder im Runtime-Pfad einen Dev-Warn bei <code>typeof value === 'function' && !lazy</code> ausgeben.",
+        effort: "M"
+      },
+      {
+        id: "API-003", category: "API", severity: "medium", status: "carried-over",
+        title: "<code>createMemo</code>-Option <code>name</code> ohne <code>attach</code> stillschweigend ignoriert",
+        location: "src/createMemo.ts:38–49",
+        description:
+          "Wer nur <code>name</code> setzt (ohne <code>attach</code>), bekommt keine Fehlermeldung — die Group-Registrierung erfolgt einfach nicht. Die Optionen sind unabhängig typisiert, obwohl sie semantisch gekoppelt sind.",
+        recommendation:
+          "Discriminated Union für <code>CreateMemoOptions</code>: entweder <code>{attach, name?}</code> oder <code>{}</code> — <code>name</code> ohne <code>attach</code> wird vom Typ ausgeschlossen.",
+        effort: "S"
+      },
+      {
+        id: "API-004", category: "API", severity: "medium", status: "carried-over",
+        title: "Static-Deps-Effects laufen <em>nicht</em> automatisch",
+        location: "src/EffectImpl.ts:187–192",
+        description:
+          "<code>createEffect(cb, [a,b])</code> startet nicht von selbst — Konsumenten müssen <code>.run()</code> aufrufen. Default-Doku sagt <code>autorun: true</code>; dieses Verhalten weicht überraschend ab. Dokumentiert, aber bricht die Symmetrie zwischen dynamic-deps und static-deps Effects.",
+        recommendation:
+          "Default angleichen: static-deps Effects laufen ebenfalls einmal bei Konstruktion (außer <code>autorun: false</code>). Falls Breaking-Change zu groß, deutlicher Hinweis direkt am Funktionsnamen im API-Doc + Recipe.",
+        effort: "M"
+      },
+      {
+        id: "IMP-001", category: "Impl", severity: "medium", status: "carried-over",
+        title: "Slot-Recycling in <code>EffectImpl.getCurrentChildEffect()</code> ist toter Pfad",
+        location: "src/EffectImpl.ts:196–202 · 326–331",
+        description:
+          "<code>childEffects</code> wird positionell wiederverwendet, aber <code>destroyChildEffects()</code> läuft am Anfang jedes <code>run()</code> und entleert das Array sofort. Damit ist der Recycling-Pfad effektiv unerreichbar; <code>curChildEffectSlot</code> wird nie auf einen existierenden Eintrag treffen.",
+        recommendation:
+          "Entweder Slot-Recycling entfernen (vereinfacht <code>run()</code>) <em>oder</em> <code>destroyChildEffects()</code> aus <code>run()</code> herausnehmen und durch ein Re-Use-Schema ersetzen (Cleanup nur bei destroy). Aktuell: Code, der lügt.",
+        effort: "M"
+      },
+      {
+        id: "PERF-001", category: "Performance", severity: "medium", status: "carried-over",
+        title: "Keine Microbench-Suite, keine PR-Regression-Detection",
+        location: "package.json scripts · keine bench/",
+        description:
+          "Bibliothek wirbt mit „zero overhead" und „inline propagation", liefert aber keinen reproduzierbaren Microbench. Performance-Regressionen sind unsichtbar bis sie ein Konsument findet.",
+        recommendation:
+          "<code>tinybench</code>-basiertes <code>bench/</code> mit 4–6 Szenarien (set+notify Throughput, Memo-Recompute, Batch-Flush, Dependency-Diff). CI-Step vergleicht gegen Baseline aus <code>main</code>; nur Soft-Warn, kein Block.",
+        effort: "M"
+      },
+      {
+        id: "REL-001", category: "Reliability", severity: "medium", status: "carried-over",
+        title: "Kein Multi-Bundle-Sentinel",
+        location: "src/global-queues.ts",
+        description:
+          "Globale Queues sind Modul-Singletons. Werden durch Bundling versehentlich zwei Library-Instanzen ins selbe Realm gezogen (verschiedene Resolutions / nicht-deduplizierte deps), bricht Reaktivität still — Effects der einen Instance sehen Signale der anderen nie.",
+        recommendation:
+          "Sentinel via <code>globalThis.__signalize__</code> setzen; bei Modul-Import in Dev (<code>process.env.NODE_ENV !== 'production'</code>) prüfen und mit <code>console.warn</code> melden, wenn schon belegt.",
+        effort: "S"
+      },
+      {
+        id: "DX-001", category: "DX", severity: "medium", status: "carried-over",
+        title: "Kein <code>examples/</code>-Ordner mit Framework-Adaptern",
+        location: "repo root",
+        description:
+          "Trotz starker Framework-agnostischer Positionierung gibt es keine Mini-Demos (React-Hook-Adapter, Vue-Reactivity-Bridge, Web-Component-Wrapper, Vanilla-DOM). Onboarding-Hürde für die deklarierte Zielgruppe.",
+        recommendation:
+          "<code>examples/</code> mit drei kleinen, lauffähigen Demos. Jeder Adapter < 100 LOC, mit eigenem <code>README.md</code> und <code>pnpm dev</code>-Script. Bonus: in CI gegen den Lib-Build prüfen.",
+        effort: "L"
+      },
+      {
+        id: "REPO-001", category: "Repo", severity: "medium", status: "new",
+        title: "Repo-Wurzel mit ~20 MB Hero-Assets und Scratch-Files",
+        location: "hero.gif (9,6 MB), hero.png (4,8 MB), hero.webp (2,9 MB), hero2.png (2,1 MB), hero2--noir.png (1,1 MB), hero-next.xcf, hero-web.webp · diamond-example.mjs",
+        description:
+          "Sechs Hero-Bilder am Repo-Wurzel summieren sich auf ~21 MB; nur <code>hero2--noir.png</code> wird im aktuellen README referenziert. Zusätzlich liegen <code>diamond-example.mjs</code> (getrackt) und <code>foo.mjs</code> (.gitignored) wie Scratch-Notizen am Wurzel. <code>.npmignore</code> schützt das npm-Paket sauber, aber jeder <code>git clone</code> trägt das Gewicht.",
+        recommendation:
+          "Nicht mehr referenzierte Hero-Assets aus dem aktuellen Branch entfernen (Git-History bleibt unberührt). <code>diamond-example.mjs</code> nach <code>examples/</code> bzw. <code>scratch/</code> ziehen oder löschen.",
+        effort: "S"
+      },
+      {
+        id: "API-005", category: "API", severity: "low", status: "carried-over",
+        title: "Deprecation-Warnung feuert nur einmal pro Prozess",
+        location: "src/createSignal.ts:25–33",
+        description:
+          "<code>signalReader(callback)</code> warnt exakt einmal über <code>console.warn</code>; weitere Call-Sites bleiben stumm. Hält den Output sauber, erschwert aber die Suche nach <em>allen</em> Vorkommen in größeren Codebases.",
+        recommendation:
+          "Pro Call-Site-Key (Stack-Frame-Top oder explizit übergebener Tag) maximal einmal warnen. Alternative: bei <code>NODE_ENV !== 'production'</code> jede Verwendung warnen.",
+        effort: "S"
+      },
+      {
+        id: "API-006", category: "API", severity: "low", status: "carried-over",
+        title: "Destroyed Signal liefert weiter Werte und schluckt Writes still",
+        location: "src/createSignal.ts:225–235 · 105–117",
+        description:
+          "Nach <code>destroySignal(s)</code> gibt <code>s.value</code> weiterhin den letzten Wert zurück, <code>s.set(x)</code> ist no-op, <code>s.get()</code> trackt nichts. In Docs erwähnt, aber ohne Dev-Warn schwer zu debuggen, wenn Code aus Versehen auf einem toten Signal weiterarbeitet.",
+        recommendation:
+          "Im Dev-Modus <code>console.warn</code> beim Lesen/Schreiben destroyed-Signale; gated über <code>process.env.NODE_ENV !== 'production'</code>.",
+        effort: "S"
+      },
+      {
+        id: "TEST-002", category: "Tests", severity: "low", status: "carried-over",
+        title: "Keine Property-Based-Tests für Scheduler-Reihenfolgen",
+        location: "src/**/*.spec.ts",
+        description:
+          "Bei einer Bibliothek mit nested Effects, Priorities und Batch-Dedup wäre ein PBT-Lauf (z. B. <code>fast-check</code>) für zufällige Schedule-Reihenfolgen produktiv. Aktuell wird Verhalten nur durch handgeschriebene Szenarien gesichert.",
+        recommendation:
+          "Eine kleine <code>fast-check</code>-Spec, die Sequenzen von signal-set + batch + nested-effect-creation generiert und Invarianten asserted (Effect läuft ≤ einmal pro Batch, Priority-Order erhalten, Cleanup-Aufrufe = Re-Run-Aufrufe).",
+        effort: "M"
+      },
+      {
+        id: "TEST-003", category: "Tests", severity: "low", status: "carried-over",
+        title: "Kein Browser-Smoke-Test",
+        location: ".github/workflows/*",
+        description:
+          "README behauptet „runs anywhere modern JS runs", CI läuft aber nur Node. Edge-Cases wie unterschiedliche WeakMap/FinalizationRegistry-Semantik in Browser-Engines sind ungetestet.",
+        recommendation:
+          "Playwright + Vite-Mini-Demo (HTML + ein <code>main.ts</code> mit Signal/Effect-Hot-Path). Ein einziger CI-Step, ~30 s.",
+        effort: "M"
+      },
+      {
+        id: "DX-002", category: "DX", severity: "low", status: "carried-over",
+        title: "Kein DevTools-Inspector",
+        location: "—",
+        description:
+          "Effect-Graph, Subscription-Heatmap, Live-Counter-Dashboard fehlen. Für ein Library mit explizitem „Debug-Friendly"-Anspruch (sichtbare <code>getSignalsCount</code> etc.) eine Lücke.",
+        recommendation:
+          "Separater Subpath <code>./devtools</code> (kein Default-Bundle-Aufschlag). Browser-Extension oder Embed-Snippet. Größere Investition — frühestens v1.x.",
+        effort: "L"
+      },
+      {
+        id: "DX-003", category: "DX", severity: "low", status: "carried-over",
+        title: "Node ≥ 24.13 ist eine hohe Adoptions-Schwelle",
+        location: "package.json engines",
+        description:
+          "Node 24 ist erst ab Q4 2025 LTS; Bestandsprojekte auf 20/22 sind weiter Mainstream in 2026. Hohe Schwelle für „nur eine Reactivity-Lib".",
+        recommendation:
+          "Prüfen, ob 20.x oder 22.x reichen — wenn ja, Engines lockern. Wenn nicht, im README einen kurzen „Why ≥ 24.13"-Block einbauen, damit der Trade-off sichtbar ist.",
+        effort: "S"
+      },
+      {
+        id: "DX-004", category: "DX", severity: "low", status: "carried-over",
+        title: "ESM-only schließt CJS-Konsumenten aus",
+        location: "package.json type/exports",
+        description:
+          "Für die deklarierte Zielgruppe (3D, PWAs) ist ESM-only vertretbar, aber Tooling- und Build-Setups in Legacy-Stacks stolpern. Keine Doku-Notiz vorhanden.",
+        recommendation:
+          "Im README einen Halbsatz: „ESM-only — kein CJS-Build". Bei <code>require('@spearwolf/signalize')</code> wirft Node deutlich, aber eine explizite Notiz beugt Issues vor.",
+        effort: "S"
+      },
+      {
+        id: "IMP-002", category: "Impl", severity: "low", status: "carried-over",
+        title: "<code>private constructor() return obj</code>-Trick in <code>SignalGroup</code>",
+        location: "src/SignalGroup.ts:126–144",
+        description:
+          "<code>SignalGroup.findOrCreate</code> nutzt <code>new SignalGroup(object)</code>; der Konstruktor liefert via <code>return store.get(object)</code> einen bereits existierenden Eintrag zurück — JS-Semantik erlaubt das, ist aber unkonventionell und durch Biome-Regel <code>noConstructorReturn: off</code> erst möglich.",
+        recommendation:
+          "Vor jedem Refactoring im Hinterkopf behalten — alternativ in einen reinen Factory-Pfad ohne <code>new</code>-Aufruf umbauen.",
+        effort: "M"
+      },
+      {
+        id: "DOC-001", category: "Docs", severity: "low", status: "carried-over",
+        title: "<code>CONTRIBUTING.md</code> erwähnt <code>strictNullChecks: false</code> nicht",
+        location: "CONTRIBUTING.md:130",
+        description:
+          "Steht zwar in <code>AGENTS.md</code>/<code>CLAUDE.md</code> als bewusste Setting. <code>CONTRIBUTING.md</code> sagt nur „TypeScript strict mode features appropriately" — neue Contributors fügen reflexartig <code>?:</code>-Checks ein, die hier nicht nötig sind.",
+        recommendation:
+          "Halbsatz in <code>CONTRIBUTING.md</code> Z. 130: „… and note that <code>strictNullChecks</code> is intentionally <code>false</code>; do not add defensive null guards.",
+        effort: "S"
+      },
+      {
+        id: "DX-005", category: "DX", severity: "low", status: "new",
+        title: "<code>backlog.html</code> im Tree gelöscht, aber Datei-Eintrag bleibt im git",
+        location: "git status zeigt <code>D backlog.html</code>",
+        description:
+          "Vor-Audit hat <code>backlog.html</code> bereits aus dem Working-Tree entfernt, der Löschvorgang ist aber noch nicht committet. <code>.npmignore</code> ignoriert die Datei sauber; im Git ist die Diff offen.",
+        recommendation:
+          "Den Delete committen und ggf. die <code>.npmignore</code>-Zeile entfernen, da die Datei eh weg ist.",
+        effort: "S"
+      },
+      {
+        id: "INF-001", category: "Impl", severity: "info", status: "unchanged",
+        title: "Modul-Singletons als bewusste Architektur",
+        location: "src/global-queues.ts · src/object-signals.ts · src/link.ts",
+        description:
+          "<code>globalSignalQueue</code> &amp; Co., <code>g_objectStores</code>, <code>gLinks</code>, <code>allGroups</code>, der <code>idCreator</code> sind Modul-globale Singletons. Bewusste Architektur — sollte aber im <code>docs/architecture.md</code> als Non-Goal für „mehrere parallele Reaktivitäts-Welten" expliziert werden.",
+        recommendation: "Halbsatz in der Architektur-Doku ergänzen.",
+        effort: "S"
+      },
+      {
+        id: "INF-002", category: "API", severity: "info", status: "unchanged",
+        title: "JSDoc-Vollständigkeit",
+        location: "diverse src/*.ts",
+        description:
+          "Die meisten Public-Exports haben JSDoc, einige interne Helper bewusst nicht. An den Lifecycle-Eckpunkten (<code>destroySignal</code>-Reihenfolge, Effect-mit-tot-Signal) wäre eine kurze JSDoc-Notiz wertvoll.",
+        recommendation:
+          "Pro Lifecycle-API einen Satz „what happens to dangling effects/links" ergänzen.",
+        effort: "S"
+      },
+      {
+        id: "INF-003", category: "Impl", severity: "info", status: "improved",
+        previousSeverity: "medium",
+        title: "Symbol-ID-Generator wächst unbegrenzt",
+        location: "src/UniqIdGen.ts",
+        description:
+          "<code>Symbol(`si${n}`)</code>-Labels werden für lange Prozesse mit hohem Signal-Churn lang („si1234567"). Kein Leak (Symbols sind GC-tauglich), nur kosmetisch.",
+        recommendation:
+          "Falls Debug-Labels langfristig stören: ID-Pool je Klasse mit Recycling, sonst belassen — aktuell unkritisch.",
+        effort: "S"
+      }
+    ]
+  };
+
+  const sevClass  = { critical: "critical", high: "high", medium: "medium", low: "low", info: "info" };
+  const sevLabel  = { critical: "Critical", high: "High", medium: "Medium", low: "Low", info: "Info" };
+  const sevOrder  = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+  const statusLabel = { "new": "Neu", "unchanged": "Unverändert", "improved": "Verbessert", "carried-over": "Fortgeschrieben" };
+  const statusClass = { "new": "s-new", "unchanged": "s-unchanged", "improved": "s-improved", "carried-over": "s-carried" };
+
+  const tbody = document.querySelector("#backlog tbody");
+  const findings = AUDIT.findings.slice().sort((a, b) => {
+    if (sevOrder[a.severity] !== sevOrder[b.severity]) return sevOrder[a.severity] - sevOrder[b.severity];
+    return a.id.localeCompare(b.id);
+  });
+
+  findings.forEach((f, idx) => {
+    const row = document.createElement("tr");
+    row.className = "row open";
+    row.dataset.sev    = f.severity;
+    row.dataset.status = f.status;
+    row.dataset.cat    = f.category;
+    row.innerHTML = `
+      <td><span class="id">${f.id}</span></td>
+      <td><span class="pill ${sevClass[f.severity]}">${sevLabel[f.severity]}</span></td>
+      <td>${f.title}<div class="loc">${f.location}</div></td>
+      <td>${f.category}</td>
+      <td><span class="pill ${statusClass[f.status]}">${statusLabel[f.status]}${f.status === "improved" && f.previousSeverity ? " (" + sevLabel[f.previousSeverity] + " → " + sevLabel[f.severity] + ")" : ""}</span></td>
+      <td>${f.effort}</td>
+    `;
+    const detail = document.createElement("tr");
+    detail.className = "detail hidden";
+    detail.dataset.sev    = f.severity;
+    detail.dataset.status = f.status;
+    detail.dataset.cat    = f.category;
+    detail.innerHTML = `
+      <td colspan="6">
+        <div><strong>Beschreibung.</strong> ${f.description}</div>
+        <div class="why"><strong>Empfehlung.</strong> ${f.recommendation}</div>
+      </td>
+    `;
+    row.addEventListener("click", () => detail.classList.toggle("hidden"));
+    tbody.appendChild(row);
+    tbody.appendChild(detail);
+  });
+
+  // Filters
+  const filters = { sev: "all", status: "all", cat: "all" };
+  document.querySelectorAll("button.f").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const filter = btn.dataset.filter;
+      const value  = btn.dataset.value;
+      document.querySelectorAll(`button.f[data-filter="${filter}"]`).forEach(b => b.classList.remove("on"));
+      btn.classList.add("on");
+      filters[filter] = value;
+      applyFilters();
+    });
+  });
+
+  function applyFilters() {
+    document.querySelectorAll("#backlog tr.row, #backlog tr.detail").forEach(tr => {
+      const okSev = filters.sev === "all" || tr.dataset.sev === filters.sev;
+      const okSt  = filters.status === "all" || tr.dataset.status === filters.status;
+      const okCat = filters.cat === "all" || tr.dataset.cat === filters.cat;
+      const visible = okSev && okSt && okCat;
+      if (tr.classList.contains("detail")) {
+        if (!visible) tr.classList.add("hidden");
+        // detail stays hidden unless user expanded it
+      } else {
+        tr.style.display = visible ? "" : "none";
+      }
+    });
+  }
+
+  window.__AUDIT__ = AUDIT;
+})();
+</script>
+
+</body>
+</html>

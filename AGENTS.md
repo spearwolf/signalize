@@ -131,7 +131,7 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 **Memos**: `createMemo`, `CreateMemoOptions`
 **Links**: `link`, `unlink`, `getLinksCount`, `SignalLink` (type), `ValueCallback`
 **Object Signals**: `destroyObjectSignals`, `findObjectSignalByName`, `findObjectSignalNames`, `findObjectSignals`
-**Groups**: `SignalGroup`, `SignalAutoMap`, `SignalAutoMapKeyType`
+**Groups**: `SignalGroup`, `getSignalGroupsCount`, `SignalAutoMap`, `SignalAutoMapKeyType`
 **Utilities**: `batch`, `beQuiet`, `isQuiet`, `hibernate`
 **Classes**: `Signal`, `Effect`, `SignalGroup`, `SignalAutoMap`
 **Types**: everything from `types.ts`

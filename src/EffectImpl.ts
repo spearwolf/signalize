@@ -284,8 +284,27 @@ export class EffectImpl {
     }
   }
 
-  [$destroySignal](signalId: symbol): void {
-    if (!this.#destroyedSignals.has(signalId) && this.#signals.has(signalId)) {
+  [$destroySignal](signalId: symbol, params?: {detach?: boolean}): void {
+    if (!this.#signals.has(signalId)) return;
+
+    if (params?.detach) {
+      // Soft-detach: the signal stays alive; we just drop our subscription.
+      // Removing the id from #signals (and any prior destroyed-marker) lets
+      // a later whenSignalIsRead() re-subscribe cleanly when the effect
+      // runs again and re-reads this signal.
+      this.unsubscribeSignal(signalId);
+      this.#signals.delete(signalId);
+      this.#destroyedSignals.delete(signalId);
+      this.#lostSignals.delete(signalId);
+
+      if (this.#signals.size === 0) {
+        // no signals left, so nobody can trigger this effect anymore
+        this.destroy();
+      }
+      return;
+    }
+
+    if (!this.#destroyedSignals.has(signalId)) {
       this.#destroyedSignals.add(signalId);
 
       this.unsubscribeSignal(signalId);

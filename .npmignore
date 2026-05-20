@@ -24,6 +24,7 @@ jest.config.*
 types
 hero.gif
 hero.png
+hero2*.png
 hero.webp
 hero-web.webp
 hero-next.xcf
@@ -34,3 +35,5 @@ CLAUDE.md
 Backlog.md
 biome.json
 backlog.html
+audit.html
+coverage
