@@ -31,4 +31,15 @@ export default {
     '(.+)\\.js$': '$1',
   },
   extensionsToTreatAsEsm: ['.ts'],
+
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/**/*.test.ts'],
+  coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
+  coverageThreshold: {
+    global: {
+      branches: 85,
+      functions: 85,
+      lines: 95,
+      statements: 95,
+    },
+  },
 };

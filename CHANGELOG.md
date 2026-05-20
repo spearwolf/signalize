@@ -22,6 +22,11 @@
 ### Tests
 
 - `decorators.memo.spec.ts`: rename misleading `'non-lazy by default'` → `'always lazy'` (the assertions verify lazy behavior)
+- `jest.config.js`: enforce coverage thresholds (branches/functions ≥ 85%, lines/statements ≥ 95%); emit `json-summary` + `lcov` reporters
+
+### Build System
+
+- CI: publish coverage summary to the workflow summary and upload the `coverage/` directory as an artifact (14 days retention)
 
 ## `v0.29.0` (2026-05-13)
 
