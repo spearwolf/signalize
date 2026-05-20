@@ -96,7 +96,7 @@ Runs anywhere modern JavaScript runs. Targets ES2023, requires Node `>=24.13`.
 npm install @spearwolf/signalize
 ```
 
-`@spearwolf/eventize` is a peer dependency.
+[`@spearwolf/eventize`](https://github.com/spearwolf/eventize) 🏹 is a peer dependency.
 
 ## API at a glance
 
