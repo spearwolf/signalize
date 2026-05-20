@@ -727,7 +727,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         description:
           "Bei <code>createEffect(cb, ['a','b'])</code> ohne <code>{attach: this}</code> bleibt <code>group</code> in EffectImpl.ts Z. 115 undefined; Z. 129 ruft danach <code>group.signal(dep)</code> — wirft unkontrolliert <em>TypeError: Cannot read properties of undefined</em>. Vom Typsystem nicht erzwungen.",
         recommendation:
-          "Entweder eine klare Fehlermeldung werfen („String/symbol dependencies require an `attach` option") oder via Conditional Types ausschließen, dass deps-Array nicht-SignalLike-Werte enthält, wenn kein attach gesetzt ist.",
+          "Entweder eine klare Fehlermeldung werfen („String/symbol dependencies require an `attach` option\") oder via Conditional Types ausschließen, dass deps-Array nicht-SignalLike-Werte enthält, wenn kein attach gesetzt ist.",
         effort: "S"
       },
       {
@@ -747,7 +747,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         description:
           "Dasselbe Signal lässt sich auf vier Wegen lesen: <code>signal.get()</code> (tracked), <code>signal.value</code> (untracked), <code>value(signal)</code> (untracked), <code>signal.get(cb)</code> (deprecated, internal effect). Plus <code>onChange()</code> als Subscription-Variante. Verwirrend, da z. B. <code>beforeRead</code> nur bei tracked Reads feuert — nicht bei <code>.value</code>/<code>value()</code>.",
         recommendation:
-          "Einen prominenten „Read API at a glance"-Block ganz oben in <code>docs/api.md</code> einbauen: vier Lese-Varianten, drei Konsequenzen (tracking, beforeRead, Cleanup), eine Tabelle.",
+          "Einen prominenten „Read API at a glance\"-Block ganz oben in <code>docs/api.md</code> einbauen: vier Lese-Varianten, drei Konsequenzen (tracking, beforeRead, Cleanup), eine Tabelle.",
         effort: "S"
       },
       {
@@ -795,7 +795,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         title: "Keine Microbench-Suite, keine PR-Regression-Detection",
         location: "package.json scripts · keine bench/",
         description:
-          "Bibliothek wirbt mit „zero overhead" und „inline propagation", liefert aber keinen reproduzierbaren Microbench. Performance-Regressionen sind unsichtbar bis sie ein Konsument findet.",
+          "Bibliothek wirbt mit „zero overhead\" und „inline propagation\", liefert aber keinen reproduzierbaren Microbench. Performance-Regressionen sind unsichtbar bis sie ein Konsument findet.",
         recommendation:
           "<code>tinybench</code>-basiertes <code>bench/</code> mit 4–6 Szenarien (set+notify Throughput, Memo-Recompute, Batch-Flush, Dependency-Diff). CI-Step vergleicht gegen Baseline aus <code>main</code>; nur Soft-Warn, kein Block.",
         effort: "M"
@@ -865,7 +865,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         title: "Kein Browser-Smoke-Test",
         location: ".github/workflows/*",
         description:
-          "README behauptet „runs anywhere modern JS runs", CI läuft aber nur Node. Edge-Cases wie unterschiedliche WeakMap/FinalizationRegistry-Semantik in Browser-Engines sind ungetestet.",
+          "README behauptet „runs anywhere modern JS runs\", CI läuft aber nur Node. Edge-Cases wie unterschiedliche WeakMap/FinalizationRegistry-Semantik in Browser-Engines sind ungetestet.",
         recommendation:
           "Playwright + Vite-Mini-Demo (HTML + ein <code>main.ts</code> mit Signal/Effect-Hot-Path). Ein einziger CI-Step, ~30 s.",
         effort: "M"
@@ -875,7 +875,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         title: "Kein DevTools-Inspector",
         location: "—",
         description:
-          "Effect-Graph, Subscription-Heatmap, Live-Counter-Dashboard fehlen. Für ein Library mit explizitem „Debug-Friendly"-Anspruch (sichtbare <code>getSignalsCount</code> etc.) eine Lücke.",
+          "Effect-Graph, Subscription-Heatmap, Live-Counter-Dashboard fehlen. Für ein Library mit explizitem „Debug-Friendly\"-Anspruch (sichtbare <code>getSignalsCount</code> etc.) eine Lücke.",
         recommendation:
           "Separater Subpath <code>./devtools</code> (kein Default-Bundle-Aufschlag). Browser-Extension oder Embed-Snippet. Größere Investition — frühestens v1.x.",
         effort: "L"
@@ -885,9 +885,9 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         title: "Node ≥ 24.13 ist eine hohe Adoptions-Schwelle",
         location: "package.json engines",
         description:
-          "Node 24 ist erst ab Q4 2025 LTS; Bestandsprojekte auf 20/22 sind weiter Mainstream in 2026. Hohe Schwelle für „nur eine Reactivity-Lib".",
+          "Node 24 ist erst ab Q4 2025 LTS; Bestandsprojekte auf 20/22 sind weiter Mainstream in 2026. Hohe Schwelle für „nur eine Reactivity-Lib\".",
         recommendation:
-          "Prüfen, ob 20.x oder 22.x reichen — wenn ja, Engines lockern. Wenn nicht, im README einen kurzen „Why ≥ 24.13"-Block einbauen, damit der Trade-off sichtbar ist.",
+          "Prüfen, ob 20.x oder 22.x reichen — wenn ja, Engines lockern. Wenn nicht, im README einen kurzen „Why ≥ 24.13\"-Block einbauen, damit der Trade-off sichtbar ist.",
         effort: "S"
       },
       {
@@ -897,7 +897,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         description:
           "Für die deklarierte Zielgruppe (3D, PWAs) ist ESM-only vertretbar, aber Tooling- und Build-Setups in Legacy-Stacks stolpern. Keine Doku-Notiz vorhanden.",
         recommendation:
-          "Im README einen Halbsatz: „ESM-only — kein CJS-Build". Bei <code>require('@spearwolf/signalize')</code> wirft Node deutlich, aber eine explizite Notiz beugt Issues vor.",
+          "Im README einen Halbsatz: „ESM-only — kein CJS-Build\". Bei <code>require('@spearwolf/signalize')</code> wirft Node deutlich, aber eine explizite Notiz beugt Issues vor.",
         effort: "S"
       },
       {
@@ -915,7 +915,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         title: "<code>CONTRIBUTING.md</code> erwähnt <code>strictNullChecks: false</code> nicht",
         location: "CONTRIBUTING.md:130",
         description:
-          "Steht zwar in <code>AGENTS.md</code>/<code>CLAUDE.md</code> als bewusste Setting. <code>CONTRIBUTING.md</code> sagt nur „TypeScript strict mode features appropriately" — neue Contributors fügen reflexartig <code>?:</code>-Checks ein, die hier nicht nötig sind.",
+          "Steht zwar in <code>AGENTS.md</code>/<code>CLAUDE.md</code> als bewusste Setting. <code>CONTRIBUTING.md</code> sagt nur „TypeScript strict mode features appropriately\" — neue Contributors fügen reflexartig <code>?:</code>-Checks ein, die hier nicht nötig sind.",
         recommendation:
           "Halbsatz in <code>CONTRIBUTING.md</code> Z. 130: „… and note that <code>strictNullChecks</code> is intentionally <code>false</code>; do not add defensive null guards.",
         effort: "S"
@@ -935,7 +935,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         title: "Modul-Singletons als bewusste Architektur",
         location: "src/global-queues.ts · src/object-signals.ts · src/link.ts",
         description:
-          "<code>globalSignalQueue</code> &amp; Co., <code>g_objectStores</code>, <code>gLinks</code>, <code>allGroups</code>, der <code>idCreator</code> sind Modul-globale Singletons. Bewusste Architektur — sollte aber im <code>docs/architecture.md</code> als Non-Goal für „mehrere parallele Reaktivitäts-Welten" expliziert werden.",
+          "<code>globalSignalQueue</code> &amp; Co., <code>g_objectStores</code>, <code>gLinks</code>, <code>allGroups</code>, der <code>idCreator</code> sind Modul-globale Singletons. Bewusste Architektur — sollte aber im <code>docs/architecture.md</code> als Non-Goal für „mehrere parallele Reaktivitäts-Welten\" expliziert werden.",
         recommendation: "Halbsatz in der Architektur-Doku ergänzen.",
         effort: "S"
       },
@@ -946,7 +946,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         description:
           "Die meisten Public-Exports haben JSDoc, einige interne Helper bewusst nicht. An den Lifecycle-Eckpunkten (<code>destroySignal</code>-Reihenfolge, Effect-mit-tot-Signal) wäre eine kurze JSDoc-Notiz wertvoll.",
         recommendation:
-          "Pro Lifecycle-API einen Satz „what happens to dangling effects/links" ergänzen.",
+          "Pro Lifecycle-API einen Satz „what happens to dangling effects/links\" ergänzen.",
         effort: "S"
       },
       {
@@ -955,7 +955,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         title: "Symbol-ID-Generator wächst unbegrenzt",
         location: "src/UniqIdGen.ts",
         description:
-          "<code>Symbol(`si${n}`)</code>-Labels werden für lange Prozesse mit hohem Signal-Churn lang („si1234567"). Kein Leak (Symbols sind GC-tauglich), nur kosmetisch.",
+          "<code>Symbol(`si${n}`)</code>-Labels werden für lange Prozesse mit hohem Signal-Churn lang („si1234567\"). Kein Leak (Symbols sind GC-tauglich), nur kosmetisch.",
         recommendation:
           "Falls Debug-Labels langfristig stören: ID-Pool je Klasse mit Recycling, sonst belassen — aktuell unkritisch.",
         effort: "S"
