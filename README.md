@@ -1,4 +1,4 @@
-![signalize hero](https://github.com/spearwolf/signalize/blob/main/hero.gif?raw=true)
+![signalize hero](https://github.com/spearwolf/signalize/blob/main/hero2--noir.png?raw=true)
 
 ![npm (scoped)](https://img.shields.io/npm/v/%40spearwolf/signalize)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/spearwolf/signalize/main.yml)
@@ -275,7 +275,3 @@ Issues and pull requests are welcome. See
 
 Apache-2.0. See [LICENSE](./LICENSE).
 
----
-
-Hero image generated with DALL·E (guided by ChatGPT), animated by KLING AI,
-converted by Ezgif.com.
