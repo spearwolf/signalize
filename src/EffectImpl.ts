@@ -29,10 +29,38 @@ import {UniqIdGen} from './UniqIdGen.js';
 
 export type EffectDeps = (SignalLike<any> | string | symbol)[];
 
+/** Deps array containing only SignalLike entries — no group needed. */
+export type SignalLikeDeps = SignalLike<any>[];
+
 export interface EffectOptions {
   autorun?: boolean;
   dependencies?: EffectDeps;
   attach?: object | SignalGroup;
+  priority?: number;
+}
+
+/**
+ * Effect options whose `dependencies` (if any) contain only SignalLike
+ * entries. `attach` stays optional because no name lookup is needed.
+ */
+export interface EffectOptionsWithSignalDeps {
+  autorun?: boolean;
+  dependencies?: SignalLikeDeps;
+  attach?: object | SignalGroup;
+  priority?: number;
+}
+
+/**
+ * Effect options whose `dependencies` array contains at least one
+ * string/symbol entry. Such names are resolved via a SignalGroup, so
+ * `attach` is **required** by the type system — preventing the runtime
+ * TypeError that would otherwise be thrown when `group.signal(name)` is
+ * called on an undefined group.
+ */
+export interface EffectOptionsWithNameDeps {
+  autorun?: boolean;
+  dependencies: EffectDeps;
+  attach: object | SignalGroup;
   priority?: number;
 }
 
@@ -153,6 +181,32 @@ export class EffectImpl {
     }
   }
 
+  // Overload 1: options-only form with pure-SignalLike deps (or no deps).
+  // `attach` is optional because no name lookup is needed.
+  static createEffect(
+    callback: EffectCallback,
+    options?: EffectOptionsWithSignalDeps,
+  ): Effect;
+  // Overload 2: options-only form with string/symbol deps. The conditional
+  // type forces `attach` to be present — without a group, name lookup
+  // would throw at runtime.
+  static createEffect(
+    callback: EffectCallback,
+    options: EffectOptionsWithNameDeps,
+  ): Effect;
+  // Overload 3: positional deps, SignalLike-only — `attach` optional.
+  static createEffect(
+    callback: EffectCallback,
+    dependencies: SignalLikeDeps,
+    options?: Omit<EffectOptionsWithSignalDeps, 'dependencies'>,
+  ): Effect;
+  // Overload 4: positional deps containing string/symbol — options is
+  // required and must carry `attach`.
+  static createEffect(
+    callback: EffectCallback,
+    dependencies: EffectDeps,
+    options: Omit<EffectOptionsWithNameDeps, 'dependencies'>,
+  ): Effect;
   static createEffect(
     callback: EffectCallback,
     optsOrDeps?: EffectOptions | EffectDeps,

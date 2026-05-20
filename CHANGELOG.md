@@ -11,6 +11,7 @@
 ### Bug Fixes
 
 - `SignalGroup.attachSignalByName`: deduplicate name→signal mapping (no more duplicate entries on repeated attach); internal `#otherSignals` is now `Map<name, Set<SignalImpl>>`
+- `createEffect`: conditional-type overloads now reject string/symbol dependencies without an `attach` option at compile time, preventing the previous runtime `TypeError` from `group.signal(name)` on an undefined group
 
 ### Documentation
 
