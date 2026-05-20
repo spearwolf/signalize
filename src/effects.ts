@@ -22,8 +22,8 @@ import {globalEffectQueue} from './global-queues.js';
  * @param options - Configuration options (autorun, priority, attach)
  * @returns An Effect object with run() and destroy() methods
  */
-export const createEffect: typeof EffectImpl.createEffect = (...args) =>
-  EffectImpl.createEffect(...args);
+export const createEffect: typeof EffectImpl.createEffect =
+  EffectImpl.createEffect;
 
 /**
  * Subscribe to effect creation events. Called whenever a new effect is created.

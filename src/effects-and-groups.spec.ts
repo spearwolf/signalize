@@ -1,4 +1,5 @@
 import {assertEffectsCount} from './assert-helpers.js';
+import {createSignal} from './createSignal.js';
 import {signal} from './decorators.js';
 import {createEffect, destroyObjectSignals} from './index.js';
 
@@ -61,5 +62,33 @@ describe('effects and groups', () => {
     expect(cleanup).toHaveBeenCalledWith('phoobar');
 
     destroyObjectSignals(foo);
+  });
+
+  it('typed: name-deps without attach are a compile-time error', () => {
+    const sig = createSignal(0);
+    const noop = () => {};
+
+    // Valid: positional SignalLike deps — attach optional.
+    createEffect(noop, [sig]).destroy();
+
+    // Valid: positional name deps with attach.
+    class Host {
+      @signal() accessor x = 1;
+      constructor() {
+        createEffect(noop, ['x'], {attach: this}).run();
+      }
+    }
+    const host = new Host();
+    destroyObjectSignals(host);
+
+    // Invalid: positional name deps without attach.
+    // @ts-expect-error — string dep requires `attach` option
+    const bad = () => createEffect(noop, ['x']);
+    expect(typeof bad).toBe('function');
+
+    // Invalid: options-form name deps without attach.
+    // @ts-expect-error — string dep in options requires `attach`
+    const bad2 = () => createEffect(noop, {dependencies: ['x']});
+    expect(typeof bad2).toBe('function');
   });
 });
