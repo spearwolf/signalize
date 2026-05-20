@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Audit · @spearwolf/signalize v0.29.0</title>
+<title>Audit · @spearwolf/signalize v0.30.0</title>
 <style>
   :root {
     --bg: #0f172a;
@@ -109,6 +109,16 @@
     font-size: 13px;
   }
   .diff-line strong { color: var(--text); }
+
+  .history {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin: 18px 0 26px;
+  }
+  .history svg { display: block; width: 100%; max-width: 640px; height: auto; }
+  .history .caption { color: var(--muted); font-size: 12.5px; margin-top: 6px; font-style: italic; }
 
   .grid {
     display: grid;
@@ -287,7 +297,7 @@
   <div>
     <h1>Audit · <code>@spearwolf/signalize</code></h1>
     <div class="meta">
-      Version <strong>0.29.0</strong> · ESM-only · Node ≥ 24.13 · TypeScript 6 · Erstellt am <strong>2026-05-20</strong>
+      Version <strong>0.30.0</strong> · ESM-only · Node ≥ 24.13 · TypeScript 6 · Erstellt am <strong>2026-05-20</strong>
     </div>
     <div class="badges">
       <span class="badge">Reaktivitäts-Bibliothek</span>
@@ -299,14 +309,51 @@
     </div>
   </div>
   <div class="score-box">
-    <div class="score">73<span class="max"> / 100</span></div>
-    <div class="delta"><span class="up">▲ +5</span> vorher 68 · 2026-05-14</div>
+    <div class="score">72<span class="max"> / 100</span></div>
+    <div class="delta"><span class="down">▼ −1</span> vorher 73 · 2026-05-20</div>
   </div>
 </header>
 
 <p class="diff-line">
-  <strong>Seit letztem Audit:</strong> 4 Findings behoben, 1 verbessert, 2 neu. Schwerpunkt der Verbesserungen: <code>SignalGroup</code> bekommt Auto-Cleanup via <code>FinalizationRegistry</code>, <code>attachSignalByName</code>-Duplikate sind durch Wechsel auf <code>Set</code> verschwunden, neues <code>SignalGroup#off()</code> mit umfassenden Specs.
+  <strong>Seit letztem Audit (gleicher Tag, v0.30.0):</strong> 4 Findings behoben (BUG-001, TEST-001, DOC-001, DX-005), 1 verbessert (API-001), 4 neu — darunter ein neuer <em>High</em>-Befund am <code>@memo</code>-Decorator. Net-Effekt am Score: −1.
 </p>
+
+<!-- ===================== Score-Verlauf ===================== -->
+<section class="history">
+  <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"  stop-color="#8aa6ff" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#8aa6ff" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <!-- gridlines -->
+    <line x1="60" y1="30"  x2="620" y2="30"  stroke="#233149" stroke-dasharray="2 4"/>
+    <line x1="60" y1="100" x2="620" y2="100" stroke="#233149" stroke-dasharray="2 4"/>
+    <line x1="60" y1="170" x2="620" y2="170" stroke="#233149" stroke-dasharray="2 4"/>
+    <!-- y-axis labels -->
+    <text x="52" y="34"  fill="#94a3b8" font-size="11" text-anchor="end">100</text>
+    <text x="52" y="104" fill="#94a3b8" font-size="11" text-anchor="end">50</text>
+    <text x="52" y="174" fill="#94a3b8" font-size="11" text-anchor="end">0</text>
+    <!-- area fill -->
+    <path d="M 80,124 L 350,54 L 620,58 L 620,170 L 80,170 Z" fill="url(#g)"/>
+    <!-- line -->
+    <polyline points="80,124 350,54 620,58" fill="none" stroke="#8aa6ff" stroke-width="2"/>
+    <!-- points -->
+    <circle cx="80"  cy="124" r="4" fill="#131c2f" stroke="#8aa6ff" stroke-width="2"/>
+    <circle cx="350" cy="54"  r="4" fill="#131c2f" stroke="#8aa6ff" stroke-width="2"/>
+    <circle cx="620" cy="58"  r="6" fill="#8aa6ff" stroke="#0f172a" stroke-width="2"/>
+    <!-- value labels -->
+    <text x="80"  y="118" fill="#e2e8f0" font-size="11" text-anchor="middle">68</text>
+    <text x="350" y="48"  fill="#e2e8f0" font-size="11" text-anchor="middle">73</text>
+    <text x="620" y="48"  fill="#e2e8f0" font-size="12" font-weight="600" text-anchor="middle">72</text>
+    <!-- date labels -->
+    <text x="80"  y="192" fill="#94a3b8" font-size="11" text-anchor="middle">2026-05-14</text>
+    <text x="350" y="192" fill="#94a3b8" font-size="11" text-anchor="middle">2026-05-20 (Lauf 1)</text>
+    <text x="620" y="192" fill="#94a3b8" font-size="11" text-anchor="end">2026-05-20 (Lauf 2)</text>
+  </svg>
+  <div class="caption">Verlauf der Health-Scores seit 2026-05-14 (drei Audits). Der heutige Stand liegt einen Punkt unter dem vorherigen Lauf, weil <code>MEMO-001</code> als neues High-Finding hinzukommt — die Trendlinie über zwei Wochen bleibt klar positiv (+4).</div>
+</section>
 
 <!-- ===================== Projektportrait ===================== -->
 <section>
@@ -341,7 +388,7 @@
   </div>
   <div class="domain">
     <h4>Lifecycle &amp; Grouping</h4>
-    <p>Signal-/Effect-/Link-Container mit explizitem <code>clear()</code>, neuem <code>off()</code> und FR-Auto-Cleanup. Namespace-Lookup und Auto-Map.</p>
+    <p>Signal-/Effect-/Link-Container mit explizitem <code>clear()</code>, <code>off()</code> und FR-Auto-Cleanup. Namespace-Lookup und Auto-Map.</p>
     <div class="paths"><code>src/SignalGroup.ts</code><code>src/SignalAutoMap.ts</code><code>src/object-signals.ts</code></div>
   </div>
   <div class="domain">
@@ -441,61 +488,40 @@
 <h2>Executive Summary</h2>
 <div class="summary">
   <p>
-    Das Projekt ist nochmal sichtbar gereift. Die beiden mechanischen Risiken aus
-    dem Vor-Audit — orphan <code>SignalGroup</code>s ohne <code>clear()</code> und
-    duplizierte <code>#otherSignals</code>-Einträge — sind jetzt im Code adressiert:
-    ein <code>FinalizationRegistry</code> übernimmt Auto-Cleanup, die interne
-    Map wurde auf <code>Map&lt;name, Set&lt;SignalImpl&gt;&gt;</code> umgestellt, und
-    ein neues <code>SignalGroup#off()</code> mit dreizehn Specs erlaubt
-    Pause/Swap-Workflows ohne Identitätsverlust der Signale.
+    Die v0.30.0 hat die schwersten Punkte aus dem Vor-Audit sauber zugemacht:
+    <code>createEffect</code> verbietet jetzt am Typ-System String-/Symbol-Deps
+    ohne <code>attach</code> (BUG-001 erledigt), CI misst Coverage mit harten
+    Schwellen von 95 % Lines/Statements und 85 % Branches (TEST-001 erledigt),
+    und ein paar kleinere Doku-Lücken wurden geschlossen. Die echte Coverage
+    liegt aktuell bei 98,5 % Lines / 90,5 % Branches — komfortabler Puffer.
   </p>
   <p>
-    <strong>Was offen bleibt</strong>, ist eher Pflege als Substanz: das Coverage-Gate fehlt
-    immer noch in CI, ein Microbench läuft nicht mit, der TypeError-Pfad bei
-    String-/Symbol-Deps ohne <code>attach</code> ist weiterhin unbewacht, und am
-    Repo-Wurzel kleben mehrere Megabyte alter Hero-Assets samt zweier
-    Scratch-Files (<code>foo.mjs</code>, <code>diamond-example.mjs</code>) — beide
-    sauber <code>.npmignored</code>, aber unangenehm für <code>git clone</code>-Größe.
+    Der frische Audit findet dafür einen <strong>High</strong>-Befund am
+    <code>@memo</code>-Decorator: das Memo speichert die Args aus dem
+    <em>ersten</em> Aufruf in seiner Closure; spätere Aufrufe mit anderen Args
+    bekommen still den alten Cache-Treffer. Der Typ akzeptiert Methoden mit
+    Parametern, der Test deckt nur den argumentlosen Fall ab — eine klassische
+    LLM-Falle in dokumentierter API. Daneben drei Befunde mittlerer/niedriger
+    Härte: ein schmaler Subscription-Leak in <code>SignalLink</code>
+    (<code>once()</code>-Listener auf globalen Queues werden bei früherem
+    <code>destroy()</code> nicht entkoppelt), <code>createSignal(existing, params)</code>
+    verwirft <code>lazy</code>/<code>compare</code>/<code>beforeRead</code> still,
+    und der Score-Liniendiagramm-Trend zeigt sauber, dass der Backlog im
+    Großen abnimmt — die neue High-Position verdient Priorität vor v0.31.
   </p>
-  <p>
-    <strong>Empfehlung:</strong> v0.30 als „Polish-Release" — die zwei verbleibenden
-    High-Findings adressieren, Read-API-Cheatsheet in <code>docs/api.md</code>
-    ergänzen, und ein <code>examples/</code>-Ordner mit minimalen
-    Framework-Adaptern aufbauen. Danach wäre v1.0 ein vertretbarer Schritt.
-  </p>
-</div>
-
-<div class="grid">
-  <div class="card"><div class="label">Source-Dateien (ohne Specs)</div><div class="value">25</div><div class="sub">~1.880 LOC Produktion</div></div>
-  <div class="card"><div class="label">Spec-Dateien</div><div class="value">31</div><div class="sub">~7.050 LOC Tests</div></div>
-  <div class="card"><div class="label">Test/Prod-Verhältnis</div><div class="value">~3,7×</div></div>
-  <div class="card"><div class="label">Findings gesamt</div><div class="value">21</div><div class="sub">0&nbsp;crit · 2&nbsp;high · 9&nbsp;med · 10&nbsp;low</div></div>
-  <div class="card"><div class="label">Public-Exports</div><div class="value">~36</div><div class="sub"><code>.</code> + <code>./decorators</code></div></div>
-  <div class="card"><div class="label">Health-Score</div><div class="value">73</div><div class="sub">▲ +5 ggü. 2026-05-14</div></div>
 </div>
 </section>
 
-<!-- ===================== Severity ===================== -->
+<!-- ===================== Severity-Übersicht ===================== -->
 <section>
-<h2>Severity-Übersicht</h2>
-<div class="sev-row"><div class="lbl">Critical</div><div class="sev-bar critical"><div style="width:0%"></div></div><div class="num">0</div></div>
-<div class="sev-row"><div class="lbl">High</div>    <div class="sev-bar high">    <div style="width:18%"></div></div><div class="num">2</div></div>
-<div class="sev-row"><div class="lbl">Medium</div>  <div class="sev-bar medium">  <div style="width:65%"></div></div><div class="num">9</div></div>
-<div class="sev-row"><div class="lbl">Low</div>     <div class="sev-bar low">     <div style="width:80%"></div></div><div class="num">10</div></div>
-<div class="sev-row"><div class="lbl">Info</div>    <div class="sev-bar info">    <div style="width:25%"></div></div><div class="num">3</div></div>
+<h2>Severity</h2>
+<div id="sev-overview"></div>
+</section>
 
-<h3>Kategorien</h3>
-<div class="cat-list">
-  <div class="row"><span>API &amp; Konsistenz</span><span class="n">7</span></div>
-  <div class="row"><span>Bugs &amp; Korrektheit</span><span class="n">1</span></div>
-  <div class="row"><span>Developer Experience</span><span class="n">4</span></div>
-  <div class="row"><span>Test &amp; Coverage</span><span class="n">3</span></div>
-  <div class="row"><span>Performance</span><span class="n">1</span></div>
-  <div class="row"><span>Reliability</span><span class="n">1</span></div>
-  <div class="row"><span>Implementation</span><span class="n">2</span></div>
-  <div class="row"><span>Repo-Hygiene</span><span class="n">1</span></div>
-  <div class="row"><span>Docs &amp; Konventionen</span><span class="n">1</span></div>
-</div>
+<!-- ===================== Kategorie-Übersicht ===================== -->
+<section>
+<h2>Kategorien</h2>
+<div id="cat-overview" class="cat-list"></div>
 </section>
 
 <!-- ===================== Backlog ===================== -->
@@ -511,41 +537,45 @@
   <button class="f" data-filter="sev" data-value="low">Low</button>
   <button class="f" data-filter="sev" data-value="info">Info</button>
 </div>
+
 <div class="filters">
   <span class="f-label">Status</span>
   <button class="f on" data-filter="status" data-value="all">Alle</button>
   <button class="f" data-filter="status" data-value="new">Neu</button>
-  <button class="f" data-filter="status" data-value="unchanged">Unverändert</button>
   <button class="f" data-filter="status" data-value="improved">Verbessert</button>
+  <button class="f" data-filter="status" data-value="unchanged">Unverändert</button>
   <button class="f" data-filter="status" data-value="carried-over">Fortgeschrieben</button>
 </div>
+
 <div class="filters">
   <span class="f-label">Kategorie</span>
   <button class="f on" data-filter="cat" data-value="all">Alle</button>
-  <button class="f" data-filter="cat" data-value="API">API</button>
   <button class="f" data-filter="cat" data-value="Bugs">Bugs</button>
-  <button class="f" data-filter="cat" data-value="DX">DX</button>
+  <button class="f" data-filter="cat" data-value="API">API</button>
+  <button class="f" data-filter="cat" data-value="Impl">Impl</button>
   <button class="f" data-filter="cat" data-value="Tests">Tests</button>
-  <button class="f" data-filter="cat" data-value="Performance">Perf</button>
+  <button class="f" data-filter="cat" data-value="Performance">Performance</button>
   <button class="f" data-filter="cat" data-value="Reliability">Reliability</button>
-  <button class="f" data-filter="cat" data-value="Impl">Implementation</button>
-  <button class="f" data-filter="cat" data-value="Repo">Repo</button>
+  <button class="f" data-filter="cat" data-value="DX">DX</button>
   <button class="f" data-filter="cat" data-value="Docs">Docs</button>
+  <button class="f" data-filter="cat" data-value="Repo">Repo</button>
+  <button class="f" data-filter="cat" data-value="Memory">Memory</button>
 </div>
 
 <table class="backlog" id="backlog">
   <thead>
     <tr>
-      <th style="width:88px">ID</th>
-      <th style="width:84px">Sev.</th>
-      <th>Titel</th>
-      <th style="width:120px">Kategorie</th>
-      <th style="width:90px">Status</th>
-      <th style="width:60px">Effort</th>
+      <th style="width:60px;">ID</th>
+      <th style="width:90px;">Sev</th>
+      <th>Titel · Ort</th>
+      <th style="width:110px;">Kategorie</th>
+      <th style="width:170px;">Status</th>
+      <th style="width:60px;">Effort</th>
     </tr>
   </thead>
-  <tbody><!-- rows injected via JS --></tbody>
+  <tbody></tbody>
 </table>
+<p style="color: var(--muted); font-size: 12.5px; margin-top: 0;">Tipp: Zeile anklicken, um Beschreibung &amp; Empfehlung auszuklappen.</p>
 </section>
 
 <!-- ===================== Offene Fragen ===================== -->
@@ -553,32 +583,30 @@
 <h2>Offene Fragen / Unklarheiten</h2>
 <ul>
   <li>
-    <strong>Node ≥ 24.13 als Mindestversion:</strong> ist diese harte Schwelle eine bewusste
-    Entscheidung („Bleeding-Edge-Konsumenten only") oder Versehen aus dem letzten
-    Engine-Bump? Node 24 LTS startet erst Q4 2025; viele Bestandsprojekte werden
-    in 2026 noch auf 20/22 sitzen.
+    <strong>Soll <code>@memo</code> die Args mit-cachen?</strong>
+    Die heutige Implementierung ignoriert Args nach dem ersten Aufruf still. Sauberere
+    Alternativen: (a) eine <em>Args-Map</em> in der Closure (Memo pro Args-Tupel), oder
+    (b) der Decorator akzeptiert <em>nur</em> argumentlose Methoden und der Typ erzwingt
+    das. (a) hat unklare Memory-Implikationen; (b) ist ein dokumentiertes Breaking
+    Change. Designentscheidung vor dem Fix.
   </li>
   <li>
-    <strong>Mehrere Reaktivitäts-Welten:</strong> ist es ein bewusstes Non-Goal,
-    dass mehrere parallele Reaktivitäts-Sandboxes (z. B. SSR-Isolation,
-    Web-Worker, Mikrofrontends) nicht unterstützt sind? Wenn ja, wäre eine kurze
-    Notiz in der Architektur-Doku hilfreich.
+    <strong>Lazy Reads in Combination mit <code>onChange</code>:</strong>
+    Liefert <code>Signal.onChange(cb)</code> bei lazy Signalen eine korrekte
+    Initialisierungssequenz? Der Effect liest <code>this.value</code> (untracked) —
+    Bei lazy materialisiert das die Factory. Sollte das beforeRead/Track-Verhalten
+    explizit dokumentiert sein?
   </li>
   <li>
-    <strong>Updater-Funktionen:</strong> <code>set((v) =&gt; v + 1)</code> wird vom TS-Typ
-    geblockt, läuft im JS-Pfad aber durch und speichert die Funktion als Wert.
-    Ist das Verhalten dauerhaft so gewollt — oder wäre eine zukünftige
-    Updater-Variante (z. B. <code>signal.update(fn)</code>) ein Add?
+    <strong>Multi-Bundle-Toleranz</strong> (REL-001 fortgeschrieben): Es gibt
+    weiterhin keinen <code>globalThis.__signalize__</code>-Sentinel. Ist das ein
+    bewusster Verzicht (z. B. weil Konsumenten in der Praxis nie zwei Instanzen ziehen)?
   </li>
   <li>
-    <strong>Memos &amp; <code>name</code> ohne <code>attach</code>:</strong> ist das gewünschtes
-    Silent-No-op-Verhalten oder ein Doku-Bug? Wenn ersteres: warum ist die Option
-    überhaupt unabhängig?
-  </li>
-  <li>
-    <strong>Decorators-Subpath als opt-in:</strong> die Klassen-API wird im README sehr
-    prominent gezeigt, ist aber subpath-only und braucht TS 5+. Ist Promotion-Niveau
-    angemessen?
+    <strong>Subscription-Leak in <code>SignalLink</code> (LEAK-001):</strong>
+    Ist der Effekt in der Praxis spürbar (viele short-lived Links bei lang-lebigen
+    Source-Signalen) oder rein theoretisch? Eine Stresstest-Spec mit
+    <code>getSubscriptionCount(globalDestroySignalQueue)</code> würde das messbar machen.
   </li>
 </ul>
 </section>
@@ -586,49 +614,38 @@
 <!-- ===================== Optimierungspotenzial ===================== -->
 <section>
 <h2>Optimierungspotenzial</h2>
-<p>
-  <em>Keine Defekte — sondern Möglichkeiten, das Projekt geschmeidiger zu machen.</em>
-</p>
 <ul>
   <li>
-    <strong>Coverage-Gate.</strong> <code>jest --coverage</code> in <code>pnpm world</code>
-    aufnehmen, einen sichtbaren Schwellwert (z. B. 85 % Branch-Coverage) erzwingen
-    und in CI als Status-Check ausweisen. Das ist die billigste verbleibende
-    Härtungs-Maßnahme.
+    <strong>Coverage-Lücken sind sichtbar:</strong> 90,5 % Branches und 90,5 % Functions
+    bei 98,5 % Lines deuten darauf hin, dass <em>seltene</em> Codepfade (Fehlerzweige,
+    deprecation-Pfade, einzelne Lifecycle-Edge-Cases) unbedacht bleiben. Ein
+    schneller Walk durch <code>coverage/lcov-report</code> würde ~5–8 gezielte Specs
+    ergeben — minimaler Aufwand, höchste Aussage.
   </li>
   <li>
-    <strong>Microbench-Suite.</strong> <code>tinybench</code> + ein paar fokussierte
-    Hot-Path-Szenarien (Signal-Set+Notify-Throughput, Memo-Recompute-Latenz,
-    Batch-Flush-Kosten) als Smoke. PR-Vergleich auf relative Regression statt
-    absolute Zahlen.
+    <strong>Slot-Recycling klar entsorgen oder erklären:</strong> IMP-001 ist nicht
+    nur eine Codequalitätsfrage — der Pfad <em>liest</em>, als gäbe es eine
+    Optimierung, dabei wird das Kindeffekt-Array bei jedem <code>run()</code>
+    sofort wieder geleert. Entweder Recycling tatsächlich umsetzen oder vier
+    Zeilen ersatzlos streichen.
   </li>
   <li>
-    <strong>Examples-Ordner.</strong> Drei minimale Adapter (React-Hook,
-    Web-Component, Vue-Reactivity-Bridge) liefern einen pragmatischen Onboarding-Pfad
-    und überprüfen gleichzeitig, ob die Public-API in der Praxis genug Material
-    liefert.
+    <strong>JSDoc → API-Doc → CHANGELOG-Hygiene</strong> ist diesmal mustergültig
+    gelaufen (v0.30.0). Das Muster verdient ein kurzes „How we ship a version"
+    in <code>CONTRIBUTING.md</code>, sonst geht es bei Wechseln der Maintainerschaft
+    verloren.
   </li>
   <li>
-    <strong>Browser-Smoke.</strong> Playwright + Vite-Mini-Demo, läuft 30 s,
-    validiert „runs anywhere modern JS runs"-Claim aus dem README.
+    <strong>Bench-Suite (PERF-001) jetzt günstig:</strong> mit gemessener Coverage
+    sind die Hot-Paths klar — ein <code>tinybench</code>-Lauf über die fünf
+    interessanten Szenarien (set/notify-Throughput, Memo-Recompute, Batch-Flush,
+    Dependency-Diff, nested-effects) wäre &lt; 1 h Arbeit und hätte sofort Wirkung.
   </li>
   <li>
-    <strong>DevTools.</strong> Eigener Subpath <code>./devtools</code> mit
-    Effect-Graph-Visualizer + Subscription-Heatmap. Würde die Debugging-Story
-    drastisch verbessern.
-  </li>
-  <li>
-    <strong>Repo-Hygiene.</strong> <code>hero.gif</code> (9,6 MB), <code>hero.png</code>
-    (4,8 MB), <code>hero.webp</code> (2,9 MB) und <code>hero2.png</code> (2,1 MB) am
-    Repo-Wurzel sind ~20 MB. Konsolidieren auf das aktuell tatsächlich
-    referenzierte <code>hero2--noir.png</code> (im README verlinkt) und den Rest
-    löschen — danach <code>foo.mjs</code> / <code>diamond-example.mjs</code> in
-    <code>scratch/</code> oder ganz weg.
-  </li>
-  <li>
-    <strong>Sentinel-Detection.</strong> <code>globalThis.__signalize__</code>-Marker
-    setzen und beim Import in Dev prüfen — verhindert stille Bruchstücke durch
-    Mehrfach-Bundling.
+    <strong>Repo-Asset-Diät</strong> (REPO-001): ~21 MB Hero-Bilder am Repo-Root.
+    Vorschlag bleibt: alte Hero-Varianten weg, nur das aktuell referenzierte
+    <code>hero2--noir.png</code> behalten — git-Historie bleibt erhalten, aber jeder
+    künftige <code>git clone</code> wird leichter.
   </li>
 </ul>
 </section>
@@ -637,56 +654,45 @@
 <section>
 <h2>Methodik</h2>
 <p>
-  <strong>Theme:</strong> dark (übernommen aus vorherigem Audit vom 2026-05-14).
+  Audit-Lauf am <strong>2026-05-20</strong> (zweiter Lauf an diesem Tag, nach Tag v0.30.0).
+  Vorheriges <code>./audit.html</code> wurde aus dem Daten-Objekt (eingebettetes
+  <code>AUDIT.summary/findings</code>) eingelesen — alle drei <code>scoreHistory</code>-Einträge
+  übernommen, Theme („dark") aus der Vor-Datei beibehalten.
 </p>
-<p><strong>Gelesen wurden:</strong></p>
-<ul>
-  <li>
-    Vollständig: <code>package.json</code>, <code>tsconfig.json</code>,
-    <code>tsconfig.lib.json</code>, <code>biome.json</code>,
-    <code>jest.config.js</code>, <code>rollup.config.mjs</code>,
-    <code>.github/workflows/{ci,main}.yml</code>, <code>README.md</code>,
-    <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>CONTRIBUTING.md</code>,
-    <code>CHANGELOG.md</code>, sowie sämtliche <code>src/*.ts</code> (Produktion).
-  </li>
-  <li>
-    Stichprobenhaft: <code>docs/api.md</code> (Anfang), <code>SignalGroup.off.spec.ts</code>
-    (komplett — das ist der neue Spec seit dem letzten Audit), Test-Indices über
-    <code>wc -l</code>.
-  </li>
-  <li>
-    Vorheriges <code>./audit.html</code> erst <em>nach</em> dem frischen Lauf zum Abgleich
-    geöffnet — kein eingebettetes Daten-Objekt vorhanden, deshalb wurden alte
-    Findings textuell rekonstruiert. Behobene Punkte wurden im Code re-verifiziert
-    und tauchen im aktuellen Backlog <em>nicht</em> mehr als Zeilen auf, sondern
-    nur als Zähler in der Diff-Zeile am Seitenanfang. Ein synthetischer
-    <code>scoreHistory</code>-Eintrag für 2026-05-14 wurde aus den dortigen
-    Findings abgeleitet (vorheriger Lauf führte keinen Score).
-  </li>
-</ul>
-<p><strong>Health-Score-Berechnung:</strong> Start 100, Abzug pro Finding:
-critical −10, high −5, medium −2, low −0,5, info 0. Aktuell:
-0 × 10 + 2 × 5 + 9 × 2 + 10 × 0,5 + 3 × 0 = 33,5 → Score 66,5, gerundet <strong>73</strong>
-mit Bonus +6,5 für überdurchschnittliche Test-Disziplin (Subscription-Leak-Asserts,
-GC-Spec) und sehr gute Doku-Surface, die das reine Findings-Modell unterzeichnet.
-Diese Bonus-Punkte sind im Score sichtbar, im Backlog aber nicht als
-„negatives" Finding gewertet — sie sind transparent ausgewiesen, damit der
-Score nicht reines Defekt-Zählen widerspiegelt.</p>
-<p><strong>Match-Strategie zum vorherigen Audit:</strong> primär gleiche Kategorie + überlappende
-Datei-Location, sekundär semantische Titelähnlichkeit. Bei Mehrdeutigkeit konservativ
-gematcht — lieber zwei separate Findings als falsch fusioniert.</p>
-<p><strong>Nicht im Scope:</strong> Performance-Messungen, Bundle-Size-Tracking,
-ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Security-Audit
-über <code>npm audit</code> (kein Netzwerk-Lauf durchgeführt).</p>
-</section>
-
-<footer>
-  Quellen: <code>src/*.ts</code>, <code>src/*.spec.ts</code> (v0.29.0 Stand 2026-05-20),
-  <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>CHANGELOG.md</code>,
-  <code>CONTRIBUTING.md</code>, <code>README.md</code>, <code>docs/api.md</code>,
+<p>
+  Frischer Lauf zuerst, danach Abgleich. Befunde wurden über
+  Kategorie + Pfad-Overlap gematcht; bei Mehrdeutigkeit konservativ als
+  separate Einträge belassen. <strong>4 Findings entfallen</strong> (im Code
+  nicht mehr nachweisbar), <strong>1 als verbessert</strong> markiert,
+  <strong>20 fortgeschrieben</strong> und <strong>4 neu</strong> aufgenommen.
+  Behobene Findings tauchen — wie spezifiziert — bewusst nicht im Backlog auf,
+  nur im Zähler oben. Die Git-Historie der <code>audit.html</code> ist der
+  Detail-Speicher.
+</p>
+<p>
+  <strong>Theme:</strong> dark (aus vorherigem Audit übernommen, keine
+  Nutzer-Anforderung in dieser Sitzung).
+</p>
+<p>
+  <strong>Score-Formel:</strong> Start 100; pro Finding −10 (critical), −5 (high),
+  −2 (medium), −0,5 (low), 0 (info). Untergrenze 0. Aktueller Stand: 100 −
+  (1×5 + 9×2 + 11×0,5) = 100 − 28,5 = 71,5 ≈ <strong>72</strong>.
+</p>
+<p>
+  <strong>Was wurde gelesen:</strong> alle <code>src/*.ts</code>-Quelldateien
+  (kein generierter <code>lib/</code>/<code>dist/</code>-Code), beide Workflow-Dateien,
   <code>package.json</code>, <code>biome.json</code>, <code>jest.config.js</code>,
-  <code>rollup.config.mjs</code>, <code>.github/workflows/*</code>, <code>git ls-files</code>,
-  Datei-Inventar via <code>ls</code>/<code>wc -l</code>.
+  beide TS-Configs, <code>rollup.config.mjs</code>, <code>scripts/publishPackage.cjs</code>,
+  <code>README.md</code>, <code>AGENTS.md</code>, <code>CONTRIBUTING.md</code>,
+  <code>CHANGELOG.md</code> (Top 60 Zeilen), <code>docs/api.md</code> (Anfang)
+  und <code>docs/architecture.md</code> (vollständig). Stichprobe der Tests:
+  <code>unsubscribeEffect.spec.ts</code>, <code>decorators.memo.spec.ts</code>,
+  <code>SignalGroup.gc.spec.ts</code>. Coverage-Report wurde gelesen, einzelne
+  Spec-Files nicht erschöpfend.
+</p>
+<footer>
+  Erzeugt mit dem <code>js-ts-project-audit</code>-Skill. Kein Auto-Fix
+  durchgeführt — alle Empfehlungen sind Vorschläge zur manuellen Bewertung.
 </footer>
 
 </div>
@@ -697,67 +703,79 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
   const AUDIT = {
     summary: {
       project: "@spearwolf/signalize",
-      version: "0.29.0",
+      version: "0.30.0",
       stack: ["TypeScript 6", "Node ≥ 24.13", "ESM", "Jest", "Biome", "Rollup"],
       date: "2026-05-20",
-      previousDate: "2026-05-14",
-      score: 73,
-      previousScore: 68,
+      previousDate: "2026-05-20",
+      score: 72,
+      previousScore: 73,
       theme: "dark",
       counts: {
         critical: 0,
-        high: 2,
+        high: 1,
         medium: 9,
-        low: 10,
+        low: 11,
         info: 3
       },
       resolvedCount: 4,
       improvedCount: 1,
-      newCount: 2,
+      newCount: 4,
       scoreHistory: [
         { date: "2026-05-14", score: 68 },
-        { date: "2026-05-20", score: 73 }
+        { date: "2026-05-20", score: 73 },
+        { date: "2026-05-20", score: 72 }
       ]
     },
     findings: [
       {
-        id: "BUG-001", category: "Bugs", severity: "high", status: "carried-over",
-        title: "String-/Symbol-Dependencies ohne <code>attach</code> erzeugen TypeError",
-        location: "src/EffectImpl.ts:115–134",
+        id: "MEMO-001", category: "Bugs", severity: "high", status: "new",
+        title: "<code>@memo</code> ignoriert Args nach dem ersten Aufruf",
+        location: "src/decorators.ts:67–83",
         description:
-          "Bei <code>createEffect(cb, ['a','b'])</code> ohne <code>{attach: this}</code> bleibt <code>group</code> in EffectImpl.ts Z. 115 undefined; Z. 129 ruft danach <code>group.signal(dep)</code> — wirft unkontrolliert <em>TypeError: Cannot read properties of undefined</em>. Vom Typsystem nicht erzwungen.",
+          "Der Memo-Decorator legt die Memo-Closure nur beim ersten Aufruf an: <code>siGet = createMemo(() =&gt; target.call(this, ...args), …)</code>. <code>args</code> ist in der Closure gefangen. Bei jedem späteren Aufruf der Methode wird <code>siGet()</code> wiederverwendet — egal mit welchen Argumenten. Ergebnis: <em>schweigend falsche Cache-Treffer</em>, sobald die Methode überhaupt Parameter akzeptiert. Der einzige existierende Test (<code>decorators.memo.spec.ts</code>) deckt nur den argumentlosen Fall ab.",
         recommendation:
-          "Entweder eine klare Fehlermeldung werfen („String/symbol dependencies require an `attach` option\") oder via Conditional Types ausschließen, dass deps-Array nicht-SignalLike-Werte enthält, wenn kein attach gesetzt ist.",
+          "Entweder die Args ausdrücklich aus der Closure fernhalten (Memo pro Args-Tupel anlegen, Map keyed by deep-equal/JSON) — oder die API auf <em>argumentlos</em> verengen: Typ zwingt <code>A = []</code>, alles andere wird als Type-Error abgewiesen. Vor dem Fix in den offenen Fragen klären, welche Variante semantisch gewollt ist.",
+        effort: "M"
+      },
+      {
+        id: "LEAK-001", category: "Memory", severity: "medium", status: "new",
+        title: "<code>SignalLink</code>: <code>once()</code>-Listener auf globalen Destroy-Queues nicht entkoppelt",
+        location: "src/SignalLink.ts:39,49 · src/SignalLink.ts:167",
+        description:
+          "Der Konstruktor registriert <code>once(globalDestroySignalQueue, this.source.id, …)</code> (und für <code>SignalLinkToSignal</code> zusätzlich für <code>target.id</code>) — beide ohne den Unsubscribe-Handle aufzuheben. Wird <code>link.destroy()</code> aufgerufen, bevor die Quelle/das Ziel destroyt wird, läuft <code>destroy()</code> sauber durch, aber die <code>once</code>-Listener bleiben auf den globalen Queues stehen, bis das Source-/Target-Signal stirbt. Bei vielen kurzlebigen Links über lang-lebigen Source-Signalen wächst <code>getSubscriptionCount(globalDestroySignalQueue)</code> entsprechend mit.",
+        recommendation:
+          "Die <code>once()</code>-Rückgabewerte in einem <code>#destroySubs: VoidFunc[]</code> ablegen und in <code>destroy()</code> aufrufen (gleicher Pattern wie <code>this.#unsubscribe</code>). Eine Spec mit Subscription-Snapshot vor/nach würde den Leak fest verdrahten.",
         effort: "S"
       },
       {
-        id: "TEST-001", category: "Tests", severity: "high", status: "carried-over",
-        title: "Keine Coverage-Messung in CI",
-        location: ".github/workflows/{ci,main}.yml · package.json scripts",
+        id: "API-007", category: "API", severity: "low", status: "new",
+        title: "<code>createSignal(existing, params)</code> verwirft alle Params außer <code>attach</code> still",
+        location: "src/createSignal.ts:196–217",
         description:
-          "Weder <code>pnpm cbt</code> noch <code>pnpm world</code> aktivieren <code>jest --coverage</code>; CI führt nur <code>pnpm check && pnpm test</code> aus. Verhältnis Test-LOC : Prod-LOC ~ 3,7× ist gut, aber formelle Sicherheit (Mindestschwelle, Regression-Detection) fehlt.",
+          "Bei <code>createSignal(otherSignal, {lazy: true, compare: fn, beforeRead: hook})</code> wird <code>otherSignal</code> einfach zurückgegeben — <code>lazy</code>, <code>compare</code> und <code>beforeRead</code> werden ignoriert. Nur <code>attach</code> wird angewendet (siehe Z. 213). Ein Konsument, der die Funktion idempotent nutzen will (Adapter, Plugin), bekommt keinerlei Hinweis. Der JSDoc beschreibt das passive Pass-Through, dokumentiert aber nicht das Drop der Params.",
         recommendation:
-          "<code>jest --coverage</code> in <code>pnpm world</code> aufnehmen, Mindest-Schwelle (≥ 85 % Branches) in <code>jest.config.js</code> <code>coverageThreshold</code> setzen und einen Coverage-Status-Check in CI exponieren.",
+          "Entweder das Verhalten in der JSDoc explizit nennen („when called with an existing signal, only <code>attach</code> is applied; <code>lazy</code>/<code>compare</code>/<code>beforeRead</code> are ignored\") oder den restriktiveren Typ <code>createSignal(initial: T | (() =&gt; T), params?)</code> für den Nicht-Signal-Pfad und <code>createSignal(s: SignalLike&lt;T&gt;, params?: Pick&lt;SignalParams&lt;T&gt;, 'attach'&gt;)</code> als zweite Overload.",
         effort: "S"
       },
       {
-        id: "API-001", category: "API", severity: "medium", status: "carried-over",
-        title: "Multi-Way Read-API ohne Cheat-Block im API-Doc",
+        id: "API-001", category: "API", severity: "low", status: "improved",
+        previousSeverity: "medium",
+        title: "Multi-Way Read-API ohne dedizierten Cheat-Block im API-Doc",
         location: "docs/api.md · Signal.ts · value.ts",
         description:
-          "Dasselbe Signal lässt sich auf vier Wegen lesen: <code>signal.get()</code> (tracked), <code>signal.value</code> (untracked), <code>value(signal)</code> (untracked), <code>signal.get(cb)</code> (deprecated, internal effect). Plus <code>onChange()</code> als Subscription-Variante. Verwirrend, da z. B. <code>beforeRead</code> nur bei tracked Reads feuert — nicht bei <code>.value</code>/<code>value()</code>.",
+          "Die <code>Signal</code>-Tabelle in <code>docs/api.md</code> nennt jetzt <code>get()</code> (tracked) und <code>value</code> (untracked) <em>als Zeilen direkt nebeneinander</em>, und der <code>readAsValue</code>-Decorator-Knopf ist erläutert. Der Punkt ist damit halb erledigt — ein eigener „Read API at a glance\"-Block ganz oben fehlt aber weiterhin; Anfänger, die <code>beforeRead</code> verstehen müssen, finden den Hinweis nicht zentral.",
         recommendation:
-          "Einen prominenten „Read API at a glance\"-Block ganz oben in <code>docs/api.md</code> einbauen: vier Lese-Varianten, drei Konsequenzen (tracking, beforeRead, Cleanup), eine Tabelle.",
+          "Einen Vier-Zeilen-Block oberhalb der Sektion „Signals\" einfügen: vier Read-Varianten + drei Spalten (Tracking ja/nein, <code>beforeRead</code> ja/nein, Cleanup-Lifecycle).",
         effort: "S"
       },
       {
         id: "API-002", category: "API", severity: "medium", status: "carried-over",
         title: "<code>set(fn)</code>-Updater-Falle bleibt subtil",
-        location: "src/createSignal.ts:123–158 · docs/api.md",
+        location: "src/createSignal.ts:123–158 · docs/api.md:49–50",
         description:
-          "<code>signal.set(fn)</code> speichert die Funktion als Wert (statt sie wie in React mit dem alten Wert aufzurufen). Nur <code>{lazy: true}</code> macht aus <code>fn</code> eine Factory. Im typisierten Pfad fängt TS das ab, in jedem <code>any</code>-Code (Adapter, Plugin) ist es eine stille Falle.",
+          "<code>signal.set(fn)</code> speichert die Funktion als Wert (statt sie wie in React mit dem alten Wert aufzurufen). Nur <code>{lazy: true}</code> macht aus <code>fn</code> eine Factory. Im typisierten Pfad fängt TS das ab und die API-Doku warnt jetzt explizit (Z. 49 f.), aber in jedem <code>any</code>-Code (Adapter, Plugin) ist es eine stille Falle.",
         recommendation:
-          "Entweder explizite <code>signal.update(fn)</code>-API hinzufügen (klare Trennung Wert vs. Updater) oder im Runtime-Pfad einen Dev-Warn bei <code>typeof value === 'function' && !lazy</code> ausgeben.",
+          "Entweder explizite <code>signal.update(fn)</code>-API hinzufügen (klare Trennung Wert vs. Updater) oder im Runtime-Pfad einen Dev-Warn bei <code>typeof value === 'function' &amp;&amp; !lazy</code> ausgeben (gated über NODE_ENV).",
         effort: "M"
       },
       {
@@ -773,7 +791,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
       {
         id: "API-004", category: "API", severity: "medium", status: "carried-over",
         title: "Static-Deps-Effects laufen <em>nicht</em> automatisch",
-        location: "src/EffectImpl.ts:187–192",
+        location: "src/EffectImpl.ts:241–245",
         description:
           "<code>createEffect(cb, [a,b])</code> startet nicht von selbst — Konsumenten müssen <code>.run()</code> aufrufen. Default-Doku sagt <code>autorun: true</code>; dieses Verhalten weicht überraschend ab. Dokumentiert, aber bricht die Symmetrie zwischen dynamic-deps und static-deps Effects.",
         recommendation:
@@ -783,7 +801,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
       {
         id: "IMP-001", category: "Impl", severity: "medium", status: "carried-over",
         title: "Slot-Recycling in <code>EffectImpl.getCurrentChildEffect()</code> ist toter Pfad",
-        location: "src/EffectImpl.ts:196–202 · 326–331",
+        location: "src/EffectImpl.ts:250–256 · 380–385",
         description:
           "<code>childEffects</code> wird positionell wiederverwendet, aber <code>destroyChildEffects()</code> läuft am Anfang jedes <code>run()</code> und entleert das Array sofort. Damit ist der Recycling-Pfad effektiv unerreichbar; <code>curChildEffectSlot</code> wird nie auf einen existierenden Eintrag treffen.",
         recommendation:
@@ -817,15 +835,15 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         description:
           "Trotz starker Framework-agnostischer Positionierung gibt es keine Mini-Demos (React-Hook-Adapter, Vue-Reactivity-Bridge, Web-Component-Wrapper, Vanilla-DOM). Onboarding-Hürde für die deklarierte Zielgruppe.",
         recommendation:
-          "<code>examples/</code> mit drei kleinen, lauffähigen Demos. Jeder Adapter < 100 LOC, mit eigenem <code>README.md</code> und <code>pnpm dev</code>-Script. Bonus: in CI gegen den Lib-Build prüfen.",
+          "<code>examples/</code> mit drei kleinen, lauffähigen Demos. Jeder Adapter &lt; 100 LOC, mit eigenem <code>README.md</code> und <code>pnpm dev</code>-Script. Bonus: in CI gegen den Lib-Build prüfen.",
         effort: "L"
       },
       {
-        id: "REPO-001", category: "Repo", severity: "medium", status: "new",
-        title: "Repo-Wurzel mit ~20 MB Hero-Assets und Scratch-Files",
-        location: "hero.gif (9,6 MB), hero.png (4,8 MB), hero.webp (2,9 MB), hero2.png (2,1 MB), hero2--noir.png (1,1 MB), hero-next.xcf, hero-web.webp · diamond-example.mjs",
+        id: "REPO-001", category: "Repo", severity: "medium", status: "carried-over",
+        title: "Repo-Wurzel mit ~21 MB Hero-Assets und Scratch-Files",
+        location: "hero.gif (9,6 MB), hero.png (4,8 MB), hero.webp (2,9 MB), hero2.png (2,0 MB), hero2--noir.png (1,1 MB), hero-next.xcf, hero-web.webp · diamond-example.mjs",
         description:
-          "Sechs Hero-Bilder am Repo-Wurzel summieren sich auf ~21 MB; nur <code>hero2--noir.png</code> wird im aktuellen README referenziert. Zusätzlich liegen <code>diamond-example.mjs</code> (getrackt) und <code>foo.mjs</code> (.gitignored) wie Scratch-Notizen am Wurzel. <code>.npmignore</code> schützt das npm-Paket sauber, aber jeder <code>git clone</code> trägt das Gewicht.",
+          "Sechs Hero-Bilder am Repo-Wurzel summieren sich auf ~21 MB; nur <code>hero2--noir.png</code> wird im aktuellen README referenziert. Zusätzlich liegt <code>diamond-example.mjs</code> (getrackt) wie eine Scratch-Notiz am Wurzel. <code>.npmignore</code> schützt das npm-Paket sauber, aber jeder <code>git clone</code> trägt das Gewicht.",
         recommendation:
           "Nicht mehr referenzierte Hero-Assets aus dem aktuellen Branch entfernen (Git-History bleibt unberührt). <code>diamond-example.mjs</code> nach <code>examples/</code> bzw. <code>scratch/</code> ziehen oder löschen.",
         effort: "S"
@@ -911,31 +929,11 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         effort: "M"
       },
       {
-        id: "DOC-001", category: "Docs", severity: "low", status: "carried-over",
-        title: "<code>CONTRIBUTING.md</code> erwähnt <code>strictNullChecks: false</code> nicht",
-        location: "CONTRIBUTING.md:130",
-        description:
-          "Steht zwar in <code>AGENTS.md</code>/<code>CLAUDE.md</code> als bewusste Setting. <code>CONTRIBUTING.md</code> sagt nur „TypeScript strict mode features appropriately\" — neue Contributors fügen reflexartig <code>?:</code>-Checks ein, die hier nicht nötig sind.",
-        recommendation:
-          "Halbsatz in <code>CONTRIBUTING.md</code> Z. 130: „… and note that <code>strictNullChecks</code> is intentionally <code>false</code>; do not add defensive null guards.",
-        effort: "S"
-      },
-      {
-        id: "DX-005", category: "DX", severity: "low", status: "new",
-        title: "<code>backlog.html</code> im Tree gelöscht, aber Datei-Eintrag bleibt im git",
-        location: "git status zeigt <code>D backlog.html</code>",
-        description:
-          "Vor-Audit hat <code>backlog.html</code> bereits aus dem Working-Tree entfernt, der Löschvorgang ist aber noch nicht committet. <code>.npmignore</code> ignoriert die Datei sauber; im Git ist die Diff offen.",
-        recommendation:
-          "Den Delete committen und ggf. die <code>.npmignore</code>-Zeile entfernen, da die Datei eh weg ist.",
-        effort: "S"
-      },
-      {
         id: "INF-001", category: "Impl", severity: "info", status: "unchanged",
         title: "Modul-Singletons als bewusste Architektur",
         location: "src/global-queues.ts · src/object-signals.ts · src/link.ts",
         description:
-          "<code>globalSignalQueue</code> &amp; Co., <code>g_objectStores</code>, <code>gLinks</code>, <code>allGroups</code>, der <code>idCreator</code> sind Modul-globale Singletons. Bewusste Architektur — sollte aber im <code>docs/architecture.md</code> als Non-Goal für „mehrere parallele Reaktivitäts-Welten\" expliziert werden.",
+          "<code>globalSignalQueue</code> &amp; Co., <code>g_objectStores</code>, <code>gLinks</code>, <code>allGroups</code>, der <code>idCreator</code> sind Modul-globale Singletons. Bewusste Architektur — sollte aber in <code>docs/architecture.md</code> als Non-Goal für „mehrere parallele Reaktivitäts-Welten\" expliziert werden.",
         recommendation: "Halbsatz in der Architektur-Doku ergänzen.",
         effort: "S"
       },
@@ -950,8 +948,7 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
         effort: "S"
       },
       {
-        id: "INF-003", category: "Impl", severity: "info", status: "improved",
-        previousSeverity: "medium",
+        id: "INF-003", category: "Impl", severity: "info", status: "unchanged",
         title: "Symbol-ID-Generator wächst unbegrenzt",
         location: "src/UniqIdGen.ts",
         description:
@@ -969,13 +966,41 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
   const statusLabel = { "new": "Neu", "unchanged": "Unverändert", "improved": "Verbessert", "carried-over": "Fortgeschrieben" };
   const statusClass = { "new": "s-new", "unchanged": "s-unchanged", "improved": "s-improved", "carried-over": "s-carried" };
 
+  // Severity overview
+  const sevOv = document.getElementById("sev-overview");
+  const total = Object.values(AUDIT.summary.counts).reduce((a, b) => a + b, 0);
+  ["critical", "high", "medium", "low", "info"].forEach(sev => {
+    const n = AUDIT.summary.counts[sev] || 0;
+    const pct = total ? (n / total * 100) : 0;
+    const row = document.createElement("div");
+    row.className = "sev-row";
+    row.innerHTML = `
+      <div class="lbl">${sevLabel[sev]}</div>
+      <div class="sev-bar ${sev}"><div style="width:${pct}%"></div></div>
+      <div class="num">${n}</div>
+    `;
+    sevOv.appendChild(row);
+  });
+
+  // Category overview
+  const catOv = document.getElementById("cat-overview");
+  const catCounts = {};
+  AUDIT.findings.forEach(f => { catCounts[f.category] = (catCounts[f.category] || 0) + 1; });
+  Object.entries(catCounts).sort((a, b) => b[1] - a[1]).forEach(([cat, n]) => {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<span>${cat}</span><span class="n">${n}</span>`;
+    catOv.appendChild(row);
+  });
+
+  // Backlog table
   const tbody = document.querySelector("#backlog tbody");
   const findings = AUDIT.findings.slice().sort((a, b) => {
     if (sevOrder[a.severity] !== sevOrder[b.severity]) return sevOrder[a.severity] - sevOrder[b.severity];
     return a.id.localeCompare(b.id);
   });
 
-  findings.forEach((f, idx) => {
+  findings.forEach((f) => {
     const row = document.createElement("tr");
     row.className = "row open";
     row.dataset.sev    = f.severity;
@@ -1026,7 +1051,6 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
       const visible = okSev && okSt && okCat;
       if (tr.classList.contains("detail")) {
         if (!visible) tr.classList.add("hidden");
-        // detail stays hidden unless user expanded it
       } else {
         tr.style.display = visible ? "" : "none";
       }
@@ -1036,6 +1060,5 @@ ATTW-Lauf (würde <code>pnpm checkPkgTypes</code> erfordern), Browser-Test, Secu
   window.__AUDIT__ = AUDIT;
 })();
 </script>
-
 </body>
 </html>
