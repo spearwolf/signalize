@@ -22,13 +22,13 @@ describe('Effect priority', () => {
 
     const callQueue: string[] = [];
 
-    const memoCallback = jest.fn(() => {
+    const memoCallback = vi.fn(() => {
       callQueue.push('m');
       return a.get() + 10;
     });
     const m = createMemo(memoCallback);
 
-    const effectCallback = jest.fn(() => {
+    const effectCallback = vi.fn(() => {
       callQueue.push('e');
       c.set(m() + a.get());
     });
@@ -73,17 +73,17 @@ describe('Effect priority', () => {
 
     const callQueue: number[] = [];
 
-    const effFn0 = jest.fn(() => {
+    const effFn0 = vi.fn(() => {
       callQueue.push(0);
       c.set(a.get());
     });
 
-    const effFn1 = jest.fn(() => {
+    const effFn1 = vi.fn(() => {
       callQueue.push(1);
       c.set(a.get() + 10);
     });
 
-    const effFn2 = jest.fn(() => {
+    const effFn2 = vi.fn(() => {
       callQueue.push(2);
       c.set(a.get() + 100);
     });

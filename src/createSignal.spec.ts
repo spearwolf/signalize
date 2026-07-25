@@ -1,3 +1,4 @@
+import type {MockInstance} from 'vitest';
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 import {
   createSignal,
@@ -10,13 +11,13 @@ import {createEffect} from './effects.js';
 import {touch} from './touch.js';
 
 describe('createSignal', () => {
-  let warnSpy: jest.SpyInstance;
+  let warnSpy: MockInstance;
 
   beforeAll(() => {
     // Several legacy tests below exercise signalReader(callback), which now
     // emits a once-per-process deprecation warning. Silence it so the
     // unrelated test output stays clean.
-    warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterAll(() => {
@@ -65,7 +66,7 @@ describe('createSignal', () => {
 
   it('signal reader has an optional effect callback as argument', () => {
     const {get: signal, set} = createSignal(666);
-    const effect = jest.fn();
+    const effect = vi.fn();
 
     signal(effect);
 
@@ -135,7 +136,7 @@ describe('createSignal', () => {
 
   it('set(_, {touch: true}) does NOT emit when signal is muted', () => {
     const sig = createSignal(1);
-    const effect = jest.fn();
+    const effect = vi.fn();
 
     sig.onChange(effect);
 
@@ -165,7 +166,7 @@ describe('createSignal', () => {
 
   it('set(_, {touch: true}) does NOT emit when signal is destroyed', () => {
     const sig = createSignal(1);
-    const effect = jest.fn();
+    const effect = vi.fn();
 
     sig.onChange(effect);
 
@@ -218,7 +219,7 @@ describe('createSignal', () => {
 
   it('createSignal returns the new object-based signal api', () => {
     const foo = createSignal(666);
-    const effect = jest.fn();
+    const effect = vi.fn();
 
     expect(foo.value).toBe(666);
     expect(foo.get()).toBe(666);

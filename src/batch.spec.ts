@@ -9,8 +9,8 @@ describe('batch', () => {
     const {get: a, set: setA} = createSignal(123);
     const {get: b, set: setB} = createSignal('abc');
 
-    const valA = jest.fn();
-    const valB = jest.fn();
+    const valA = vi.fn();
+    const valB = vi.fn();
 
     let effectCallCount0 = 0;
     let effectCallCount1 = 0;
@@ -62,9 +62,9 @@ describe('batch', () => {
     const {get: b, set: setB} = createSignal('abc');
     const {get: c, set: setC} = createSignal(23);
 
-    const valA = jest.fn();
-    const valB = jest.fn();
-    const valC = jest.fn();
+    const valA = vi.fn();
+    const valB = vi.fn();
+    const valC = vi.fn();
 
     let effectCallCount = 0;
 

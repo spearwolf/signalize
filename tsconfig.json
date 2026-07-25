@@ -1,11 +1,10 @@
 {
-  "include": ["src/**/*.ts"],
-  "files": ["node_modules/jest-expect-message/types/index.d.ts"],
+  "include": ["src/**/*.ts", "vitest.config.ts", "vitest.gc.config.ts"],
 
   "compilerOptions": {
     "target": "ES2023",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "types": ["jest", "node"],
+    "types": ["vitest/globals", "node"],
 
     "module": "NodeNext",
     "moduleResolution": "NodeNext",

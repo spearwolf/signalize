@@ -22,7 +22,7 @@ describe('writes on muted or destroyed signals', () => {
 
   it('set() on a muted signal stores the value but does not notify', () => {
     const sig = createSignal(1);
-    const onChange = jest.fn();
+    const onChange = vi.fn();
     const unsubscribe = sig.onChange(onChange);
 
     muteSignal(sig);
@@ -69,7 +69,7 @@ describe('writes on muted or destroyed signals', () => {
 
   it('unmute does not replay the write that happened while muted', () => {
     const sig = createSignal(1);
-    const onChange = jest.fn();
+    const onChange = vi.fn();
     const unsubscribe = sig.onChange(onChange);
 
     muteSignal(sig);
@@ -98,10 +98,10 @@ describe('writes on muted or destroyed signals', () => {
 
   it('set(fn, {lazy: true}) on a muted signal defers and does not notify', () => {
     const sig = createSignal('a');
-    const onChange = jest.fn();
+    const onChange = vi.fn();
     const unsubscribe = sig.onChange(onChange);
 
-    const lazyFn = jest.fn(() => 'b');
+    const lazyFn = vi.fn(() => 'b');
 
     muteSignal(sig);
     sig.set(lazyFn, {lazy: true});
@@ -118,7 +118,7 @@ describe('writes on muted or destroyed signals', () => {
 
   it('set() on a destroyed signal stores the value but does not notify', () => {
     const sig = createSignal(1);
-    const onChange = jest.fn();
+    const onChange = vi.fn();
     const unsubscribe = sig.onChange(onChange);
 
     sig.set(2);

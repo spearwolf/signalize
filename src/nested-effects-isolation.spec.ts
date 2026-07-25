@@ -18,10 +18,10 @@ describe('nested effects', () => {
     let valA = 0;
     let valB = 0;
 
-    const callingA = jest.fn();
-    const callingB = jest.fn();
-    const cleanupA = jest.fn();
-    const cleanupB = jest.fn();
+    const callingA = vi.fn();
+    const callingB = vi.fn();
+    const cleanupA = vi.fn();
+    const cleanupB = vi.fn();
 
     createEffect(() => {
       valA = a.get();

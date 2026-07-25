@@ -9,7 +9,7 @@ Working **with** signalize as a consumer is a different job — that is the `ski
 Framework-agnostic signal/effect/memo/link library. Synchronous reactivity. Built on `@spearwolf/eventize` for all internal pub/sub.
 
 - Runtime: ESM-only, Node `>=24.13`, targets ES2023, `sideEffects: false`
-- TypeScript v5, `strict: true` **but `strictNullChecks: false`** (intentional — don't "fix" it)
+- TypeScript v7 (the native compiler), `strict: true` **but `strictNullChecks: false`** (intentional — don't "fix" it)
 - Peer dep: `@spearwolf/eventize ^5.0.0`
 - Two entry points: `.` (`src/index.ts`) and `./decorators` (`src/decorators.ts`)
 
@@ -148,25 +148,30 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | --- | --- |
 | `pnpm cbt` | `clean + compile + bundle + test` — local "done" gate |
 | `pnpm world` | `clean + check + compile + bundle + test` — pre-release / matches CI scope |
-| `pnpm test` | Jest (ts-jest ESM); roots = `src/` |
+| `pnpm test` | Vitest (SWC transform, v8 coverage); roots = `src/` |
 | `pnpm test -- <pattern>` | single spec, e.g. `pnpm test -- createSignal.spec.ts` |
 | `pnpm test -- -t "<name>"` | filter by test name |
+| `pnpm test:watch` | Vitest in watch mode, no coverage gate |
+| `pnpm test:gc` | adds `--expose-gc` so `SignalGroup.gc.spec.ts` runs instead of skipping |
+| `pnpm test:debug` | Vitest under `--inspect-brk`, one file at a time |
 | `pnpm compile` | `tsc --project tsconfig.lib.json` → `lib/` (types + sourcemaps) |
 | `pnpm bundle` | rollup → `dist/index.js`, `dist/decorators.js` |
-| `pnpm clean` | `rimraf build types tests dist lib` |
+| `pnpm clean` | `rimraf build types tests dist lib coverage` |
 | `pnpm check` / `pnpm fix` | Biome lint+format check / Biome auto-fix |
 | `pnpm lint` | Biome lint only |
 | `pnpm format` / `pnpm format:write` | Biome format check / auto-fix |
 | `pnpm checkPkgTypes` | `attw --pack` package types audit |
 | `pnpm dist` | clean + compile + bundle (no test) |
 
-`.github/workflows/ci.yml` runs `pnpm check && pnpm test`, so `pnpm world` is the command that matches CI — `pnpm cbt` skips `check`. Tooling is **Biome 2.x** (replaced ESLint + Prettier in v0.28).
+`.github/workflows/ci.yml` runs `pnpm check && pnpm test`, so `pnpm world` is the command that matches CI — `pnpm cbt` skips `check`. Tooling is **Biome 2.x** (replaced ESLint + Prettier in v0.28) and **Vitest 4** (replaced Jest + ts-jest in v0.31).
+
+The test transform runs through **SWC**, not Vite's built-in oxc pass: `vitest.config.ts` sets `oxc: false` and registers `unplugin-swc` with `decoratorVersion: '2022-03'`. oxc emits TC39 decorators verbatim, which Node cannot parse — without the plugin every decorator spec dies with `SyntaxError: Invalid or unexpected token`. Note also that TypeScript 7 ships no JS compiler API (`transpileModule` is gone), so ts-jest-style transformers are not an option.
 
 ## Repo conventions
 
 - **Edit only `src/`.** `lib/` (tsc) and `dist/` (rollup) are generated artifacts.
 - **Imports use `.js` extension** within `src/` (NodeNext resolution): `import {x} from './foo.js'` even when source is `foo.ts`. Required.
-- **Test files**: `*.spec.ts` adjacent to implementation. Jest config matches `**/?(*.)+(spec|test).[tj]s` rooted at `src/`.
+- **Test files**: `*.spec.ts` adjacent to implementation. Vitest matches `src/**/*.{spec,test}.ts`. Globals (`describe`, `it`, `expect`, `vi`) are enabled — no imports needed, except `import type {MockInstance} from 'vitest'` when you type a spy.
 - **No top-level side effects** — `sideEffects: false` enables tree-shaking; respect it.
 - **Public API surface** must be wired through `src/index.ts` (default) or `src/decorators.ts` (subpath). Adding a file in `src/` does nothing for consumers without that wiring.
 - **Subscription-leak verification**: tests touching subscribe/unsubscribe paths should snapshot `getSubscriptionCount()` and counters (`getSignalsCount/getEffectsCount/getLinksCount`) → run scenario → assert restored. See `unsubscribeEffect.spec.ts`.

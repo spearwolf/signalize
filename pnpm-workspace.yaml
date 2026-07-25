@@ -1,0 +1,6 @@
+# pnpm >= 11 no longer reads the "pnpm" field in package.json — settings live
+# here instead. See https://pnpm.io/settings
+#
+# @swc/core builds the native binding used by the vitest decorator transform.
+allowBuilds:
+  '@swc/core': true

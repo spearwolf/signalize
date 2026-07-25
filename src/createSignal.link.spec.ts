@@ -55,8 +55,8 @@ describe('connect signals', () => {
     const {get: sigA, set: setA} = createSignal(1);
     const {get: sigB, set: setB} = createSignal(-1);
 
-    const valueMock = jest.fn();
-    const destroyMock = jest.fn();
+    const valueMock = vi.fn();
+    const destroyMock = vi.fn();
 
     expect(sigA()).toBe(1);
     expect(sigB()).toBe(-1);
@@ -111,7 +111,7 @@ describe('connect signals', () => {
   it('connect a signal with a function', () => {
     const {get: sigA, set: setA} = createSignal(1);
 
-    const bMock = jest.fn();
+    const bMock = vi.fn();
 
     expect(sigA()).toBe(1);
     expect(bMock).toHaveBeenCalledTimes(0);
@@ -160,8 +160,8 @@ describe('connect signals', () => {
     const {get: sigA, set: setA} = createSignal(1);
     const {get: sigB} = createSignal(-1);
 
-    const muteMock = jest.fn();
-    const unmuteMock = jest.fn();
+    const muteMock = vi.fn();
+    const unmuteMock = vi.fn();
 
     expect(sigA()).toBe(1);
     expect(sigB()).toBe(-1);
@@ -216,8 +216,8 @@ describe('connect signals', () => {
     const {get: sigA, set: setA} = createSignal(1);
     const {get: sigB} = createSignal(-1);
 
-    const muteMock = jest.fn();
-    const unmuteMock = jest.fn();
+    const muteMock = vi.fn();
+    const unmuteMock = vi.fn();
 
     const con = link(sigA, sigB);
 
@@ -267,8 +267,8 @@ describe('connect signals', () => {
     const {get: sigA} = createSignal(1);
     const {get: sigB} = createSignal(-1);
 
-    const muteMock = jest.fn();
-    const unmuteMock = jest.fn();
+    const muteMock = vi.fn();
+    const unmuteMock = vi.fn();
 
     const con = link(sigA, sigB);
 
@@ -298,7 +298,7 @@ describe('connect signals', () => {
     const con0 = link(sigA, sigB);
     const con1 = link(sigA, sigC);
 
-    const destroyMock = jest.fn();
+    const destroyMock = vi.fn();
 
     on(con0, DESTROY, destroyMock);
     on(con1, DESTROY, destroyMock);
@@ -329,8 +329,8 @@ describe('connect signals', () => {
     const {get: sigA, set: setA} = createSignal(1);
     const {get: sigB, set: setB} = createSignal(0);
 
-    const valueMock = jest.fn();
-    const callingB = jest.fn();
+    const valueMock = vi.fn();
+    const callingB = vi.fn();
 
     sigB(callingB);
 
@@ -376,8 +376,8 @@ describe('connect signals', () => {
     const {get: sigB} = createSignal(-1);
     const {get: sigC} = createSignal(-1);
 
-    const callingB = jest.fn();
-    const callingC = jest.fn();
+    const callingB = vi.fn();
+    const callingC = vi.fn();
 
     sigB(callingB);
     sigB(callingC);

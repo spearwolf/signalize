@@ -1,13 +1,14 @@
+import type {MockInstance} from 'vitest';
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 import {createSignal, destroySignal} from './createSignal.js';
 
 describe('signalReader(callback) deprecation warning', () => {
-  let warnSpy: jest.SpyInstance;
+  let warnSpy: MockInstance;
 
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');
-    warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {

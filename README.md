@@ -306,7 +306,7 @@ The package ships an agent skill at [`skills/using-signalize/`](./skills/using-s
 
 ## Development
 
-The package manager is **pnpm** (`pnpm@10.6.5`); `npm install` is not supported
+The package manager is **pnpm** (`pnpm@11.17.0`); `npm install` is not supported
 here. Node `>=24.13` is required to build.
 
 ```shell
@@ -317,9 +317,11 @@ pnpm install
 
 | Task | Runs |
 | --- | --- |
-| `pnpm test` | Jest via ts-jest, with coverage gate |
+| `pnpm test` | Vitest, with coverage gate |
 | `pnpm test -- <file>` | A single spec, e.g. `pnpm test -- createSignal.spec.ts` |
 | `pnpm test -- -t "<name>"` | Only tests whose name matches |
+| `pnpm test:watch` | Vitest in watch mode |
+| `pnpm test:gc` | Runs the GC suite that `pnpm test` skips |
 | `pnpm check` / `pnpm fix` | Biome lint + format — check only / auto-fix |
 | `pnpm compile` | `tsc` → `lib/` (types + sourcemaps) |
 | `pnpm bundle` | rollup → `dist/` |

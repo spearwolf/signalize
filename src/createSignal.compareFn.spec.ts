@@ -1,12 +1,13 @@
+import type {MockInstance} from 'vitest';
 import {createSignal} from './createSignal.js';
 import {touch} from './touch.js';
 
 describe('create signal with custom compare function', () => {
-  let warnSpy: jest.SpyInstance;
+  let warnSpy: MockInstance;
 
   beforeAll(() => {
     // Silence the deprecation warning for signalReader(callback) used below.
-    warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterAll(() => {
@@ -14,7 +15,7 @@ describe('create signal with custom compare function', () => {
   });
 
   it('works as expected', () => {
-    const mock = jest.fn();
+    const mock = vi.fn();
 
     const {get: signal, set: setSignal} = createSignal([0, 0, 0], {
       compare: (a: number[], b: number[]) => a.every((v, i) => v === b[i]),

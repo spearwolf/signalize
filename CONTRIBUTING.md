@@ -30,7 +30,9 @@ pnpm install
 | -------------- | -------------------------------------------- |
 | `pnpm cbt`     | **Primary command** - clean + compile + bundle + test |
 | `pnpm world`   | `clean + check + compile + bundle + test` — matches CI |
-| `pnpm test`    | Run tests only (Jest via ts-jest)            |
+| `pnpm test`    | Run tests only (Vitest, with coverage gate)  |
+| `pnpm test:watch` | Vitest in watch mode                      |
+| `pnpm test:gc` | Adds `--expose-gc` so the GC suite runs      |
 | `pnpm check`   | Run Biome (lint + format check)              |
 | `pnpm fix`     | Run Biome with auto-fix                      |
 | `pnpm compile` | TypeScript compilation only                  |
@@ -101,7 +103,7 @@ src/
 ### Conventions
 
 - **Test files:** `*.spec.ts` adjacent to implementation files
-- **Framework:** Jest (via ts-jest)
+- **Framework:** Vitest — globals are on, so `describe` / `it` / `expect` / `vi` need no import
 - **Pattern:** Each public function should have corresponding tests
 
 ### Running Tests
@@ -111,10 +113,13 @@ src/
 pnpm test
 
 # Run tests in watch mode
-pnpm test -- --watch
+pnpm test:watch
 
 # Run specific test file
 pnpm test -- createSignal.spec.ts
+
+# Run the SignalGroup GC suite, which plain `pnpm test` skips
+pnpm test:gc
 ```
 
 ### Testing Tips

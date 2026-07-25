@@ -267,7 +267,7 @@ describe('link() comprehensive tests', () => {
 
     it('lastValue works with callback target', () => {
       const sigA = createSignal(1);
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       const con = link(sigA, callback);
 
@@ -287,7 +287,7 @@ describe('link() comprehensive tests', () => {
     it('mute on already muted link is a no-op', () => {
       const sigA = createSignal(1);
       const sigB = createSignal(-1);
-      const muteMock = jest.fn();
+      const muteMock = vi.fn();
 
       const con = link(sigA, sigB);
       on(con, 'mute', muteMock);
@@ -306,7 +306,7 @@ describe('link() comprehensive tests', () => {
     it('unmute on already unmuted link is a no-op', () => {
       const sigA = createSignal(1);
       const sigB = createSignal(-1);
-      const unmuteMock = jest.fn();
+      const unmuteMock = vi.fn();
 
       const con = link(sigA, sigB);
       on(con, 'unmute', unmuteMock);
@@ -322,7 +322,7 @@ describe('link() comprehensive tests', () => {
     it('mute on destroyed link is a no-op', () => {
       const sigA = createSignal(1);
       const sigB = createSignal(-1);
-      const muteMock = jest.fn();
+      const muteMock = vi.fn();
 
       const con = link(sigA, sigB);
       on(con, 'mute', muteMock);
@@ -338,7 +338,7 @@ describe('link() comprehensive tests', () => {
     it('unmute on destroyed link is a no-op', () => {
       const sigA = createSignal(1);
       const sigB = createSignal(-1);
-      const unmuteMock = jest.fn();
+      const unmuteMock = vi.fn();
 
       const con = link(sigA, sigB);
       on(con, 'unmute', unmuteMock);
@@ -448,7 +448,7 @@ describe('link() comprehensive tests', () => {
     it('DESTROY event is emitted with link as argument', () => {
       const sigA = createSignal(1);
       const sigB = createSignal(-1);
-      const destroyMock = jest.fn();
+      const destroyMock = vi.fn();
 
       const con = link(sigA, sigB);
       on(con, DESTROY, destroyMock);
@@ -464,7 +464,7 @@ describe('link() comprehensive tests', () => {
   describe('link singleton behavior', () => {
     it('returns same link when linking same source to same callback', () => {
       const sigA = createSignal(1);
-      const callback = jest.fn();
+      const callback = vi.fn();
 
       const con1 = link(sigA, callback);
       const con2 = link(sigA, callback);
@@ -477,8 +477,8 @@ describe('link() comprehensive tests', () => {
 
     it('returns different links for different callbacks', () => {
       const sigA = createSignal(1);
-      const callback1 = jest.fn();
-      const callback2 = jest.fn();
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
 
       const con1 = link(sigA, callback1);
       const con2 = link(sigA, callback2);

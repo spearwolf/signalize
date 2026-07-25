@@ -17,7 +17,7 @@ describe('Effect -> autorun: false', () => {
 
     const {get: signal, set: setValue} = createSignal(0);
 
-    const effectCallback = jest.fn(() => {
+    const effectCallback = vi.fn(() => {
       value = signal();
     });
 

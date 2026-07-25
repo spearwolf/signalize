@@ -26,36 +26,34 @@
     "checkPkgTypes": "attw --pack",
     "compile": "tsc --project tsconfig.lib.json",
     "bundle": "rollup -c rollup.config.mjs",
-    "clean": "rimraf build types tests dist lib",
+    "clean": "rimraf build types tests dist lib coverage",
     "lint": "biome lint",
     "format": "biome format",
     "format:write": "biome format --write",
     "check": "biome check",
     "fix": "biome check --write",
-    "jest:debug": "cross-env NODE_ENV=test node --nolazy --inspect-brk ./node_modules/jest/bin/jest.js --runInBand --colors --verbose",
-    "test": "cross-env NODE_ENV=test jest --coverage",
-    "test:gc": "cross-env NODE_ENV=test NODE_OPTIONS=--expose-gc jest --runInBand",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism",
+    "test:gc": "vitest run --config vitest.gc.config.ts",
     "cbt": "run-s -sn clean compile bundle test",
     "dist": "run-s -sn clean compile bundle",
     "world": "run-s -sn clean check compile bundle test"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.2",
-    "@biomejs/biome": "^2.4.15",
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@biomejs/biome": "^2.5.5",
     "@spearwolf/eventize": "^5.0.0",
-    "@types/jest": "^30.0.0",
-    "@types/node": "^25.9.1",
-    "@types/sinon": "^21.0.1",
-    "cross-env": "^10.1.0",
-    "jest": "^30.4.2",
-    "jest-expect-message": "^1.1.3",
-    "npm-run-all2": "^8.0.4",
+    "@swc/core": "^1.15.46",
+    "@types/node": "^24.13.3",
+    "@vitest/coverage-v8": "^4.1.10",
+    "npm-run-all2": "^9.0.2",
     "rimraf": "^6.1.3",
-    "rollup": "^4.60.4",
-    "sinon": "^22.0.0",
-    "ts-jest": "^29.4.10",
+    "rollup": "^4.62.2",
     "tslib": "^2.8.1",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2",
+    "unplugin-swc": "^1.5.9",
+    "vitest": "^4.1.10"
   },
   "peerDependencies": {
     "@spearwolf/eventize": "^5.0.0"
@@ -77,10 +75,5 @@
     "email": "wolfger@spearwolf.de",
     "url": "https://www.spearwolf.de"
   },
-  "packageManager": "pnpm@10.6.5",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "unrs-resolver"
-    ]
-  }
+  "packageManager": "pnpm@11.17.0"
 }

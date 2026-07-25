@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Build System
+
+- Test runner: **Jest 30 → Vitest 4**. Drops `jest`, `ts-jest`, `@types/jest`, `jest-expect-message` and `cross-env` — Vitest supports `expect(value, 'message')` natively, resolves `./foo.js` → `foo.ts` without a module mapper, and sets `NODE_ENV=test` itself. Specs now use `vi.fn` / `vi.spyOn` / `MockInstance`
+- Vitest transpiles through **SWC** (`unplugin-swc`, `decoratorVersion: '2022-03'`) with Vite's oxc pass disabled: oxc emits TC39 decorators verbatim and Node cannot parse them
+- Coverage moves to `@vitest/coverage-v8`; the same thresholds (branches ≥ 85 %, functions ≥ 85 %, lines ≥ 95 %, statements ≥ 95 %) and the `coverage-summary.json` the CI summary reads are unchanged
+- `pnpm test:gc` now runs the `SignalGroup` GC suite for real via a dedicated `vitest.gc.config.ts` (forks pool + `--expose-gc`) instead of relying on a `NODE_OPTIONS` environment variable
+- **TypeScript 6 → 7** (the native compiler). Emitted `.js` and `.d.ts` are byte-identical to the TS 6 output; only sourcemaps gain a few segments. Note that TS 7 removes the JS compiler API — `transpileModule` no longer exists
+- **pnpm 10.6.5 → 11.17.0**. Settings moved out of the `pnpm` field in `package.json` into `pnpm-workspace.yaml`, where `allowBuilds` replaces `onlyBuiltDependencies`
+- `@types/node` realigned from `^25` down to `^24.13.3` so the types match the `>=24.13` engine floor instead of exceeding it
+- Removed `sinon` and `@types/sinon` — no source or spec file has imported them
+- Dependency bumps: Biome 2.4.15 → 2.5.5 (config migrated to `preset: "recommended"`), rollup 4.60.4 → 4.62.2, `npm-run-all2` 8 → 9, `@arethetypeswrong/cli` 0.18.2 → 0.18.5
+
+### Chores
+
+- CI: `actions/checkout`, `actions/setup-node` and `actions/upload-artifact` to v7, `pnpm/action-setup` to v6. The pnpm version is no longer duplicated in the workflows — the action reads `packageManager` from `package.json` — and the pnpm store is now cached via `setup-node`
+
 ### Tests
 
 - `createSignal.mutedWrites.spec.ts`: cover writes on muted and destroyed signals — value is stored, notification is suppressed, `unmuteSignal()` does not replay, lazy factories still install while muted
@@ -22,6 +38,7 @@
 - `README.md`: install snippet now installs the `@spearwolf/eventize` peer dependency explicitly (pnpm/yarn do not add peers), and notes the ESM-only/two-entry-point setup
 - `README.md`: list the `Signal` and `Effect` class exports in "API at a glance"
 - `CONTRIBUTING.md`: add `skills/using-signalize/` and `CLAUDE.md` to the documentation structure table
+- `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `README.md`: replace the Jest/ts-jest references with Vitest, document the SWC decorator transform and the pnpm 11 settings move, correct the stale "TypeScript v5" claim
 - `README.md`, `skills/using-signalize`: correct the cleanup claim — `SignalGroup` has a `FinalizationRegistry` backstop for groups with a host object, so "nothing is garbage-collected for you" was wrong; document its three limits (non-deterministic firing, no coverage for self-keyed groups or unattached resources)
 
 ## `v0.30.0` (2026-05-20)

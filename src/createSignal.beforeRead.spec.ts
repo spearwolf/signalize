@@ -1,12 +1,13 @@
+import type {MockInstance} from 'vitest';
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 import {createSignal, destroySignal} from './createSignal.js';
 
 describe('createSignal({beforeRead})', () => {
-  let warnSpy: jest.SpyInstance;
+  let warnSpy: MockInstance;
 
   beforeAll(() => {
     // Silence the deprecation warning emitted by signalReader(callback) below.
-    warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterAll(() => {
@@ -24,7 +25,7 @@ describe('createSignal({beforeRead})', () => {
   });
 
   it('fires before each plain read', () => {
-    const beforeRead = jest.fn();
+    const beforeRead = vi.fn();
     const sig = createSignal(1, {beforeRead});
 
     expect(beforeRead).not.toHaveBeenCalled();
@@ -40,7 +41,7 @@ describe('createSignal({beforeRead})', () => {
   });
 
   it('fires when reader is invoked with a callback (regression for #2.1)', () => {
-    const beforeRead = jest.fn();
+    const beforeRead = vi.fn();
     const sig = createSignal(1, {beforeRead});
 
     expect(beforeRead).not.toHaveBeenCalled();
@@ -54,7 +55,7 @@ describe('createSignal({beforeRead})', () => {
   });
 
   it('does NOT fire on .value property read (untracked)', () => {
-    const beforeRead = jest.fn();
+    const beforeRead = vi.fn();
     const sig = createSignal(42, {beforeRead});
 
     // .value is the untracked path — beforeRead is a read-tracking concern,
@@ -67,7 +68,7 @@ describe('createSignal({beforeRead})', () => {
   });
 
   it('is cleared on destroy', () => {
-    const beforeRead = jest.fn();
+    const beforeRead = vi.fn();
     const sig = createSignal(1, {beforeRead});
 
     sig.get();

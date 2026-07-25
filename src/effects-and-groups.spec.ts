@@ -13,7 +13,7 @@ describe('effects and groups', () => {
   });
 
   it('the cleanup callback is called as expected', () => {
-    const cleanup = jest.fn();
+    const cleanup = vi.fn();
 
     class Foo {
       @signal() accessor foo = 'foo';

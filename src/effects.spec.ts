@@ -145,8 +145,8 @@ describe('createEffect', () => {
     const {get: a, set: setA} = createSignal(123);
     const {get: b, set: setB} = createSignal('abc');
 
-    const valA = jest.fn();
-    const valB = jest.fn();
+    const valA = vi.fn();
+    const valB = vi.fn();
 
     let effectCallCount = 0;
 
@@ -184,8 +184,8 @@ describe('createEffect', () => {
     const {get: a, set: setA} = createSignal(0);
     const {get: b, set: setB} = createSignal('abc');
 
-    const valA = jest.fn();
-    const valB = jest.fn();
+    const valA = vi.fn();
+    const valB = vi.fn();
 
     let effectCallCount = 0;
 
@@ -272,13 +272,13 @@ describe('createEffect', () => {
     const {get: getD, set: setD} = createSignal('foo');
     const {get: getE, set: setE} = createSignal(true);
 
-    const a = jest.fn(getA);
-    const b = jest.fn(getB);
-    const c = jest.fn(getC);
-    const d = jest.fn(getD);
-    const e = jest.fn(getE);
+    const a = vi.fn(getA);
+    const b = vi.fn(getB);
+    const c = vi.fn(getC);
+    const d = vi.fn(getD);
+    const e = vi.fn(getE);
 
-    const destroyEffectMock = jest.fn();
+    const destroyEffectMock = vi.fn();
     const unsubDestroy = onDestroyEffect(destroyEffectMock);
 
     let firstEffectCallCount = 0;
@@ -286,7 +286,7 @@ describe('createEffect', () => {
     let thirdEffectCallCount = 0;
 
     const clearAllMocks = () => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
       firstEffectCallCount = 0;
       secondEffectCallCount = 0;
       thirdEffectCallCount = 0;

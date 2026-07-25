@@ -5,13 +5,8 @@ rollup
 src
 tests
 .editorconfig
-.eslintignore
-.eslintrc.yaml
-.prettierignore
-.prettierrc.yaml
 .size-snapshot.json
 .opencode
-jest.config.js
 rollup.config.js
 tsconfig.json
 tsconfig.*.json
@@ -20,7 +15,9 @@ tsconfig.*.json
 signaler-effectus-hero.png
 scripts
 rollup.config.*
-jest.config.*
+vitest.config.ts
+vitest.gc.config.ts
+pnpm-workspace.yaml
 types
 hero.gif
 hero.png

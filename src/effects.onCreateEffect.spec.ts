@@ -13,8 +13,8 @@ describe('onCreateEffect', () => {
   });
 
   it('creating an effect triggers a on-create-effect event', () => {
-    const effectCreated = jest.fn();
-    const effectDestroyed = jest.fn();
+    const effectCreated = vi.fn();
+    const effectDestroyed = vi.fn();
 
     const unsubscribeCreateEffect = onCreateEffect(effectCreated);
     const unsubscribeDestroyEffect = onDestroyEffect(effectDestroyed);

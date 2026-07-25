@@ -102,7 +102,7 @@ describe('SignalGroup', () => {
     });
 
     it('SignalGroup.destroy() is deprecated but works', () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const obj = {};
       const group = SignalGroup.findOrCreate(obj);
       const signal = createSignal(1);
@@ -582,7 +582,7 @@ describe('SignalGroup', () => {
   describe('clear() and destroy()', () => {
     it('clear() emits DESTROY event', () => {
       const group = SignalGroup.findOrCreate({});
-      const destroyCallback = jest.fn();
+      const destroyCallback = vi.fn();
 
       // Using eventize's on method
       on(group, 'destroy', destroyCallback);
@@ -608,7 +608,7 @@ describe('SignalGroup', () => {
     });
 
     it('destroy() is deprecated but works', () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const group = SignalGroup.findOrCreate({});
       const signal = createSignal(42);
 

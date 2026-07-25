@@ -53,7 +53,7 @@ describe('unlink()', () => {
 
   it('unlink a specific link between signal and callback', () => {
     const {get: sigA, set: setA} = createSignal(1);
-    const callbackMock = jest.fn();
+    const callbackMock = vi.fn();
 
     link(sigA, callbackMock);
 
@@ -82,7 +82,7 @@ describe('unlink()', () => {
     const {get: sigA, set: setA} = createSignal(1);
     const {get: sigB} = createSignal(-1);
     const {get: sigC} = createSignal(-2);
-    const callbackMock = jest.fn();
+    const callbackMock = vi.fn();
 
     link(sigA, sigB);
     link(sigA, sigC);
@@ -119,7 +119,7 @@ describe('unlink()', () => {
     const {get: sigA} = createSignal(1);
     const {get: sigB} = createSignal(-1);
 
-    const destroyMock = jest.fn();
+    const destroyMock = vi.fn();
 
     const con = link(sigA, sigB);
 
@@ -140,7 +140,7 @@ describe('unlink()', () => {
     const {get: sigB} = createSignal(-1);
     const {get: sigC} = createSignal(-2);
 
-    const destroyMock = jest.fn();
+    const destroyMock = vi.fn();
 
     const con1 = link(sigA, sigB);
     const con2 = link(sigA, sigC);
@@ -260,8 +260,8 @@ describe('unlink()', () => {
 
   it('unlink specific target when multiple targets exist', () => {
     const {get: sigA, set: setA} = createSignal(1);
-    const callback1 = jest.fn();
-    const callback2 = jest.fn();
+    const callback1 = vi.fn();
+    const callback2 = vi.fn();
 
     link(sigA, callback1);
     link(sigA, callback2);

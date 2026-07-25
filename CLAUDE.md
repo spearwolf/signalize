@@ -14,11 +14,12 @@ Everything below is the short list that is expensive to discover by reading code
 
 ## Commands
 
-Package manager is **pnpm** (`pnpm@10.6.5`) — never `npm install`.
+Package manager is **pnpm** (`pnpm@11.17.0`) — never `npm install`.
 
 - `pnpm cbt` — clean + compile + bundle + test. The local "done" gate.
 - `pnpm world` — adds `check`; **this is what matches CI** (`.github/workflows/ci.yml` runs `check + test`, not `cbt`).
 - `pnpm test -- <file>` / `pnpm test -- -t "<name>"` — single spec / by test name.
+- `pnpm test:gc` — the only way the `SignalGroup.gc.spec.ts` suite actually runs; plain `pnpm test` skips it.
 - `pnpm fix` — Biome lint+format auto-fix.
 
 Full command table in `AGENTS.md`.
@@ -29,10 +30,13 @@ Full command table in `AGENTS.md`.
 - **`strict: true` but `strictNullChecks: false`** is intentional. Null-ish values are passed around freely; don't add defensive `?:` to "fix" errors that aren't errors here.
 - **Decorators are TC39 standard** (no `experimentalDecorators`) — `accessor` keyword, standard descriptor signatures.
 - **Biome only** (`biome.json`); ESLint and Prettier are gone. The disabled rules (`noUnsafeDeclarationMerging`, `noConstructorReturn`, `noTsIgnore`, `noAsyncPromiseExecutor`, `useArrowFunction`) each match a deliberate pattern in this codebase.
-- **TypeScript 6 needs the explicit `types: ["jest", "node"]`** in `tsconfig.json`; auto-include from `node_modules/@types/*` no longer fires. Removing it breaks `assert-helpers.ts`.
+- **TypeScript needs the explicit `types: ["vitest/globals", "node"]`** in `tsconfig.json`; auto-include from `node_modules/@types/*` no longer fires. Removing it breaks `assert-helpers.ts`, which calls the global `expect` — including the two-argument message form Vitest supports natively.
+- **Vitest transpiles via SWC, not oxc** (`vitest.config.ts` sets `oxc: false` and loads `unplugin-swc`). Vite 8's oxc pass hands TC39 decorators straight through and Node then rejects `@signal() accessor foo`. Don't drop the plugin unless oxc has learned to lower decorators.
+- **TypeScript 7 has no JS compiler API** — `transpileModule` and friends are gone, only the `tsc` binary and `typescript/unstable/*` remain. Any tool needing the old API (ts-jest, `@rollup/plugin-typescript`) cannot be used here.
 - **Edit only `src/`.** `lib/` (tsc) and `dist/` (rollup) are generated — never commit them.
 - **A new file in `src/` is invisible to consumers** until re-exported through `src/index.ts` (default entry) or `src/decorators.ts` (`./decorators` subpath).
-- Tests are `*.spec.ts` adjacent to the implementation; Jest is rooted at `src/` only.
+- Tests are `*.spec.ts` adjacent to the implementation; Vitest is rooted at `src/` only.
+- **pnpm 11 ignores the `pnpm` field in `package.json`** — settings live in `pnpm-workspace.yaml` (`allowBuilds` replaces `onlyBuiltDependencies`).
 - `sideEffects: false` — keep module top-levels side-effect-free so tree-shaking holds.
 
 ## Verifying subscription leaks

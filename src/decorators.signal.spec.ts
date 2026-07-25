@@ -100,8 +100,8 @@ describe('@signal is a class accessor decorator', () => {
     expect(foo2Signal).toBeDefined();
     expect(fooSignal).not.toBe(foo2Signal);
 
-    const onFoo = jest.fn();
-    const onFoo2 = jest.fn();
+    const onFoo = vi.fn();
+    const onFoo2 = vi.fn();
 
     fooSignal.onChange(onFoo);
     foo2Signal.onChange(onFoo2);

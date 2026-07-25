@@ -2,14 +2,14 @@ import {createSignal} from './createSignal.js';
 
 describe('create lazy signal', () => {
   it('works as expected', () => {
-    const lazyFn = jest.fn(() => 'foo');
+    const lazyFn = vi.fn(() => 'foo');
     const {get: val, set: setValue} = createSignal(lazyFn, {lazy: true});
 
     expect(val()).toBe('foo');
     expect(val()).toBe('foo');
     expect(lazyFn).toHaveBeenCalledTimes(1);
 
-    const lazyFn2 = jest.fn(() => 'bar');
+    const lazyFn2 = vi.fn(() => 'bar');
     setValue(lazyFn2, {lazy: true});
 
     expect(val()).toBe('bar');
@@ -49,7 +49,7 @@ describe('create lazy signal', () => {
   it('set() with {lazy: true} defers evaluation to next read', () => {
     const count = createSignal(10);
 
-    const computeFn = jest.fn(() => 42);
+    const computeFn = vi.fn(() => 42);
     count.set(computeFn, {lazy: true});
 
     // The function has NOT been called yet
@@ -65,8 +65,8 @@ describe('create lazy signal', () => {
   });
 
   it('laziness is NOT catching on', () => {
-    const lazy0 = jest.fn(() => 'foo');
-    const lazy1 = jest.fn(() => 'bar');
+    const lazy0 = vi.fn(() => 'foo');
+    const lazy1 = vi.fn(() => 'bar');
 
     const {get: val, set: setValue} = createSignal(lazy0, {lazy: true});
 

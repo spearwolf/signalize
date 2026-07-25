@@ -6,18 +6,18 @@ describe('unsubscribe as return function from effect callback', () => {
     const {get: a, set: setA} = createSignal(123);
     const {get: b, set: setB} = createSignal('abc');
 
-    const valA = jest.fn();
-    const valB = jest.fn();
+    const valA = vi.fn();
+    const valB = vi.fn();
 
-    const unsubscribeA = jest.fn();
-    const unsubscribeB = jest.fn();
+    const unsubscribeA = vi.fn();
+    const unsubscribeB = vi.fn();
 
     let effectCallCount0 = 0;
     let effectCallCount1 = 0;
     const subscriptionOrder: any[] = [];
 
     const clearAllMocks = () => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
       effectCallCount0 = 0;
       effectCallCount1 = 0;
       subscriptionOrder.length = 0;
