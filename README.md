@@ -92,11 +92,16 @@ Runs anywhere modern JavaScript runs. Targets ES2023, requires Node `>=24.13`.
 
 ## Install
 
+[`@spearwolf/eventize`](https://github.com/spearwolf/eventize) 🏹 is a peer dependency — install it alongside, since pnpm and yarn do not add peers automatically:
+
 ```shell
-npm install @spearwolf/signalize
+# pick one
+npm install  @spearwolf/signalize @spearwolf/eventize
+pnpm add     @spearwolf/signalize @spearwolf/eventize
+yarn add     @spearwolf/signalize @spearwolf/eventize
 ```
 
-[`@spearwolf/eventize`](https://github.com/spearwolf/eventize) 🏹 is a peer dependency.
+ESM-only: there is no CommonJS build. Two entry points — `@spearwolf/signalize` and `@spearwolf/signalize/decorators`.
 
 ## API at a glance
 
@@ -124,9 +129,14 @@ SignalGroup, getSignalGroupsCount, SignalAutoMap
 findObjectSignalByName, findObjectSignals, findObjectSignalNames,
 destroyObjectSignals
 
+// classes — for `instanceof` checks and as types
+Signal, Effect
+
 // decorators (subpath: '@spearwolf/signalize/decorators')
 signal, memo
 ```
+
+Every option and type is in the [API reference](./docs/api.md).
 
 ## Examples
 
@@ -163,7 +173,7 @@ const price = createSignal(100);
 const qty   = createSignal(1);
 const total = createMemo(() => price.get() * qty.get());
 
-createEffect(() => console.log('total =', total.get()));
+createEffect(() => console.log('total =', total()));
 // => "total = 100"
 
 batch(() => {
@@ -204,7 +214,7 @@ adapter, a Vue component, a Web Component, or a plain DOM render — none of
 them have to know about each other.
 
 ```typescript
-import {createSignal, createEffect} from '@spearwolf/signalize';
+import {createSignal, createMemo, createEffect} from '@spearwolf/signalize';
 
 export function createCart() {
   const items = createSignal<Item[]>([]);
@@ -253,6 +263,28 @@ class Counter {
 > The decorator API uses TC39 standard decorators (no `experimentalDecorators`).
 > Memos created via `@memo` are always lazy.
 
+## Good to know
+
+Six things that differ from most other signal libraries. None of them raise an
+error — they just quietly do something else, so they are worth reading once.
+
+- **`set()` takes a value, not an updater.** `count.set(v => v + 1)` stores the
+  *function*; write `count.set(count.value + 1)`.
+- **`.get()` tracks, `.value` does not.** Reading `.value` inside an effect
+  gives you an effect that never re-runs. That is also how you read
+  deliberately *without* subscribing.
+- **`createSignal` returns an object, `createMemo` returns a function.**
+  So it is `count.get()` but `total()`.
+- **Static deps switch off auto-tracking *and* autorun.**
+  `createEffect(cb, [a, b])` does not run on creation, and signals read inside
+  the callback are not subscribed — call `eff.run()` for an initial pass.
+- **`@memo()` is always lazy**, so dependent effects are not notified when its
+  inputs change. Use `createMemo(..., {attach: this})` for an eager class memo.
+- **Cleanup is manual.** Effects and links outlive the scope that created them:
+  pass `{attach: obj}` and dispose with `SignalGroup.delete(obj)`.
+
+The full list lives in [Recipes & quirks](./docs/recipes.md).
+
 ## Documentation
 
 | Document                                  | Purpose                                     |
@@ -268,6 +300,38 @@ For changes between releases, see [CHANGELOG.md](./CHANGELOG.md).
 ### AI coding agents
 
 The package ships an agent skill at [`skills/using-signalize/`](./skills/using-signalize) that teaches Claude Code (and compatible agents) the mental model, the behaviours that silently produce wrong reactive code, and the idiomatic patterns. See its [README](./skills/using-signalize/README.md) for install options.
+
+## Development
+
+The package manager is **pnpm** (`pnpm@10.6.5`); `npm install` is not supported
+here. Node `>=24.13` is required to build.
+
+```shell
+git clone https://github.com/spearwolf/signalize.git
+cd signalize
+pnpm install
+```
+
+| Task | Runs |
+| --- | --- |
+| `pnpm test` | Jest via ts-jest, with coverage gate |
+| `pnpm test -- <file>` | A single spec, e.g. `pnpm test -- createSignal.spec.ts` |
+| `pnpm test -- -t "<name>"` | Only tests whose name matches |
+| `pnpm check` / `pnpm fix` | Biome lint + format — check only / auto-fix |
+| `pnpm compile` | `tsc` → `lib/` (types + sourcemaps) |
+| `pnpm bundle` | rollup → `dist/` |
+| `pnpm clean` | Remove build artifacts |
+| `pnpm cbt` | clean + compile + bundle + test |
+| `pnpm world` | clean + **check** + compile + bundle + test |
+
+**Which one to use:** `pnpm test` while iterating, and `pnpm world` before
+pushing — it is the only task that also runs Biome, which is what CI checks
+(`pnpm check && pnpm test`). `pnpm cbt` skips the linter, so a green `cbt` can
+still fail CI.
+
+Tests are `*.spec.ts` files sitting next to the implementation in `src/`; only
+`src/` is edited by hand, `lib/` and `dist/` are generated. Details and code
+style are in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Contributing
 
