@@ -265,6 +265,10 @@ class Counter {
 
 For changes between releases, see [CHANGELOG.md](./CHANGELOG.md).
 
+### AI coding agents
+
+The package ships an agent skill at [`skills/using-signalize/`](./skills/using-signalize) that teaches Claude Code (and compatible agents) the mental model, the behaviours that silently produce wrong reactive code, and the idiomatic patterns. See its [README](./skills/using-signalize/README.md) for install options.
+
 ## Contributing
 
 Issues and pull requests are welcome. See

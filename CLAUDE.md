@@ -1,55 +1,54 @@
 # CLAUDE.md
 
-Operational guidance for Claude Code in this repo. **Architecture, eventize internals, source-file map, and full public API surface are in `AGENTS.md` — read it before any non-trivial change.**
+`@spearwolf/signalize` — synchronous signals/effects/memos/links on top of `@spearwolf/eventize`. ESM-only, Node `>=24.13`, ES2023.
 
-## Project
+## Where the knowledge lives
 
-`@spearwolf/signalize` — synchronous signals/effects/memos/links library on top of `@spearwolf/eventize`. ESM-only, Node `>=24.13`, ES2023.
+| Need | Read |
+| --- | --- |
+| Architecture, eventize internals, source-file map, full public API, common change patterns | `AGENTS.md` — read before any non-trivial change |
+| How to *use* signalize (mental model, pitfalls, patterns) | `skills/using-signalize/` |
+| Behaviour details and quirks | `docs/` (`api.md`, `recipes.md`, `architecture.md`, `cheat-sheet.md`) |
+
+Everything below is the short list that is expensive to discover by reading code.
 
 ## Commands
 
-Package manager: **pnpm** (`pnpm@10.6.5`). Never `npm install`.
+Package manager is **pnpm** (`pnpm@10.6.5`) — never `npm install`.
 
-| Command | Runs |
-| --- | --- |
-| `pnpm cbt` | `clean + compile + bundle + test` — local "done" gate |
-| `pnpm world` | `clean + check + compile + bundle + test` — matches CI scope |
-| `pnpm test` | Jest (ts-jest, ESM) |
-| `pnpm test -- <file>` | single spec, e.g. `pnpm test -- createSignal.spec.ts` |
-| `pnpm test -- -t "<name>"` | filter by test name |
-| `pnpm check` / `pnpm fix` | Biome lint+format / Biome auto-fix |
-| `pnpm lint` | Biome lint only |
-| `pnpm format:write` | Biome format auto-fix |
-| `pnpm bundle` | rollup → `dist/` |
-| `pnpm compile` | tsc → `lib/` (types + sourcemaps) |
-| `pnpm checkPkgTypes` | `attw --pack` |
+- `pnpm cbt` — clean + compile + bundle + test. The local "done" gate.
+- `pnpm world` — adds `check`; **this is what matches CI** (`.github/workflows/ci.yml` runs `check + test`, not `cbt`).
+- `pnpm test -- <file>` / `pnpm test -- -t "<name>"` — single spec / by test name.
+- `pnpm fix` — Biome lint+format auto-fix.
 
-**CI ≠ `pnpm cbt`.** `.github/workflows/ci.yml` runs `check + test`. Use `pnpm world` to match CI locally.
+Full command table in `AGENTS.md`.
 
-## Repo quirks (gotchas, not derivable from code)
+## Things the code won't tell you
 
-- **Imports use `.js` extension** in `src/` (NodeNext): `import {x} from './foo.js'` — even though the source is `foo.ts`. Always.
-- **`strict: true` but `strictNullChecks: false`** in `tsconfig.json` — intentional. Don't add `?:` defensively to "fix" null errors that aren't errors here.
-- **Decorators are TC39 standard** (no `experimentalDecorators`). Use the `accessor` keyword and standard descriptor signatures, not legacy TS decorator forms.
-- **Linting & formatting via Biome** (`biome.json`). ESLint and Prettier are gone. Disabled rules of note: `noUnsafeDeclarationMerging`, `noConstructorReturn`, `noTsIgnore`, `noAsyncPromiseExecutor`, `useArrowFunction` — all match intentional patterns in this codebase.
-- **TypeScript 6 needs explicit `types`** in `tsconfig.json` (`["jest", "node"]`); auto-include from `node_modules/@types/*` no longer fires here. Removing it breaks `assert-helpers.ts` (uses Jest globals).
-- **Edit only `src/`.** `lib/` (tsc) and `dist/` (rollup) are generated; don't commit.
-- **Tests are `*.spec.ts` adjacent** to implementation. Jest is rooted at `src/` only.
-- **`sideEffects: false`** — keep modules side-effect-free at top level (tree-shaking).
-- **Public API surface lives in `src/index.ts` (default entry) and `src/decorators.ts` (`./decorators` subpath).** A new file in `src/` is invisible to consumers until re-exported through one of these.
+- **Imports carry a `.js` extension** in `src/` (NodeNext): `import {x} from './foo.js'` even though the source is `foo.ts`. Always.
+- **`strict: true` but `strictNullChecks: false`** is intentional. Null-ish values are passed around freely; don't add defensive `?:` to "fix" errors that aren't errors here.
+- **Decorators are TC39 standard** (no `experimentalDecorators`) — `accessor` keyword, standard descriptor signatures.
+- **Biome only** (`biome.json`); ESLint and Prettier are gone. The disabled rules (`noUnsafeDeclarationMerging`, `noConstructorReturn`, `noTsIgnore`, `noAsyncPromiseExecutor`, `useArrowFunction`) each match a deliberate pattern in this codebase.
+- **TypeScript 6 needs the explicit `types: ["jest", "node"]`** in `tsconfig.json`; auto-include from `node_modules/@types/*` no longer fires. Removing it breaks `assert-helpers.ts`.
+- **Edit only `src/`.** `lib/` (tsc) and `dist/` (rollup) are generated — never commit them.
+- **A new file in `src/` is invisible to consumers** until re-exported through `src/index.ts` (default entry) or `src/decorators.ts` (`./decorators` subpath).
+- Tests are `*.spec.ts` adjacent to the implementation; Jest is rooted at `src/` only.
+- `sideEffects: false` — keep module top-levels side-effect-free so tree-shaking holds.
 
 ## Verifying subscription leaks
 
-For changes that touch subscribe/unsubscribe paths, assert no listener leaks. `src/assert-helpers.ts` (test-only) provides `getSubscriptionCount(queue, event?)`. Combine with public counters `getSignalsCount`, `getEffectsCount`, `getLinksCount`. Pattern: snapshot baseline → run scenario → destroy → assert restored. See `unsubscribeEffect.spec.ts`.
+For changes touching subscribe/unsubscribe paths, assert that nothing leaks: snapshot `getSubscriptionCount(queue, event?)` (from the test-only `src/assert-helpers.ts`) together with `getSignalsCount` / `getEffectsCount` / `getLinksCount` → run the scenario → destroy → assert restored. `unsubscribeEffect.spec.ts` is the reference.
 
-## Documentation sync
+## When the public API changes
 
-Public-API changes → `src/*.ts` JSDoc → `docs/api.md` → `docs/recipes.md` (if a quirk/pattern is involved) → `docs/cheat-sheet.md` → `README.md` "API at a glance" → `CHANGELOG.md`. The previous top-level `skills/` folder was removed (commit `f08fb05`) — ignore older references to `SKILL.md` updates. Older doc filenames (`introduction.md`, `guide.md`, `full-api.md`) were superseded; do not recreate them.
+Sync in this order: source JSDoc → `docs/api.md` → `docs/recipes.md` (if a quirk or pattern is involved) → `docs/cheat-sheet.md` → `skills/using-signalize/` (`SKILL.md` for the mental model and the top-six list, `references/` for the detail) → `README.md` "API at a glance" → `CHANGELOG.md`.
+
+Older doc filenames (`introduction.md`, `guide.md`, `full-api.md`) were superseded — don't recreate them.
 
 ## CHANGELOG discipline
 
-Every user-visible change (features, fixes, deps, build-system, breaking changes) gets an entry under `## Unreleased` in `CHANGELOG.md`. Pure internal refactors with no observable effect can be skipped.
+Every user-visible change (features, fixes, deps, build system, breaking changes) gets an entry under `## Unreleased`. Pure internal refactors with no observable effect can be skipped.
 
-- **Items must be short and precise** — one line, one fact. No wordy prose, no rationale paragraphs, no "why" essays. If context is needed, link a commit/PR; don't expand the line.
-- **Never modify entries under released version headings** (`## v0.x.y`). Past releases are immutable history. Corrections go into a new `## Unreleased` entry.
-- Group under existing `### Build System` / `### Bug Fixes` / `### Tests` / `### Documentation` / `### Chores` headings; create a new one only if none fit.
+- One line, one fact. If context is needed, link a commit or PR rather than expanding the line.
+- **Never modify entries under released headings** (`## v0.x.y`) — past releases are immutable. Corrections become a new `## Unreleased` entry.
+- Group under the existing `### Build System` / `### Bug Fixes` / `### Tests` / `### Documentation` / `### Chores` headings; add a new one only when none fits.
