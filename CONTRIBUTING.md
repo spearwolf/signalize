@@ -148,7 +148,9 @@ When changing the public API:
 | `docs/api.md`           | Complete API reference                       |
 | `docs/recipes.md`       | Patterns, quirks, gotchas                    |
 | `docs/cheat-sheet.md`   | One-page lookup                              |
+| `skills/using-signalize/` | Agent skill shipped to consumers            |
 | `AGENTS.md`             | AI assistant context (internal architecture) |
+| `CLAUDE.md`             | Claude Code operational notes                |
 
 ## Pull Requests
 
