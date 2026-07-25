@@ -280,8 +280,11 @@ error — they just quietly do something else, so they are worth reading once.
   the callback are not subscribed — call `eff.run()` for an initial pass.
 - **`@memo()` is always lazy**, so dependent effects are not notified when its
   inputs change. Use `createMemo(..., {attach: this})` for an eager class memo.
-- **Cleanup is manual.** Effects and links outlive the scope that created them:
-  pass `{attach: obj}` and dispose with `SignalGroup.delete(obj)`.
+- **Cleanup is explicit.** Effects and links outlive the scope that created
+  them: pass `{attach: obj}` and dispose with `SignalGroup.delete(obj)`. Groups
+  attached to a host object do have a `FinalizationRegistry` backstop that
+  clears them once the object is unreachable, but GC timing is unobservable —
+  it is insurance against a leak, not a disposal schedule.
 
 The full list lives in [Recipes & quirks](./docs/recipes.md).
 

@@ -44,6 +44,12 @@ Behaviours that surprise people (and models) coming from React, Solid, Vue or Mo
 
 **16 — Attaching a group does not keep the host object alive.** The registry is a `WeakMap` and the back-pointer a `WeakRef`, by design.
 
+**16a — There *is* a GC backstop, but do not rely on it.** `SignalGroup` registers its host object with a `FinalizationRegistry`; when that object becomes unreachable without an explicit `SignalGroup.delete(obj)` or `group.clear()`, the callback runs `clear()` and the attached signals, effects and links are reclaimed. Three limits make it insurance rather than a lifecycle:
+
+- FR callbacks fire non-deterministically and may never run before the process exits, so nothing observable is guaranteed at any point in time.
+- It only covers resources reachable through a group with a *host object*. A self-keyed group (`findOrCreate()` with no argument, where `object === this`) is deliberately not registered, and anything created without `attach` is owned by nobody — it stays subscribed to the global queues until destroyed by hand.
+- Because timing is unobservable, leak assertions in tests must still use explicit teardown plus the counters; a passing `getSignalsCount()` check cannot be attributed to the registry.
+
 **17 — `link()` deduplicates by `(source, target)` pair.** Calling it twice with the same pair returns the *existing* link rather than creating a second one. Links auto-destroy when the source or a signal target is destroyed.
 
 **18 — `SignalAutoMap` retains destroyed signals.** Calling `destroySignal()` on an entry leaves it in the map: reads return the last value and writes are silent no-ops. Prefer `map.clear()`, or attach the signals to a `SignalGroup`.

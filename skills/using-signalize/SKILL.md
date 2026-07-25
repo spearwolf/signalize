@@ -18,7 +18,7 @@ import {signal, memo} from '@spearwolf/signalize/decorators';
 - Propagation is **synchronous and inline**. `signal.set(x)` runs every dependent effect *before it returns*. No scheduler, no microtask queue, no tearing — and no free debounce.
 - Effects subscribe **on read**: calling `sig.get()` inside the callback registers the dependency. Deps are recomputed every run, so they may grow or shrink.
 - Memos are signals driven by a high-priority (`1000`) effect, so they settle before ordinary effects.
-- Nothing is garbage-collected for you. Signals, effects and links live until destroyed — usually via the `attach` option plus `SignalGroup.delete(obj)`.
+- Lifecycles are explicit. Signals, effects and links live until destroyed — normally via the `attach` option plus `SignalGroup.delete(obj)`. A group attached to a host object additionally has a `FinalizationRegistry` backstop, but it is leak insurance, not a lifecycle (see behaviour 5).
 
 ## Six behaviours that silently produce wrong code
 
@@ -47,7 +47,9 @@ eff.run();   // ✓ call once if an initial pass is wanted
 
 **4 — Lazy memos do not push.** Default `lazy: false` behaves like a computed signal: dependent effects re-run when deps change. With `lazy: true` the memo only recomputes on read and dependents are *not* notified. **The `@memo()` decorator is always lazy** — for an eager class memo use `createMemo(..., {attach: this})`.
 
-**5 — Cleanup is manual.** Effects and links outlive the scope that created them. Pass `{attach: obj}` when creating them and tear down with `SignalGroup.delete(obj)`.
+**5 — Cleanup is explicit.** Effects and links outlive the scope that created them, and an unattached one stays reachable from the global queues indefinitely. Pass `{attach: obj}` at creation and tear down with `SignalGroup.delete(obj)`.
+
+A group *with a host object* also gets a `FinalizationRegistry` backstop: once that object becomes unreachable without an explicit teardown, the group's `clear()` runs and the attached signals, effects and links are reclaimed. It is a genuine safety net, but GC timing is unobservable and it may never fire within a process — so it prevents the worst-case leak rather than defining when cleanup happens. Design for explicit disposal; treat the registry as insurance.
 
 **6 — `createSignal(existingSignal)` is a passthrough.** It returns that same signal — no clone, no new instance. Handy for "value or signal" helpers; wrong if a copy was intended.
 

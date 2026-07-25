@@ -170,6 +170,8 @@ g.clear();          // full teardown
 
 The registry is a `WeakMap<object, SignalGroup>` and the back-pointer to the host object is a `WeakRef` — attaching a group does **not** keep the host object alive.
 
+A group created against a host object is also registered with a `FinalizationRegistry`; if that object becomes unreachable without an explicit `SignalGroup.delete(obj)` / `group.clear()`, the callback runs `clear()`. Self-keyed groups (`object === this`) are not registered. FR timing is non-deterministic — see pitfall 16a.
+
 ## SignalAutoMap
 
 ```ts
