@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## `v0.31.1` (2026-07-25)
+
 ### Bug Fixes
 
 - Importing `lib/EffectImpl.js` as the first module of the graph threw `ReferenceError: Cannot access 'EffectImpl' before initialization`. `effects.ts` read `EffectImpl.createEffect` at module-eval time across an import cycle; it now delegates through a function
