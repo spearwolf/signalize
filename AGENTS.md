@@ -1,6 +1,8 @@
 # AGENTS.md — `@spearwolf/signalize`
 
-Architecture and conventions reference for AI coding agents. For Claude Code-specific operational guidance see `CLAUDE.md`. For human contributor docs see `CONTRIBUTING.md`.
+Architecture and conventions reference for AI coding agents working **on** this repository. It is the canonical, standalone description of the codebase; `CLAUDE.md` keeps only a resident subset of it. Human contributor docs are in `CONTRIBUTING.md`.
+
+Working **with** signalize as a consumer is a different job — that is the `skills/using-signalize/` skill (mental model, pitfalls, patterns), which also ships in the npm package.
 
 ## What it is
 
@@ -158,9 +160,7 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | `pnpm checkPkgTypes` | `attw --pack` package types audit |
 | `pnpm dist` | clean + compile + bundle (no test) |
 
-### CI vs local
-
-`.github/workflows/ci.yml` runs `pnpm check && pnpm test` — **not** `pnpm cbt`. To match CI locally use `pnpm world`. `pnpm cbt` skips `check`. Tooling is **Biome 2.x** (replaced ESLint + Prettier in v0.28).
+`.github/workflows/ci.yml` runs `pnpm check && pnpm test`, so `pnpm world` is the command that matches CI — `pnpm cbt` skips `check`. Tooling is **Biome 2.x** (replaced ESLint + Prettier in v0.28).
 
 ## Repo conventions
 
@@ -191,6 +191,11 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | `docs/api.md` | Complete API reference with all options |
 | `docs/recipes.md` | Patterns, quirks, gotchas |
 | `docs/cheat-sheet.md` | One-page lookup |
+| `skills/using-signalize/` | Agent skill for *consumers* — lean `SKILL.md` plus `references/{api,pitfalls,patterns}.md` loaded on demand |
 | `CHANGELOG.md` | Version history + migration notes |
 
-When the public API changes, sync in this order: source JSDoc → `docs/api.md` → `docs/recipes.md` (when a quirk/pattern is involved) → `docs/cheat-sheet.md` → `README.md` "API at a glance" → `CHANGELOG.md` "Unreleased". Older doc filenames (`introduction.md`, `guide.md`, `full-api.md`) were superseded — do not recreate them. A previous top-level `skills/` folder was removed (commit `f08fb05`); ignore any stale references.
+When the public API changes, sync in this order: source JSDoc → `docs/api.md` → `docs/recipes.md` (when a quirk/pattern is involved) → `docs/cheat-sheet.md` → `skills/using-signalize/` → `README.md` "API at a glance" → `CHANGELOG.md` "Unreleased".
+
+For the skill, keep `SKILL.md` lean — it carries the mental model, the six silently-wrong behaviours, and the pointer table. New API detail belongs in `references/api.md`, new quirks in `references/pitfalls.md`, new idioms in `references/patterns.md`. A quirk graduates into `SKILL.md` only when it is both common and silent.
+
+Older doc filenames (`introduction.md`, `guide.md`, `full-api.md`) were superseded — do not recreate them.

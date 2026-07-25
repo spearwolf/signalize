@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### Documentation
+
+- `skills/using-signalize`: split into a lean `SKILL.md` (mental model + six silent-failure behaviours) plus `references/{api,pitfalls,patterns}.md` loaded on demand; sharpen the frontmatter description for triggering
+- `skills/using-signalize/SKILL.md`: drop the "refuse / rewrite" framing in favour of a judgement section — the skill states behaviour, it does not prescribe architecture
+- `CLAUDE.md`: trim to the resident subset (commands, non-derivable gotchas, changelog rules) and point to `AGENTS.md`, `skills/` and `docs/` for the rest
+- `CLAUDE.md`, `AGENTS.md`: remove the stale claim that the `skills/` folder was removed — it exists and is part of the doc-sync chain
+- `AGENTS.md`: document the skill in the documentation surface, de-duplicate the CI-vs-local section
+- `README.md`: add an "AI coding agents" pointer to the shipped skill
+- `README.md`: add a "Development" section (pnpm task overview, and why `pnpm world` — not `pnpm cbt` — is the pre-push gate)
+- `README.md`: add a "Good to know" section listing the six behaviours that differ from other signal libraries without raising an error
+- `README.md`: fix the batched-writes example — a `createMemo` result is called as `total()`, it has no `.get()`
+- `README.md`: fix the domain-model example — `createMemo` was used but not imported
+- `README.md`: install snippet now installs the `@spearwolf/eventize` peer dependency explicitly (pnpm/yarn do not add peers), and notes the ESM-only/two-entry-point setup
+- `README.md`: list the `Signal` and `Effect` class exports in "API at a glance"
+- `CONTRIBUTING.md`: add `skills/using-signalize/` and `CLAUDE.md` to the documentation structure table
+- `README.md`, `skills/using-signalize`: correct the cleanup claim — `SignalGroup` has a `FinalizationRegistry` backstop for groups with a host object, so "nothing is garbage-collected for you" was wrong; document its three limits (non-deterministic firing, no coverage for self-keyed groups or unattached resources)
+
 ## `v0.30.0` (2026-05-20)
 
 ### Features

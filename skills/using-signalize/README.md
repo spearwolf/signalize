@@ -1,15 +1,31 @@
 # using-signalize — Skill
 
 A Claude Code / Claude Agent skill that primes an AI coding agent with the
-public API, mental model, and quirks of [`@spearwolf/signalize`](https://github.com/spearwolf/signalize).
+mental model, quirks, and public API of [`@spearwolf/signalize`](https://github.com/spearwolf/signalize).
 The skill activates whenever an agent sees an import from `@spearwolf/signalize`
 or `@spearwolf/signalize/decorators`, or when the user mentions *signalize*
 in their prompt.
 
-The content is targeted at LLMs, not humans: it is dense, table-heavy, and
-front-loads the gotchas that AI coding agents most often get wrong (e.g.
-React-style `set(prev => prev + 1)` updater functions, `.get()` vs `.value`
-tracking, eager vs lazy memos, static-deps disabling autorun).
+The content is targeted at LLMs, not humans. It is organised for progressive
+disclosure: `SKILL.md` stays short and front-loads the handful of behaviours
+that silently produce wrong code (React-style `set(prev => prev + 1)` updater
+functions, `.get()` vs `.value` tracking, eager vs lazy memos, static deps
+disabling autorun, manual cleanup), and the bulk of the material sits in
+reference files the agent reads only when a task needs them:
+
+| File | Contents |
+| --- | --- |
+| `SKILL.md` | Mental model, the six silent-failure behaviours, pointers |
+| `references/api.md` | Full signatures, options, and exports per entry point |
+| `references/pitfalls.md` | The complete annotated quirk list |
+| `references/patterns.md` | Idiomatic patterns and common rewrites |
+
+Install the whole folder, not just `SKILL.md` — the references are resolved
+relative to it.
+
+The skill describes how signalize behaves; it deliberately avoids prescribing
+an application architecture, so it should not fight your project's own
+conventions.
 
 For the human-facing documentation see the project [`docs/`](../../docs) folder.
 
@@ -70,14 +86,11 @@ Start a new Claude Code session in the project and ask:
 which skills do you have available?
 ```
 
-`using-signalize` should appear in the list. You can also force-invoke it:
-
-```
-/skill using-signalize
-```
-
-If the skill is installed correctly, the agent will load this `SKILL.md` and
-acknowledge `signalize` context before continuing.
+`using-signalize` should appear in the list. You can also ask for it by name
+("use the using-signalize skill"). If the skill is installed correctly, the
+agent loads `SKILL.md` and acknowledges the `signalize` context before
+continuing — and pulls in `references/` on its own when a task calls for the
+detail.
 
 ## Uninstall
 
