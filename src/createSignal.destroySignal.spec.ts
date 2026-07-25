@@ -9,8 +9,9 @@ import {
 } from './assert-helpers.js';
 import {batch} from './batch.js';
 import {createMemo} from './createMemo.js';
-import {createSignal, destroySignal} from './createSignal.js';
+import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
+import {destroySignal} from './signal-core.js';
 import {touch} from './touch.js';
 
 describe('destroySignal', () => {

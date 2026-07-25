@@ -1,14 +1,7 @@
 export {batch} from './batch.js';
 export {beQuiet, isQuiet} from './bequiet.js';
 export {type CreateMemoOptions, createMemo} from './createMemo.js';
-export {
-  createSignal,
-  destroySignal,
-  getSignalsCount,
-  isSignal,
-  muteSignal,
-  unmuteSignal,
-} from './createSignal.js';
+export {createSignal} from './createSignal.js';
 export {Effect} from './Effect.js';
 export {
   createEffect,
@@ -28,6 +21,13 @@ export {Signal} from './Signal.js';
 export * from './SignalAutoMap.js';
 export {getSignalGroupsCount, SignalGroup} from './SignalGroup.js';
 export type {SignalLink, ValueCallback} from './SignalLink.js';
+export {
+  destroySignal,
+  getSignalsCount,
+  isSignal,
+  muteSignal,
+  unmuteSignal,
+} from './signal-core.js';
 export {touch} from './touch.js';
 export type * from './types.js';
 export {value} from './value.js';

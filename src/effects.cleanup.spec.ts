@@ -1,7 +1,8 @@
 import {emit, eventize, onceAsync} from '@spearwolf/eventize';
 import {assertEffectsCount} from './assert-helpers.js';
-import {createSignal, destroySignal} from './createSignal.js';
+import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
+import {destroySignal} from './signal-core.js';
 
 describe('effect cleanup hook on effect destruction', () => {
   beforeEach(() => {

@@ -113,6 +113,7 @@ TC39 standard form (`accessor` keyword, stage-3 semantics).
 | -------------------------- | ----------------------------------------------------------- |
 | `index.ts`                 | Public entry — re-exports the `.` API surface               |
 | `decorators.ts`            | `@signal`, `@memo` (subpath entry `./decorators`)           |
+| `signal-core.ts`           | Leaf primitives: `isSignal`, `destroySignal`, `signalImpl`, `writeSignal` |
 | `Signal.ts` / `createSignal.ts` | `Signal<T>` wrapper + `SignalImpl` core                |
 | `Effect.ts` / `EffectImpl.ts`   | `Effect` wrapper + tracking/rerun core                 |
 | `createMemo.ts`            | `createMemo` — wraps signal + high-priority effect          |

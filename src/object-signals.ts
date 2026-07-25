@@ -1,5 +1,5 @@
-import {destroySignal} from './createSignal.js';
 import {Signal} from './Signal.js';
+import {destroySignal} from './signal-core.js';
 
 interface ObjectStore {
   signals?: Map<string | symbol, Signal<any>>;

@@ -106,7 +106,8 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | `constants.ts` | Symbols (`$signal`, `$effect`, `RECALL`, `$createEffect`, `$destroyEffect`, `$destroySignal`) |
 | `types.ts` | Public TypeScript interfaces |
 | `Signal.ts` | `Signal<T>` class — thin wrapper around `SignalImpl` |
-| `createSignal.ts` | `SignalImpl`, `createSignal`, `destroySignal`, `isSignal`, `muteSignal`, `unmuteSignal`, `getSignalsCount`, internal `writeSignal`, `signalImpl` |
+| `signal-core.ts` | Leaf layer — `isSignal`, `destroySignal`, `muteSignal`, `unmuteSignal`, `getSignalsCount`, internal `signalImpl`, `readSignal`, `writeSignal`, `incSignalsCount`. Imports nothing above itself; every other module reaches signal primitives through here |
+| `createSignal.ts` | `SignalImpl`, `createSignal` — the factory layer on top of `signal-core.ts` |
 | `Effect.ts` | `Effect` class — wrapper around `EffectImpl` |
 | `EffectImpl.ts` | Core dependency tracking + rerun logic; `EffectOptions` interface |
 | `effects.ts` | `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect` |
@@ -125,6 +126,16 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | `object-signals.ts` | `destroyObjectSignals`, `findObjectSignalByName`, `findObjectSignals`, `findObjectSignalNames`; internal `storeAsObjectSignal` (used by `@signal` decorator, **not** re-exported through `index.ts`) |
 | `UniqIdGen.ts` | Symbol-based unique ID generator (`Symbol('si1')`, `Symbol('ef1')`) |
 | `assert-helpers.ts` | **Test-only**: `getSubscriptionCount(queue, event?)` for leak assertions |
+
+### Module layering — no import cycles
+
+`rollup.config.mjs` throws on `CIRCULAR_DEPENDENCY`, so a cycle fails `pnpm bundle`. The rule that keeps the graph acyclic:
+
+- `signal-core.ts` is the leaf. It may import only `constants.ts`, `types.ts`, `bequiet.ts`, `global-queues.ts`, `globalEffectStack.ts`. Never `createSignal.ts`, `Signal.ts`, `SignalGroup.ts` or anything effect-related.
+- Everything that needs `signalImpl`, `isSignal`, `writeSignal` or `destroySignal` imports them from `signal-core.ts`, not from `createSignal.ts`.
+- `createSignal.ts` sits above and may reach up to `Signal.ts`, `SignalGroup.ts` and `effects.ts`.
+
+Also avoid reading an imported binding at module-eval time across module boundaries (`export const x = SomeClass.method`). Delegate through a function instead — `effects.ts:createEffect` is the pattern. An eager read inside a cycle is what previously made `import('./lib/EffectImpl.js')` crash with a TDZ `ReferenceError`.
 
 ## Public API (what `index.ts` re-exports)
 
@@ -184,7 +195,7 @@ The test transform runs through **SWC**, not Vite's built-in oxc pass: `vitest.c
 | New `Signal` method | `types.ts` interface → `SignalImpl` in `createSignal.ts` → `Signal.ts` wrapper → tests in adjacent `*.spec.ts` |
 | New effect option | `EffectOptions` in `EffectImpl.ts` → handle in constructor / `createEffect` → tests in `effects.spec.ts` (or new `effects.<feature>.spec.ts`) |
 | New utility function | `src/<name>.ts` → re-export in `src/index.ts` → adjacent `<name>.spec.ts` |
-| Modifying core reactivity | Read `EffectImpl.ts` (subscribe paths) + `createSignal.ts` (emit paths) + `global-queues.ts`; add subscription-count assertions to tests |
+| Modifying core reactivity | Read `EffectImpl.ts` (subscribe paths) + `signal-core.ts` (emit paths) + `global-queues.ts`; add subscription-count assertions to tests |
 
 ## Documentation surface
 

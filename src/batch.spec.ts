@@ -1,8 +1,9 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
 import {batch, getCurrentBatch} from './batch.js';
-import {createSignal, destroySignal} from './createSignal.js';
+import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {globalEffectCalledQueue, globalEffectQueue} from './global-queues.js';
+import {destroySignal} from './signal-core.js';
 
 describe('batch', () => {
   it('delay the effect callback execution until the batch callback finished', () => {

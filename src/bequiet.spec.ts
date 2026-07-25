@@ -1,7 +1,8 @@
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 import {beQuiet} from './bequiet.js';
-import {createSignal, destroySignal} from './createSignal.js';
+import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
+import {destroySignal} from './signal-core.js';
 import {touch} from './touch.js';
 
 describe('beQuiet', () => {

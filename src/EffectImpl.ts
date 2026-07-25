@@ -14,7 +14,6 @@ import {
   DESTROY,
   RECALL,
 } from './constants.js';
-import {signalImpl} from './createSignal.js';
 import {Effect} from './Effect.js';
 import {
   globalDestroySignalQueue,
@@ -24,6 +23,7 @@ import {
 } from './global-queues.js';
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 import {SignalGroup} from './SignalGroup.js';
+import {signalImpl} from './signal-core.js';
 import type {EffectCallback, SignalLike, VoidFunc} from './types.js';
 import {UniqIdGen} from './UniqIdGen.js';
 

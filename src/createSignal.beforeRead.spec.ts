@@ -1,6 +1,7 @@
 import type {MockInstance} from 'vitest';
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
-import {createSignal, destroySignal} from './createSignal.js';
+import {createSignal} from './createSignal.js';
+import {destroySignal} from './signal-core.js';
 
 describe('createSignal({beforeRead})', () => {
   let warnSpy: MockInstance;

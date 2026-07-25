@@ -33,6 +33,7 @@ Full command table in `AGENTS.md`.
 - **TypeScript needs the explicit `types: ["vitest/globals", "node"]`** in `tsconfig.json`; auto-include from `node_modules/@types/*` no longer fires. Removing it breaks `assert-helpers.ts`, which calls the global `expect` — including the two-argument message form Vitest supports natively.
 - **Vitest transpiles via SWC, not oxc** (`vitest.config.ts` sets `oxc: false` and loads `unplugin-swc`). Vite 8's oxc pass hands TC39 decorators straight through and Node then rejects `@signal() accessor foo`. Don't drop the plugin unless oxc has learned to lower decorators.
 - **TypeScript 7 has no JS compiler API** — `transpileModule` and friends are gone, only the `tsc` binary and `typescript/unstable/*` remain. Any tool needing the old API (ts-jest, `@rollup/plugin-typescript`) cannot be used here.
+- **No import cycles.** `rollup.config.mjs` throws on `CIRCULAR_DEPENDENCY`, so a cycle fails `pnpm bundle`. `signal-core.ts` is the leaf layer (`signalImpl`, `isSignal`, `writeSignal`, `destroySignal`, the signal counter) and must never import `createSignal.ts`, `Signal.ts`, `SignalGroup.ts` or `effects.ts`. Details in `AGENTS.md` → "Module layering".
 - **Edit only `src/`.** `lib/` (tsc) and `dist/` (rollup) are generated — never commit them.
 - **A new file in `src/` is invisible to consumers** until re-exported through `src/index.ts` (default entry) or `src/decorators.ts` (`./decorators` subpath).
 - Tests are `*.spec.ts` adjacent to the implementation; Vitest is rooted at `src/` only.

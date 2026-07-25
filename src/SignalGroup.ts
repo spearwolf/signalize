@@ -1,10 +1,10 @@
 import {type EventizedObject, emit, eventize, off} from '@spearwolf/eventize';
 import {DESTROY, OFF} from './constants.js';
-import {destroySignal, signalImpl} from './createSignal.js';
 import {EffectImpl} from './EffectImpl.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {Signal} from './Signal.js';
 import {SignalLink} from './SignalLink.js';
+import {destroySignal, signalImpl} from './signal-core.js';
 import {ISignalImpl, SignalLike} from './types.js';
 
 // Lookup map: user-object → SignalGroup. WeakMap so that user objects are not

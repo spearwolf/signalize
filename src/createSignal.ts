@@ -1,11 +1,14 @@
-import {emit} from '@spearwolf/eventize';
-import {isQuiet} from './bequiet.js';
 import {$signal} from './constants.js';
 import {createEffect} from './effects.js';
-import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
-import {getCurrentEffect} from './globalEffectStack.js';
 import {Signal} from './Signal.js';
 import {SignalGroup} from './SignalGroup.js';
+import {
+  incSignalsCount,
+  isSignal,
+  readSignal,
+  signalImpl,
+  writeSignal,
+} from './signal-core.js';
 import type {
   BeforeReadFunc,
   CompareFunc,
@@ -13,7 +16,6 @@ import type {
   SignalLike,
   SignalParams,
   SignalReader,
-  SignalValueParams,
   SignalWriter,
   SignalWriterParams,
   ValueChangedCallback,
@@ -31,30 +33,6 @@ function warnSignalReaderCallbackDeprecated(): void {
     'signalReader(callback) is deprecated and will be removed in a future release. Use Signal.onChange(callback) instead — it returns an unsubscribe function for proper cleanup.',
   );
 }
-
-function readSignal(signalId: symbol) {
-  if (!isQuiet()) {
-    getCurrentEffect()?.whenSignalIsRead(signalId);
-  }
-}
-
-export function writeSignal(
-  signalId: symbol,
-  value: unknown,
-  params?: SignalValueParams,
-) {
-  if (!isQuiet()) {
-    emit(globalSignalQueue, signalId, value, params);
-  }
-}
-
-/**
- * Check if a value is a signal (Signal, SignalReader, or SignalWriter).
- * @param signalLike - The value to check
- * @returns True if the value is a signal-like object
- */
-export const isSignal = (signalLike: any): signalLike is SignalLike<unknown> =>
-  signalLike != null && signalLike[$signal] != null;
 
 const createSignalReader = <Type>(
   signal: ISignalImpl<Type>,
@@ -85,8 +63,6 @@ const createSignalReader = <Type>(
 };
 
 class SignalImpl<Type> implements ISignalImpl<Type> {
-  static instanceCount = 0;
-
   id: symbol;
 
   lazy: boolean;
@@ -162,7 +138,7 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
   constructor(lazy: boolean, initialValue?: Type | (() => Type) | undefined) {
     this.id = idCreator.make();
 
-    ++SignalImpl.instanceCount;
+    incSignalsCount();
 
     this.lazy = lazy;
 
@@ -179,10 +155,6 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
     this.object = new Signal(this);
   }
 }
-
-export const signalImpl = <Type = unknown>(
-  sig: SignalLike<Type>,
-): ISignalImpl<Type> => sig?.[$signal];
 
 /**
  * Create a new reactive signal with an optional initial value.
@@ -216,63 +188,3 @@ export function createSignal<Type = unknown>(
 
   return signal.object;
 }
-
-/**
- * Destroy one or more signals, cleaning up all subscriptions and resources.
- *
- * Destroyed signals no longer trigger effects when read or written — but they
- * remain usable as plain value containers: `set()` stores the new value and
- * reads return it. There is no way to revive them.
- *
- * @param signalLikes - Signals to destroy
- */
-export const destroySignal = (...signalLikes: SignalLike[]): void => {
-  for (const sigLike of signalLikes) {
-    const signal = signalImpl(sigLike);
-    if (signal != null && !signal.destroyed) {
-      signal.destroyed = true;
-      signal.beforeRead = undefined;
-      --SignalImpl.instanceCount;
-      emit(globalDestroySignalQueue, signal.id, signal.id);
-    }
-  }
-};
-
-/**
- * Mute a signal so that value changes do not trigger dependent effects.
- *
- * Reads and writes keep working: `set()` still stores the new value (and
- * `set(fn, {lazy: true})` still installs the factory), only the notification
- * is suppressed — as is `touch()`. Unmuting does not replay a write that
- * happened while muted; since the value is already stored, re-setting it
- * compares equal and stays silent. Use `touch()` after `unmuteSignal()` to
- * push the current value.
- *
- * @param signalLike - The signal to mute
- */
-export const muteSignal = <Type = any>(signalLike: SignalLike<Type>): void => {
-  const signal = signalImpl(signalLike);
-  if (signal != null) {
-    signal.muted = true;
-  }
-};
-
-/**
- * Unmute a previously muted signal, restoring normal effect triggering.
- * @param signalLike - The signal to unmute
- */
-export const unmuteSignal = <Type = any>(
-  signalLike: SignalLike<Type>,
-): void => {
-  const signal = signalImpl(signalLike);
-  if (signal != null) {
-    signal.muted = false;
-  }
-};
-
-/**
- * Get the current count of active (non-destroyed) signals.
- * Useful for debugging and testing to detect signal leaks.
- * @returns The number of active signals
- */
-export const getSignalsCount = () => SignalImpl.instanceCount;

@@ -1,6 +1,5 @@
 import {once} from '@spearwolf/eventize';
 import {DESTROY} from './constants.js';
-import {signalImpl} from './createSignal.js';
 import {Signal} from './Signal.js';
 import {
   SignalLink,
@@ -8,6 +7,7 @@ import {
   SignalLinkToSignal,
   ValueCallback,
 } from './SignalLink.js';
+import {signalImpl} from './signal-core.js';
 import {ISignalImpl, SignalLike, SignalReader} from './types.js';
 
 const gLinks = new Map<

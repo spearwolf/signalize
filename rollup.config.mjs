@@ -31,4 +31,12 @@ export default {
   ],
   treeshake: 'smallest',
   external: ['@spearwolf/eventize'],
+  onwarn(warning, warn) {
+    // A cycle here is not cosmetic: it makes module-eval order load-bearing
+    // and can resurrect the EffectImpl TDZ crash. Fail the build instead.
+    if (warning.code === 'CIRCULAR_DEPENDENCY') {
+      throw new Error(`circular dependency: ${warning.message}`);
+    }
+    warn(warning);
+  },
 };

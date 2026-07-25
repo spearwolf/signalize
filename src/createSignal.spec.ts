@@ -1,13 +1,13 @@
 import type {MockInstance} from 'vitest';
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
+import {createSignal} from './createSignal.js';
+import {createEffect} from './effects.js';
 import {
-  createSignal,
   destroySignal,
   isSignal,
   muteSignal,
   unmuteSignal,
-} from './createSignal.js';
-import {createEffect} from './effects.js';
+} from './signal-core.js';
 import {touch} from './touch.js';
 
 describe('createSignal', () => {

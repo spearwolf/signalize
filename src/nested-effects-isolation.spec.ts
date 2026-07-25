@@ -1,6 +1,7 @@
 import {assertEffectsCount} from './assert-helpers.js';
-import {createSignal, destroySignal} from './createSignal.js';
+import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
+import {destroySignal} from './signal-core.js';
 
 describe('nested effects', () => {
   beforeEach(() => {

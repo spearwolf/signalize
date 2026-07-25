@@ -9,9 +9,9 @@ import {
   retainClear,
 } from '@spearwolf/eventize';
 import {DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
-import {signalImpl} from './createSignal.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
+import {signalImpl} from './signal-core.js';
 import {ISignalImpl, SignalLike} from './types.js';
 
 export type ValueCallback<ValueType = any> = (value: ValueType) => void;

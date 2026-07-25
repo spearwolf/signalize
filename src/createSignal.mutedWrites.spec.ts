@@ -1,11 +1,7 @@
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
-import {
-  createSignal,
-  destroySignal,
-  muteSignal,
-  unmuteSignal,
-} from './createSignal.js';
+import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
+import {destroySignal, muteSignal, unmuteSignal} from './signal-core.js';
 
 // Muting cuts the messenger, not the ledger: the value is written either way,
 // only the horn that calls the effects stays silent.

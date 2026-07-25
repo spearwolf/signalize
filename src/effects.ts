@@ -1,5 +1,6 @@
 import {on} from '@spearwolf/eventize';
 import {$createEffect, $destroyEffect} from './constants.js';
+import type {Effect} from './Effect.js';
 import {EffectImpl} from './EffectImpl.js';
 import {globalEffectQueue} from './global-queues.js';
 
@@ -22,8 +23,11 @@ import {globalEffectQueue} from './global-queues.js';
  * @param options - Configuration options (autorun, priority, attach)
  * @returns An Effect object with run() and destroy() methods
  */
-export const createEffect: typeof EffectImpl.createEffect =
-  EffectImpl.createEffect;
+// Delegate instead of aliasing: an alias would read EffectImpl at module-eval
+// time, which turns import order into a load-bearing detail.
+export const createEffect: typeof EffectImpl.createEffect = (
+  ...args: any[]
+): Effect => (EffectImpl.createEffect as any)(...args);
 
 /**
  * Subscribe to effect creation events. Called whenever a new effect is created.

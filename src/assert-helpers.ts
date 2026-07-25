@@ -1,8 +1,8 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
-import {getSignalsCount} from './createSignal.js';
 import {getEffectsCount} from './effects.js';
 import {globalDestroySignalQueue, globalEffectQueue} from './global-queues.js';
 import {getLinksCount} from './link.js';
+import {getSignalsCount} from './signal-core.js';
 
 const namespacePrefix = (namespace?: string) =>
   namespace ? `${namespace}: ` : '';

@@ -1,10 +1,11 @@
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 import {batch} from './batch.js';
 import {beQuiet, isQuiet} from './bequiet.js';
-import {createSignal, destroySignal} from './createSignal.js';
+import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {getCurrentEffect} from './globalEffectStack.js';
 import {hibernate} from './hibernate.js';
+import {destroySignal} from './signal-core.js';
 
 describe('hibernate', () => {
   beforeEach(() => {

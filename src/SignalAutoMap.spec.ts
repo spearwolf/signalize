@@ -3,9 +3,9 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './assert-helpers.js';
-import {destroySignal, isSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {SignalAutoMap} from './SignalAutoMap.js';
+import {destroySignal, isSignal} from './signal-core.js';
 
 describe('SignalAutoMap', () => {
   beforeEach(() => {

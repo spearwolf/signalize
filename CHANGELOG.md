@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Bug Fixes
+
+- Importing `lib/EffectImpl.js` as the first module of the graph threw `ReferenceError: Cannot access 'EffectImpl' before initialization`. `effects.ts` read `EffectImpl.createEffect` at module-eval time across an import cycle; it now delegates through a function
+
+### Chores
+
+- New `src/signal-core.ts` holds the signal primitives (`isSignal`, `signalImpl`, `readSignal`, `writeSignal`, `destroySignal`, `muteSignal`, `unmuteSignal`, `getSignalsCount`) that previously sat in `createSignal.ts`. This removes all six import cycles rollup was warning about. Public API is unchanged — `index.ts` re-exports the same names
+- `rollup.config.mjs` now fails the build on `CIRCULAR_DEPENDENCY` instead of warning
+
+### Tests
+
+- CI runs `pnpm test:gc` as its own step. The four `SignalGroup.gc.spec.ts` tests skip themselves under plain `pnpm test` (no `globalThis.gc` without `--expose-gc`), so until now they ran on no runner at all
+
 ## `v0.31.0` (2026-07-25)
 
 ### Build System
