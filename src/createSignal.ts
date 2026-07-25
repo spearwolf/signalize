@@ -219,7 +219,11 @@ export function createSignal<Type = unknown>(
 
 /**
  * Destroy one or more signals, cleaning up all subscriptions and resources.
- * Destroyed signals no longer trigger effects when read or written.
+ *
+ * Destroyed signals no longer trigger effects when read or written — but they
+ * remain usable as plain value containers: `set()` stores the new value and
+ * reads return it. There is no way to revive them.
+ *
  * @param signalLikes - Signals to destroy
  */
 export const destroySignal = (...signalLikes: SignalLike[]): void => {
@@ -236,7 +240,14 @@ export const destroySignal = (...signalLikes: SignalLike[]): void => {
 
 /**
  * Mute a signal so that value changes do not trigger dependent effects.
- * The signal can still be read and written, but effects won't be notified.
+ *
+ * Reads and writes keep working: `set()` still stores the new value (and
+ * `set(fn, {lazy: true})` still installs the factory), only the notification
+ * is suppressed — as is `touch()`. Unmuting does not replay a write that
+ * happened while muted; since the value is already stored, re-setting it
+ * compares equal and stays silent. Use `touch()` after `unmuteSignal()` to
+ * push the current value.
+ *
  * @param signalLike - The signal to mute
  */
 export const muteSignal = <Type = any>(signalLike: SignalLike<Type>): void => {

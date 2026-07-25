@@ -14,7 +14,7 @@ Behaviours that surprise people (and models) coming from React, Solid, Vue or Mo
 
 **5 — `createSignal(otherSignal)` is a passthrough.** It returns the existing signal — no new signal, no counter increment. Useful for "accept a value or a signal" helpers; wrong if a copy was intended.
 
-**6 — `set(v, {touch: true})` is suppressed on muted or destroyed signals.** So is `signal.touch()`. Unmute first if a forced emit is genuinely needed.
+**6 — Muting silences the notification, not the write.** On a muted or destroyed signal `set(v)` still stores `v` — later `.get()`/`.value` reads return it — and only the emit is suppressed. So is `signal.touch()` and `set(v, {touch: true})`; unmute first if a forced emit is genuinely needed. Unmuting replays nothing: the value is already stored, so re-setting it compares equal and stays silent. `touch()` after `unmuteSignal()` is the way to push the current value. A destroyed signal cannot be revived at all — it stays a plain value container.
 
 ## Effects
 
@@ -52,7 +52,7 @@ Behaviours that surprise people (and models) coming from React, Solid, Vue or Mo
 
 **17 — `link()` deduplicates by `(source, target)` pair.** Calling it twice with the same pair returns the *existing* link rather than creating a second one. Links auto-destroy when the source or a signal target is destroyed.
 
-**18 — `SignalAutoMap` retains destroyed signals.** Calling `destroySignal()` on an entry leaves it in the map: reads return the last value and writes are silent no-ops. Prefer `map.clear()`, or attach the signals to a `SignalGroup`.
+**18 — `SignalAutoMap` retains destroyed signals.** Calling `destroySignal()` on an entry leaves it in the map: reads return the last value, and writes still update it without notifying anyone (see pitfall 6). Prefer `map.clear()`, or attach the signals to a `SignalGroup`.
 
 **19 — Decorator signals live in the instance's group.** `@signal` and `@memo` register against `SignalGroup.findOrCreate(this)`. Full cleanup is `SignalGroup.delete(this)`; `destroyObjectSignals(this)` clears signals only and leaves attached effects and links running.
 

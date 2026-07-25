@@ -63,7 +63,7 @@ c.set(v, {touch: true});    // notify even when equal
 c.set(fn, {lazy: true});    // store a factory, evaluate on next read
 c.touch();                  // force-notify
 c.destroy();
-c.muted = true;             // muted signals neither notify nor touch
+c.muted = true;             // muted signals neither notify nor touch — set() still stores
 const off = c.onChange((v) => {});   // → unsubscribe function
 ```
 

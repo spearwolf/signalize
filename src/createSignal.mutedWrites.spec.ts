@@ -1,0 +1,142 @@
+import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
+import {
+  createSignal,
+  destroySignal,
+  muteSignal,
+  unmuteSignal,
+} from './createSignal.js';
+import {createEffect} from './effects.js';
+
+// Muting cuts the messenger, not the ledger: the value is written either way,
+// only the horn that calls the effects stays silent.
+describe('writes on muted or destroyed signals', () => {
+  beforeEach(() => {
+    assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+  });
+
+  afterEach(() => {
+    assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+  });
+
+  it('set() on a muted signal stores the value but does not notify', () => {
+    const sig = createSignal(1);
+    const onChange = jest.fn();
+    const unsubscribe = sig.onChange(onChange);
+
+    muteSignal(sig);
+    sig.set(2);
+
+    expect(onChange).not.toHaveBeenCalled();
+
+    // the write itself happened — untracked and tracked reads both see it
+    expect(sig.value).toBe(2);
+    expect(sig.get()).toBe(2);
+
+    unsubscribe();
+    destroySignal(sig);
+  });
+
+  it('an effect reading a muted signal sees the new value on its next run', () => {
+    const sig = createSignal(1);
+    const other = createSignal('a');
+
+    const seen: Array<[number, string]> = [];
+    const effect = createEffect(() => {
+      seen.push([sig.get(), other.get()]);
+    });
+
+    expect(seen).toEqual([[1, 'a']]);
+
+    muteSignal(sig);
+    sig.set(2);
+
+    // sig did not trigger a rerun ...
+    expect(seen).toEqual([[1, 'a']]);
+
+    // ... but when something else does, the value is already 2
+    other.set('b');
+
+    expect(seen).toEqual([
+      [1, 'a'],
+      [2, 'b'],
+    ]);
+
+    effect.destroy();
+    destroySignal(sig, other);
+  });
+
+  it('unmute does not replay the write that happened while muted', () => {
+    const sig = createSignal(1);
+    const onChange = jest.fn();
+    const unsubscribe = sig.onChange(onChange);
+
+    muteSignal(sig);
+    sig.set(2);
+    unmuteSignal(sig);
+
+    expect(onChange).not.toHaveBeenCalled();
+
+    // writing the same value again is equal to the stored 2 → still silent
+    sig.set(2);
+    expect(onChange).not.toHaveBeenCalled();
+
+    // touch() is the way out
+    sig.touch();
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(2);
+
+    // and a genuinely new value notifies normally again
+    sig.set(3);
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenLastCalledWith(3);
+
+    unsubscribe();
+    destroySignal(sig);
+  });
+
+  it('set(fn, {lazy: true}) on a muted signal defers and does not notify', () => {
+    const sig = createSignal('a');
+    const onChange = jest.fn();
+    const unsubscribe = sig.onChange(onChange);
+
+    const lazyFn = jest.fn(() => 'b');
+
+    muteSignal(sig);
+    sig.set(lazyFn, {lazy: true});
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(lazyFn).not.toHaveBeenCalled();
+
+    expect(sig.value).toBe('b');
+    expect(lazyFn).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+    destroySignal(sig);
+  });
+
+  it('set() on a destroyed signal stores the value but does not notify', () => {
+    const sig = createSignal(1);
+    const onChange = jest.fn();
+    const unsubscribe = sig.onChange(onChange);
+
+    sig.set(2);
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+    destroySignal(sig);
+
+    sig.set(99);
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(sig.value).toBe(99);
+    expect(sig.get()).toBe(99);
+
+    // a destroyed signal stays destroyed — unmute cannot revive it
+    unmuteSignal(sig);
+    sig.set(100);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(sig.value).toBe(100);
+  });
+});

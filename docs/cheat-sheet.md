@@ -23,7 +23,7 @@ c.set(fn, {lazy: true});       // store factory; evaluate on next read
 c.set(v,  {touch: true});      // notify even if equal
 
 c.touch(); c.destroy();
-c.muted = true;    c.muted = false;
+c.muted = true;    c.muted = false;   // muted: set() still stores, nobody is notified
 c.onChange(cb);    // → unsubscribe()
 
 isSignal(x); getSignalsCount();

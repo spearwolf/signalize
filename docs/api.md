@@ -36,7 +36,7 @@ existing signal-like (then this very signal is returned, no new one created).
 | `value = v`       | Setter shortcut for `set(v)`.                                                              |
 | `touch()`         | Emit a change without changing the value.                                                  |
 | `onChange(cb)`    | Subscribe to changes. Returns `() => void` unsubscribe.                                    |
-| `muted`           | `boolean` getter/setter — pause/resume notifications.                                      |
+| `muted`           | `boolean` getter/setter — pause/resume notifications. Writes still store their value.      |
 | `destroy()`       | Destroy the signal (alias for `destroySignal(this)`).                                      |
 
 `set(value, params)` accepts the union of `SignalParams<T>` and:
@@ -50,14 +50,18 @@ existing signal-like (then this very signal is returned, no new one created).
 > value (TypeScript prevents this for typed code; runtime accepts it). Use
 > `set(sig.value + 1)` instead.
 
+> On a muted or destroyed signal, `set()` still writes: the new value is stored
+> and subsequent reads return it — only the notification (including
+> `{touch: true}`) is suppressed. See `recipes.md` → *Writes that don't notify*.
+
 ### Top-level helpers
 
 | Function                       | Purpose                                                                |
 | ------------------------------ | ---------------------------------------------------------------------- |
 | `isSignal(v)`                  | `true` for any `Signal`, `SignalReader`, or `SignalLike`.              |
 | `destroySignal(...sigs)`       | Destroy one or more signals; subscriptions and groups are cleaned up.  |
-| `muteSignal(sig)`              | Suppress notifications without destroying.                             |
-| `unmuteSignal(sig)`            | Resume notifications.                                                  |
+| `muteSignal(sig)`              | Suppress notifications without destroying; reads and writes keep working. |
+| `unmuteSignal(sig)`            | Resume notifications. Does not replay writes made while muted.         |
 | `getSignalsCount()`            | Count of live signals (debugging / leak checks).                       |
 | `value(sig \| [obj, key])`     | Untracked read (signal or `[host, name]`).                             |
 | `touch(sig \| [obj, key])`     | Force a notify.                                                        |
@@ -279,8 +283,8 @@ SignalAutoMap.fromProps<P>(obj: P, keys?: (keyof P)[])
 | `clear()`                               | Destroy all signals and empty the map.                                 |
 
 > If a stored signal is destroyed externally via `destroySignal()`, the map
-> still holds a reference: reads return its last value, writes are silent
-> no-ops.
+> still holds a reference: reads return its last value, and writes still update
+> that value — they just never notify anyone.
 
 ---
 

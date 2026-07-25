@@ -17,14 +17,40 @@ the deprecated `signal.get(callback)` form. `.value` does not trigger it.
 
 ## Writes that don't notify
 
-`set` is a no-op when:
+No effect is notified when:
 
 - The new value compares equal to the current value (use `compare` to widen
-  equality, e.g. structural compare for arrays).
-- The signal is muted (`muteSignal` / `signal.muted = true`) or destroyed.
+  equality, e.g. structural compare for arrays). Here `set` really is a no-op:
+  the stored value doesn't change either.
+- The signal is muted (`muteSignal` / `signal.muted = true`) or destroyed. The
+  write itself still happens — only the notification is suppressed.
 
-To force a notification anyway, use `set(v, {touch: true})` or
-`signal.touch()`. `{touch: true}` is also suppressed on muted/destroyed signals.
+That second case is not a no-op:
+
+```ts
+const sig = createSignal(1);
+muteSignal(sig);
+
+sig.set(2);        // no effect runs ...
+sig.value;         // → 2   ... but the value is stored
+sig.get();         // → 2
+```
+
+The same holds for a destroyed signal — it degrades to a plain value container,
+`set()`/`get()` keep working, nothing is ever notified again. And
+`set(fn, {lazy: true})` on a muted signal installs the factory as usual; it is
+evaluated on the next read.
+
+To force a notification, use `set(v, {touch: true})` or `signal.touch()`. Both
+are suppressed on muted and destroyed signals.
+
+Unmuting does not replay what happened while muted:
+
+```ts
+unmuteSignal(sig);
+sig.set(2);        // compares equal to the stored 2 → still silent
+sig.touch();       // → effects run with 2
+```
 
 ## Lazy signals
 
@@ -295,7 +321,7 @@ s.set(42);
 destroySignal(s);
 
 map.get('foo').value;       // 42 (last value, the destroyed signal stays cached)
-map.get('foo').set(99);     // silent no-op (signal is destroyed)
+map.get('foo').set(99);     // stores 99, notifies nobody (signal is destroyed)
 ```
 
 Always `clear()` the map (or attach all signals to a `SignalGroup`) instead

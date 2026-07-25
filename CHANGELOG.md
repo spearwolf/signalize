@@ -2,8 +2,13 @@
 
 ## Unreleased
 
+### Tests
+
+- `createSignal.mutedWrites.spec.ts`: cover writes on muted and destroyed signals — value is stored, notification is suppressed, `unmuteSignal()` does not replay, lazy factories still install while muted
+
 ### Documentation
 
+- `docs/recipes.md`, `docs/api.md`, `docs/cheat-sheet.md`, `skills/using-signalize/references/{api,pitfalls}.md`, JSDoc: correct the claim that `set()` is a no-op on muted or destroyed signals — the value is stored, only the notification is suppressed
 - `skills/using-signalize`: split into a lean `SKILL.md` (mental model + six silent-failure behaviours) plus `references/{api,pitfalls,patterns}.md` loaded on demand; sharpen the frontmatter description for triggering
 - `skills/using-signalize/SKILL.md`: drop the "refuse / rewrite" framing in favour of a judgement section — the skill states behaviour, it does not prescribe architecture
 - `CLAUDE.md`: trim to the resident subset (commands, non-derivable gotchas, changelog rules) and point to `AGENTS.md`, `skills/` and `docs/` for the rest
