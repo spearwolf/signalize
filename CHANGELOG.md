@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## `v0.31.0` (2026-07-25)
+
 ### Build System
 
 - Test runner: **Jest 30 → Vitest 4**. Drops `jest`, `ts-jest`, `@types/jest`, `jest-expect-message` and `cross-env` — Vitest supports `expect(value, 'message')` natively, resolves `./foo.js` → `foo.ts` without a module mapper, and sets `NODE_ENV=test` itself. Specs now use `vi.fn` / `vi.spyOn` / `MockInstance`
