@@ -1,6 +1,6 @@
 {
   "name": "@spearwolf/signalize",
-  "version": "0.31.1",
+  "version": "0.32.0-dev",
   "description": "signals and effects for all",
   "type": "module",
   "main": "dist/index.js",
@@ -43,7 +43,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@biomejs/biome": "^2.5.5",
-    "@spearwolf/eventize": "^5.0.0",
+    "@spearwolf/eventize": "^6.0.0",
     "@swc/core": "^1.15.46",
     "@types/node": "^24.13.3",
     "@vitest/coverage-v8": "^4.1.10",
@@ -56,7 +56,7 @@
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "@spearwolf/eventize": "^5.0.0"
+    "@spearwolf/eventize": "^6.0.0"
   },
   "homepage": "https://github.com/spearwolf/signalize/",
   "license": "Apache-2.0",
@@ -75,5 +75,5 @@
     "email": "wolfger@spearwolf.de",
     "url": "https://www.spearwolf.de"
   },
-  "packageManager": "pnpm@11.17.0"
+  "packageManager": "pnpm@11.20.0"
 }

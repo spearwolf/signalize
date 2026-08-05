@@ -15,8 +15,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       '@spearwolf/eventize':
-        specifier: ^5.0.0
-        version: 5.0.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@swc/core':
         specifier: ^1.15.46
         version: 1.15.46
@@ -433,8 +433,8 @@ packages:
     resolution: {integrity: sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==}
     engines: {node: '>=10'}
 
-  '@spearwolf/eventize@5.0.0':
-    resolution: {integrity: sha512-tFItU8RwEozY2HJkYBY/T/TgIx+ZJbWE1NEoxk8Hlx6iwqUcQGqhOJZIEbo//GktRwdtgU2TPZyyc7JZOMC34w==}
+  '@spearwolf/eventize@6.0.0':
+    resolution: {integrity: sha512-7mIk5S3IdILBBk91NvhN7Vvh7x23B++3j+N1ZYoGgtP6i8vEMVN5FS2qEJrmsp57SI2V/3nGhx8fGWG/oTS14A==}
     engines: {node: '>=18.16'}
 
   '@standard-schema/spec@1.1.0':
@@ -1594,7 +1594,7 @@ snapshots:
 
   '@sindresorhus/is@4.6.0': {}
 
-  '@spearwolf/eventize@5.0.0': {}
+  '@spearwolf/eventize@6.0.0': {}
 
   '@standard-schema/spec@1.1.0': {}
 
