@@ -1,9 +1,11 @@
-import {emit, eventize, onceAsync} from '@spearwolf/eventize';
 import {assertEffectsCount} from './assert-helpers.js';
 import {createSignal} from './createSignal.js';
 import {EffectImpl} from './EffectImpl.js';
 import {createEffect, onCreateEffect, onDestroyEffect} from './effects.js';
 import {destroySignal} from './signal-core.js';
+
+/** Give the promise of an async effect callback a chance to settle. */
+const settled = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 describe('createEffect', () => {
   beforeEach(() => {
@@ -48,40 +50,38 @@ describe('createEffect', () => {
     const {get: a, set: setA} = createSignal(123);
 
     const cleanupValues: number[] = [];
-    const ctrl = eventize();
 
-    createEffect(async () => {
+    const effect = createEffect(async () => {
       const val = a();
       return () => {
         cleanupValues.push(val);
-        emit(ctrl, `cleanup[${cleanupValues.length}]`);
       };
     });
 
     expect(a()).toBe(123);
     expect(cleanupValues).toHaveLength(0);
 
+    // The cleanup of an async run only becomes eligible once its promise has
+    // settled — and only as long as that run is still the current one.
+    await settled();
+
     setA(666);
 
     expect(a()).toBe(666);
-    expect(cleanupValues).toHaveLength(0);
-
-    await onceAsync(ctrl, 'cleanup[1]');
-
     expect(cleanupValues).toEqual([123]);
-    cleanupValues.length = 0;
 
+    // 667 supersedes the 666 run before its promise settled, so the cleanup
+    // of the 666 run is discarded instead of released late.
     setA(667);
+
     expect(a()).toBe(667);
-    expect(cleanupValues).toHaveLength(0);
+    expect(cleanupValues).toEqual([123]);
 
-    setA(668);
-    expect(a()).toBe(668);
-    expect(cleanupValues).toHaveLength(0);
+    await settled();
 
-    await onceAsync(ctrl, 'cleanup[2]');
+    effect.destroy();
 
-    expect(cleanupValues).toEqual([666, 667]);
+    expect(cleanupValues).toEqual([123, 667]);
 
     destroySignal(a);
   });

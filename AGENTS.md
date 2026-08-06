@@ -55,6 +55,7 @@ Framework-agnostic signal/effect/memo/link library. Synchronous reactivity. Buil
 | `$effect` | Get internal `EffectImpl` from `Effect` wrapper |
 | `RECALL` | Event triggering effect re-execution |
 | `$createEffect`, `$destroyEffect` | Effect lifecycle events |
+| `$effectError` | Rejection of an async effect/cleanup callback (see `onEffectError`) |
 | `$destroySignal` | Signal destruction event |
 
 ### Priorities
@@ -110,7 +111,7 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | `createSignal.ts` | `SignalImpl`, `createSignal` — the factory layer on top of `signal-core.ts` |
 | `Effect.ts` | `Effect` class — wrapper around `EffectImpl` |
 | `EffectImpl.ts` | Core dependency tracking + rerun logic; `EffectOptions` interface |
-| `effects.ts` | `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect` |
+| `effects.ts` | `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect`, `onEffectError` |
 | `createMemo.ts` | `createMemo` — wraps signal + high-priority effect |
 | `link.ts` | `link`, `unlink`, `getLinksCount` |
 | `SignalLink.ts` | `SignalLink` (abstract), `SignalLinkToSignal`, `SignalLinkToCallback`, `ValueCallback` |
@@ -140,7 +141,7 @@ Also avoid reading an imported binding at module-eval time across module boundar
 ## Public API (what `index.ts` re-exports)
 
 **Signals**: `createSignal`, `destroySignal`, `isSignal`, `getSignalsCount`, `muteSignal`, `unmuteSignal`, `touch`, `value`
-**Effects**: `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect`
+**Effects**: `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect`, `onEffectError`
 **Memos**: `createMemo`, `CreateMemoOptions`
 **Links**: `link`, `unlink`, `getLinksCount`, `SignalLink` (type), `ValueCallback`
 **Object Signals**: `destroyObjectSignals`, `findObjectSignalByName`, `findObjectSignalNames`, `findObjectSignals`

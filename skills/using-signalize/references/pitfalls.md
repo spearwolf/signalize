@@ -26,7 +26,26 @@ Behaviours that surprise people (and models) coming from React, Solid, Vue or Mo
 
 **10 — Nested effects are recreated on every parent rerun.** Order on a rerun: parent's own cleanup → child effects destroyed (each child's cleanup runs as part of its destroy) → parent callback re-executes → fresh inner effects created. Do not stash an inner `Effect` handle in long-lived state.
 
-**11 — Async callbacks do not make propagation async.** An effect callback may be `async`, and a returned cleanup is called when the promise settles, but propagation itself stays synchronous. There is no microtask debounce; write one if the use case needs it.
+**11 — Async callbacks do not make propagation async.** An effect callback may be `async`, but propagation itself stays synchronous: nothing waits for the promise. There is no microtask debounce; write one if the use case needs it.
+
+**11a — The cleanup of an `async` run is discarded once the run is superseded.** The cleanup function only exists when the promise settles. If the effect re-ran or was destroyed by then, that cleanup is **dropped, not deferred** — running it would release run N's resource while run N+2 holds its own. Nothing warns: whatever it would have freed simply stays allocated. Acquire before the first `await`, or bind the resource to an `AbortController` aborted from a synchronous cleanup.
+
+```ts
+createEffect(async () => {
+  const socket = await connect();
+  return () => socket.close();     // ✗ may never run
+});
+
+createEffect(() => {
+  const ctrl = new AbortController();
+  void doWork(ctrl.signal);
+  return () => ctrl.abort();       // ✓ synchronous, never dropped
+});
+```
+
+**11b — A rejecting `async` callback is reported, not thrown.** It cannot reach the caller — the stack is long gone — so it goes to `onEffectError(cb)`, and to `console.error` with the effect id while no handler is registered, instead of becoming an unhandled rejection (which would terminate Node). Same for a rejecting `async` cleanup, reported with `phase: 'cleanup'`. A *synchronous* throw still propagates to whoever triggered the run.
+
+**11c — An `async` `onEffectError` handler re-opens the hole it was meant to close.** Nothing awaits the handler, so a rejected promise coming out of it is an unhandled rejection like any other — and reporting to a remote service is the handler everyone writes first. Keep the handler synchronous and `.catch()` the send yourself. A handler that throws *synchronously* is caught, but eventize then aborts the dispatch: handlers with a lower priority never see that event.
 
 ## Memos
 

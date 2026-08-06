@@ -18,6 +18,7 @@ import {signal} from '@spearwolf/signalize/decorators';
 - Propagation is **synchronous and inline**. `signal.set(x)` runs every dependent effect *before it returns*. No scheduler, no microtask queue, no tearing — and no free debounce.
 - Effects subscribe **on read**: calling `sig.get()` inside the callback registers the dependency. Deps are recomputed every run, so they may grow or shrink.
 - Memos are signals driven by a high-priority (`1000`) effect, so they settle before ordinary effects.
+- `async` effect callbacks are second-class citizens: nothing is awaited, the cleanup of a run that was superseded before its promise settled is *discarded*, and a rejection is reported via `onEffectError()` instead of being thrown (`references/pitfalls.md`, 11a/11b).
 - Lifecycles are explicit. Signals, effects and links live until destroyed — normally via the `attach` option plus `SignalGroup.delete(obj)`. A group attached to a host object additionally has a `FinalizationRegistry` backstop, but it is leak insurance, not a lifecycle (see behaviour 5).
 
 ## Six behaviours that silently produce wrong code

@@ -34,8 +34,8 @@ touch(c); touch([obj, 'prop']);  // notify
 ## Effects
 
 ```ts
-import {createEffect, getEffectsCount,
-        onCreateEffect, onDestroyEffect} from '@spearwolf/signalize';
+import {createEffect, getEffectsCount, onCreateEffect,
+        onDestroyEffect, onEffectError} from '@spearwolf/signalize';
 
 createEffect(() => {
   read(c.get());
@@ -55,6 +55,12 @@ eff.run(); eff.destroy();
 
 // Recursion guard
 EffectImpl.maxDepth = 256;
+
+// async: cleanup of a superseded run is DISCARDED, rejections are reported
+onEffectError(({error, effectId, phase}) => {});  // → unsubscribe
+// no handler → console.error instead of an unhandled rejection
+// handler MUST be sync or catch itself — nothing awaits it
+// handler throws → dispatch stops; lower-priority handlers miss the event
 ```
 
 ## Memos

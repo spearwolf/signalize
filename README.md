@@ -111,7 +111,7 @@ createSignal, destroySignal, isSignal, muteSignal, unmuteSignal,
 getSignalsCount, touch, value
 
 // effects
-createEffect, getEffectsCount, onCreateEffect, onDestroyEffect
+createEffect, getEffectsCount, onCreateEffect, onDestroyEffect, onEffectError
 
 // memos
 createMemo

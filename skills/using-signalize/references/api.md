@@ -18,7 +18,7 @@ Decorators are **TC39 standard** form — no `experimentalDecorators`, and the `
 createSignal, destroySignal, isSignal, muteSignal, unmuteSignal,
 getSignalsCount, touch, value
 // effects
-createEffect, getEffectsCount, onCreateEffect, onDestroyEffect
+createEffect, getEffectsCount, onCreateEffect, onDestroyEffect, onEffectError
 // memos
 createMemo
 // links
@@ -35,6 +35,7 @@ Signal, Effect
 // type-only re-exports (no runtime value):
 //   SignalReader, SignalWriter, SignalLike, SignalParams, SignalWriterParams,
 //   EffectOptions, EffectCallback, CreateMemoOptions, LinkOptions,
+//   EffectErrorPayload, EffectErrorPhase, EffectErrorCallback, FailingEffect,
 //   SignalLink, ValueCallback, SignalAutoMapKeyType,
 //   CompareFunc, BeforeReadFunc, VoidFunc, ValueChangedCallback
 ```
@@ -110,6 +111,19 @@ onDestroyEffect((eff) => {});  // → unsubscribe
 
 EffectImpl.maxDepth = 256;     // synchronous self-write recursion guard
 ```
+
+### Async callbacks
+
+```ts
+onEffectError(({error, effect, effectId, phase}) => {}, priority?);  // → unsubscribe
+// phase: 'callback' | 'cleanup';  effect: FailingEffect = {id, destroy()}
+```
+
+Reports rejections of `async` effect callbacks and `async` cleanups — the only failures that cannot be thrown at a caller. Without a handler they go to `console.error` with the effect id instead of becoming unhandled rejections. Synchronous throws are unaffected and propagate normally.
+
+Two constraints on the handler: it must be **synchronous or catch its own errors** (nothing awaits it, so `onEffectError(async p => { await report(p) })` with a failing `report` crashes the process exactly as before), and a synchronous throw out of it **stops the dispatch**, so lower-priority handlers miss that event.
+
+The cleanup an `async` callback resolves to is **discarded** when the effect has re-run or been destroyed in the meantime (pitfall 11a). Nothing is awaited before the next run.
 
 ## Memos
 

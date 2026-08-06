@@ -8,6 +8,7 @@ export {
   getEffectsCount,
   onCreateEffect,
   onDestroyEffect,
+  onEffectError,
 } from './effects.js';
 export {hibernate} from './hibernate.js';
 export * from './link.js';

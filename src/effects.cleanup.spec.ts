@@ -1,8 +1,10 @@
-import {emit, eventize, onceAsync} from '@spearwolf/eventize';
 import {assertEffectsCount} from './assert-helpers.js';
 import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {destroySignal} from './signal-core.js';
+
+/** Give the promise of an async effect callback a chance to settle. */
+const settled = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 describe('effect cleanup hook on effect destruction', () => {
   beforeEach(() => {
@@ -93,30 +95,28 @@ describe('effect cleanup hook on effect destruction', () => {
     const {get: a, set: setA} = createSignal(123);
 
     const cleanupValues: number[] = [];
-    const ctrl = eventize();
 
     const effect = createEffect(async () => {
       const val = a();
       return () => {
         cleanupValues.push(val);
-        emit(ctrl, `cleanup[${cleanupValues.length}]`);
       };
     });
 
     expect(cleanupValues).toHaveLength(0);
 
+    // The cleanup of an async run is only kept once its promise has settled.
+    await settled();
+
     // Update signal to trigger cleanup
     setA(456);
-    await onceAsync(ctrl, 'cleanup[1]');
     expect(cleanupValues).toEqual([123]);
 
-    // Destroy effect and verify cleanup is called
-    effect.destroy();
+    await settled();
 
-    // Wait a bit to ensure async cleanup has a chance to run
-    await new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), 100);
-    });
+    // Destroy effect and verify cleanup is called — synchronously, like a
+    // cleanup returned from a plain callback.
+    effect.destroy();
 
     expect(cleanupValues).toEqual([123, 456]);
 

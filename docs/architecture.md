@@ -51,14 +51,14 @@ All cross-cutting communication uses four global eventize buses
 | --------------------------- | ------------------------------------------- |
 | `globalSignalQueue`         | Signal value changes (`emit(queue, signalId, value)`) |
 | `globalDestroySignalQueue`  | Signal destruction                          |
-| `globalEffectQueue`         | Effect lifecycle (`$createEffect`, `$destroyEffect`, `RECALL`) |
+| `globalEffectQueue`         | Effect lifecycle (`$createEffect`, `$destroyEffect`, `RECALL`) and async failures (`$effectError`) |
 | `globalEffectCalledQueue`   | Batch deduplication                         |
 
 Effects subscribe to signal IDs they read; signals emit on change. Nothing else.
 
 **Symbol namespacing:** All internal `Symbol.for` keys use the `@spearwolf/signalize/` namespace
-prefix (`signal`, `effect`, `recall`, `destroySignal`, `createEffect`, `destroyEffect`) to
-prevent collisions with unrelated code. The namespace carries no major version so that two
+prefix (`signal`, `effect`, `recall`, `destroySignal`, `createEffect`, `destroyEffect`,
+`effectError`) to prevent collisions with unrelated code. The namespace carries no major version so that two
 versions of the library loaded in the same process continue to recognize each other's signals —
 otherwise, a stray `Symbol.for('signal')` in application code would pass `isSignal()` with
 incorrect metadata.

@@ -77,8 +77,12 @@ Create a reactive effect.
 
 **`callback`** — `() => void | (() => void)`. The optional return value is
 the cleanup callback; it runs before the next execution and on `destroy()`.
-Async callbacks are supported: if they return a function, that function is
-called when the promise resolves.
+Async callbacks are supported, with two caveats: the cleanup a promise resolves
+to is **discarded** if the effect has re-run or been destroyed by the time the
+promise settles, and a rejection goes to `onEffectError(cb)` instead of
+becoming an unhandled rejection. Details under
+[`onEffectError`](#oneffecterrorcb-priority---void) and in
+[recipes.md](./recipes.md#async-callbacks-the-cleanup-can-be-dropped).
 
 **`options`** *(`EffectOptions`)*:
 
@@ -126,6 +130,51 @@ need an initial pass.
 | `getEffectsCount()`       | Live effect count.                                                                 |
 | `onCreateEffect(cb)`      | Subscribe to effect-create events; returns an unsubscribe function.                |
 | `onDestroyEffect(cb)`     | Subscribe to effect-destroy events; returns an unsubscribe function. The effect passed to `cb` is already destroyed — `run()` on it does nothing. |
+| `onEffectError(cb, priority?)` | Subscribe to *asynchronous* effect failures; returns an unsubscribe function. |
+
+### `onEffectError(cb, priority?): () => void`
+
+```ts
+const unsubscribe = onEffectError(({error, effect, effectId, phase}) => {
+  report(error, {effect: effectId, phase});
+});
+```
+
+`cb` receives one `EffectErrorPayload`:
+
+| Field      | Type                        | Meaning                                                     |
+| ---------- | --------------------------- | ------------------------------------------------------------ |
+| `error`    | `unknown`                   | The rejection reason.                                        |
+| `effect`   | `FailingEffect`             | The failing effect — the real instance `onCreateEffect()` hands out, typed down to `{id, destroy()}`. Not the `Effect` returned by `createEffect()`: that is a wrapper, so `payload.effect === myEffect` is `false`. Compare `payload.effectId` instead. |
+| `effectId` | `symbol`                    | `effect.id`, handy for log lines.                            |
+| `phase`    | `'callback' \| 'cleanup'`   | Which of the two async callbacks rejected.                   |
+
+Only failures that surface *after* the synchronous call stack is gone arrive
+here: the promise of an `async` effect callback rejected, or the promise of an
+`async` cleanup callback did. A synchronous `throw` keeps propagating to
+whoever triggered the run and never reaches this channel.
+
+> ⚠️ **The library will not turn these into unhandled rejections — but your
+> handler can.** Node terminates the process on an unhandled rejection by
+> default, and an effect that fails on a fetch is the most ordinary thing in
+> the world, so the rejection is caught and reported instead. While no
+> handler is registered it goes to `console.error` with the effect id;
+> registering one replaces that log.
+>
+> **The handler itself must be synchronous or catch its own errors.** Nothing
+> awaits it: `onEffectError(async (p) => { await report(p); })` with a failing
+> `report` is an unhandled rejection again, and the process is gone. Wrap the
+> send in `.catch()`.
+
+> ⚠️ **A throwing handler stops the dispatch.** A synchronous `throw` out of a
+> handler does not escape — its failure and the original error both go to
+> `console.error` — but eventize aborts the dispatch there, so handlers with a
+> lower priority never see that event. One broken handler can blind the
+> monitoring registered behind it. Keep handlers total, and give the one that
+> must not miss anything the highest priority.
+
+`priority` is the eventize priority (higher runs first) when several handlers
+are registered.
 
 ---
 

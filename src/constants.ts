@@ -4,6 +4,7 @@ export const $effect = Symbol.for('@spearwolf/signalize/effect');
 export const $destroySignal = Symbol.for('@spearwolf/signalize/destroySignal');
 export const $createEffect = Symbol.for('@spearwolf/signalize/createEffect');
 export const $destroyEffect = Symbol.for('@spearwolf/signalize/destroyEffect');
+export const $effectError = Symbol.for('@spearwolf/signalize/effectError');
 
 export const VALUE = 'value';
 export const MUTE = 'mute';

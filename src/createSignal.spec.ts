@@ -252,6 +252,29 @@ describe('createSignal', () => {
     foo.destroy();
   });
 
+  it('onChange tolerates a callback that returns a non-function value', () => {
+    const sig = createSignal(1);
+
+    // onChange passes whatever the callback returns on as the effect's
+    // cleanup — and its signature allows `any`. A returned value that is not
+    // a function counts as "no cleanup"; it used to be stored and then called
+    // on the *second* change, throwing `cleanupCallback is not a function`.
+    const seen: number[] = [];
+    const unsubscribe = sig.onChange((val) => {
+      seen.push(val);
+      return val * 2;
+    });
+
+    sig.set(2);
+    expect(seen).toEqual([2]);
+
+    sig.set(3);
+    expect(seen).toEqual([2, 3]);
+
+    unsubscribe();
+    destroySignal(sig);
+  });
+
   it('.value property read doesnt trigger dependencies, but write should do', () => {
     const foo = createSignal(1);
 

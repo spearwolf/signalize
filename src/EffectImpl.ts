@@ -2,6 +2,7 @@ import {
   type EventizedObject,
   emit,
   eventize,
+  getSubscribedEventNames,
   off,
   on,
   once,
@@ -11,6 +12,7 @@ import {
   $createEffect,
   $destroyEffect,
   $destroySignal,
+  $effectError,
   DESTROY,
   RECALL,
 } from './constants.js';
@@ -24,7 +26,13 @@ import {
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 import {SignalGroup} from './SignalGroup.js';
 import {signalImpl} from './signal-core.js';
-import type {EffectCallback, SignalLike, VoidFunc} from './types.js';
+import type {
+  EffectCallback,
+  EffectErrorPayload,
+  EffectErrorPhase,
+  SignalLike,
+  VoidFunc,
+} from './types.js';
 import {UniqIdGen} from './UniqIdGen.js';
 
 export type EffectDeps = (SignalLike<any> | string | symbol)[];
@@ -66,6 +74,55 @@ export interface EffectOptionsWithNameDeps {
 
 const isThenable = (value: unknown): value is Promise<unknown> =>
   value != null && typeof (value as Promise<unknown>).then === 'function';
+
+/**
+ * Route an error that surfaced after the synchronous call stack was gone.
+ *
+ * A promise returned by an effect or cleanup callback rejects with nobody
+ * left to throw at — rethrowing here would just produce another unhandled
+ * rejection, which since Node 15 terminates the process. So the failure goes
+ * out on the global effect queue where `onEffectError()` handlers pick it up.
+ *
+ * With no handler registered it would vanish silently, and a silent swallow
+ * is worse than the crash we came from, so it falls back to `console.error`.
+ * A handler that throws is treated the same way: reported, never re-raised.
+ *
+ * Note the cost of the handler probe: `getSubscribedEventNames()` builds an
+ * array holding one entry per subscribed event name — and every live effect
+ * subscribes to the queue by its own id — which is then scanned linearly.
+ * A storm of failures across many effects is therefore quadratic. Acceptable
+ * because this is the error path and errors are meant to be rare; if that
+ * ever stops being true, cache the answer and invalidate it in
+ * `onEffectError()`'s subscribe/unsubscribe.
+ */
+const emitEffectError = (
+  effect: EffectImpl,
+  error: unknown,
+  phase: EffectErrorPhase,
+): void => {
+  if (getSubscribedEventNames(globalEffectQueue).includes($effectError)) {
+    const payload: EffectErrorPayload = {
+      error,
+      effect,
+      effectId: effect.id,
+      phase,
+    };
+    try {
+      emit(globalEffectQueue, $effectError, payload);
+      return;
+    } catch (handlerError) {
+      console.error(
+        `[signalize] an onEffectError handler threw while reporting an error of effect ${effect.id.toString()}:`,
+        handlerError,
+      );
+    }
+  }
+
+  console.error(
+    `[signalize] unhandled rejection in the ${phase} of effect ${effect.id.toString()}:`,
+    error,
+  );
+};
 
 /**
  * Re-raise errors collected while tearing down a tree of effects.
@@ -139,6 +196,14 @@ export class EffectImpl {
   #destroyed = false;
 
   #runDepth = 0;
+
+  /**
+   * Monotonically increasing run counter, bumped before each callback
+   * invocation. An async callback captures the value it ran under; when its
+   * promise settles later the captured value is compared against the current
+   * one to tell a still-current run from a superseded one.
+   */
+  #generation = 0;
 
   /**
    * An effect subscribes to the _global effects queue_ by its `id`.
@@ -309,14 +374,26 @@ export class EffectImpl {
 
       emit(globalEffectCalledQueue, this.id, this.id);
 
+      // Bumped here, not at the top of run(): the callbacks must be numbered
+      // in the order they are *invoked*. A cleanup above can re-enter run()
+      // — the inner run then finishes before this outer callback is even
+      // called, and only a bump at this point gives the outer run the higher
+      // generation its later-settling promise will be compared against.
+      // Bumping earlier would also count a run that never reached its
+      // callback, because the cleanup or a child's teardown threw.
+      const generation = ++this.#generation;
+
       if (this.hasStaticDeps()) {
-        this.#nextCleanupCallback = this.callback() as VoidFunc;
+        this.storeCleanupCallback(this.callback(), generation);
       } else {
         this.#lostSignals.clear();
         for (const id of this.#signals) {
           this.#lostSignals.add(id);
         }
-        this.#nextCleanupCallback = runWithinEffect(this, this.callback);
+        this.storeCleanupCallback(
+          runWithinEffect(this, this.callback),
+          generation,
+        );
         this.cleanupLostSignals();
         this.#destroyedSignals.clear();
       }
@@ -435,19 +512,68 @@ export class EffectImpl {
     }
   }
 
-  private runCleanupCallback(): void {
-    if (this.#nextCleanupCallback != null) {
-      const cleanupCallback = this.#nextCleanupCallback;
-      this.#nextCleanupCallback = undefined;
-      if (isThenable(cleanupCallback)) {
-        Promise.resolve(cleanupCallback).then((cleanup) => {
-          if (typeof cleanup === 'function') {
-            cleanup();
-          }
-        });
-      } else {
-        cleanupCallback();
+  /**
+   * Take what the effect callback returned and remember it as the next
+   * cleanup callback.
+   *
+   * A synchronous return value is stored as is. An `async` callback returns a
+   * promise instead, and by the time it settles the world may have moved on:
+   * the effect may have run again — acquiring fresh resources — or been
+   * destroyed. Running that stale cleanup then is the late-release half of a
+   * double-acquire bug, so it is **discarded**, identified by the generation
+   * the run carried. Nothing is awaited: the library stays synchronous, and
+   * the next run does not wait for a pending promise.
+   *
+   * A rejection is never discarded — it is reported through
+   * {@link emitEffectError} whether the run is still current or not.
+   *
+   * **The synchronous branch deliberately ignores `generation`.** It can only
+   * be stale through re-entrancy: a callback writes a signal it depends on,
+   * the inner run completes first, and the outer run then overwrites the
+   * inner cleanup with its own, older one. That is how this library has
+   * always behaved, and the `#runDepth` guard exists precisely because such
+   * recursion is a legitimate (if bounded) fixpoint pattern here. Making the
+   * outer run drop its cleanup would change synchronous semantics for every
+   * self-writing effect, which is a decision of its own and not the async
+   * ordering bug this method was written for. The async branch checks the
+   * generation because there the stale case is the *normal* one.
+   */
+  private storeCleanupCallback(result: unknown, generation: number): void {
+    if (!isThenable(result)) {
+      // Same tolerance as the async branch below: a callback returning
+      // something that is not a function has simply returned no cleanup.
+      if (typeof result === 'function') {
+        this.#nextCleanupCallback = result as VoidFunc;
       }
+      return;
+    }
+
+    Promise.resolve(result).then(
+      (cleanup) => {
+        if (this.#destroyed || generation !== this.#generation) return;
+        if (typeof cleanup === 'function') {
+          this.#nextCleanupCallback = cleanup as VoidFunc;
+        }
+      },
+      (error) => {
+        emitEffectError(this, error, 'callback');
+      },
+    );
+  }
+
+  private runCleanupCallback(): void {
+    const cleanupCallback = this.#nextCleanupCallback;
+    if (cleanupCallback == null) return;
+
+    this.#nextCleanupCallback = undefined;
+
+    // An `async` cleanup has the same nobody-to-throw-at problem as an async
+    // effect callback: its rejection surfaces long after this frame returned.
+    const result = cleanupCallback() as unknown;
+    if (isThenable(result)) {
+      Promise.resolve(result).catch((error) => {
+        emitEffectError(this, error, 'cleanup');
+      });
     }
   }
 

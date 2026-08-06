@@ -2,8 +2,15 @@
 
 ## Unreleased
 
+### Features
+
+- New `onEffectError(cb, priority?)` export: subscribes to rejections of `async` effect and cleanup callbacks, which cannot be thrown at a caller. The handler receives `{error, effect, effectId, phase}` (ASYNC-001)
+
 ### Bug Fixes
 
+- A rejecting `async` effect callback no longer becomes an unhandled rejection — which, since Node 15, terminates the process by default. It goes to `onEffectError()`, or to `console.error` with the effect id while no handler is registered (ASYNC-001)
+- A rejecting `async` cleanup callback is reported through the same channel with `phase: 'cleanup'` instead of being swallowed
+- An effect callback that returns something other than a function no longer throws `TypeError: cleanupCallback is not a function` on the next run — the value counts as "no cleanup". Mostly hits `Signal.onChange(cb)`, whose callback is free to return `any`
 - `Effect.destroy()` unsubscribes the effect before running its cleanup callback, so a cleanup that writes to a signal the effect depends on no longer triggers one last run whose own cleanup would never be called (MEM-007)
 - `Effect.destroy()` marks the effect as destroyed before it emits its destroy events, so an `onDestroyEffect()` handler no longer receives an effect whose `run()` still executes the callback (BUG-008)
 - A re-entrant `Effect.destroy()` (from a cleanup callback or a destroy handler) is now a no-op instead of decrementing `getEffectsCount()` a second time
@@ -18,6 +25,7 @@
 ### Breaking Changes
 
 - **Removed the `@memo` decorator** and its `MemoDecoratorOptions` type from `@spearwolf/signalize/decorators`. Syntax and semantics were not settled — replace `@memo() foo() {...}` with a class field `foo = createMemo(() => ..., {attach: this})`, which is eager by default. `createMemo()` itself is unchanged
+- The cleanup an `async` effect callback resolves to is discarded when the effect has re-run or been destroyed by the time the promise settles. It used to run late, releasing the resources of an old run while a newer one was already using its own (ASYNC-002)
 - Internal `Symbol.for` keys now use the `@spearwolf/signalize/` namespace (`signal`, `effect`, `recall`, `destroySignal`, `createEffect`, `destroyEffect`) to prevent collisions with unrelated code. Pre-fix versions will not recognize signals created by post-fix versions, but all post-fix versions recognize each other (BUG-006)
 
 ## `v0.31.1` (2026-07-25)

@@ -1,8 +1,9 @@
 import {on} from '@spearwolf/eventize';
-import {$createEffect, $destroyEffect} from './constants.js';
+import {$createEffect, $destroyEffect, $effectError} from './constants.js';
 import type {Effect} from './Effect.js';
 import {EffectImpl} from './EffectImpl.js';
 import {globalEffectQueue} from './global-queues.js';
+import type {EffectErrorCallback} from './types.js';
 
 /**
  * Create a reactive effect that automatically tracks signal dependencies
@@ -46,6 +47,52 @@ export const onCreateEffect = (...args: unknown[]) =>
 export const onDestroyEffect = (...args: unknown[]) =>
   // @ts-ignore
   on(globalEffectQueue, $destroyEffect, ...args);
+
+/**
+ * Subscribe to errors that an effect could not throw at anyone.
+ *
+ * Only *asynchronous* failures arrive here: the promise returned by an
+ * `async` effect callback rejected, or the promise returned by an `async`
+ * cleanup callback did. A synchronous throw keeps propagating to whoever
+ * triggered the run and never reaches this channel.
+ *
+ * As long as no handler is registered, such an error is written to
+ * `console.error` with the effect id — it never becomes an unhandled
+ * rejection, which since Node 15 would terminate the process. Registering a
+ * handler replaces that log.
+ *
+ * **The handler must be synchronous or catch its own errors.** Nothing
+ * awaits it, so a rejected promise coming out of it is an unhandled
+ * rejection again — the very thing this channel exists to prevent. Reporting
+ * to a remote service is the obvious use case and the obvious trap:
+ *
+ * ```js
+ * onEffectError(async ({error}) => {          // ✗ a failing send() crashes
+ *   await send(error);                        //   the process
+ * });
+ *
+ * const unsubscribe = onEffectError(({error, effect, phase}) => {
+ *   void send(error, {effect: effect.id, phase}).catch(ignore);   // ✓
+ * });
+ * ```
+ *
+ * A handler that throws *synchronously* is caught: both its failure and the
+ * original error go to `console.error`. But eventize stops the dispatch at
+ * that point, so handlers registered with a lower priority never see the
+ * event — keep handlers total, and give the one that must not be missed the
+ * highest priority.
+ *
+ * @param callback - Receives one {@link EffectErrorPayload} per failure
+ * @param priority - Optional eventize priority; higher runs first
+ * @returns Unsubscribe function
+ */
+export const onEffectError = (
+  callback: EffectErrorCallback,
+  priority?: number,
+): (() => void) =>
+  priority == null
+    ? on(globalEffectQueue, $effectError, callback)
+    : on(globalEffectQueue, $effectError, priority, callback);
 
 /**
  * Get the current count of active (non-destroyed) effects.

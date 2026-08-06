@@ -109,12 +109,54 @@ createEffect(() => {
 ```
 
 - Cleanup runs **before** the next execution and on `destroy()`.
-- For `async` callbacks: when the returned promise resolves to a function,
-  that function is called (the next run won't wait for it).
 - Nested effects are destroyed (with their cleanup) before the parent re-runs.
 - On `destroy()` the effect is already marked destroyed and unsubscribed when
   the cleanup runs. A cleanup that resets a signal the effect depends on
   therefore triggers no final run — and no cleanup gets stranded.
+
+### `async` callbacks: the cleanup can be dropped
+
+An `async` callback returns a promise, so its cleanup function only exists once
+that promise settles. The library never waits for it — reactivity stays
+synchronous. Instead each run carries a generation number, and when the promise
+settles the cleanup is **discarded** if the effect has re-run or been destroyed
+in the meantime.
+
+```ts
+createEffect(async () => {
+  const socket = await connect();       // run N
+  return () => socket.close();          // may never be called
+});
+```
+
+> ⚠️ **Release resources synchronously or via `AbortSignal`.** A cleanup from a
+> superseded run is dropped, not deferred: whatever it would have released
+> stays allocated. The alternative — releasing run N's socket while run N+2 is
+> already using its own — is the double-acquire/late-release bug this rule
+> exists to prevent. Acquire the resource before the first `await`, or tie it
+> to an `AbortController` you abort from a synchronous cleanup.
+
+```ts
+createEffect(() => {
+  const ctrl = new AbortController();   // synchronous acquire
+  void (async () => {
+    const res = await fetch(url, {signal: ctrl.signal});
+    // ...
+  })();
+  return () => ctrl.abort();            // synchronous release, never dropped
+});
+```
+
+- A rejecting `async` callback (or `async` cleanup) is not left as an unhandled
+  rejection. It goes to `onEffectError(cb)`, or to `console.error` while no
+  handler is registered. See [api.md](./api.md#top-level-helpers).
+- The handler must be synchronous or catch its own errors — nothing awaits it,
+  so an `async` handler whose own promise rejects lands back at square one:
+
+  ```ts
+  onEffectError(async ({error}) => { await report(error); });        // ✗
+  onEffectError(({error}) => { void report(error).catch(ignore); }); // ✓
+  ```
 
 ## Lazy effects (`autorun: false`)
 
