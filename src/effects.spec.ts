@@ -76,8 +76,9 @@ describe('createEffect', () => {
     expect(a()).toBe(666);
     expect(cleanupValues).toEqual([123]);
 
-    // 667 supersedes the 666 run before its promise settled, so the cleanup
-    // of the 666 run is discarded instead of released late.
+    // 667 supersedes the 666 run before its promise settled — the cleanup
+    // of the 666 run still runs, just late, once its promise settles below
+    // (MEM-004); it is not discarded.
     setA(667);
 
     expect(a()).toBe(667);
@@ -85,9 +86,11 @@ describe('createEffect', () => {
 
     await settled();
 
+    expect(cleanupValues).toEqual([123, 666]);
+
     effect.destroy();
 
-    expect(cleanupValues).toEqual([123, 667]);
+    expect(cleanupValues).toEqual([123, 666, 667]);
 
     destroySignal(a);
   });

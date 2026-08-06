@@ -57,7 +57,7 @@ eff.run(); eff.destroy();
 // Recursion guard
 EffectImpl.maxDepth = 256;
 
-// async: cleanup of a superseded run is DISCARDED, rejections are reported
+// async: cleanup of a superseded run runs LATE (on settle), rejections are reported
 onEffectError(({error, effectId, phase}) => {});  // → unsubscribe
 // no handler → console.error instead of an unhandled rejection
 // handler MUST be sync or catch itself — nothing awaits it

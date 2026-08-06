@@ -124,7 +124,7 @@ Reports rejections of `async` effect callbacks and `async` cleanups — the only
 
 Two constraints on the handler: it must be **synchronous or catch its own errors** (nothing awaits it, so `onEffectError(async p => { await report(p) })` with a failing `report` crashes the process exactly as before), and a synchronous throw out of it **stops the dispatch**, so lower-priority handlers miss that event.
 
-The cleanup an `async` callback resolves to is **discarded** when the effect has re-run or been destroyed in the meantime (pitfall 11a). Nothing is awaited before the next run.
+The cleanup an `async` callback resolves to runs **late** — right when the promise settles — when the effect has re-run or been destroyed in the meantime (pitfall 11a). Nothing is awaited before the next run.
 
 ## Memos
 

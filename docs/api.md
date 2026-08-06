@@ -78,11 +78,12 @@ Create a reactive effect.
 **`callback`** — `() => void | (() => void)`. The optional return value is
 the cleanup callback; it runs before the next execution and on `destroy()`.
 Async callbacks are supported, with two caveats: the cleanup a promise resolves
-to is **discarded** if the effect has re-run or been destroyed by the time the
-promise settles, and a rejection goes to `onEffectError(cb)` instead of
-becoming an unhandled rejection. Details under
+to runs **late** — right when the promise settles, not stored as the next
+cleanup — if the effect has re-run or been destroyed by the time the promise
+settles, and a rejection goes to `onEffectError(cb)` instead of becoming an
+unhandled rejection. Details under
 [`onEffectError`](#oneffecterrorcb-priority---void) and in
-[recipes.md](./recipes.md#async-callbacks-the-cleanup-can-be-dropped).
+[recipes.md](./recipes.md#async-callbacks-the-cleanup-runs-late).
 
 **`options`** *(`EffectOptions`)*:
 
@@ -180,8 +181,12 @@ const unsubscribe = onEffectError(({error, effect, effectId, phase}) => {
 
 Only failures that surface *after* the synchronous call stack is gone arrive
 here: the promise of an `async` effect callback rejected, or the promise of an
-`async` cleanup callback did. A synchronous `throw` keeps propagating to
-whoever triggered the run and never reaches this channel.
+`async` cleanup callback did. A synchronous `throw` from a cleanup that is
+still running as part of `run()` or `destroy()` keeps propagating to whoever
+triggered it and never reaches this channel — except a stale cleanup: one
+whose run was superseded or whose effect is already destroyed by the time it
+runs, sync or not, has no such caller left to throw at, so it lands here too,
+with `phase: 'cleanup'`.
 
 > ⚠️ **The library will not turn these into unhandled rejections — but your
 > handler can.** Node terminates the process on an unhandled rejection by

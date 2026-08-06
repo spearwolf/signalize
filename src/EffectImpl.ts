@@ -663,46 +663,71 @@ export class EffectImpl {
 
   /**
    * Take what the effect callback returned and remember it as the next
-   * cleanup callback.
+   * cleanup callback — or, if that cleanup arrived too late to be anyone's
+   * *next* one, run it right away.
    *
-   * A synchronous return value is stored as is. An `async` callback returns a
-   * promise instead, and by the time it settles the world may have moved on:
-   * the effect may have run again — acquiring fresh resources — or been
-   * destroyed. Running that stale cleanup then is the late-release half of a
-   * double-acquire bug, so it is **discarded**, identified by the generation
-   * the run carried. Nothing is awaited: the library stays synchronous, and
-   * the next run does not wait for a pending promise.
+   * A synchronous return value is stored as is. An `async` callback returns
+   * a promise instead, and by the time it settles the world may have moved
+   * on: the effect may have run again — acquiring fresh resources — or been
+   * destroyed. Nothing is awaited either way: the library stays
+   * synchronous, and the next run does not wait for a pending promise.
    *
-   * A rejection is never discarded — it is reported through
-   * {@link emitEffectError} whether the run is still current or not.
+   * **A stale cleanup is executed, not discarded.** It belongs to the run
+   * that produced it, and it is the only thing that will ever release what
+   * that run acquired: run N+1 cleans up after run N+1, `destroy()` cleans
+   * up after the last stored cleanup. Dropping it — as this method used to
+   * — turned every `createEffect(async () => { const c = await open();
+   * return () => c.close(); })` into a leak on the ordinary unmount path,
+   * where `destroy()` overtakes the first `await`. Running it late is not
+   * a double-acquire: nobody else holds this run's resource.
    *
-   * **The synchronous branch deliberately ignores `generation`.** It can only
-   * be stale through re-entrancy: a callback writes a signal it depends on,
-   * the inner run completes first, and the outer run then overwrites the
-   * inner cleanup with its own, older one. That is how this library has
-   * always behaved, and the `#runDepth` guard exists precisely because such
-   * recursion is a legitimate (if bounded) fixpoint pattern here. Making the
-   * outer run drop its cleanup would change synchronous semantics for every
-   * self-writing effect, which is a decision of its own and not the async
-   * ordering bug this method was written for. The async branch checks the
-   * generation because there the stale case is the *normal* one.
+   * The same applies to the synchronous branch when the effect destroyed
+   * itself in the middle of its own callback. `run()` carries on to the
+   * end, but `destroy()` has already run its cleanup, so a value stored
+   * here would sit on a dead instance and never be called.
+   *
+   * A cleanup run this way has no caller left to throw at, so it goes
+   * through {@link runOrphanedCleanupCallback}: a synchronous throw and a
+   * rejected async cleanup are both reported via {@link emitEffectError}
+   * with phase `cleanup`. It may write signals like any other cleanup — on
+   * a destroyed effect `run()` is a no-op, on a superseded one a further
+   * run is triggered exactly as a regular cleanup would.
+   *
+   * A rejection of the *callback* promise is reported through
+   * {@link emitEffectError} with phase `callback`, current run or not.
+   *
+   * **The synchronous branch still ignores `generation`.** There, stale
+   * means re-entrancy: a callback writes a signal it depends on, the inner
+   * run completes first, and the outer run then overwrites the inner
+   * cleanup with its own, older one. That is how this library has always
+   * behaved, and the `#runDepth` guard exists precisely because such
+   * recursion is a legitimate (if bounded) fixpoint pattern here. Changing
+   * it would change synchronous semantics for every self-writing effect —
+   * a decision of its own, and not the resource leak this method was
+   * fixed for.
    */
   private storeCleanupCallback(result: unknown, generation: number): void {
     if (!isThenable(result)) {
       // Same tolerance as the async branch below: a callback returning
       // something that is not a function has simply returned no cleanup.
       if (typeof result === 'function') {
-        this.#nextCleanupCallback = result as VoidFunc;
+        if (this.#destroyed) {
+          this.runOrphanedCleanupCallback(result as VoidFunc);
+        } else {
+          this.#nextCleanupCallback = result as VoidFunc;
+        }
       }
       return;
     }
 
     Promise.resolve(result).then(
       (cleanup) => {
-        if (this.#destroyed || generation !== this.#generation) return;
-        if (typeof cleanup === 'function') {
-          this.#nextCleanupCallback = cleanup as VoidFunc;
+        if (typeof cleanup !== 'function') return;
+        if (this.#destroyed || generation !== this.#generation) {
+          this.runOrphanedCleanupCallback(cleanup as VoidFunc);
+          return;
         }
+        this.#nextCleanupCallback = cleanup as VoidFunc;
       },
       (error) => {
         emitEffectError(this, error, 'callback');
@@ -723,6 +748,31 @@ export class EffectImpl {
       Promise.resolve(result).catch((error) => {
         emitEffectError(this, error, 'cleanup');
       });
+    }
+  }
+
+  /**
+   * Run a cleanup whose run nobody owns anymore — the callback of a
+   * superseded run settled late, or the effect was destroyed while its
+   * callback was still on the stack.
+   *
+   * Unlike {@link runCleanupCallback} this never throws at its caller.
+   * There is no caller worth throwing at: the frame is either a microtask
+   * of a long-settled promise, or a `run()` whose effect is already gone.
+   * A synchronous throw and a rejected async cleanup therefore take the
+   * same route as every other error without a stack to land on —
+   * {@link emitEffectError} with phase `cleanup`.
+   */
+  private runOrphanedCleanupCallback(cleanup: VoidFunc): void {
+    try {
+      const result = cleanup() as unknown;
+      if (isThenable(result)) {
+        Promise.resolve(result).catch((error) => {
+          emitEffectError(this, error, 'cleanup');
+        });
+      }
+    } catch (error) {
+      emitEffectError(this, error, 'cleanup');
     }
   }
 

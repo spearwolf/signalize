@@ -30,12 +30,12 @@ Behaviours that surprise people (and models) coming from React, Solid, Vue or Mo
 
 **11 — Async callbacks do not make propagation async.** An effect callback may be `async`, but propagation itself stays synchronous: nothing waits for the promise. There is no microtask debounce; write one if the use case needs it.
 
-**11a — The cleanup of an `async` run is discarded once the run is superseded.** The cleanup function only exists when the promise settles. If the effect re-ran or was destroyed by then, that cleanup is **dropped, not deferred** — running it would release run N's resource while run N+2 holds its own. Nothing warns: whatever it would have freed simply stays allocated. Acquire before the first `await`, or bind the resource to an `AbortController` aborted from a synchronous cleanup.
+**11a — The cleanup of an `async` run still runs once the run is superseded — just late.** The cleanup function only exists when the promise settles. If the effect re-ran or was destroyed by then, that cleanup runs **right then**, instead of being stored as the next one — it is the only thing that will ever release what that run acquired. Nothing bounds *when*: the timing sits anywhere from "immediately" to "well after the next run already acquired its own resource," so a brief overlap between the two is possible. Acquire before the first `await`, or bind the resource to an `AbortController` aborted from a synchronous cleanup, if the release must be synchronous with the run it replaces.
 
 ```ts
 createEffect(async () => {
   const socket = await connect();
-  return () => socket.close();     // ✗ may never run
+  return () => socket.close();     // runs once this settles, timing unbound
 });
 
 createEffect(() => {

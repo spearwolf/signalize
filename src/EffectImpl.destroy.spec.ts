@@ -441,7 +441,36 @@ describe('EffectImpl.destroy() teardown order', () => {
     destroySignal(c);
   });
 
-  it('is destroyed once its last live dependency dies, even when an earlier one was hard-destroyed mid-callback (MEM-006)', () => {
+  it('a cleanup returned after a mid-callback self-destroy still runs (MEM-004)', () => {
+    const {get: a, set: setA} = createSignal(0);
+
+    let acquired = 0;
+    let released = 0;
+    let effect: Effect;
+
+    effect = createEffect(() => {
+      const value = a();
+      acquired += 1;
+      // Zweiter Lauf: der Effect zerstört sich mitten im Callback. run()
+      // läuft trotzdem bis zum Ende durch und reicht den Cleanup an
+      // storeCleanupCallback() weiter — destroy() hat sein
+      // runCleanupCallback() da längst hinter sich.
+      if (value === 1) effect.destroy();
+      return () => {
+        released += 1;
+      };
+    });
+
+    setA(1);
+
+    expect(acquired).toBe(2);
+    expect(released).toBe(2);
+    assertEffectsCount(0, 'after mid-callback self-destroy');
+
+    destroySignal(a);
+  });
+
+  it('an effect is destroyed once its last live dependency dies, even when an earlier one was hard-destroyed mid-callback (MEM-006)', () => {
     const a = createSignal(0);
     const b = createSignal(0);
 

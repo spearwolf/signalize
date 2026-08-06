@@ -256,7 +256,7 @@ describe('async effect callbacks', () => {
   });
 
   describe('cleanup generations', () => {
-    it('discards the cleanup of a run that was superseded before it settled', async () => {
+    it('runs the cleanup of a run that was superseded before it settled (MEM-004)', async () => {
       const log: string[] = [];
       const {get: a, set: setA} = createSignal(0);
 
@@ -274,14 +274,27 @@ describe('async effect callbacks', () => {
 
         await flush();
 
-        // cleanup:0 and cleanup:1 belong to superseded runs — they must not
-        // fire late, after run:2 has already acquired its resources.
-        expect(log).toEqual(['run:0', 'run:1', 'run:2']);
+        // Die Cleanups der überholten Runs laufen, sobald ihr Promise
+        // settelt — die Ressource dieses Runs gibt sonst niemand mehr frei.
+        expect(log).toEqual([
+          'run:0',
+          'run:1',
+          'run:2',
+          'cleanup:0',
+          'cleanup:1',
+        ]);
 
         effect.destroy();
 
-        // ... but the cleanup of the newest run still runs on destroy.
-        expect(log).toEqual(['run:0', 'run:1', 'run:2', 'cleanup:2']);
+        // Der Cleanup des jüngsten Runs läuft weiterhin erst beim destroy().
+        expect(log).toEqual([
+          'run:0',
+          'run:1',
+          'run:2',
+          'cleanup:0',
+          'cleanup:1',
+          'cleanup:2',
+        ]);
       } finally {
         effect.destroy();
         destroySignal(a);
@@ -346,12 +359,22 @@ describe('async effect callbacks', () => {
 
         await flush();
 
+        // Der innere Run 2 wurde vom äußeren Run 3 überholt: sein Cleanup
+        // läuft jetzt beim Settle, statt verworfen zu werden.
+        expect(log).toEqual([
+          'run:1:0',
+          'cleanup:1',
+          'run:2:99',
+          'run:3:99',
+          'cleanup:2',
+        ]);
+
         effect.destroy();
 
         // The generation must follow the order in which the callbacks ran,
         // not the order in which the runs were entered — otherwise the outer
-        // run, whose promise is the newest, throws its cleanup away and the
-        // inner run's stale one survives.
+        // run, whose promise is the newest, its cleanup would be stored last
+        // and the inner run's stale one would be the one that survives.
         expect(log.at(-1)).toBe('cleanup:3');
       } finally {
         effect.destroy();
@@ -359,7 +382,7 @@ describe('async effect callbacks', () => {
       }
     });
 
-    it('discards a cleanup that settles after the effect was destroyed', async () => {
+    it('runs a cleanup that settles after the effect was destroyed (MEM-004)', async () => {
       const log: string[] = [];
       const {get: a} = createSignal(0);
 
@@ -376,9 +399,40 @@ describe('async effect callbacks', () => {
 
         await flush();
 
-        expect(log).toEqual(['run:0']);
+        expect(log).toEqual(['run:0', 'cleanup:0']);
         expect(unhandled).toEqual([]);
       } finally {
+        effect.destroy();
+        destroySignal(a);
+      }
+    });
+
+    it('reports a throwing stale cleanup through onEffectError (MEM-004)', async () => {
+      const errors: EffectErrorPayload[] = [];
+      const unsubscribe = onEffectError((payload) => {
+        errors.push(payload);
+      });
+
+      const {get: a, set: setA} = createSignal(0);
+
+      const effect = createEffect(async () => {
+        const value = a();
+        return () => {
+          if (value === 0) throw new Error(`boom:${value}`);
+        };
+      });
+
+      try {
+        setA(1);
+
+        await flush();
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0].phase).toBe('cleanup');
+        expect((errors[0].error as Error).message).toBe('boom:0');
+        expect(unhandled).toEqual([]);
+      } finally {
+        unsubscribe();
         effect.destroy();
         destroySignal(a);
       }

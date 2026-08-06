@@ -136,27 +136,30 @@ createEffect(() => {
   the cleanup runs. A cleanup that resets a signal the effect depends on
   therefore triggers no final run — and no cleanup gets stranded.
 
-### `async` callbacks: the cleanup can be dropped
+### `async` callbacks: the cleanup runs late
 
 An `async` callback returns a promise, so its cleanup function only exists once
 that promise settles. The library never waits for it — reactivity stays
 synchronous. Instead each run carries a generation number, and when the promise
-settles the cleanup is **discarded** if the effect has re-run or been destroyed
-in the meantime.
+settles for a run that has since been superseded or destroyed, the cleanup
+still runs — it is simply run right then, instead of being stored as the
+*next* cleanup.
 
 ```ts
 createEffect(async () => {
   const socket = await connect();       // run N
-  return () => socket.close();          // may never be called
+  return () => socket.close();          // runs once this promise settles,
+                                         // whether or not run N is still current
 });
 ```
 
-> ⚠️ **Release resources synchronously or via `AbortSignal`.** A cleanup from a
-> superseded run is dropped, not deferred: whatever it would have released
-> stays allocated. The alternative — releasing run N's socket while run N+2 is
-> already using its own — is the double-acquire/late-release bug this rule
-> exists to prevent. Acquire the resource before the first `await`, or tie it
-> to an `AbortController` you abort from a synchronous cleanup.
+> ⚠️ **The timing is unbound, not the release.** Nothing awaits the promise, so
+> a superseded run's cleanup can fire anywhere between "immediately" and "long
+> after the next run has already acquired its own resource" — there is no
+> guarantee the two don't briefly overlap. If you need the release to happen
+> synchronously, in step with the run it replaces, acquire the resource before
+> the first `await`, or tie it to an `AbortController` you abort from a
+> synchronous cleanup.
 
 ```ts
 createEffect(() => {
