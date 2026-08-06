@@ -472,10 +472,17 @@ SignalAutoMap.fromProps<P>(obj: P, keys?: (keyof P)[])
 | `updateFromProps(obj, keys?)`           | Apply object props; missing keys created. Wrapped in `batch()`.        |
 | `keys()` / `signals()` / `entries()`    | Iterators.                                                             |
 | `clear()`                               | Destroy all signals and empty the map.                                 |
+| `delete(key): boolean`                  | Destroy `key`'s signal and drop the entry; `true` if present.          |
 
 > If a stored signal is destroyed externally via `destroySignal()`, the map
 > still holds a reference: reads return its last value, and writes still update
-> that value — they just never notify anyone.
+> that value — they just never notify anyone. `delete(key)` is the way to get
+> rid of an entry entirely; it cleans up externally destroyed entries too.
+>
+> `delete(key)` drops the entry, then destroys the signal — so an effect
+> cleanup that runs as part of that destroy can call `get(key)` again and get
+> a fresh, live signal. That signal stays in the map: `has(key)` is `true`
+> again once `delete()` returns.
 
 ---
 

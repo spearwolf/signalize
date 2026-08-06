@@ -1,9 +1,12 @@
+import {getSubscriptionCount} from '@spearwolf/eventize';
 import {
   assertEffectsCount,
   assertLinksCount,
   assertSignalsCount,
 } from './assert-helpers.js';
 import {createEffect} from './effects.js';
+import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
+import type {Signal} from './Signal.js';
 import {SignalAutoMap} from './SignalAutoMap.js';
 import {destroySignal, isSignal} from './signal-core.js';
 
@@ -380,6 +383,145 @@ describe('SignalAutoMap', () => {
 
       effect.destroy();
       sm.clear();
+    });
+  });
+
+  describe('delete()', () => {
+    it('delete() destroys the signal and removes the entry', () => {
+      const sm = SignalAutoMap.fromProps({a: 1, b: 2, c: 3});
+      assertSignalsCount(3);
+
+      expect(sm.delete('a')).toBe(true);
+      assertSignalsCount(2);
+      expect(sm.has('a')).toBe(false);
+      expect([...sm.keys()]).toEqual(['b', 'c']);
+
+      sm.clear();
+    });
+
+    it('a re-entrant get() from a cleanup during delete() gets a live signal that stays in the map', () => {
+      const sm = new SignalAutoMap();
+      sm.get('a').set(1);
+
+      let reentrant: Signal<unknown> | undefined;
+      createEffect(() => {
+        sm.get('a').get();
+        return () => {
+          // Runs synchronously inside sm.delete('a'): the destroyed signal
+          // was this effect's only dependency, so destroying it takes the
+          // effect with it, and its cleanup fires re-entrantly here.
+          reentrant = sm.get('a');
+        };
+      });
+      assertEffectsCount(1, 'one effect depending on the entry');
+
+      expect(sm.delete('a')).toBe(true);
+
+      // The entry must already be gone by the time the cleanup runs, so the
+      // re-entrant get() creates a fresh, live signal instead of handing
+      // back the corpse — and that fresh entry must survive the delete().
+      expect(reentrant).not.toBeUndefined();
+      expect(sm.has('a')).toBe(true);
+      expect(sm.get('a')).toBe(reentrant);
+      assertSignalsCount(1, 're-entrant get() left one live signal behind');
+      assertEffectsCount(
+        0,
+        'the effect died with its only, now-deleted dependency',
+      );
+
+      reentrant!.value = 42;
+      expect(reentrant!.value).toBe(42);
+
+      sm.clear();
+    });
+
+    it('delete() on an unknown key returns false and creates nothing', () => {
+      const sm = new SignalAutoMap();
+
+      expect(sm.delete('nope')).toBe(false);
+      assertSignalsCount(0);
+      expect([...sm.keys()].length).toBe(0);
+    });
+
+    it('get() after delete() creates a fresh signal', () => {
+      const sm = new SignalAutoMap();
+      const first = sm.get('a');
+      sm.delete('a');
+
+      const second = sm.get('a');
+      expect(second).not.toBe(first);
+      expect(isSignal(second.get)).toBe(true);
+      expect(second.value).toBeUndefined();
+      assertSignalsCount(1);
+
+      sm.clear();
+    });
+
+    it('delete() on an entry destroyed from the outside still removes it', () => {
+      const sm = new SignalAutoMap();
+      const sig = sm.get('a');
+      destroySignal(sig);
+      assertSignalsCount(0);
+
+      expect(sm.delete('a')).toBe(true);
+      assertSignalsCount(0);
+      expect(sm.has('a')).toBe(false);
+    });
+
+    it('delete() works with symbol keys', () => {
+      const sm = new SignalAutoMap();
+      const symKey = Symbol('mySymbol');
+
+      sm.get('stringKey').value = 'string value';
+      sm.get(symKey).value = 'symbol value';
+
+      expect(sm.delete(symKey)).toBe(true);
+      expect(sm.has(symKey)).toBe(false);
+      expect(sm.has('stringKey')).toBe(true);
+
+      sm.clear();
+    });
+
+    it('delete() leaves nothing behind — signals, effects and subscriptions (MEM-009)', () => {
+      const signalSubscriptions = getSubscriptionCount(globalSignalQueue);
+      const destroySubscriptions = getSubscriptionCount(
+        globalDestroySignalQueue,
+      );
+
+      const sm = new SignalAutoMap();
+      const keys = ['a', 'b', 'c'];
+      let runs = 0;
+
+      for (const key of keys) {
+        sm.get(key).set(key);
+        // Not attached to anything: the map entry is the only owner.
+        createEffect(() => {
+          runs += 1;
+          sm.get(key).get();
+        });
+      }
+
+      expect(runs).toBe(3);
+      assertSignalsCount(3, 'three entries');
+      assertEffectsCount(3, 'one effect per entry');
+
+      for (const key of keys) {
+        expect(sm.delete(key)).toBe(true);
+      }
+
+      expect([...sm.keys()].length).toBe(0);
+      assertSignalsCount(0, 'after delete()');
+      assertEffectsCount(
+        0,
+        'an effect without a single live dependency destroys itself',
+      );
+      expect(runs, 'destroying a dependency does not re-run the effect').toBe(
+        3,
+      );
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptions,
+      );
     });
   });
 });

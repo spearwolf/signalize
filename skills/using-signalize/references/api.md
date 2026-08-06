@@ -230,6 +230,7 @@ m.updateFromProps(obj, ['k']);       // batched
 for (const k of m.keys()) {}
 for (const s of m.signals()) {}
 for (const [k, s] of m.entries()) {}
+m.delete('k');                       // destroy that signal + drop the entry → boolean
 m.clear();
 ```
 

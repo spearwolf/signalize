@@ -550,8 +550,21 @@ map.get('foo').value;       // 42 (last value, the destroyed signal stays cached
 map.get('foo').set(99);     // stores 99, notifies nobody (signal is destroyed)
 ```
 
-Always `clear()` the map (or attach all signals to a `SignalGroup`) instead
-of destroying entries individually.
+Individual entries are removed with `map.delete('foo')`: it destroys the
+signal and drops the entry in one step, unlike a `destroySignal()` from the
+outside, which leaves the corpse cached as shown above.
+
+```ts
+map.delete('foo'); // true — signal destroyed, entry gone
+```
+
+`clear()` is still the way to tear down everything at once. Deleting an
+entry that was an effect's only live dependency destroys that effect too.
+
+`delete(key)` drops the entry *before* destroying the signal, on purpose: if
+an effect cleanup runs as part of that destroy and calls `get(key)` again,
+it gets a fresh, live signal — not the corpse. That signal stays in the map,
+so `has(key)` is `true` again once `delete()` has already returned.
 
 ## Decorator quirks
 

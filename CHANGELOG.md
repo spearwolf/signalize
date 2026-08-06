@@ -6,6 +6,7 @@
 
 - New `onEffectError(cb, priority?)` export: subscribes to rejections of `async` effect and cleanup callbacks, which cannot be thrown at a caller. The handler receives `{error, effect, effectId, phase}` (ASYNC-001)
 - `createMemo(fn, {batchWrites})`: new option (default `false`) to wrap the memo's recompute write in `batch()`. Only needed when `fn` itself writes to other signals as a side effect — the default trades that grouping away for read consistency on composed memos, see the Breaking Changes entry below (PERF-001)
+- `SignalAutoMap#delete(key)` destroys the signal for that key and removes the entry, returning `true` if the key was in the map — previously only `clear()` could tear anything down, and a `destroySignal()` from the outside left the dead entry cached
 
 ### Bug Fixes
 

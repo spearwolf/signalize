@@ -65,6 +65,42 @@ export class SignalAutoMap {
   }
 
   /**
+   * Destroy the signal stored under `key` and remove its entry.
+   *
+   * The signal is destroyed, not merely evicted: every effect reading it is
+   * notified, and an effect left without a single live dependency destroys
+   * itself. Whoever still holds the `Signal` object holds a corpse — reads
+   * return the last value, writes notify nobody (see `clear()` and the note
+   * on externally destroyed entries).
+   *
+   * Deleting an unknown key is a no-op. Deleting an entry whose signal was
+   * already destroyed from the outside still removes the entry and reports
+   * `true`; destroying a destroyed signal is a no-op.
+   *
+   * The entry is dropped before the signal is destroyed, so an effect
+   * cleanup that runs as part of that destroy (its dependency just died) and
+   * calls `get(key)` again gets a fresh, live signal — and that signal stays
+   * in the map. `has(key)` is `true` again once `delete()` returns, and the
+   * key count is back up by one.
+   *
+   * @param key - The key to remove
+   * @returns `true` if the key was in the map, `false` otherwise — the same
+   *   contract as `Map.prototype.delete`
+   */
+  delete(key: SignalAutoMapKeyType): boolean {
+    const signal = this.#signals.get(key);
+    if (signal === undefined) return false;
+    // Drop the entry *before* destroying it. The destroy emit runs effect
+    // cleanups, and one of those may call get(key) again: with the entry
+    // already gone that call hands out a fresh, live signal which stays in
+    // the map. The other order hands out the corpse and then deletes
+    // whatever the re-entrant call had just stored.
+    this.#signals.delete(key);
+    signal.destroy();
+    return true;
+  }
+
+  /**
    * Check if a signal exists for the given key.
    * @param key - The key to check
    */
