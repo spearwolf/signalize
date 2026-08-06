@@ -26,6 +26,13 @@
 - An error thrown by a cleanup during that deferred teardown goes to `onEffectError()` with `phase: 'cleanup'` instead of surfacing at whoever wrote the signal
 - `createEffect(callback, dependencies, options)` no longer mutates the caller's `options` object by writing `dependencies` into it. Reusing one options object across several `createEffect()` calls used to make every call after the first inherit the previous one's dependencies (BUG-005)
 - A string/symbol dependency that cannot be resolved to a signal — the name is not registered in the attached group, or no group is attached at all — now throws an error naming the dependency instead of an opaque `TypeError: Cannot read properties of undefined` (BUG-003)
+- `link()` with an invalid `source` (not a signal) now throws `[signalize] link: source must be a signal` immediately, before touching the internal registry. It used to insert an entry keyed by `undefined` first and only then fail inside the `SignalLink` constructor with an opaque `TypeError`, leaving that stale empty entry behind (BUG-007)
+- `link(source, target, {attach})` called again for a `(source, target)` pair that already has a link now attaches the existing link to the new group too, instead of silently dropping `attach`. The link is destroyed as soon as any one of its attached groups clears (BUG-004)
+- `SignalLink.attach()` (and therefore `link()`'s `{attach}` option) is idempotent: attaching the same group again — including on repeated `link()` calls for an already-cached pair — no longer registers a second internal destroy listener on the link. It used to grow the link's own listener count without bound when the same `{attach}` group was passed on every render or effect rerun
+- `link()`'s internal registry (`gLinks`) now keys on the source signal via `WeakMap` instead of `Map`, so it no longer pins signals that are otherwise fully unreferenced (MEM-002)
+- `getLinksCount()` without a `source` argument now tracks an internal counter instead of iterating the registry — a `WeakMap` cannot be iterated (MEM-002)
+- `SignalLink`'s two subscriptions on `globalSignalQueue`/`globalDestroySignalQueue`, and `SignalLinkToSignal`'s extra subscription for its target signal, now go through a `WeakRef` to `this` instead of capturing it directly. Those queues are permanent module-level roots, so a strong closure there pinned every link — signal-target and callback-target alike — in memory for the process lifetime, regardless of `gLinks` (MEM-002)
+- An orphaned link — never `destroy()`d, never `.attach()`d, no other references left — is now reclaimed by garbage collection, for both signal and callback targets (MEM-002)
 
 ### Chores
 

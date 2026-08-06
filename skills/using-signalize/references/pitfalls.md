@@ -71,7 +71,7 @@ createEffect(() => {
 - It only covers resources reachable through a group with a *host object*. A self-keyed group (`findOrCreate()` with no argument, where `object === this`) is deliberately not registered, and anything created without `attach` is owned by nobody — it stays subscribed to the global queues until destroyed by hand.
 - Because timing is unobservable, leak assertions in tests must still use explicit teardown plus the counters; a passing `getSignalsCount()` check cannot be attributed to the registry.
 
-**17 — `link()` deduplicates by `(source, target)` pair.** Calling it twice with the same pair returns the *existing* link rather than creating a second one. Links auto-destroy when the source or a signal target is destroyed.
+**17 — `link()` deduplicates by `(source, target)` pair.** Calling it twice with the same pair returns the *existing* link rather than creating a second one. Links auto-destroy when the source or a signal target is destroyed. Passing `{attach}` on a call that hits the cache attaches the existing link to that group *too*, instead of being ignored — a link with several attached groups dies with whichever one clears first. Re-passing the same group (on a cache hit, or via a direct `link.attach(g)` call) is itself idempotent and safe to do every render or effect rerun.
 
 **18 — `SignalAutoMap` retains destroyed signals.** Calling `destroySignal()` on an entry leaves it in the map: reads return the last value, and writes still update it without notifying anyone (see pitfall 6). Prefer `map.clear()`, or attach the signals to a `SignalGroup`.
 

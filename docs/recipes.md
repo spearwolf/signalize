@@ -376,6 +376,20 @@ log.unmute();
 
 - Same `(source, target)` pair? Repeated `link()` calls return the existing link.
 - Destroyed when the source or target signal is destroyed.
+- Repeated `link()` calls with different `attach` groups don't replace or drop
+  the extra attach — the existing link is attached to *every* group it was
+  ever `link()`'d or `.attach()`'d with, and dies with whichever one clears
+  first:
+
+  ```ts
+  const l1 = link(inA, outB, {attach: componentA});
+  const l2 = link(inA, outB, {attach: componentB}); // same link, now attached twice
+  l1 === l2; // true
+
+  SignalGroup.delete(componentA); // l1/l2 is destroyed here already,
+  SignalGroup.delete(componentB); // this is a no-op on an already-dead link
+  ```
+
 - `nextValue()` and `asyncValues()` integrate with `for await` loops; useful
   for testing and for one-shot waits.
 

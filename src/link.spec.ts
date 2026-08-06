@@ -1,4 +1,4 @@
-import {on} from '@spearwolf/eventize';
+import {getSubscriptionCount, on} from '@spearwolf/eventize';
 import {
   assertEffectsCount,
   assertLinksCount,
@@ -526,6 +526,111 @@ describe('link() comprehensive tests', () => {
       expect(con.source.value).toBe(42);
 
       destroySignal(sigA, sigB);
+    });
+  });
+
+  describe('BUG-004: attach on cache hit', () => {
+    it('attaches the cached link to a second group instead of dropping attach', () => {
+      const sigA = createSignal(1);
+      const sigB = createSignal(-1);
+      const group1Object = {};
+      const group2Object = {};
+
+      const con1 = link(sigA, sigB, {attach: group1Object});
+      const con2 = link(sigA, sigB, {attach: group2Object});
+
+      expect(con1).toBe(con2);
+
+      // Clearing only the *second* group must destroy the shared link too —
+      // it now died with whichever attached group clears first.
+      SignalGroup.get(group2Object)!.clear();
+
+      expect(con1.isDestroyed).toBe(true);
+
+      sigA.set(42);
+      expect(sigB.value).toBe(1); // link is dead, no more propagation
+
+      SignalGroup.get(group1Object)?.clear();
+      destroySignal(sigA, sigB);
+    });
+
+    it('re-attaching the same group on repeated cache hits does not grow the link subscription count', () => {
+      // Regression for the leak the first BUG-004 fix introduced:
+      // SignalLink.attach() used to register a fresh `once(this, DESTROY,
+      // ...)` listener on every call, unconditionally. Since eventize does
+      // not dedupe plain function listeners, calling link() with the same
+      // {attach: g} repeatedly (e.g. once per render/effect rerun) grew the
+      // link's own listener count without bound.
+      const sigA = createSignal(1);
+      const sigB = createSignal(-1);
+      const groupObject = {};
+
+      const con1 = link(sigA, sigB, {attach: groupObject});
+      const baseline = getSubscriptionCount(con1);
+
+      const con2 = link(sigA, sigB, {attach: groupObject});
+      const con3 = link(sigA, sigB, {attach: groupObject});
+
+      expect(con2).toBe(con1);
+      expect(con3).toBe(con1);
+      expect(getSubscriptionCount(con1)).toBe(baseline);
+
+      // Same guard applies to the direct public call, not just the
+      // link()-cache-hit path.
+      con1.attach(groupObject);
+      con1.attach(groupObject);
+      expect(getSubscriptionCount(con1)).toBe(baseline);
+
+      SignalGroup.get(groupObject)!.clear();
+      expect(con1.isDestroyed).toBe(true);
+
+      destroySignal(sigA, sigB);
+    });
+
+    it('re-attach after an explicit detachLink() actually re-attaches, not just returns the group', () => {
+      // Regression for a narrower BUG-004 symptom introduced by the
+      // idempotency guard: `#attachedGroups` records "this link has been
+      // attached to `g` at some point" but never forgets it, even after
+      // `SignalGroup.detachLink()` — the documented, public way to remove a
+      // link from a group without destroying it. Calling `link.attach(g)`
+      // again after such a detach returned early (guard already has `g`),
+      // so `group.attachLink(this)` never ran a second time: `attach()`
+      // reported success (returned the group) but `g.clear()` no longer
+      // destroyed the link.
+      const sigA = createSignal(1);
+      const sigB = createSignal(-1);
+      const groupObject = {};
+
+      const con = link(sigA, sigB, {attach: groupObject});
+      const group = SignalGroup.get(groupObject)!;
+
+      group.detachLink(con);
+      con.attach(groupObject);
+
+      group.clear();
+
+      expect(con.isDestroyed).toBe(true);
+
+      sigA.set(42);
+      expect(sigB.value).toBe(1); // link is dead, no more propagation
+
+      destroySignal(sigA, sigB);
+    });
+  });
+
+  describe('BUG-007: invalid source is validated before any registry entry is created', () => {
+    it('throws a clear, explicit error when source is not a signal, and leaves getLinksCount() at 0', () => {
+      const notASignal = {} as any;
+
+      // Must match the new explicit validation message, not just "anything
+      // throws" — the pre-fix code also threw here, but only by accident:
+      // the SignalLink constructor crashed on `this.source.id` with an
+      // opaque TypeError, after already having inserted a stale registry
+      // entry keyed by `undefined`.
+      expect(() => link(notASignal, () => {})).toThrow(
+        /source must be a signal/,
+      );
+      expect(getLinksCount()).toBe(0);
     });
   });
 });

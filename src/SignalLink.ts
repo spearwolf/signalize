@@ -24,6 +24,7 @@ export interface SignalLink<ValueType = any> extends EventizedObject {}
 export abstract class SignalLink<ValueType = any> {
   #muted = false;
   #unsubscribe?: () => void;
+  #attachedGroups?: Set<SignalGroup>;
 
   readonly source: ISignalImpl<ValueType>;
 
@@ -36,22 +37,57 @@ export abstract class SignalLink<ValueType = any> {
 
     this.source = signalImpl(source);
 
+    // Weak self-reference (MEM-002): these two callbacks subscribe on
+    // module-level global queues that live for the whole process. A plain
+    // `this` closure here would keep the link (and everything it reaches —
+    // the source signal, the target, a callback's closure) permanently
+    // reachable, even after every external reference to the link is
+    // dropped and `gLinks` no longer pins it. Going through a WeakRef lets
+    // an orphaned link (never destroy()d, never attach()ed) become
+    // collectible; once collected, the dereffed callbacks are silent no-ops.
+    const selfRef = new WeakRef(this);
+
     this.#unsubscribe = on(globalSignalQueue, this.source.id, (_, params) => {
-      if (!this.#muted && !this.isDestroyed) {
+      const self = selfRef.deref();
+      if (self != null && !self.#muted && !self.isDestroyed) {
         if (params?.touch === true) {
-          this.touch();
+          self.touch();
         } else {
-          this.write();
+          self.write();
         }
       }
     });
 
-    once(globalDestroySignalQueue, this.source.id, () => this.destroy());
+    once(globalDestroySignalQueue, this.source.id, () =>
+      selfRef.deref()?.destroy(),
+    );
   }
 
   attach(to: object) {
     const group = SignalGroup.findOrCreate(to);
+
+    // `group.attachLink()` runs on every call, unconditionally — it's an
+    // idempotent `Set.add`, it's what actually (re-)establishes membership,
+    // and it must run (and throw, for a destroyed link) before anything
+    // touches `#attachedGroups` below. Skipping it on a re-attach is exactly
+    // the bug this used to have: `SignalGroup.detachLink()` (public API) can
+    // remove the link from the group without destroying it or clearing the
+    // guard, so a later `attach(sameGroup)` needs to actually re-add it, not
+    // just see "already known" and return early.
     group.attachLink(this);
+
+    // The `once(this, DESTROY, ...)` subscription below, unlike
+    // `attachLink()`, is *not* deduplicated by eventize (a plain function
+    // listener isn't recognized as "similar" to a previous one) — so it
+    // still needs its own guard, or re-attaching the same group (e.g. on
+    // every `link()` cache hit that passes `{attach}`) would grow the
+    // link's DESTROY listener list without bound.
+    this.#attachedGroups ??= new Set();
+    if (this.#attachedGroups.has(group)) {
+      return group;
+    }
+    this.#attachedGroups.add(group);
+
     once(this, DESTROY, () => {
       group.detachLink(this);
     });
@@ -164,7 +200,15 @@ export class SignalLinkToSignal<ValueType = any> extends SignalLink<ValueType> {
   constructor(source: SignalLike<ValueType>, target: SignalLike<ValueType>) {
     super(source);
     this.target = signalImpl(target);
-    once(globalDestroySignalQueue, this.target.id, () => this.destroy());
+    // Weak self-reference, same reasoning as the base constructor
+    // (MEM-002): `globalDestroySignalQueue` is a permanent module-level
+    // root, so a plain `this` closure here would pin this link — and
+    // through it `source`/`target` — for the process lifetime, same as the
+    // base class's two subscriptions did before they were fixed.
+    const selfRef = new WeakRef(this);
+    once(globalDestroySignalQueue, this.target.id, () =>
+      selfRef.deref()?.destroy(),
+    );
     this.touch();
   }
 

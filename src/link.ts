@@ -10,10 +10,30 @@ import {
 import {signalImpl} from './signal-core.js';
 import {ISignalImpl, SignalLike, SignalReader} from './types.js';
 
-const gLinks = new Map<
+// Weak on the source signal: the search always goes through the source, so
+// there is no need to iterate `gLinks` itself, and a WeakMap lets an orphaned
+// link (never destroy()d, never attach()ed, no external references left)
+// become collectible instead of pinned for the process lifetime (MEM-002).
+const gLinks = new WeakMap<
   ISignalImpl<any>,
   Map<object | Function, SignalLink<any>>
 >();
+
+// `getLinksCount()` without an argument used to iterate `gLinks.values()`,
+// which a WeakMap cannot support. This tracks the same total explicitly.
+let gLinksCount = 0;
+
+// A link that is only dropped and garbage-collected — never explicitly
+// destroy()ed — fires no DESTROY event, so the increment/decrement pair
+// below can't see it. This registry catches that case: it fires once the
+// link itself becomes unreachable and corrects the counter. The `once(link,
+// DESTROY, ...)` hook unregisters first on the explicit path, so a link that
+// *is* destroyed is never double-counted here.
+const gLinkFinalizer = new FinalizationRegistry<void>(() => {
+  if (gLinksCount > 0) {
+    gLinksCount -= 1;
+  }
+});
 
 type LinkableSource<ValueType> = SignalReader<ValueType> | Signal<ValueType>;
 type LinkableTarget<ValueType> =
@@ -26,7 +46,14 @@ type LinkableTarget<ValueType> =
  */
 export interface LinkOptions {
   /**
-   * Attach the link to this group, so it will be destroyed when the group is destroyed
+   * Attach the link to this group, so it will be destroyed when the group is destroyed.
+   *
+   * `link()` deduplicates by `(source, target)`: calling it again for a pair
+   * that already has a link returns the existing instance. If that call
+   * passes `attach`, the existing link is attached to that group *too* —
+   * it is not replaced or ignored. A link with multiple attached groups is
+   * destroyed as soon as any one of them clears; it does not wait for all
+   * of them.
    */
   attach?: object;
 
@@ -52,42 +79,63 @@ export function link<ValueType>(
   target: LinkableTarget<ValueType>,
   options?: LinkOptions,
 ): SignalLink<ValueType> {
+  // Validation first (BUG-007): reject an invalid source before any registry
+  // entry exists. Previously `gLinks.set(sourceSignal, links)` ran before
+  // the SignalLink constructor's own `signalImpl(source)` check, so a
+  // failed `link()` left a permanent `undefined` key with an empty Map.
   const sourceSignal = signalImpl(source);
+  if (sourceSignal == null) {
+    throw new TypeError('[signalize] link: source must be a signal');
+  }
+
   const targetSignal = signalImpl(target as SignalLike<ValueType>);
   const targetKey: object | Function =
     targetSignal ?? (target as object | Function);
 
-  let links: Map<object | Function, SignalLink<any>>;
-  if (gLinks.has(sourceSignal)) {
-    links = gLinks.get(sourceSignal)!;
-    if (links.has(targetKey)) {
-      return links.get(targetKey);
-    }
-  } else {
+  let links = gLinks.get(sourceSignal);
+  if (links == null) {
     links = new Map<object | Function, SignalLink<any>>();
     gLinks.set(sourceSignal, links);
+  } else if (links.has(targetKey)) {
+    // Cache hit (BUG-004): attach the existing link to the newly requested
+    // group too, instead of silently dropping `options.attach`. The link
+    // now dies with whichever of its attached groups clears first — see the
+    // `LinkOptions.attach` JSDoc.
+    const cachedLink = links.get(targetKey)!;
+    const attachToGroup = options?.attach;
+    if (attachToGroup) {
+      cachedLink.attach(attachToGroup);
+    }
+    return cachedLink;
   }
 
-  const link =
+  // Construction, then registration (`set()`).
+  const newLink =
     targetSignal != null
       ? new SignalLinkToSignal(source, targetSignal)
       : new SignalLinkToCallback(source, target as ValueCallback<ValueType>);
 
   const attachToGroup = options?.attach;
   if (attachToGroup) {
-    link.attach(attachToGroup);
+    newLink.attach(attachToGroup);
   }
 
-  links.set(targetKey, link);
+  links.set(targetKey, newLink);
+  gLinksCount += 1;
+  gLinkFinalizer.register(newLink, undefined, newLink);
 
-  once(link, DESTROY, () => {
+  once(newLink, DESTROY, () => {
     links.delete(targetKey);
     if (links.size === 0) {
       gLinks.delete(sourceSignal);
     }
+    gLinkFinalizer.unregister(newLink);
+    if (gLinksCount > 0) {
+      gLinksCount -= 1;
+    }
   });
 
-  return link;
+  return newLink;
 }
 
 /**
@@ -135,16 +183,9 @@ export function unlink<ValueType>(
  * @returns The number of active links
  */
 export function getLinksCount(source?: SignalLike<any>): number {
-  let counter = 0;
   if (source == null) {
-    for (const links of gLinks.values()) {
-      counter += links.size;
-    }
-  } else {
-    const sourceSignal = signalImpl(source);
-    if (gLinks.has(sourceSignal)) {
-      counter = gLinks.get(sourceSignal)!.size;
-    }
+    return gLinksCount;
   }
-  return counter;
+  const sourceSignal = signalImpl(source);
+  return sourceSignal != null ? (gLinks.get(sourceSignal)?.size ?? 0) : 0;
 }

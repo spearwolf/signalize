@@ -251,12 +251,19 @@ again returns the existing link.
 
 ### `link<T>(source, target, options?): SignalLink<T>`
 
-- **`source`** — `Signal<T>` or `SignalReader<T>`.
+- **`source`** — `Signal<T>` or `SignalReader<T>`. Throws if it is not a signal.
 - **`target`** — `Signal<T>`, `SignalReader<T>`, or `(value: T) => void`.
 - **`options.attach`** — `object` (lifecycle group).
 
 The target receives the source's current value immediately (`touch()` on
 construction).
+
+Calling `link()` again for a `(source, target)` pair that already has a link
+returns the existing instance — it does **not** create a second one. If that
+repeat call passes `options.attach`, the existing link is attached to that
+group *too*, in addition to whatever it was already attached to; the group
+isn't ignored. A link attached to several groups is destroyed as soon as any
+one of them clears — it doesn't wait for all of them.
 
 ### `unlink(source, target?)`
 
@@ -277,7 +284,7 @@ Total link count, or count for a single source.
 | `mute()` / `unmute()`   | Pause / resume propagation.                                              |
 | `toggleMute()`          | Flip mute state; returns the new state.                                  |
 | `touch()`               | Force one propagation of the current value.                              |
-| `attach(obj)`           | Attach to the group of `obj` for cleanup.                                |
+| `attach(obj)`           | Attach to the group of `obj` for cleanup. Idempotent — attaching the same group again is a no-op, it does not register a second cleanup listener. |
 | `destroy()`             | Drop the link and free subscriptions.                                    |
 | `nextValue()`           | `Promise<T>` that resolves on the next propagation, rejects on destroy.  |
 | `asyncValues(stop?)`    | `AsyncIterable<T>` of propagated values; stops on `stop(value, i) → true` or destroy. |
