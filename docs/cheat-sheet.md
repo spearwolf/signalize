@@ -131,7 +131,7 @@ g.attachEffect(e); g.runEffects();
 g.attachLink(l);   g.detachLink(l);
 g.attachGroup(c);  // throws on self or on a descendant
 g.detachGroup(c);
-g.off();    // destroy attached effects/links, drop external subs, keep signals
+g.off();    // destroy attached effects/links, drop external subs, keep signals — not an in-effect {attach} memo's
 g.clear();  // full teardown
 ```
 

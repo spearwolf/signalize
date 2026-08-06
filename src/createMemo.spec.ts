@@ -1,4 +1,5 @@
 import {getSubscriptionCount, Priority} from '@spearwolf/eventize';
+import {getGroupMemberCounts} from './assert-helpers.js';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
 import type {EffectImpl} from './EffectImpl.js';
@@ -6,6 +7,7 @@ import {createEffect, getEffectsCount, onCreateEffect} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
 import {destroySignal, getSignalsCount, signalImpl} from './signal-core.js';
+import type {SignalReader} from './types.js';
 
 describe('createMemo', () => {
   it('non-lazy by default', () => {
@@ -146,10 +148,11 @@ describe('createMemo', () => {
       );
     });
 
-    it('a memo already attached to a group is destroyed once, by the group, not by the MEM-005 hook', () => {
-      // {attach} takes the signal out of the MEM-005 hook entirely (the
-      // group owns its lifetime instead) — group.clear() must still be the
-      // one and only thing that destroys it, with no double-counting.
+    it('a memo attached to a group outside any effect body is destroyed once, by the group', () => {
+      // This memo is created outside any effect body, so the MEM-005/
+      // MEM-008 lifetime hook never applies to it — it stays entirely a
+      // group affair. group.clear() must still be the one and only thing
+      // that destroys it, with no double-counting.
       const host = {};
       const group = SignalGroup.findOrCreate(host);
       const signalsBefore = getSignalsCount();
@@ -205,10 +208,11 @@ describe('createMemo', () => {
     });
 
     it('a memo attached to a group with real dependencies survives SignalGroup#off()', () => {
-      // Regression guard for the same over-eager hook, on the off()/clear()
-      // side: off() promises attached signals stay alive and the group
-      // remains reusable. An attach-scoped memo whose internal effect dies
-      // in off()'s effect-teardown loop must not take the signal with it.
+      // The line that decides whether {attach} saves a signal from off() is
+      // not {attach} itself, it is whether an effect was on the stack when
+      // the memo was created. This memo is created outside any effect body,
+      // so the group — not a parent effect — owns its lifetime, and off()
+      // must not take it down.
       const a = createSignal(1);
       const host = {};
       const group = SignalGroup.findOrCreate(host);
@@ -313,11 +317,63 @@ describe('createMemo', () => {
       destroySignal(a);
     });
 
-    it('a memo created with {attach} inside an effect body survives SignalGroup#off()', () => {
-      // Covers the `group == null` half of the MEM-005 guard: with `{attach}`
-      // the group owns the signal, so the hook must stay off even though a
-      // parent effect is on the stack. off() promises attached signals stay
-      // alive and the group remains reusable.
+    it('a memo created with {attach} inside an effect body is destroyed on the parent rerun instead of piling up in the group (MEM-008)', () => {
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+      const trigger = createSignal(0);
+      const src = createSignal(1);
+
+      const signalsBefore = getSignalsCount();
+      const destroySubscriptionsBefore = getSubscriptionCount(
+        globalDestroySignalQueue,
+      );
+
+      const outer = createEffect(() => {
+        trigger.get();
+        createMemo(() => src.get() * 2, {attach: host});
+      });
+
+      expect(getGroupMemberCounts(group).signals).toBe(1);
+
+      for (let i = 1; i <= 10; i++) {
+        trigger.set(i);
+      }
+
+      expect(
+        getGroupMemberCounts(group).signals,
+        'one memo signal per group, not one per parent rerun',
+      ).toBe(1);
+      expect(getGroupMemberCounts(group).effects).toBe(1);
+      expect(getSignalsCount(), 'trigger, src and the current memo').toBe(
+        signalsBefore + 1,
+      );
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptionsBefore + 4,
+      );
+
+      outer.destroy();
+
+      expect(
+        getGroupMemberCounts(group).signals,
+        'the last memo signal dies with the effect that created it',
+      ).toBe(0);
+
+      group.clear();
+      destroySignal(trigger, src);
+
+      expect(getSignalsCount()).toBe(signalsBefore - 2);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptionsBefore,
+      );
+    });
+
+    it('a memo created with {attach} inside an effect body dies with the effect that created it, not with the group (MEM-008)', () => {
+      // {attach} gives a memo signal a group membership and, optionally, a
+      // name — it does not take a memo created inside an effect body out of
+      // that effect's ownership. The internal effect still dies as a child
+      // effect on every parent rerun and on parent destroy(); off() reaches
+      // that same child effect when it tears down the group's effects, so
+      // this signal goes with it too.
       const a = createSignal(1);
       const host = {};
       const group = SignalGroup.findOrCreate(host);
@@ -339,13 +395,17 @@ describe('createMemo', () => {
 
       expect(
         getSignalsCount(),
-        'off() must not destroy a signal the group owns, not the parent effect',
-      ).toBe(signalsBeforeOff);
-      expect(attached(), 'the signal is still readable').toBe(2);
+        'off() destroys the group effects, and this memo signal belongs to its effect',
+      ).toBe(signalsBeforeOff - 1);
+      expect(
+        attached(),
+        'the escaped reader keeps handing out the last computed value',
+      ).toBe(2);
       expect(
         group.signal('doubled'),
-        'still resolvable by name — the group remains reusable',
-      ).toBeDefined();
+        'a hard-destroyed signal loses its name (MEM-002)',
+      ).toBeUndefined();
+      expect(group.hasSignal('doubled')).toBe(false);
 
       outer.destroy();
       group.clear();
@@ -382,6 +442,62 @@ describe('createMemo', () => {
       ).toBe(2);
 
       destroySignal(trigger, src);
+    });
+  });
+
+  describe('destroy-queue subscription of the internal effect (MEM-005)', () => {
+    it('is released when the internal effect dies with its last dependency', () => {
+      const destroySubscriptionsBefore = getSubscriptionCount(
+        globalDestroySignalQueue,
+      );
+      const signalsBefore = getSignalsCount();
+      const effectsBefore = getEffectsCount();
+
+      const src = createSignal(1);
+      const doubled = createMemo(() => src.get() * 2);
+
+      expect(doubled()).toBe(2);
+
+      // The memo's own effect self-destroys here: its last live
+      // dependency is gone (EffectImpl[$destroySignal]).
+      destroySignal(src);
+
+      expect(getEffectsCount()).toBe(effectsBefore);
+      expect(
+        getSubscriptionCount(globalDestroySignalQueue),
+        'the once() that ties the effect to the memo signal must go with the effect',
+      ).toBe(destroySubscriptionsBefore);
+
+      // The memo signal itself stays alive and frozen — that is the
+      // documented behaviour of a memo created outside an effect body.
+      expect(getSignalsCount()).toBe(signalsBefore + 1);
+      expect(doubled()).toBe(2);
+
+      destroySignal(doubled);
+
+      expect(getSignalsCount()).toBe(signalsBefore);
+    });
+
+    it('does not accumulate on the global destroy queue over many memos', () => {
+      const destroySubscriptionsBefore = getSubscriptionCount(
+        globalDestroySignalQueue,
+      );
+      const effectsBefore = getEffectsCount();
+
+      const memos: Array<SignalReader<number>> = [];
+
+      for (let i = 0; i < 50; i++) {
+        const src = createSignal(i);
+        memos.push(createMemo(() => src.get() * 2));
+        destroySignal(src);
+      }
+
+      expect(getEffectsCount()).toBe(effectsBefore);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptionsBefore,
+      );
+
+      destroySignal(...memos);
     });
   });
 

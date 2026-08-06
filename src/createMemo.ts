@@ -56,15 +56,16 @@ export interface CreateMemoOptions {
  *
  * A memo created inside another effect's body binds its signal's lifetime to
  * that effect: the memo's internal effect is registered there as a *child
- * effect* (dies on every parent rerun and on parent `destroy()`), and — with
- * no `{attach}` — the memo signal now dies with it too, instead of being
- * orphaned. Pass `{attach}` to give the signal a lifetime of its own (a
- * `SignalGroup`); the memo's internal effect still dies with the parent
- * either way, so an attached memo only survives as a frozen value, not a
- * live one — `hibernate()` around the creation is the only way to keep the
- * memo itself recomputing past the parent's rerun. A memo created outside
- * any effect body is unaffected either way; its signal lives until
- * destroyed explicitly (or via its group).
+ * effect* (dies on every parent rerun and on parent `destroy()`), and the
+ * memo signal dies with it too — with and without `{attach}`. Passing
+ * `{attach}` gives the signal a `SignalGroup` membership and, optionally, a
+ * name, but not a lifetime of its own; it does not lift the signal out of
+ * the creating effect's ownership, so `group.off()` destroys such a memo
+ * signal along with the effect it belongs to, same as `outer.destroy()`
+ * would. `hibernate()` around the creation is the only way to keep the memo
+ * itself recomputing — and its signal alive — past the parent's rerun. A
+ * memo created outside any effect body is unaffected either way; its signal
+ * lives until destroyed explicitly (or via its group).
  *
  * @param callback - Function that computes the derived value
  * @param options - Configuration options (attach, name, lazy, priority)
@@ -116,30 +117,49 @@ export function createMemo<Type>(
   const sImpl = signalImpl(si);
   sImpl.beforeRead = e.run;
 
-  once(globalDestroySignalQueue, sImpl.id, e.destroy);
+  // The memo signal takes its effect down with it (a destroyed memo has
+  // nothing left to compute).
+  const unsubscribeFromSignalDestroy = once(
+    globalDestroySignalQueue,
+    sImpl.id,
+    e.destroy,
+  );
 
-  // MEM-005: bind the memo signal to the effect's lifecycle, not just the
-  // other way round (above) — but only when a parent effect actually owns
-  // that lifecycle. A memo created inside an effect body has its internal
-  // effect torn down as a child effect on every parent rerun, and nothing
-  // used to follow that up on the signal side, orphaning it. Restricting the
-  // hook to exactly that case matters:
-  //
-  // - No parent effect (a standalone memo): its own effect only ever dies
-  //   when its last tracked dependency is destroyed
-  //   (`EffectImpl[$destroySignal]`) or `e.destroy()` is called directly.
-  //   Wiring the signal to that would destroy a memo signal — and cascade
-  //   into destroying any downstream effect depending on it — the moment its
-  //   *inputs* die, which regular (non-memo) signals never do and callers
-  //   don't expect.
-  // - `{attach}` given: the group owns the signal's lifetime and already
-  //   promises callers that `group.off()` leaves attached signals alive and
-  //   the group reusable. Hooking here as well would destroy the signal the
-  //   instant the group tears down its effects, before its own
-  //   signal-teardown loop even runs — breaking that promise silently.
-  if (parentEffect != null && group == null) {
-    e.onDestroy(() => destroySignal(si));
-  }
+  e.onDestroy(() => {
+    // MEM-005: the once() above binds the effect to the signal's
+    // destruction, but had no counterpart for the reverse direction.
+    // globalDestroySignalQueue is a permanent module-level queue, so if the
+    // effect dies first — its last live dependency was destroyed, or a
+    // parent rerun tore it down as a child effect — the leftover
+    // subscription holds the dead EffectImpl and its closure alive for as
+    // long as the memo signal lives. For a memo whose inputs are gone, that
+    // is forever. Unsubscribing here closes that side of the binding.
+    unsubscribeFromSignalDestroy();
+
+    // MEM-008: a memo created inside an effect body belongs to that effect.
+    // Its internal effect is registered there as a child effect and dies on
+    // every parent rerun and on parent destroy() — without a matching
+    // signal teardown, each rerun leaves a signal behind: orphaned when
+    // unnamed and {attach}-less, piling up in the group when {attach} is
+    // given. The named case has always self-healed through the rebind on
+    // recreation; this closes the same gap for the unnamed and the
+    // {attach} case. A memo created outside any effect body is left alone
+    // (see below) — {attach} gives the signal a group membership and,
+    // optionally, a name, not a lifetime of its own; hibernate() around the
+    // creation is the only way to keep such a memo alive past the parent's
+    // rerun.
+    if (parentEffect != null) {
+      destroySignal(si);
+    }
+
+    // No parent effect (a standalone memo): its own effect only ever dies
+    // when its last tracked dependency is destroyed
+    // (`EffectImpl[$destroySignal]`) or `e.destroy()` is called directly.
+    // Wiring the signal to that would destroy a memo signal — and cascade
+    // into destroying any downstream effect depending on it — the moment
+    // its *inputs* die, which regular (non-memo) signals never do and
+    // callers don't expect.
+  });
 
   return si.get;
 }

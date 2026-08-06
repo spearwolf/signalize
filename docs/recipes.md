@@ -95,15 +95,15 @@ meant to outlive its parent.
 
 `createMemo()` in an effect body follows the same child-effect rule for its
 internal effect: it is a child and dies with the parent, so the memo stops
-recomputing. Without `{attach}`, its signal now dies right along with it —
-a memo handle that escapes such a callback reads a destroyed signal, still
+recomputing. Its signal dies right along with it, with or without `{attach}`
+— a memo handle that escapes such a callback reads a destroyed signal, still
 usable since destroyed signals keep handing out the last value they held, so
-it reads as a frozen constant. With `{attach}`, the group owns the signal
-instead and it survives — but the memo's internal effect is *still* a child
-of the parent and still dies on every rerun, so an attached memo also freezes,
-just without losing the signal. `{attach}` is not an escape hatch for a live
-memo, only for its last value; `hibernate()` around the creation is the only
-way to keep the memo itself recomputing past the parent's rerun.
+it reads as a frozen constant. `{attach}` gives the signal a group membership
+and, optionally, a name; it does not take the signal out of the creating
+effect's ownership, so it dies on the same rerun the effect does, same as an
+unattached one. `{attach}` is not an escape hatch for a live memo — it no
+longer even saves the last value; `hibernate()` around the creation is the
+only way to keep the memo itself recomputing past the parent's rerun.
 
 When `attach` is set, static deps may be names (`string | symbol`); they are
 resolved against the attached group.
@@ -418,7 +418,10 @@ Semantics:
   `off()` call. One with a live dependency outside the group survives and
   re-subscribes to the group signal the next time it reads it (dynamic-deps
   self-healing).
-- Signals stay alive, retain their values, and remain reachable by name.
+- Signals stay alive, retain their values, and remain reachable by name —
+  except a memo signal created with `{attach}` inside an effect body: it
+  belongs to that effect, not to the group, and is destroyed along with it
+  when `off()` tears down the group's effects, losing its name too.
 - Child groups are `off()`'d recursively.
 - The group emits an `OFF` event and remains registered — new attaches work
   immediately. Idempotent.

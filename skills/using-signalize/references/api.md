@@ -195,7 +195,7 @@ g.hasSignal('n');
 g.attachEffect(e);  g.runEffects();
 g.attachLink(l);    g.detachLink(l);
 g.attachGroup(child);  g.detachGroup(child);
-g.off();            // destroy attached effects/links, drop external subs, KEEP signals
+g.off();            // destroy attached effects/links, drop external subs, KEEP signals — not an in-effect {attach} memo's
 g.clear();          // full teardown
 ```
 

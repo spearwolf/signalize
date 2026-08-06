@@ -117,16 +117,16 @@ destroyed before the next rerun and on `destroy()`. Wrap the creation in
 
 `createMemo()` inside such a callback follows the same child-effect rule for
 its internal effect: it is a child and is destroyed with the parent, so the
-memo stops recomputing. Without `{attach}`, its signal is destroyed right
-along with it — a memo handle that escapes the callback then reads a
+memo stops recomputing. Its signal is destroyed right along with it, with or
+without `{attach}` — a memo handle that escapes the callback then reads a
 destroyed signal, still usable since destroyed signals keep returning the
-last value they held, so it reads as a frozen constant. With `{attach}`, a
-`SignalGroup` owns the signal instead and it survives — but the memo's
-internal effect is *still* a child of the parent and still dies on every
-rerun, so an attached memo also freezes, just without losing the signal.
-`{attach}` is not an escape hatch for a live memo, only for its last value;
-`hibernate()` around the creation is the only way to keep the memo itself
-recomputing past the parent's rerun.
+last value they held, so it reads as a frozen constant. `{attach}` gives the
+signal a `SignalGroup` membership and, optionally, a name; it does not take
+the signal out of the creating effect's ownership, so it dies on the same
+rerun the effect does, same as an unattached one. `{attach}` is not an escape
+hatch for a live memo — it no longer even saves the last value; `hibernate()`
+around the creation is the only way to keep the memo itself recomputing past
+the parent's rerun.
 
 > ⚠️ **Recursion guard.** If a callback writes to a signal it depends on,
 > `run()` re-enters synchronously. The depth is capped by
@@ -255,11 +255,12 @@ side-effect-writing callbacks are not.
 **Lifetime when created inside another effect's body.** The memo's internal
 effect is registered there as a child effect (see "Effects: dynamic vs static
 deps" above) and is destroyed on every parent rerun and on parent
-`destroy()`. Without `{attach}`, the memo's *signal* is destroyed right along
-with it, instead of being orphaned. With `{attach}`, the group owns the
-signal instead, so it survives — the internal effect still dies with the
-parent either way. A memo created outside any effect body is unaffected: its
-signal lives until destroyed explicitly, or via its group.
+`destroy()`. The memo's *signal* is destroyed right along with it, with or
+without `{attach}` — `{attach}` gives the signal a `SignalGroup` membership
+and, optionally, a name, but not a lifetime of its own, so it does not
+survive the parent rerun, the parent's `destroy()`, or a `group.off()` on
+the attached group. A memo created outside any effect body is unaffected:
+its signal lives until destroyed explicitly, or via its group.
 
 ---
 
@@ -423,7 +424,7 @@ remains preferred.
 | `attachEffect(eff)` / `runEffects()`    | Track an effect / run all attached and child effects.                  |
 | `attachLink(link)` / `detachLink(link)` | Track / untrack a link.                                                |
 | `attachGroup(child)` / `detachGroup(child)` | Nest groups. `attachGroup()` throws when the edge would create a cycle — attaching a group to itself, or to one of its own descendants. |
-| `off()`                                 | Destroy attached effects/links and drop all external subscriptions on group signals; signals stay alive, the group remains reusable. Child groups are `off()`'d recursively. Emits an `OFF` event. |
+| `off()`                                 | Destroy attached effects/links and drop all external subscriptions on group signals; signals stay alive, the group remains reusable — except a memo signal `{attach}`ed inside an effect body, which belongs to that effect and dies with it. Child groups are `off()`'d recursively. Emits an `OFF` event. |
 | `clear()`                               | Destroy all attached signals / effects / links and child groups, detach from parent, remove from registry. |
 | `destroy()`                             | **Deprecated.** Use `clear()`.                                         |
 
