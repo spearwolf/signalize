@@ -98,6 +98,16 @@ The shorthand `createEffect(cb, [sigA, sigB])` is equivalent to
 effect does **not** auto-run on creation — call `.run()` once manually if you
 need an initial pass.
 
+A string/symbol dependency that cannot be resolved to a signal throws
+synchronously, before the effect is created — either because no group is
+attached at all (`attach` is missing), or because the name is not registered
+in the attached group. Both errors name the dependency, e.g.
+`createEffect(cb, ['missing'], {attach: obj})` throws `cannot resolve
+dependency "missing" — no signal with that name is registered in the attached
+SignalGroup`. The TypeScript overloads require `attach` whenever
+`dependencies` contains a string/symbol, so the missing-group case only
+surfaces to callers that bypass the type system.
+
 Static deps switch off dependency tracking, not the effect context: the
 callback still runs as the current effect, so effects created inside it —
 directly, or through `Signal.onChange()` — become child effects and are

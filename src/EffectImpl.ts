@@ -273,12 +273,15 @@ export class EffectImpl {
 
     this.callback = callback;
 
-    let group: SignalGroup | undefined;
-
-    if (options?.attach != null) {
-      group = SignalGroup.findOrCreate(options.attach);
-      group.attachEffect(this);
-    }
+    // Resolved eagerly because dependency resolution below needs it for
+    // name lookups (`group.signal(dep)`, a read-only operation). Attaching
+    // `this` to the group is deferred until after that resolution succeeds
+    // — see the `group?.attachEffect(this)` call near the end of this
+    // constructor for why.
+    const group: SignalGroup | undefined =
+      options?.attach != null
+        ? SignalGroup.findOrCreate(options.attach)
+        : undefined;
 
     this.autorun = options?.autorun ?? true;
 
@@ -286,8 +289,28 @@ export class EffectImpl {
       ? options.dependencies.map((dep) => {
           switch (typeof dep) {
             case 'string':
-            case 'symbol':
-              return group.signal(dep);
+            case 'symbol': {
+              // The overloads require `attach` whenever `dependencies`
+              // contains a string/symbol — but that is a compile-time-only
+              // guarantee. A JavaScript consumer (or anyone bypassing the
+              // types) can still reach this with no group at all, or with a
+              // group that never registered `dep` as a named signal. Both
+              // are user mistakes worth naming precisely instead of
+              // surfacing as an opaque TypeError from a null deref further
+              // down the line (BUG-003).
+              if (group == null) {
+                throw new Error(
+                  `[signalize] createEffect: cannot resolve dependency "${String(dep)}" — no SignalGroup is attached (missing "attach" option)`,
+                );
+              }
+              const signal = group.signal(dep);
+              if (signal == null) {
+                throw new Error(
+                  `[signalize] createEffect: cannot resolve dependency "${String(dep)}" — no signal with that name is registered in the attached SignalGroup`,
+                );
+              }
+              return signal;
+            }
             default:
               return dep;
           }
@@ -300,6 +323,19 @@ export class EffectImpl {
     this.priority = options?.priority ?? 0;
 
     on(globalEffectQueue, this.id, RECALL, this);
+
+    // Deferred from where `group` was resolved above: attaching before
+    // dependency resolution could succeed left a half-built instance
+    // registered in the group's `#effects` set whenever a name lookup threw
+    // (BUG-003). Such an instance never reaches `++EffectImpl.count` below,
+    // but a later `destroy()` on it — reachable through the group's own
+    // teardown — decrements that counter regardless, since every field
+    // `destroy()` touches has a default initializer and none of it requires
+    // `this.id`. The counter then drifts permanently negative, which is
+    // exactly what `assertEffectsCount()` polices in nearly every spec file.
+    // Attaching only after the constructor is certain to complete keeps the
+    // group's bookkeeping symmetric with the counter's.
+    group?.attachEffect(this);
 
     ++EffectImpl.count;
   }
@@ -347,13 +383,12 @@ export class EffectImpl {
   ): Effect {
     const dependencies = Array.isArray(optsOrDeps) ? optsOrDeps : undefined;
 
+    // Build a fresh options object instead of writing into the caller's own
+    // `opts` — mutating it would corrupt a shared options object reused
+    // across multiple createEffect() calls (BUG-005).
     const options: EffectOptions | undefined = dependencies
-      ? (opts ?? {dependencies})
+      ? {...opts, dependencies}
       : (optsOrDeps as EffectOptions | undefined);
-
-    if (options && dependencies) {
-      options.dependencies = dependencies;
-    }
 
     const effect = new EffectImpl(callback, options);
 

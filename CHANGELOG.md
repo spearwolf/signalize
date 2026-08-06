@@ -24,6 +24,8 @@
 - An effect whose only dependencies are memos it creates in its own body therefore keeps rerunning; it used to stop firing after the first change and leave a zombie effect behind
 - An effect that really did lose every dependency still dies, one run later than before
 - An error thrown by a cleanup during that deferred teardown goes to `onEffectError()` with `phase: 'cleanup'` instead of surfacing at whoever wrote the signal
+- `createEffect(callback, dependencies, options)` no longer mutates the caller's `options` object by writing `dependencies` into it. Reusing one options object across several `createEffect()` calls used to make every call after the first inherit the previous one's dependencies (BUG-005)
+- A string/symbol dependency that cannot be resolved to a signal — the name is not registered in the attached group, or no group is attached at all — now throws an error naming the dependency instead of an opaque `TypeError: Cannot read properties of undefined` (BUG-003)
 
 ### Chores
 

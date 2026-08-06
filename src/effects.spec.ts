@@ -1,7 +1,13 @@
 import {assertEffectsCount} from './assert-helpers.js';
 import {createSignal} from './createSignal.js';
-import {EffectImpl} from './EffectImpl.js';
-import {createEffect, onCreateEffect, onDestroyEffect} from './effects.js';
+import {EffectImpl, type EffectOptions} from './EffectImpl.js';
+import {
+  createEffect,
+  getEffectsCount,
+  onCreateEffect,
+  onDestroyEffect,
+} from './effects.js';
+import {SignalGroup} from './SignalGroup.js';
 import {destroySignal} from './signal-core.js';
 
 /** Give the promise of an async effect callback a chance to settle. */
@@ -418,5 +424,63 @@ describe('createEffect', () => {
     expect(destroyEffectMock).toHaveBeenCalledTimes(3);
 
     unsubDestroy();
+  });
+
+  // BUG-005 — createEffect must not mutate a caller-supplied options object.
+  it('does not mutate the caller-supplied options object (positional dependencies form)', () => {
+    const {get} = createSignal(123);
+
+    const shared: EffectOptions = {autorun: false};
+
+    const effect = createEffect(
+      () => {
+        get();
+      },
+      [get],
+      shared,
+    );
+
+    expect(shared).toEqual({autorun: false});
+    expect('dependencies' in shared).toBe(false);
+
+    effect.destroy();
+    destroySignal(get);
+  });
+
+  // BUG-003 — an unresolvable string/symbol dependency must throw a
+  // descriptive error naming the dependency, not an opaque TypeError.
+  it('throws a descriptive error when a named dependency is not registered in the attached group', () => {
+    const host = {};
+
+    const countBefore = getEffectsCount();
+
+    expect(() => {
+      createEffect(() => {}, ['doesNotExist'], {attach: host});
+    }).toThrow(/doesNotExist/);
+
+    // The failed construction must not leave a half-built effect attached to
+    // the group — otherwise the group's own teardown later destroys a
+    // "zombie" that never went through `++EffectImpl.count`, and the global
+    // counter drifts (permanently, potentially negative).
+    expect(getEffectsCount()).toBe(countBefore);
+
+    SignalGroup.findOrCreate(host).clear();
+
+    expect(getEffectsCount()).toBe(countBefore);
+  });
+
+  it('throws a descriptive error when a named dependency is used without an attached group (bypassing the type check)', () => {
+    // A JavaScript consumer without type checking can call this even though
+    // the TS overloads require `attach` whenever dependencies contain
+    // strings/symbols.
+    const createEffectUntyped = createEffect as unknown as (
+      callback: () => void,
+      dependencies: unknown[],
+      options?: unknown,
+    ) => unknown;
+
+    expect(() => {
+      createEffectUntyped(() => {}, ['doesNotExist']);
+    }).toThrow(/doesNotExist/);
   });
 });
