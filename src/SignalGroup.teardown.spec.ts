@@ -1,0 +1,330 @@
+import {getSubscriptionCount, on} from '@spearwolf/eventize';
+import {
+  assertEffectsCount,
+  assertLinksCount,
+  assertSignalsCount,
+  getGroupMemberCounts,
+  NO_GROUP_MEMBERS,
+} from './assert-helpers.js';
+import {OFF} from './constants.js';
+import {createSignal} from './createSignal.js';
+import {signal} from './decorators.js';
+import {createEffect, getEffectsCount} from './effects.js';
+import {globalDestroySignalQueue} from './global-queues.js';
+import {getLinksCount, link} from './link.js';
+import {findObjectSignalByName} from './object-signals.js';
+import {getSignalGroupsCount, SignalGroup} from './SignalGroup.js';
+import {destroySignal, getSignalsCount} from './signal-core.js';
+
+describe('SignalGroup teardown robustness', () => {
+  beforeEach(() => {
+    assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
+    SignalGroup.clear();
+  });
+
+  afterEach(() => {
+    SignalGroup.clear();
+    assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
+  });
+
+  it('clear() finishes the teardown even when an effect cleanup throws', () => {
+    const signalsBefore = getSignalsCount();
+    const effectsBefore = getEffectsCount();
+    const linksBefore = getLinksCount();
+    const groupsBefore = getSignalGroupsCount();
+
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+
+    const sig = createSignal(0, {attach: host});
+
+    let siblingCleanupCalls = 0;
+
+    createEffect(
+      () => {
+        sig.get();
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      },
+      {attach: host},
+    );
+
+    createEffect(
+      () => {
+        sig.get();
+        return () => {
+          siblingCleanupCalls += 1;
+        };
+      },
+      {attach: host},
+    );
+
+    link(sig, () => {}, {attach: host});
+
+    expect(getSignalGroupsCount()).toBe(groupsBefore + 1);
+
+    expect(() => {
+      group.clear();
+    }).toThrow('cleanup boom');
+
+    expect(siblingCleanupCalls, 'sibling cleanup must still run').toBe(1);
+    expect(getEffectsCount(), 'effects after clear').toBe(effectsBefore);
+    expect(getSignalsCount(), 'signals after clear').toBe(signalsBefore);
+    expect(getLinksCount(), 'links after clear').toBe(linksBefore);
+    expect(getSignalGroupsCount(), 'groups after clear').toBe(groupsBefore);
+  });
+
+  it('off() finishes the teardown even when an effect cleanup throws', () => {
+    const effectsBefore = getEffectsCount();
+    const linksBefore = getLinksCount();
+
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+
+    const sig = createSignal(0, {attach: host});
+
+    let offEvents = 0;
+    on(group, OFF, () => {
+      offEvents += 1;
+    });
+
+    createEffect(
+      () => {
+        sig.get();
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      },
+      {attach: host},
+    );
+
+    createEffect(
+      () => {
+        sig.get();
+      },
+      {attach: host},
+    );
+
+    link(sig, () => {}, {attach: host});
+
+    expect(() => {
+      group.off();
+    }).toThrow('cleanup boom');
+
+    expect(getEffectsCount(), 'effects after off').toBe(effectsBefore);
+    expect(getLinksCount(), 'links after off').toBe(linksBefore);
+    expect(offEvents, 'OFF must be emitted exactly once').toBe(1);
+
+    // The signal survives `off()` — the group stays reusable.
+    expect(sig.value).toBe(0);
+
+    group.clear();
+  });
+
+  it('reports every teardown error: AggregateError for several, unchanged for one', () => {
+    const errA = new Error('boom A');
+    const errB = new Error('boom B');
+
+    const hostA = {};
+    const groupA = SignalGroup.findOrCreate(hostA);
+    const sigA = createSignal(0, {attach: hostA});
+
+    createEffect(
+      () => {
+        sigA.get();
+        return () => {
+          throw errA;
+        };
+      },
+      {attach: hostA},
+    );
+
+    createEffect(
+      () => {
+        sigA.get();
+        return () => {
+          throw errB;
+        };
+      },
+      {attach: hostA},
+    );
+
+    let caught: unknown;
+    try {
+      groupA.clear();
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(AggregateError);
+    expect((caught as AggregateError).errors).toEqual([errA, errB]);
+
+    // A lone failure is rethrown as-is, not wrapped.
+    const errC = new Error('boom C');
+
+    const hostB = {};
+    const groupB = SignalGroup.findOrCreate(hostB);
+    const sigB = createSignal(0, {attach: hostB});
+
+    createEffect(
+      () => {
+        sigB.get();
+        return () => {
+          throw errC;
+        };
+      },
+      {attach: hostB},
+    );
+
+    let caughtSingle: unknown;
+    try {
+      groupB.clear();
+    } catch (err) {
+      caughtSingle = err;
+    }
+
+    expect(caughtSingle).toBe(errC);
+  });
+
+  it('drops destroyed effects and signals from the group by itself', () => {
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+
+    for (let i = 0; i < 50; i += 1) {
+      createEffect(() => {}, {attach: host}).destroy();
+    }
+
+    for (let i = 0; i < 50; i += 1) {
+      destroySignal(createSignal(i, {attach: host}));
+    }
+
+    expect(getEffectsCount(), 'no effect survives').toBe(0);
+    expect(getSignalsCount(), 'no signal survives').toBe(0);
+
+    expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+
+    group.clear();
+  });
+
+  it('drops a hard-destroyed signal from its name bindings too', () => {
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+
+    const names: string[] = [];
+
+    for (let i = 0; i < 50; i += 1) {
+      const name = `sig${i}`;
+      names.push(name);
+      const sig = createSignal(i);
+      group.attachSignalByName(name, sig);
+      destroySignal(sig);
+    }
+
+    expect(getSignalsCount(), 'no signal survives').toBe(0);
+
+    for (const name of names) {
+      expect(group.hasSignal(name), `${name} must be unbound`).toBe(false);
+      expect(group.signal(name), `${name} must resolve to nothing`).toBe(
+        undefined,
+      );
+    }
+
+    expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+
+    group.clear();
+  });
+
+  it('promotes the remaining candidate when a destroyed signal vacates a name', () => {
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+
+    const first = createSignal(1);
+    const second = createSignal(2);
+
+    group.attachSignalByName('slot', first);
+    group.attachSignal(first); // keeps `first` alive across the rebind
+    group.attachSignalByName('slot', second);
+
+    expect(group.signal('slot')).toBe(second);
+
+    destroySignal(second);
+
+    // `first` is still listed under the name, so it takes the slot back —
+    // the same fallback `detachSignal()` applies.
+    expect(group.hasSignal('slot')).toBe(true);
+    expect(group.signal('slot')).toBe(first);
+
+    group.clear();
+  });
+
+  it('drops a hard-destroyed @signal accessor from its host group', () => {
+    class Host {
+      @signal() accessor foo = 23;
+    }
+
+    const host = new Host();
+    const group = SignalGroup.findOrCreate(host);
+
+    expect(group.hasSignal('foo')).toBe(true);
+    expect(host.foo).toBe(23);
+
+    destroySignal(findObjectSignalByName(host, 'foo'));
+
+    expect(group.hasSignal('foo'), 'the name must be unbound').toBe(false);
+    expect(group.signal('foo')).toBeUndefined();
+    expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+
+    group.clear();
+  });
+
+  it('detachSignal() restores the destroy-queue subscription baseline', () => {
+    const baseline = getSubscriptionCount(globalDestroySignalQueue);
+
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+    const sig = createSignal(1, {attach: host});
+
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
+
+    group.detachSignal(sig);
+
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+
+    destroySignal(sig);
+    group.clear();
+
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+  });
+
+  it('releasing a name restores the destroy-queue subscription baseline', () => {
+    const baseline = getSubscriptionCount(globalDestroySignalQueue);
+
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+
+    // Releasing the name outright: the name was the group's only hold, so
+    // the signal is destroyed and its subscription must go with it.
+    group.attachSignalByName('a', createSignal(1));
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
+
+    group.attachSignalByName('a');
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+
+    // Rebinding a name: the displaced signal is released, the new one
+    // subscribes — one in, one out.
+    group.attachSignalByName('b', createSignal(1));
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
+
+    group.attachSignalByName('b', createSignal(2));
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
+
+    group.clear();
+
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+  });
+});

@@ -8,6 +8,7 @@ import {
   once,
 } from '@spearwolf/eventize';
 import {getCurrentBatch} from './batch.js';
+import {throwCollectedErrors} from './collect-errors.js';
 import {
   $createEffect,
   $destroyEffect,
@@ -121,23 +122,6 @@ const emitEffectError = (
   console.error(
     `[signalize] unhandled rejection in the ${phase} of effect ${effect.id.toString()}:`,
     error,
-  );
-};
-
-/**
- * Re-raise errors collected while tearing down a tree of effects.
- *
- * A single error is rethrown unchanged, so the common case keeps the exact
- * error the userland cleanup threw. Several errors are bundled into an
- * `AggregateError` — none of them may be dropped just because a sibling
- * failed first.
- */
-const throwCollectedErrors = (errors: unknown[]): void => {
-  if (errors.length === 0) return;
-  if (errors.length === 1) throw errors[0];
-  throw new AggregateError(
-    errors,
-    `[signalize] ${errors.length} errors while destroying an effect`,
   );
 };
 
@@ -637,7 +621,7 @@ export class EffectImpl {
   private destroyChildEffects(): void {
     const errors: unknown[] = [];
     this.collectDestroyChildEffects(errors);
-    throwCollectedErrors(errors);
+    throwCollectedErrors(errors, 'destroying an effect');
   }
 
   /**
@@ -791,6 +775,6 @@ export class EffectImpl {
       --EffectImpl.count;
     }
 
-    throwCollectedErrors(errors);
+    throwCollectedErrors(errors, 'destroying an effect');
   };
 }

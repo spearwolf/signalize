@@ -359,14 +359,25 @@ describe('SignalGroup#off()', () => {
 
     group.off();
 
-    // All in-group subscriptions are gone. The signal itself doesn't keep
-    // a subscription on its own id, so we're back to baseline.
+    // The effect's and the link's subscriptions are gone, and the signal
+    // itself doesn't keep a subscription on its own id.
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+
+    // One subscription survives `off()` by design (MEM-002): the group's own
+    // destroy hook for `sig`. `off()` keeps the signal attached and the group
+    // reusable, so the group must still hear about that signal being
+    // destroyed later — otherwise a dead SignalImpl would sit in `#signals`
+    // until `clear()`. It is released together with the signal.
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+      destroyQueueBaseline + 1,
+    );
+
+    group.clear();
+
     expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
     expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
       destroyQueueBaseline,
     );
-
-    group.clear();
   });
 
   it('off() then clear() leaves no leaks', () => {

@@ -1,4 +1,12 @@
-import {type EventizedObject, emit, eventize, off} from '@spearwolf/eventize';
+import {
+  type EventizedObject,
+  emit,
+  eventize,
+  off,
+  on,
+  once,
+} from '@spearwolf/eventize';
+import {throwCollectedErrors} from './collect-errors.js';
 import {DESTROY, OFF} from './constants.js';
 import {EffectImpl} from './EffectImpl.js';
 import {globalDestroySignalQueue} from './global-queues.js';
@@ -96,6 +104,11 @@ export class SignalGroup {
   readonly #directSignals = new Set<ISignalImpl>();
 
   readonly #effects = new Set<EffectImpl>();
+
+  // One `globalDestroySignalQueue` unsubscribe handle per attached signal
+  // (MEM-002): the group has to hear about a signal it holds being destroyed,
+  // or a long-lived group accumulates dead SignalImpls until `clear()`.
+  readonly #signalDestroySubscriptions = new Map<ISignalImpl, () => void>();
 
   readonly #links = new Set<SignalLink<any>>();
 
@@ -279,9 +292,40 @@ export class SignalGroup {
 
     if (si) {
       this.#signals.add(si);
+
+      if (!this.#signalDestroySubscriptions.has(si)) {
+        // Deliberately `on`, not `once`: the same queue carries the
+        // soft-detach emit from `off()` with `{detach: true}`, and a `once`
+        // would be consumed by that one — leaving nobody to hear the real
+        // destruction later.
+        const unsubscribe = on(
+          globalDestroySignalQueue,
+          si.id,
+          (_id: symbol, params?: {detach?: boolean}) => {
+            if (params?.detach) return;
+            this.#removeSignal(si);
+          },
+        );
+        this.#signalDestroySubscriptions.set(si, unsubscribe);
+      }
     }
 
     return si;
+  }
+
+  /**
+   * Release the destroy-queue subscription the group holds for `si`, if any.
+   *
+   * Every path that drops a signal from `#signals` goes through here first —
+   * an orphaned handle would keep the closure (and with it the group) on a
+   * process-lifetime queue.
+   */
+  #dropSignalSubscription(si: ISignalImpl) {
+    const unsubscribe = this.#signalDestroySubscriptions.get(si);
+    if (unsubscribe) {
+      unsubscribe();
+      this.#signalDestroySubscriptions.delete(si);
+    }
   }
 
   /**
@@ -309,6 +353,7 @@ export class SignalGroup {
       if (keys.size === 0) {
         this.#signalKeys.delete(si);
         if (!this.#directSignals.has(si)) {
+          this.#dropSignalSubscription(si);
           this.#signals.delete(si);
           destroySignal(si);
         }
@@ -429,49 +474,82 @@ export class SignalGroup {
     const si = signalImpl(signal);
 
     if (si) {
-      this.#signals.delete(si);
-      this.#directSignals.delete(si);
-
-      if (this.#signalKeys.has(si)) {
-        // signal has named keys
-        const keys = this.#signalKeys.get(si)!;
-        for (const name of keys) {
-          // for each signal key
-          const otherSignals = this.#otherSignals.get(name);
-          if (otherSignals) {
-            // remove the signal from the other-signals set (idempotent)
-            otherSignals.delete(si);
-
-            if (otherSignals.size === 0) {
-              // if there are no further signals for this name, then we can delete
-              this.#namedSignals.delete(name);
-              this.#otherSignals.delete(name);
-            } else if (this.#namedSignals.get(name) === si) {
-              // there are other signals and the signal was the active one —
-              // fall back to the most recently inserted remaining signal (Set
-              // preserves insertion order).
-              let previous: ISignalImpl | undefined;
-              for (const s of otherSignals) previous = s;
-              this.#namedSignals.set(name, previous!);
-            }
-          }
-        }
-
-        keys.clear();
-        this.#signalKeys.delete(si);
-      }
+      this.#removeSignal(si);
     }
 
     return signal;
   }
 
   /**
+   * Take a signal out of the group completely — the signal set, the
+   * direct-ownership set, the destroy-queue subscription, and every name it
+   * is bound to. Where a name still lists other candidates, the most recently
+   * added one takes the slot over.
+   *
+   * Shared by the public `detachSignal()` and by the destroy hook from
+   * `#addSignal()`: a hard-destroyed signal has to leave through exactly this
+   * door. Emptying only `#signals`/`#directSignals` would leave the dead
+   * `SignalImpl` reachable through `#namedSignals`/`#otherSignals` — which is
+   * the whole of the `@signal` decorator path, where `attachSignalByName()`
+   * is the only way in (MEM-002).
+   */
+  #removeSignal(si: ISignalImpl) {
+    this.#dropSignalSubscription(si);
+    this.#signals.delete(si);
+    this.#directSignals.delete(si);
+
+    if (this.#signalKeys.has(si)) {
+      // signal has named keys
+      const keys = this.#signalKeys.get(si)!;
+      for (const name of keys) {
+        // for each signal key
+        const otherSignals = this.#otherSignals.get(name);
+        if (otherSignals) {
+          // remove the signal from the other-signals set (idempotent)
+          otherSignals.delete(si);
+
+          if (otherSignals.size === 0) {
+            // if there are no further signals for this name, then we can delete
+            this.#namedSignals.delete(name);
+            this.#otherSignals.delete(name);
+          } else if (this.#namedSignals.get(name) === si) {
+            // there are other signals and the signal was the active one —
+            // fall back to the most recently inserted remaining signal (Set
+            // preserves insertion order).
+            let previous: ISignalImpl | undefined;
+            for (const s of otherSignals) previous = s;
+            this.#namedSignals.set(name, previous!);
+          }
+        }
+      }
+
+      keys.clear();
+      this.#signalKeys.delete(si);
+    }
+  }
+
+  /**
    * Attach an effect to this group. The effect will be destroyed when the group is cleared.
+   *
+   * A destroyed effect takes itself out of the group again (MEM-002) —
+   * without that, a long-lived group with effect churn keeps every dead
+   * `EffectImpl` and its callback closure alive until `clear()`.
+   *
    * @param effect - The effect to attach
    * @returns The attached effect
    */
   attachEffect(effect: EffectImpl) {
-    this.#effects.add(effect);
+    // Guarded because eventize's own deduplication cannot help here: `add()`
+    // compares listeners via `isSimilar()`, and every `once()` call below
+    // builds a fresh arrow function, which is similar to nothing. Unguarded,
+    // a repeated `attachEffect(sameEffect)` would grow the effect's DESTROY
+    // listener list without bound.
+    if (!this.#effects.has(effect)) {
+      this.#effects.add(effect);
+      once(effect, DESTROY, () => {
+        this.#effects.delete(effect);
+      });
+    }
     return effect;
   }
 
@@ -523,6 +601,36 @@ export class SignalGroup {
     return link;
   }
 
+  /**
+   * Sizes of the group's own member collections.
+   *
+   * The global counters (`getSignalsCount()`, `getEffectsCount()`,
+   * `getLinksCount()`) cannot answer whether a *group* is still holding a
+   * member that is already dead — a destroyed effect is off the global books
+   * long before the group lets go of it. This getter is the window for that
+   * question; `getGroupMemberCounts()` in `assert-helpers.ts` is its only
+   * consumer, and no production code path reads it.
+   *
+   * @internal
+   */
+  get memberCounts(): {
+    signals: number;
+    namedSignals: number;
+    otherSignals: number;
+    effects: number;
+    links: number;
+    groups: number;
+  } {
+    return {
+      signals: this.#signals.size,
+      namedSignals: this.#namedSignals.size,
+      otherSignals: this.#otherSignals.size,
+      effects: this.#effects.size,
+      links: this.#links.size,
+      groups: this.#groups.size,
+    };
+  }
+
   destroy() {
     console.warn(
       'SignalGroup#destroy is deprecated. Use SignalGroup#clear instead.',
@@ -544,27 +652,49 @@ export class SignalGroup {
    *
    * Use this when a component-style group should be paused/swapped without
    * losing its signal identities. For a full teardown use `clear()`.
+   *
+   * A throwing cleanup callback or listener does not abort the teardown: every
+   * failure is collected, the remaining work runs to the end, and the errors
+   * are re-raised afterwards — a lone one unchanged, several as an
+   * `AggregateError` holding them in teardown order.
    */
   off(): void {
     if (this.#busy & BUSY_OFF) return;
     this.#busy |= BUSY_OFF;
 
     try {
+      // Nothing below may abort the teardown: a half-`off()` group keeps
+      // effects running and links subscribed with no way left to reach them.
+      const errors: unknown[] = [];
+
       // Recurse into child groups first (depth-first, mirrors clear()).
-      for (const childGroup of this.#groups) {
-        childGroup.off();
+      // Snapshots throughout — a destroy hook may mutate the sets underneath.
+      for (const childGroup of [...this.#groups]) {
+        try {
+          childGroup.off();
+        } catch (err) {
+          errors.push(err);
+        }
       }
 
       // Destroy own effects: their cleanup callbacks fire, their signal-queue
       // subscriptions are removed via EffectImpl.destroy().
-      for (const effect of this.#effects) {
-        effect.destroy();
+      for (const effect of [...this.#effects]) {
+        try {
+          effect.destroy();
+        } catch (err) {
+          errors.push(err);
+        }
       }
       this.#effects.clear();
 
       // Destroy own links: they unsubscribe from their source signals.
-      for (const link of this.#links) {
-        link.destroy();
+      for (const link of [...this.#links]) {
+        try {
+          link.destroy();
+        } catch (err) {
+          errors.push(err);
+        }
       }
       this.#links.clear();
 
@@ -573,16 +703,26 @@ export class SignalGroup {
       // to each group signal. The signal itself stays alive and usable; an
       // external effect whose only dependency was a group signal destroys
       // itself via EffectImpl[$destroySignal].
-      for (const si of this.#signals) {
+      for (const si of [...this.#signals]) {
         if (!si.destroyed) {
-          emit(globalDestroySignalQueue, si.id, si.id, {detach: true});
+          try {
+            emit(globalDestroySignalQueue, si.id, si.id, {detach: true});
+          } catch (err) {
+            errors.push(err);
+          }
         }
       }
 
       // Signals, named-signal lookup, signal-key map, and child-group set
       // are intentionally left intact — the group remains reusable.
 
-      emit(this, OFF, this);
+      try {
+        emit(this, OFF, this);
+      } catch (err) {
+        errors.push(err);
+      }
+
+      throwCollectedErrors(errors, 'switching off a signal group');
     } finally {
       this.#busy &= ~BUSY_OFF;
     }
@@ -591,30 +731,68 @@ export class SignalGroup {
   /**
    * Clear this group, destroying all attached signals, effects, links, and child groups.
    * Also removes this group from the global store and detaches from parent.
+   *
+   * A throwing cleanup callback or `DESTROY` listener does not abort the
+   * teardown: every failure is collected, the group is dismantled to the end
+   * and deregistered, and the errors are re-raised afterwards — a lone one
+   * unchanged, several as an `AggregateError` holding them in teardown order.
+   * This matters most where nobody is listening: `clear()` also runs from the
+   * FinalizationRegistry callback, out of reach of any application try/catch.
    */
   clear() {
     if (this.#busy & BUSY_CLEAR) return;
     this.#busy |= BUSY_CLEAR;
 
     try {
-      emit(this, DESTROY, this);
+      const errors: unknown[] = [];
+
+      try {
+        emit(this, DESTROY, this);
+      } catch (err) {
+        errors.push(err);
+      }
       off(this);
 
-      for (const childGroup of this.#groups) {
-        childGroup.clear();
+      // Snapshots throughout: a destroyed effect takes itself out of
+      // `#effects`, a destroyed signal out of `#signals`, mid-loop.
+      for (const childGroup of [...this.#groups]) {
+        try {
+          childGroup.clear();
+        } catch (err) {
+          errors.push(err);
+        }
       }
 
-      for (const effect of this.#effects) {
-        effect.destroy();
+      for (const effect of [...this.#effects]) {
+        try {
+          effect.destroy();
+        } catch (err) {
+          errors.push(err);
+        }
       }
 
-      for (const signal of this.#signals) {
-        destroySignal(signal);
+      for (const signal of [...this.#signals]) {
+        try {
+          destroySignal(signal);
+        } catch (err) {
+          errors.push(err);
+        }
       }
 
-      for (const link of this.#links) {
-        link.destroy();
+      for (const link of [...this.#links]) {
+        try {
+          link.destroy();
+        } catch (err) {
+          errors.push(err);
+        }
       }
+
+      for (const unsubscribe of [
+        ...this.#signalDestroySubscriptions.values(),
+      ]) {
+        unsubscribe();
+      }
+      this.#signalDestroySubscriptions.clear();
 
       this.#groups.clear();
       this.#signals.clear();
@@ -635,6 +813,10 @@ export class SignalGroup {
       }
       allGroups.delete(this);
       groupFinalizationRegistry.unregister(this);
+
+      // Last — the group is fully dismantled and deregistered by now, so the
+      // throw can no longer leave anything half-torn-down behind.
+      throwCollectedErrors(errors, 'clearing a signal group');
     } finally {
       this.#busy &= ~BUSY_CLEAR;
     }

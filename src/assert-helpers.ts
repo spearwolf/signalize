@@ -2,7 +2,37 @@ import {getSubscriptionCount} from '@spearwolf/eventize';
 import {getEffectsCount} from './effects.js';
 import {globalDestroySignalQueue, globalEffectQueue} from './global-queues.js';
 import {getLinksCount} from './link.js';
+import type {SignalGroup} from './SignalGroup.js';
 import {getSignalsCount} from './signal-core.js';
+
+/**
+ * Sizes of a group's member collections — the signal set, the two name
+ * lookups, effects, links, child groups.
+ *
+ * Reads the `@internal` `memberCounts` getter on {@link SignalGroup}. Use it
+ * where the global counters cannot help: they only know whether a member is
+ * alive, not whether a group is still holding on to a dead one.
+ */
+export function getGroupMemberCounts(group: SignalGroup): {
+  signals: number;
+  namedSignals: number;
+  otherSignals: number;
+  effects: number;
+  links: number;
+  groups: number;
+} {
+  return group.memberCounts;
+}
+
+/** Every member collection of `group` empty — the all-zero {@link getGroupMemberCounts} result. */
+export const NO_GROUP_MEMBERS = {
+  signals: 0,
+  namedSignals: 0,
+  otherSignals: 0,
+  effects: 0,
+  links: 0,
+  groups: 0,
+} as const;
 
 const namespacePrefix = (namespace?: string) =>
   namespace ? `${namespace}: ` : '';
