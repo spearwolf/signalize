@@ -151,6 +151,7 @@ m();                 // SignalReader<T>
 const con = link(src, target, {attach: obj});   // target: signal | (value) => void
 unlink(src, target);   unlink(src);             // drop one, or all links from src
 getLinksCount();       getLinksCount(src);
+// held until destroy()/unlink()/{attach} clears/source|target dies — a link on a still-live source is never reclaimed by GC alone
 
 con.lastValue;  con.isMuted;  con.isDestroyed;
 con.mute();  con.unmute();  con.toggleMute();

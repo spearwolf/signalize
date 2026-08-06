@@ -1,5 +1,5 @@
 import {getEventListeners} from 'node:events';
-import {getSubscriptionCount} from '@spearwolf/eventize';
+import {getSubscriptionCount, once} from '@spearwolf/eventize';
 import {
   assertEffectsCount,
   assertLinksCount,
@@ -7,6 +7,8 @@ import {
 } from './assert-helpers.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {createSignal, destroySignal, link} from './index.js';
+import {SignalLinkToCallback} from './SignalLink.js';
+import type {SignalLike} from './types.js';
 
 describe('SignalLink', () => {
   beforeEach(() => {
@@ -444,6 +446,81 @@ describe('SignalLink', () => {
 
       await iter2.return(undefined as any);
       con.destroy();
+      destroySignal(sigA);
+    });
+  });
+
+  describe('S6: destroy() reports every failing destroy-queue release, not just the last one', () => {
+    // `releaseOnDestroy()` is `protected`, so a throwing handle can only be
+    // installed from a subclass — these exist solely to give the spec that
+    // hook. Two variants, one per error-count path: `destroy()` rethrows a
+    // single collected error unchanged, and bundles several into an
+    // `AggregateError` — this is the proof that the `throwCollectedErrors()`
+    // refactor of `destroy()`'s tail is behavior-preserving, not a
+    // regression test for a bug.
+    class SingleThrowingLink extends SignalLinkToCallback<number> {
+      constructor(source: SignalLike<number>, target: (value: number) => void) {
+        super(source, target);
+        this.releaseOnDestroy(() => {
+          throw new Error('release-a');
+        });
+      }
+    }
+
+    class DoubleThrowingLink extends SignalLinkToCallback<number> {
+      constructor(source: SignalLike<number>, target: (value: number) => void) {
+        super(source, target);
+        this.releaseOnDestroy(() => {
+          throw new Error('release-a');
+        });
+        this.releaseOnDestroy(() => {
+          throw new Error('release-b');
+        });
+      }
+    }
+
+    it('a single throwing handle rethrows that error unchanged, and the teardown still completes', () => {
+      const sigA = createSignal(1);
+      const con = new SingleThrowingLink(sigA, () => {});
+
+      let destroyFired = false;
+      once(con, 'destroy', () => {
+        destroyFired = true;
+      });
+
+      // toThrow('release-a') also rules out the AggregateError shape: its
+      // message is `[signalize] N errors while ...`, not the bare original.
+      expect(() => con.destroy()).toThrow('release-a');
+
+      expect(con.isDestroyed).toBe(true);
+      expect(Object.isFrozen(con)).toBe(true);
+      expect(con.lastValue).toBeUndefined();
+      expect(destroyFired).toBe(true);
+
+      destroySignal(sigA);
+    });
+
+    it('two throwing handles are bundled into an AggregateError, in registration order, with the collect-errors message', () => {
+      const sigA = createSignal(1);
+      const con = new DoubleThrowingLink(sigA, () => {});
+
+      let caught: unknown;
+      try {
+        con.destroy();
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(AggregateError);
+      const agg = caught as AggregateError;
+      expect((agg.errors as Error[]).map((e) => e.message)).toEqual([
+        'release-a',
+        'release-b',
+      ]);
+      expect(agg.message).toBe(
+        '[signalize] 2 errors while releasing SignalLink destroy-queue subscriptions',
+      );
+
       destroySignal(sigA);
     });
   });

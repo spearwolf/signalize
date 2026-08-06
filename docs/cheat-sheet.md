@@ -89,6 +89,7 @@ import {link, unlink, getLinksCount} from '@spearwolf/signalize';
 
 const con = link(src, target, {attach: obj});  // target: signal | callback
 unlink(src, target);  unlink(src);
+// held until destroy()/unlink()/{attach} clears/source|target dies — a link on a still-live source is never reclaimed by GC alone
 
 con.lastValue; con.isMuted; con.isDestroyed;
 con.mute(); con.unmute(); con.toggleMute();

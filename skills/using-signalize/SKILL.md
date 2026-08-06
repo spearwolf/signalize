@@ -51,7 +51,7 @@ are still child effects and die with the parent.
 
 **4 — Lazy memos do not push.** Default `lazy: false` behaves like a computed signal: dependent effects re-run when deps change. With `lazy: true` the memo only recomputes on read and dependents are *not* notified. There is no memo decorator — a class-bound memo is `createMemo(..., {attach: this})`.
 
-**5 — Cleanup is explicit.** Effects and links outlive the scope that created them, and an unattached one stays reachable from the global queues indefinitely. Pass `{attach: obj}` at creation and tear down with `SignalGroup.delete(obj)`.
+**5 — Cleanup is explicit.** Effects and links outlive the scope that created them, and an unattached one stays reachable from the global registries indefinitely. Pass `{attach: obj}` at creation and tear down with `SignalGroup.delete(obj)`.
 
 A group *with a host object* also gets a `FinalizationRegistry` backstop: once that object becomes unreachable without an explicit teardown, the group's `clear()` runs and the attached signals, effects and links are reclaimed. It is a genuine safety net, but GC timing is unobservable and it may never fire within a process — so it prevents the worst-case leak rather than defining when cleanup happens. Design for explicit disposal; treat the registry as insurance.
 

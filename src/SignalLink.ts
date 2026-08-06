@@ -8,6 +8,7 @@ import {
   retain,
   retainClear,
 } from '@spearwolf/eventize';
+import {throwCollectedErrors} from './collect-errors.js';
 import {DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
@@ -30,9 +31,10 @@ export abstract class SignalLink<ValueType = any> {
   // link registers — one from this constructor, plus one more from
   // `SignalLinkToSignal`'s own constructor — needs its unsubscribe handle
   // released in `destroy()`. Without it, the closure (routed through
-  // `selfRef`, so it no longer *pins* the link — see MEM-002 above) stays
-  // subscribed on a permanent module-level queue until the *other* side's
-  // signal is destroyed too, which for a link torn down well before its
+  // `selfRef`, so it no longer pins the link *from the queues* — see
+  // MEM-002 above; `src/link.ts`'s MEM-007 comment covers what still does)
+  // stays subscribed on a permanent module-level queue until the *other*
+  // side's signal is destroyed too, which for a link torn down well before its
   // signals is never. `destroy()` must run these before `Object.freeze(this)`
   // (S7: not *because of* the freeze — `Object.freeze(this)` reaches
   // neither private fields, which live outside the object's own-property
@@ -64,10 +66,16 @@ export abstract class SignalLink<ValueType = any> {
     // module-level global queues that live for the whole process. A plain
     // `this` closure here would keep the link (and everything it reaches —
     // the source signal, the target, a callback's closure) permanently
-    // reachable, even after every external reference to the link is
-    // dropped and `gLinks` no longer pins it. Going through a WeakRef lets
-    // an orphaned link (never destroy()d, never attach()ed) become
-    // collectible; once collected, the dereffed callbacks are silent no-ops.
+    // reachable *from those queues*, on top of whatever else already holds
+    // it. Going through a WeakRef stops the queues from being one more
+    // pinning path; once a link is genuinely collected, the dereffed
+    // callbacks are silent no-ops.
+    //
+    // It does not, on its own, make an orphaned link collectible (MEM-007):
+    // `src/link.ts`'s `gLinks` registry holds every link on a live source
+    // signal in an ordinary, strongly-referencing `Map`, for as long as that
+    // source lives — see the comment there. This WeakRef only rules out the
+    // queues as an *additional* permanent root; the registry is still one.
     const selfRef = new WeakRef(this);
 
     this.#unsubscribe = on(globalSignalQueue, this.source.id, (_, params) => {
@@ -116,10 +124,13 @@ export abstract class SignalLink<ValueType = any> {
 
     // The `once(this, DESTROY, ...)` subscription below, unlike
     // `attachLink()`, is *not* deduplicated by eventize (a plain function
-    // listener isn't recognized as "similar" to a previous one) — so it
-    // still needs its own guard, or re-attaching the same group (e.g. on
-    // every `link()` cache hit that passes `{attach}`) would grow the
-    // link's DESTROY listener list without bound.
+    // listener isn't recognized as "similar" to a previous one — eventize's
+    // `isSimilar()` dedup only covers listeners of type `LISTENER_IS_OBJ`
+    // and `LISTENER_IS_NAMED_FUNC`; a plain function is excluded by type, so
+    // even the *same* function reference registered twice yields two
+    // subscriptions) — so it still needs its own guard, or re-attaching the
+    // same group (e.g. on every `link()` cache hit that passes `{attach}`)
+    // would grow the link's DESTROY listener list without bound.
     this.#attachedGroups ??= new Set();
     if (this.#attachedGroups.has(group)) {
       return group;
@@ -321,9 +332,10 @@ export abstract class SignalLink<ValueType = any> {
     // S6: one throwing handle must not skip releasing the rest, nor skip
     // the teardown steps below — a half-destroyed link (still subscribed on
     // globalSignalQueue, DESTROY never emitted, never frozen) is worse than
-    // a rethrown error once everything else is done. Same shape as
-    // `EffectImpl.destroy()`'s cleanup collection: gather, keep going,
-    // report at the end.
+    // a rethrown error once everything else is done. Same function as
+    // `EffectImpl.destroy()`'s cleanup collection now uses, not just the
+    // same shape: gather, keep going, report at the end via
+    // `throwCollectedErrors()`.
     const releaseErrors: unknown[] = [];
     for (const unsubscribe of this.#releaseOnDestroy) {
       try {
@@ -344,15 +356,10 @@ export abstract class SignalLink<ValueType = any> {
 
     Object.freeze(this);
 
-    if (releaseErrors.length === 1) {
-      throw releaseErrors[0];
-    }
-    if (releaseErrors.length > 1) {
-      throw new AggregateError(
-        releaseErrors,
-        `[signalize] ${releaseErrors.length} errors while releasing SignalLink destroy-queue subscriptions`,
-      );
-    }
+    throwCollectedErrors(
+      releaseErrors,
+      'releasing SignalLink destroy-queue subscriptions',
+    );
   }
 
   get isMuted(): boolean {

@@ -286,6 +286,15 @@ group *too*, in addition to whatever it was already attached to; the group
 isn't ignored. A link attached to several groups is destroyed as soon as any
 one of them clears — it doesn't wait for all of them.
 
+**Lifetime.** A link is held by an internal registry keyed on its source
+signal until one of four things happens: `link.destroy()`, `unlink(source,
+target?)`, a `{attach}` group being cleared, or the source or a signal target
+being destroyed. Garbage collection alone is not a fifth way — a link on a
+still-live source is not reclaimed, no matter how thoroughly its return value
+is dropped. A long-lived source that keeps accumulating fresh links without
+ever tearing the old ones down grows this registry without bound, and every
+write to that source gets linearly slower as it grows.
+
 ### `unlink(source, target?)`
 
 Drop a specific `(source, target)` link, or all links from `source` if no
@@ -293,7 +302,14 @@ target is given.
 
 ### `getLinksCount(source?)`
 
-Total link count, or count for a single source.
+Total link count, or count for a single source. Counts exactly the links
+held by the registry above. While its source is reachable, a link never
+drops out of this count through garbage collection alone — only `destroy()`,
+`unlink()`, a cleared `{attach}` group, or destroying the source/target does
+that, and each of those also releases the link's own subscriptions. If a
+link becomes unreachable *together with* its source instead, the count is
+eventually corrected too, but nondeterministically and without releasing
+those subscriptions — see `link.ts`'s `gLinkFinalizer`.
 
 ### `SignalLink<T>` instance
 

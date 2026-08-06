@@ -11,9 +11,35 @@ import {signalImpl} from './signal-core.js';
 import {ISignalImpl, SignalLike, SignalReader} from './types.js';
 
 // Weak on the source signal: the search always goes through the source, so
-// there is no need to iterate `gLinks` itself, and a WeakMap lets an orphaned
-// link (never destroy()d, never attach()ed, no external references left)
-// become collectible instead of pinned for the process lifetime (MEM-002).
+// there is no need to iterate `gLinks` itself, and a WeakMap ties the *set*
+// of links for a source to that source's own lifetime — once the source is
+// gone, so is the Map holding its links (MEM-002).
+//
+// That WeakMap outer layer does not make an individual link collectible
+// while its source is still reachable, though (MEM-007). The inner `Map` is
+// a strong map: as long as the source signal is reachable, every link ever
+// created on it — its callback closure, its target reference, both of its
+// subscriptions on the global queues — stays reachable too, and letting go
+// of the returned `SignalLink` and waiting for GC does not change that. The
+// only ways out *while the source lives* are `destroy()`, `unlink()`, or a
+// cleared `{attach}` group. Explicitly destroying the source (or a signal
+// target) tears every link on it down the same way, fully — including their
+// global-queue subscriptions.
+//
+// If a link and its source become unreachable *together* instead (the
+// source was never `destroySignal()`d, just dropped along with every link
+// on it), `gLinkFinalizer` below does eventually correct `getLinksCount()`
+// to match — see that finalizer's comment for what that path does and does
+// not clean up; it is not equivalent to the three explicit ways above.
+//
+// Against a long-lived, still-reachable source, a hot path that keeps
+// calling `link(src, freshCallback)` without ever tearing the old ones down
+// grows this map without bound — measured: 1000 orphaned links on a live
+// source stay 1000 after `gc()`, and each write to `src` gets linearly
+// slower with the backlog (64.5 ms for 1000 writes at that count, vs. 75 µs
+// warm / 116 µs cold with none). See `link()`'s "Lifetime" JSDoc below and
+// `getLinksCount()` for the counter that makes this measurable in
+// application code.
 const gLinks = new WeakMap<
   ISignalImpl<any>,
   Map<object | Function, SignalLink<any>>
@@ -29,6 +55,19 @@ let gLinksCount = 0;
 // link itself becomes unreachable and corrects the counter. The `once(link,
 // DESTROY, ...)` hook unregisters first on the explicit path, so a link that
 // *is* destroyed is never double-counted here.
+//
+// This is bookkeeping for `getLinksCount()`, not a cleanup path (MEM-007):
+// reaching this callback already required the link (and the strong entry in
+// the inner `Map` above) to become unreachable, which — per that comment —
+// only happens once its source signal is gone too. It corrects the *count*;
+// it does not release anything. Both of the link's subscriptions on
+// `globalSignalQueue`/`globalDestroySignalQueue` (see `SignalLink`'s
+// constructor) are still registered when this fires, and stay registered
+// for good — their closures go through a `WeakRef` (MEM-002), so once it
+// derefs to `undefined` they are permanent no-ops, not gone. Measured: after
+// 200 links are collected this way, `getSubscriptionCount(globalSignalQueue)`
+// and `getSubscriptionCount(globalDestroySignalQueue)` both still read 200,
+// unchanged from immediately before the collection.
 const gLinkFinalizer = new FinalizationRegistry<void>(() => {
   if (gLinksCount > 0) {
     gLinksCount -= 1;
@@ -73,6 +112,14 @@ export interface LinkOptions {
  * @param target - The target signal or callback to link to
  * @param options - Configuration options (attach)
  * @returns A SignalLink object that can be destroyed to break the connection
+ *
+ * Lifetime: the returned `SignalLink` is held by an internal registry keyed
+ * on `source`, and stays reachable there until one of four things happens —
+ * `link.destroy()`, `unlink(source, target?)`, a `{attach}` group being
+ * cleared, or `source`/a signal `target` being destroyed. Discarding the
+ * return value is fine and does not shorten this: it only makes the link
+ * unreachable to the caller, not to the registry. There is no fifth way —
+ * garbage collection alone does not reclaim a link on a live source.
  */
 export function link<ValueType>(
   source: LinkableSource<ValueType>,
@@ -181,6 +228,18 @@ export function unlink<ValueType>(
  *
  * @param source - Optional source signal to count links for
  * @returns The number of active links
+ *
+ * This counts exactly the links held by the registry described in `link()`'s
+ * "Lifetime" section. While its source signal is reachable, a link never
+ * drops out of this count through garbage collection alone — only
+ * `destroy()`, `unlink()`, a cleared `{attach}` group, or destroying the
+ * source/signal target does that, and each of those also releases the
+ * link's subscriptions on the global queues. If a link becomes unreachable
+ * *together with* its source instead (dropped, never explicitly destroyed),
+ * this count is eventually corrected too, but nondeterministically and
+ * without releasing those subscriptions — see the `gLinkFinalizer` comment
+ * above `link()`. That path is bookkeeping, not a fifth teardown route on
+ * par with the four explicit ones.
  */
 export function getLinksCount(source?: SignalLike<any>): number {
   if (source == null) {

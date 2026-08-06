@@ -502,6 +502,13 @@ log.unmute();
 
 - Same `(source, target)` pair? Repeated `link()` calls return the existing link.
 - Destroyed when the source or target signal is destroyed.
+- **Held until torn down, not until unreachable.** A link lives in a registry
+  keyed on its source until `destroy()`, `unlink()`, a cleared `{attach}`
+  group, or the destruction of source/target — dropping the reference you got
+  back from `link()` does not shorten that. Calling `link(src, freshCallback)`
+  in a loop without ever `unlink()`ing the old ones accumulates every one of
+  them for as long as `src` lives; `getLinksCount(src)` is the number to
+  watch.
 - Repeated `link()` calls with different `attach` groups don't replace or drop
   the extra attach — the existing link is attached to *every* group it was
   ever `link()`'d or `.attach()`'d with, and dies with whichever one clears
@@ -567,6 +574,9 @@ expect(after).toEqual(before);
 ```
 
 In tests, this is the cheapest sanity check that a feature doesn't leak.
+Links need their own explicit `unlink(source)` (or `link.destroy()`) before
+that final `getLinksCount()` — a link on a still-live source is not reclaimed
+by dropping references alone.
 
 ## Migrating off `signalReader(callback)`
 
