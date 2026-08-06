@@ -30,7 +30,7 @@ Behaviours that surprise people (and models) coming from React, Solid, Vue or Mo
 
 ## Memos
 
-**12 — Eager vs lazy changes downstream behaviour.** Default `lazy: false` makes the memo a computed signal: dependent effects re-run when its deps change. With `lazy: true` dependents are **not** notified — the memo is only recomputed when read. **`@memo()` is always lazy**; use `createMemo()` directly for an eager class memo.
+**12 — Eager vs lazy changes downstream behaviour.** Default `lazy: false` makes the memo a computed signal: dependent effects re-run when its deps change. With `lazy: true` dependents are **not** notified — the memo is only recomputed when read.
 
 ## Batching and context modes
 
@@ -54,7 +54,7 @@ Behaviours that surprise people (and models) coming from React, Solid, Vue or Mo
 
 **18 — `SignalAutoMap` retains destroyed signals.** Calling `destroySignal()` on an entry leaves it in the map: reads return the last value, and writes still update it without notifying anyone (see pitfall 6). Prefer `map.clear()`, or attach the signals to a `SignalGroup`.
 
-**19 — Decorator signals live in the instance's group.** `@signal` and `@memo` register against `SignalGroup.findOrCreate(this)`. Full cleanup is `SignalGroup.delete(this)`; `destroyObjectSignals(this)` clears signals only and leaves attached effects and links running.
+**19 — Decorator signals live in the instance's group.** `@signal` registers against `SignalGroup.findOrCreate(this)`. Full cleanup is `SignalGroup.delete(this)`; `destroyObjectSignals(this)` clears signals only and leaves attached effects and links running.
 
 ## Deprecated surface
 

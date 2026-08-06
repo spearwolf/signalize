@@ -83,7 +83,7 @@ In complex interactive front-ends—such as **3D configurators, real-time dashbo
 - **Context modes** — `batch()` to coalesce writes, `beQuiet()` for silent
   mutation, `hibernate()` to pause reactivity, `value()` / `.value` for
   untracked reads.
-- **Optional class API** — TC39 standard `@signal` / `@memo` decorators on
+- **Optional class API** — the TC39 standard `@signal` decorator on
   a separate subpath; the core has no class dependency.
 - **TypeScript-first** — every primitive, option, and decorator is fully
   typed.
@@ -133,7 +133,7 @@ destroyObjectSignals
 Signal, Effect
 
 // decorators (subpath: '@spearwolf/signalize/decorators')
-signal, memo
+signal
 ```
 
 Every option and type is in the [API reference](./docs/api.md).
@@ -251,21 +251,21 @@ less effort.
 ## Class API
 
 ```typescript
-import {signal, memo} from '@spearwolf/signalize/decorators';
+import {signal} from '@spearwolf/signalize/decorators';
+import {createMemo} from '@spearwolf/signalize';
 
 class Counter {
   @signal() accessor value = 0;
-  @memo() doubled() { return this.value * 2; }
+  doubled = createMemo(() => this.value * 2, {attach: this});
   inc() { this.value++; }
 }
 ```
 
 > The decorator API uses TC39 standard decorators (no `experimentalDecorators`).
-> Memos created via `@memo` are always lazy.
 
 ## Good to know
 
-Six things that differ from most other signal libraries. None of them raise an
+Five things that differ from most other signal libraries. None of them raise an
 error — they just quietly do something else, so they are worth reading once.
 
 - **`set()` takes a value, not an updater.** `count.set(v => v + 1)` stores the
@@ -278,8 +278,6 @@ error — they just quietly do something else, so they are worth reading once.
 - **Static deps switch off auto-tracking *and* autorun.**
   `createEffect(cb, [a, b])` does not run on creation, and signals read inside
   the callback are not subscribed — call `eff.run()` for an initial pass.
-- **`@memo()` is always lazy**, so dependent effects are not notified when its
-  inputs change. Use `createMemo(..., {attach: this})` for an eager class memo.
 - **Cleanup is explicit.** Effects and links outlive the scope that created
   them: pass `{attach: obj}` and dispose with `SignalGroup.delete(obj)`. Groups
   attached to a host object do have a `FinalizationRegistry` backstop that

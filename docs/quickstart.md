@@ -51,13 +51,13 @@ count.value = 1;// equivalent to .set(1)
 ## Class API (decorators)
 
 ```typescript
-import {signal, memo} from '@spearwolf/signalize/decorators';
-import {createEffect} from '@spearwolf/signalize';
+import {signal} from '@spearwolf/signalize/decorators';
+import {createEffect, createMemo} from '@spearwolf/signalize';
 
 class Counter {
   @signal() accessor value = 0;
 
-  @memo() doubled() { return this.value * 2; }
+  doubled = createMemo(() => this.value * 2, {attach: this});
 
   inc() { this.value++; }
 }

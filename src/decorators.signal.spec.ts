@@ -1,5 +1,5 @@
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
-import {memo, signal} from './decorators.js';
+import {signal} from './decorators.js';
 import {
   createMemo,
   destroyObjectSignals,
@@ -56,28 +56,26 @@ describe('@signal is a class accessor decorator', () => {
 
     class Foo {
       @signal({compare: equals}) accessor foo = 1;
-
-      @memo() bar() {
-        return this.foo + 100;
-      }
     }
 
     const foo = new Foo();
+    const bar = createMemo(() => foo.foo + 100, {lazy: true});
 
     expect(foo.foo).toBe(1);
-    expect(foo.bar()).toBe(101);
+    expect(bar()).toBe(101);
 
     foo.foo = 2;
 
     expect(foo.foo).toBe(1);
-    expect(foo.bar()).toBe(101);
+    expect(bar()).toBe(101);
 
     foo.foo = 4;
 
     expect(foo.foo).toBe(4);
-    expect(foo.bar()).toBe(104);
+    expect(bar()).toBe(104);
 
     destroyObjectSignals(foo);
+    destroySignal(bar);
   });
 
   it('each object has its on signal instance', () => {

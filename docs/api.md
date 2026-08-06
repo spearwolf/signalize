@@ -3,7 +3,7 @@
 Two entry points:
 
 - `@spearwolf/signalize` — everything below except the decorators.
-- `@spearwolf/signalize/decorators` — `@signal`, `@memo`.
+- `@spearwolf/signalize/decorators` — `@signal`.
 
 ---
 
@@ -304,7 +304,7 @@ Signals stored on a host object by name (used by `@signal`).
 ## Decorators
 
 ```ts
-import {signal, memo} from '@spearwolf/signalize/decorators';
+import {signal} from '@spearwolf/signalize/decorators';
 ```
 
 > Standard TC39 decorators only. No `experimentalDecorators`.
@@ -324,14 +324,8 @@ Turns a class field declared with `accessor` into a per-instance signal.
 Each instance gets its own signal. The signal is registered in
 `SignalGroup.findOrCreate(this)` under `name`.
 
-### `@memo(options?)` — method decorator
-
-| Option | Type               | Effect                                          |
-| ------ | ------------------ | ----------------------------------------------- |
-| `name` | `string \| symbol` | Group name (defaults to the method name).      |
-
-> Decorator-created memos are **always lazy** and attached to the instance's
-> group. For non-lazy memos, use `createMemo()` directly.
+For a class-bound derived value, use `createMemo()` with `{attach: this}` —
+there is no memo decorator.
 
 ---
 
@@ -358,4 +352,4 @@ Exported from `@spearwolf/signalize`:
 | `ValueChangedCallback<T>`    | `(value: T) => void \| (() => void)`.                            |
 
 From `@spearwolf/signalize/decorators`:
-`SignalDecoratorOptions`, `SignalReaderDecoratorOptions`, `MemoDecoratorOptions`.
+`SignalDecoratorOptions`, `SignalReaderDecoratorOptions`.

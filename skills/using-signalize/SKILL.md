@@ -1,6 +1,6 @@
 ---
 name: using-signalize
-description: Write, review, or debug code that uses `@spearwolf/signalize` — signals, effects, memos, links, SignalGroup, SignalAutoMap, or the `@signal`/`@memo` decorators. Use when a file imports `@spearwolf/signalize` or `@spearwolf/signalize/decorators`, when the user mentions signalize, or when reactivity built on it misbehaves (effect never re-runs, effect runs too often, memo looks stale, listeners leak). Loads the mental model plus the behaviours that differ from React/Solid/Vue; API, pitfall and pattern references load on demand.
+description: Write, review, or debug code that uses `@spearwolf/signalize` — signals, effects, memos, links, SignalGroup, SignalAutoMap, or the `@signal` decorator. Use when a file imports `@spearwolf/signalize` or `@spearwolf/signalize/decorators`, when the user mentions signalize, or when reactivity built on it misbehaves (effect never re-runs, effect runs too often, memo looks stale, listeners leak). Loads the mental model plus the behaviours that differ from React/Solid/Vue; API, pitfall and pattern references load on demand.
 ---
 
 # Using @spearwolf/signalize
@@ -9,7 +9,7 @@ Framework-agnostic, **synchronous** fine-grained reactivity. ESM-only, `sideEffe
 
 ```ts
 import {createSignal, createEffect, createMemo, link, SignalGroup} from '@spearwolf/signalize';
-import {signal, memo} from '@spearwolf/signalize/decorators';
+import {signal} from '@spearwolf/signalize/decorators';
 ```
 
 ## Mental model
@@ -45,7 +45,7 @@ const eff = createEffect(cb, [a, b]);
 eff.run();   // ✓ call once if an initial pass is wanted
 ```
 
-**4 — Lazy memos do not push.** Default `lazy: false` behaves like a computed signal: dependent effects re-run when deps change. With `lazy: true` the memo only recomputes on read and dependents are *not* notified. **The `@memo()` decorator is always lazy** — for an eager class memo use `createMemo(..., {attach: this})`.
+**4 — Lazy memos do not push.** Default `lazy: false` behaves like a computed signal: dependent effects re-run when deps change. With `lazy: true` the memo only recomputes on read and dependents are *not* notified. There is no memo decorator — a class-bound memo is `createMemo(..., {attach: this})`.
 
 **5 — Cleanup is explicit.** Effects and links outlive the scope that created them, and an unattached one stays reachable from the global queues indefinitely. Pass `{attach: obj}` at creation and tear down with `SignalGroup.delete(obj)`.
 

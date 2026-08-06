@@ -54,7 +54,7 @@ createEffect(() => render(count()));                                      // re-
 class Cart {
   @signal() accessor items: Item[] = [];
 
-  // Eager — createMemo, because @memo is always lazy
+  // Eager by default — attached to the instance group
   total = createMemo(() => this.items.reduce((s, x) => s + x.price, 0), {attach: this});
 
   destroy() { SignalGroup.delete(this); }
@@ -95,7 +95,7 @@ Code shaped by other signal libraries usually needs one of these. Each left-hand
 | `createEffect(() => use(sig.value))` | `createEffect(() => use(sig.get()))` — `.value` does not track |
 | `createEffect(cb, [a])` when an initial pass is needed | add `eff.run()` once — static deps do not autorun |
 | A `createEffect` that writes its result into a signal | `createMemo` — priority and caching come for free |
-| `@memo()` where dependents must react | `createMemo(..., {attach: this})` — `@memo` is always lazy |
+| Looking for a memo decorator | `createMemo(..., {attach: this})` as a class field — there is none |
 | `experimentalDecorators: true` in `tsconfig.json` | TC39 standard decorators — `@signal` needs the `accessor` keyword |
 | Creating effects/links and destroying them by hand later | `{attach: obj}` from the start, then `SignalGroup.delete(obj)` |
 

@@ -60,7 +60,7 @@ src/
 ├── batch.ts           # batch() function
 ├── bequiet.ts         # beQuiet(), isQuiet()
 ├── hibernate.ts       # hibernate()
-├── decorators.ts      # @signal, @memo decorators
+├── decorators.ts      # @signal decorator
 └── *.spec.ts          # Test files (adjacent to implementation)
 ```
 

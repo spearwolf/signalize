@@ -102,7 +102,7 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | File | Responsibility |
 | --- | --- |
 | `index.ts` | Public API exports for `.` |
-| `decorators.ts` | `@signal`, `@memo` (TC39 standard decorators) — separate `./decorators` entry |
+| `decorators.ts` | `@signal` (TC39 standard decorator) — separate `./decorators` entry |
 | `constants.ts` | Symbols (`$signal`, `$effect`, `RECALL`, `$createEffect`, `$destroyEffect`, `$destroySignal`) |
 | `types.ts` | Public TypeScript interfaces |
 | `Signal.ts` | `Signal<T>` class — thin wrapper around `SignalImpl` |
@@ -149,7 +149,7 @@ Also avoid reading an imported binding at module-eval time across module boundar
 **Classes**: `Signal`, `Effect`, `SignalGroup`, `SignalAutoMap`
 **Types**: everything from `types.ts`
 
-**Subpath `@spearwolf/signalize/decorators`** (`src/decorators.ts`): `signal`, `memo`, `SignalDecoratorOptions`, `SignalReaderDecoratorOptions`, `MemoDecoratorOptions`. Decorators are TC39 standard (no `experimentalDecorators`); use the `accessor` keyword.
+**Subpath `@spearwolf/signalize/decorators`** (`src/decorators.ts`): `signal`, `SignalDecoratorOptions`, `SignalReaderDecoratorOptions`. There is no memo decorator — class-bound memos are `createMemo(..., {attach: this})`. Decorators are TC39 standard (no `experimentalDecorators`); use the `accessor` keyword.
 
 ## Development workflow
 

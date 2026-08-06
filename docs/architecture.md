@@ -97,22 +97,21 @@ groups. Clearing a group destroys everything in it.
 
 ## Decorators
 
-`@signal` and `@memo` (subpath `@spearwolf/signalize/decorators`) use the
+`@signal` (subpath `@spearwolf/signalize/decorators`) uses the
 TC39 standard form (`accessor` keyword, stage-3 semantics).
 
 - Each instance of a decorated class implicitly owns a `SignalGroup` keyed by
   the instance — destroying the group via `SignalGroup.delete(instance)` or
   `destroyObjectSignals(instance)` cleans up.
-- `@memo`-decorated methods are **always lazy** (recomputed on read, never
-  on dependency change). If you need a non-lazy memo, build it with
-  `createMemo()` directly.
+- There is no memo decorator; a class-bound derived value is a
+  `createMemo(..., {attach: this})` in the class body.
 
 ## Source layout
 
 | File                       | Responsibility                                              |
 | -------------------------- | ----------------------------------------------------------- |
 | `index.ts`                 | Public entry — re-exports the `.` API surface               |
-| `decorators.ts`            | `@signal`, `@memo` (subpath entry `./decorators`)           |
+| `decorators.ts`            | `@signal` (subpath entry `./decorators`)                    |
 | `signal-core.ts`           | Leaf primitives: `isSignal`, `destroySignal`, `signalImpl`, `writeSignal` |
 | `Signal.ts` / `createSignal.ts` | `Signal<T>` wrapper + `SignalImpl` core                |
 | `Effect.ts` / `EffectImpl.ts`   | `Effect` wrapper + tracking/rerun core                 |

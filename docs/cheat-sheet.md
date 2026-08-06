@@ -153,7 +153,8 @@ destroyObjectSignals(obj1, obj2);
 ## Decorators
 
 ```ts
-import {signal, memo} from '@spearwolf/signalize/decorators';
+import {signal} from '@spearwolf/signalize/decorators';
+import {createMemo} from '@spearwolf/signalize';
 
 class Foo {
   @signal({                         // all options optional
@@ -164,8 +165,8 @@ class Foo {
     attach:      something,
   }) accessor count = 0;
 
-  @memo({name: 'doubled'})          // ALWAYS lazy
-  doubled() { return this.count * 2; }
+  // no memo decorator — bind a memo to the instance group instead
+  doubled = createMemo(() => this.count * 2, {attach: this});
 }
 ```
 

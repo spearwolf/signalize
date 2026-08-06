@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- **Removed the `@memo` decorator** and its `MemoDecoratorOptions` type from `@spearwolf/signalize/decorators`. Syntax and semantics were not settled — replace `@memo() foo() {...}` with a class field `foo = createMemo(() => ..., {attach: this})`, which is eager by default. `createMemo()` itself is unchanged
+
 ## `v0.31.1` (2026-07-25)
 
 ### Bug Fixes

@@ -171,8 +171,8 @@ const lazy  = createMemo(() => a.get() * 2, {lazy: true});
 Use eager when effects depend on the memo, lazy for expensive on-demand
 calculations.
 
-> The `@memo()` decorator always produces lazy memos. Use `createMemo()` for
-> eager class-bound memos.
+> For a class-bound memo, call `createMemo(..., {attach: this})` in the class
+> body — there is no memo decorator.
 
 ## Batching
 
@@ -332,7 +332,6 @@ of destroying entries individually.
 - `@signal()` requires the `accessor` keyword.
 - Each instance gets its own signal; reading the property uses `.get()`
   (tracked) by default. Use `readAsValue: true` for an untracked getter.
-- `@memo()` decorated methods are lazy and attached to the instance's group.
 - `destroyObjectSignals(instance)` cleans up signals registered via the
   decorator; for full cleanup including effects/links, use
   `SignalGroup.delete(instance)`.

@@ -6,7 +6,7 @@ Signatures and options. For *why* something behaves as it does see `pitfalls.md`
 
 ```ts
 import {/* core */} from '@spearwolf/signalize';
-import {signal, memo} from '@spearwolf/signalize/decorators';
+import {signal} from '@spearwolf/signalize/decorators';
 ```
 
 Decorators are **TC39 standard** form — no `experimentalDecorators`, and the `accessor` keyword is required on `@signal`.
@@ -42,9 +42,11 @@ Signal, Effect
 ### Exported from `@spearwolf/signalize/decorators`
 
 ```ts
-signal, memo
-// types: SignalDecoratorOptions, SignalReaderDecoratorOptions, MemoDecoratorOptions
+signal
+// types: SignalDecoratorOptions, SignalReaderDecoratorOptions
 ```
+
+There is no memo decorator — bind a memo to the instance group with `createMemo(..., {attach: this})`.
 
 ## Signals
 
@@ -211,8 +213,8 @@ class Foo {
     attach:      something,     // override the default group (the instance)
   }) accessor count = 0;
 
-  @memo({name: 'doubled'})      // ALWAYS lazy; attached to the instance group
-  doubled() { return this.count * 2; }
+  // derived values are plain memos attached to the instance group
+  doubled = createMemo(() => this.count * 2, {attach: this});
 }
 ```
 

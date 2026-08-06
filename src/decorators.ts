@@ -1,4 +1,3 @@
-import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
 import {findObjectSignalByName, storeAsObjectSignal} from './object-signals.js';
 import {SignalGroup} from './SignalGroup.js';
@@ -46,39 +45,6 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
         );
         return si.value;
       },
-    };
-  };
-}
-
-export interface MemoDecoratorOptions {
-  name?: string | symbol;
-}
-
-/**
- * NOTE: A memo created by this decorator is always lazy and never autorun!
- */
-export function memo(options?: MemoDecoratorOptions) {
-  return function <T extends object, A extends any[], R>(
-    target: (this: T, ...args: A) => R,
-    context: ClassMethodDecoratorContext<T, (this: T, ...args: A) => R>,
-  ) {
-    const name = options?.name || context.name;
-
-    return function (this: T, ...args: A): R {
-      let group = SignalGroup.get(this);
-      let si = group?.signal(name);
-      let siGet = si?.get;
-      if (siGet == null) {
-        group ??= SignalGroup.findOrCreate(this);
-        siGet = createMemo<R>(() => target.call(this, ...args), {
-          lazy: true,
-          attach: group,
-          name,
-        });
-        si = group.signal(name);
-        storeAsObjectSignal(this, name, si);
-      }
-      return siGet();
     };
   };
 }
