@@ -206,4 +206,85 @@ describe('batch', () => {
       0,
     );
   });
+
+  describe('rejects thenable-returning callbacks (ASYNC-003)', () => {
+    it('throws when the callback is an async function, instead of silently unbatching writes after the first await', async () => {
+      const {get: a, set: setA} = createSignal(0);
+      const seen: number[] = [];
+      const eff = createEffect(() => {
+        seen.push(a());
+      });
+
+      expect(getCurrentBatch()).toBeUndefined();
+
+      let caught: unknown;
+      try {
+        // @ts-expect-error — async callback is rejected at the type level too (ASYNC-003); calling it anyway to exercise the runtime guard
+        batch(async () => {
+          setA(1);
+          await Promise.resolve();
+          setA(2);
+        });
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(TypeError);
+      expect((caught as TypeError).message).toContain('[signalize] batch:');
+
+      // the batch context must be fully closed again, not left dangling
+      expect(getCurrentBatch()).toBeUndefined();
+
+      // the write that happened synchronously before the first `await` was
+      // still inside the batch and gets flushed once the batch closes
+      expect(seen).toEqual([0, 1]);
+
+      // let the still-running async callback finish so it doesn't leak into
+      // the next test; its post-await write now runs unbatched, which is
+      // fine since batch() already told the caller not to do this
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      eff.destroy();
+      destroySignal(a);
+    });
+
+    it('throws for a synchronous callback that happens to return a thenable-shaped object', () => {
+      expect(getCurrentBatch()).toBeUndefined();
+
+      let caught: unknown;
+      try {
+        // this is not a type error: `{then: () => {}}` doesn't structurally match
+        // `PromiseLike<unknown>` (wrong `then` signature), so only the runtime
+        // duck-type check below catches it — that's the point of this test.
+        // biome-ignore lint/suspicious/noThenProperty: intentionally building a non-promise thenable to prove the runtime duck-type check catches it too
+        batch(() => ({then: () => {}}));
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(TypeError);
+      expect((caught as TypeError).message).toContain('[signalize] batch:');
+      expect(getCurrentBatch()).toBeUndefined();
+    });
+
+    it('a synchronous callback returning an arbitrary non-thenable value still works', () => {
+      const {get: a, set: setA} = createSignal(0);
+      const seen: number[] = [];
+      const eff = createEffect(() => {
+        seen.push(a());
+      });
+
+      expect(() => {
+        batch(() => {
+          setA(1);
+          return 42;
+        });
+      }).not.toThrow();
+
+      expect(seen).toEqual([0, 1]);
+
+      eff.destroy();
+      destroySignal(a);
+    });
+  });
 });

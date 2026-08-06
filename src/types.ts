@@ -7,6 +7,14 @@ export type EffectCallback = VoidFunc | (() => VoidFunc);
 export type ValueChangedCallback<T> = (value: T) => VoidFunc | void;
 
 /**
+ * A type that is not a `Promise`/thenable. Used to narrow `batch()`'s
+ * callback so an `async` function (or anything else returning a thenable)
+ * is rejected by `tsc` before it ever runs — see `batch()`'s JSDoc for why
+ * an async callback cannot work there at all.
+ */
+export type NonThenable<T> = T extends PromiseLike<unknown> ? never : T;
+
+/**
  * Where an asynchronously reported effect error came from:
  * - `callback` — the promise returned by the effect callback rejected
  * - `cleanup` — the promise returned by a cleanup callback rejected

@@ -57,6 +57,8 @@ createEffect(() => {
 
 **13 — `batch()` is a hint, not a guarantee.** Most flushes are deduplicated and priority-ordered, but internal consistency rules can still cause partial propagation. "Exactly one effect run per batch" is not a correctness invariant to build on.
 
+**13a — `batch(async () => ...)` throws, it does not silently stop batching.** An `async` callback stops being batched at its first `await` — writes before it are still batched, writes after it run completely unbatched, and the result used to look exactly like working code. `batch()` now throws `TypeError` if the callback returns a thenable, and the signature rejects `async` callbacks at `tsc` time too (ASYNC-003). Unlike 11b's rejecting `async` *effect* callback — which cannot be thrown at any caller and goes to `onEffectError()` — this is a synchronous throw at the `batch()` call site, because its caller is still on the stack.
+
 ## Lifecycles
 
 **14 — `SignalGroup.findOrCreate(group)` returns the group itself.** Passing an existing `SignalGroup` is an identity no-op. `findOrCreate(null)` throws.

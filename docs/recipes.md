@@ -256,6 +256,25 @@ batch(() => {
 - `effect.run()` inside a batch queues the run.
 - `batch()` is a hint, not a guarantee — internal consistency may still
   cause partial propagation.
+- `batch()`'s callback must be synchronous. An `async` callback stops being
+  batched at its first `await` — everything before that point still runs
+  batched, everything after runs completely unbatched, with no error. To
+  catch this, `batch()` throws `TypeError` if the callback returns a
+  thenable, and its signature rejects `async` callbacks at `tsc` time
+  (ASYNC-003):
+
+  ```ts
+  batch(async () => {
+    first.set('Grace');
+    await something();       // ← batching already ended here
+    last.set('Hopper');      // ← runs unbatched
+  });
+  // TypeError: [signalize] batch: callback must be synchronous, ...
+  ```
+
+  This is a synchronous throw at the `batch()` call site — different from an
+  async *effect* callback's rejection, which cannot be thrown at any caller
+  and goes to `onEffectError()` instead (see the Effects section).
 
 ## Quiet reads
 

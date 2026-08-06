@@ -330,6 +330,20 @@ and flushed in descending priority order.
 > A batch is a *hint*, not a strict guarantee — internal consistency rules can
 > still cause partial propagation in edge cases.
 
+`callback` must be synchronous. `batch()` only sees signal writes made on the
+current call stack — an `async` callback returns a pending `Promise` at its
+first `await`, at which point `batch()` closes the batch and everything after
+that `await` runs unbatched, with no error. To catch this early, `batch()`
+throws `TypeError` if `callback` returns a thenable, and its signature rejects
+an `async` callback (or anything typed to return `Promise`/`PromiseLike`) at
+`tsc` time. Writes made before the check — i.e. everything the callback did
+synchronously before returning — are still flushed; only what runs after the
+callback returns is left unbatched.
+
+This is a synchronous throw at the `batch()` call site, unlike an async
+*effect* callback's rejection, which cannot be thrown at any caller and goes
+to `onEffectError()` instead (see `createEffect`).
+
 ### `beQuiet(callback)`
 
 Inside `callback`, signal **reads do not subscribe** the surrounding effect,
