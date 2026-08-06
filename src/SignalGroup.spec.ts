@@ -1,14 +1,27 @@
-import {on} from '@spearwolf/eventize';
+import {getSubscriptionCount, on} from '@spearwolf/eventize';
 import {
   assertEffectsCount,
   assertLinksCount,
   assertSignalsCount,
 } from './assert-helpers.js';
-import {$effect} from './constants.js';
+import {$effect, DESTROY, OFF} from './constants.js';
+import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
+import {
+  globalDestroySignalQueue,
+  globalEffectQueue,
+  globalSignalQueue,
+} from './global-queues.js';
 import {link} from './link.js';
 import {SignalGroup} from './SignalGroup.js';
+
+// Nothing attached to a group may survive its teardown on the global queues.
+const subscriptionSnapshot = () => ({
+  signal: getSubscriptionCount(globalSignalQueue),
+  destroySignal: getSubscriptionCount(globalDestroySignalQueue),
+  effect: getSubscriptionCount(globalEffectQueue),
+});
 
 describe('SignalGroup', () => {
   beforeEach(() => {
@@ -242,12 +255,20 @@ describe('SignalGroup', () => {
       expect(group.signal('mySignal')).toBe(signal2);
 
       group.clear();
+
+      // signal1 was displaced by the rebind and left the group with it
+      // (MEM-003) — it is still alive, so it is on us to destroy it.
+      signal1.destroy();
     });
 
     it('detaching signal reverts to previous signal with same name', () => {
       const group = SignalGroup.findOrCreate({});
       const signal1 = createSignal(1);
       const signal2 = createSignal(2);
+
+      // explicitly attached, so the rebind below keeps it around as a
+      // fallback candidate for the name (MEM-003)
+      group.attachSignal(signal1);
 
       group.attachSignalByName('mySignal', signal1);
       group.attachSignalByName('mySignal', signal2);
@@ -784,7 +805,12 @@ describe('SignalGroup', () => {
       const signal2 = createSignal(2);
       const signal3 = createSignal(3);
 
-      // Attach three signals with the same name
+      // Attach three signals with the same name. signal1 and signal2 are
+      // additionally attached explicitly, so a rebind does not drop them from
+      // the group (MEM-003) and they stay fallback candidates.
+      group.attachSignal(signal1);
+      group.attachSignal(signal2);
+
       group.attachSignalByName('mySignal', signal1);
       group.attachSignalByName('mySignal', signal2);
       group.attachSignalByName('mySignal', signal3);
@@ -814,9 +840,10 @@ describe('SignalGroup', () => {
       const group = SignalGroup.findOrCreate({});
       const signal = createSignal(1);
 
-      // Re-attaching the same (name, signal) must not accumulate duplicates,
-      // so a single detachSignal() fully removes it. Before the fix this would
-      // leak: the otherSignals list kept 100 entries.
+      // Binding the same (name, signal) pair again is idempotent — the
+      // bookkeeping behind a name is a Set keyed by signal — so however often
+      // the pair was bound, one detachSignal() has to remove the name for
+      // good, with no fallback candidate left over.
       for (let i = 0; i < 100; i++) {
         group.attachSignalByName('mySignal', signal);
       }
@@ -1041,6 +1068,252 @@ describe('SignalGroup', () => {
       group!.clear();
 
       assertSignalsCount(0, 'signal destroyed with group');
+    });
+  });
+
+  describe('cyclic group graphs (BUG-002)', () => {
+    it('attachGroup() rejects a direct cycle', () => {
+      const a = SignalGroup.findOrCreate({});
+      const b = SignalGroup.findOrCreate({});
+
+      a.attachGroup(b);
+
+      expect(() => b.attachGroup(a)).toThrow(/cycle/i);
+
+      // the rejected call must not have changed the graph
+      const signal = createSignal(42);
+      b.attachSignal(signal);
+
+      expect(() => a.clear()).not.toThrow();
+
+      assertSignalsCount(0, 'child group was cleared with its parent');
+    });
+
+    it('attachGroup() rejects a transitive cycle', () => {
+      const a = SignalGroup.findOrCreate({});
+      const b = SignalGroup.findOrCreate({});
+      const c = SignalGroup.findOrCreate({});
+
+      a.attachGroup(b);
+      b.attachGroup(c);
+
+      expect(() => c.attachGroup(a)).toThrow(/cycle/i);
+
+      expect(() => a.clear()).not.toThrow();
+    });
+
+    it('attachGroup() still allows re-parenting a group below a former sibling', () => {
+      const root = SignalGroup.findOrCreate({});
+      const a = SignalGroup.findOrCreate({});
+      const b = SignalGroup.findOrCreate({});
+
+      root.attachGroup(a);
+      root.attachGroup(b);
+
+      // b is not an ancestor of a — no cycle, must be allowed
+      expect(() => b.attachGroup(a)).not.toThrow();
+
+      root.clear();
+    });
+
+    it('clear() does not recurse when a DESTROY listener clears the same group', () => {
+      const subscriptions = subscriptionSnapshot();
+
+      const obj = {};
+      const group = SignalGroup.findOrCreate(obj);
+      const source = createSignal(42, {attach: obj});
+      const target = createSignal(0, {attach: obj});
+
+      createEffect(() => source.get(), {attach: obj});
+      link(source, target, {attach: obj});
+
+      on(group, DESTROY, () => {
+        group.clear();
+      });
+
+      expect(() => group.clear()).not.toThrow();
+
+      assertSignalsCount(0, 'group was fully cleared');
+      assertEffectsCount(0, 'group was fully cleared');
+      assertLinksCount(0, 'group was fully cleared');
+      expect(subscriptionSnapshot()).toEqual(subscriptions);
+    });
+
+    it('off() does not recurse when an OFF listener calls off() again', () => {
+      const subscriptions = subscriptionSnapshot();
+
+      const obj = {};
+      const group = SignalGroup.findOrCreate(obj);
+      const source = createSignal(42, {attach: obj});
+      const target = createSignal(0, {attach: obj});
+
+      createEffect(() => source.get(), {attach: obj});
+      link(source, target, {attach: obj});
+
+      let offCount = 0;
+      on(group, OFF, () => {
+        offCount += 1;
+        group.off();
+      });
+
+      expect(() => group.off()).not.toThrow();
+      expect(offCount).toBe(1);
+
+      assertEffectsCount(0, 'off() destroyed the attached effect');
+      assertLinksCount(0, 'off() destroyed the attached link');
+      assertSignalsCount(2, 'off() keeps the signals');
+
+      group.clear();
+
+      assertSignalsCount(0, 'clear() destroyed the signals');
+      expect(subscriptionSnapshot()).toEqual(subscriptions);
+    });
+  });
+
+  describe('named signal bookkeeping (MEM-003)', () => {
+    it('rebinding a name destroys the signal it displaces', () => {
+      const subscriptions = subscriptionSnapshot();
+
+      const group = SignalGroup.findOrCreate({});
+      const signals: ReturnType<typeof createSignal>[] = [];
+
+      for (let i = 0; i < 500; i++) {
+        const signal = createSignal(i);
+        signals.push(signal);
+        group.attachSignalByName('slot', signal);
+      }
+
+      expect(group.signal('slot')).toBe(signals[499]);
+
+      // The name was the group's only hold on each of them, so the 499
+      // displaced ones are gone — not merely detached and left to rot.
+      assertSignalsCount(1, 'only the currently bound signal is left');
+
+      group.clear();
+
+      assertSignalsCount(0, 'the last one goes with the group');
+      expect(subscriptionSnapshot()).toEqual(subscriptions);
+    });
+
+    it('attachSignalByName(name, undefined) releases the signals held under that name', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(42);
+
+      group.attachSignalByName('slot', signal);
+      group.attachSignalByName('slot');
+
+      expect(group.hasSignal('slot')).toBe(false);
+      assertSignalsCount(0, 'name gone, signal gone');
+
+      group.clear();
+    });
+
+    it('attachSignalByName(name, undefined) keeps an explicitly attached signal', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(42);
+
+      group.attachSignal(signal);
+      group.attachSignalByName('slot', signal);
+
+      group.attachSignalByName('slot');
+
+      expect(group.hasSignal('slot')).toBe(false);
+      assertSignalsCount(
+        1,
+        'the group still owns the signal, it just lost its name',
+      );
+
+      group.clear();
+
+      assertSignalsCount(0, 'and destroys it on clear()');
+    });
+
+    it('attachSignalByName(name, undefined) leaves the other names of a signal alone', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(42);
+
+      group.attachSignalByName('a', signal);
+      group.attachSignalByName('b', signal);
+
+      group.attachSignalByName('a');
+
+      expect(group.hasSignal('a')).toBe(false);
+      expect(group.signal('b')).toBe(signal);
+      assertSignalsCount(1, 'still reachable under its other name');
+
+      group.clear();
+
+      assertSignalsCount(0, 'destroyed with the group');
+    });
+
+    it('a named memo recreated on every effect rerun does not pile up signals', () => {
+      const subscriptions = subscriptionSnapshot();
+
+      const obj = {};
+      const trigger = createSignal(0);
+
+      createEffect(
+        () => {
+          trigger.get();
+          createMemo(() => 1, {attach: obj, name: 'memo'});
+        },
+        {attach: obj},
+      );
+
+      for (let i = 1; i <= 5; i++) {
+        trigger.set(i);
+      }
+
+      // One memo signal per rerun, all bound to the same name: the previous
+      // one is unreachable the moment the next one takes the name.
+      assertSignalsCount(2, 'trigger plus the memo signal of the last run');
+
+      SignalGroup.get(obj)!.clear();
+      trigger.destroy();
+
+      assertSignalsCount(0, 'nothing left behind');
+      assertEffectsCount(0, 'nothing left behind');
+      expect(subscriptionSnapshot()).toEqual(subscriptions);
+    });
+
+    it('a rebind keeps a signal that is also bound under another name', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(1);
+      const other = createSignal(2);
+
+      group.attachSignalByName('a', signal);
+      group.attachSignalByName('b', signal);
+
+      group.attachSignalByName('a', other);
+
+      expect(group.signal('a')).toBe(other);
+      expect(group.signal('b')).toBe(signal);
+
+      group.clear();
+
+      assertSignalsCount(0, 'both signals are still owned by the group');
+    });
+
+    it('a rebind keeps a signal that was attached explicitly', () => {
+      const group = SignalGroup.findOrCreate({});
+      const signal1 = createSignal(1);
+      const signal2 = createSignal(2);
+
+      group.attachSignal(signal1);
+      group.attachSignalByName('slot', signal1);
+      group.attachSignalByName('slot', signal2);
+
+      expect(group.signal('slot')).toBe(signal2);
+
+      // explicitly attached signals stay group-owned and remain fallback
+      // candidates for the name
+      group.detachSignal(signal2);
+      expect(group.signal('slot')).toBe(signal1);
+
+      signal2.destroy();
+      group.clear();
+
+      assertSignalsCount(0, 'signal1 destroyed with the group');
     });
   });
 });

@@ -119,10 +119,13 @@ SignalGroup.clear();                        // global
 getSignalGroupsCount();                     // live group count
 
 g.attachSignal(s); g.attachSignalByName('n', s);
+g.attachSignalByName('n', s2);  // rebind: destroys s unless attachSignal'd/other name
+g.attachSignalByName('n');      // releases the name the same way
 g.detachSignal(s); g.signal('n'); g.hasSignal('n');
 g.attachEffect(e); g.runEffects();
 g.attachLink(l);   g.detachLink(l);
-g.attachGroup(c);  g.detachGroup(c);
+g.attachGroup(c);  // throws on self or on a descendant
+g.detachGroup(c);
 g.off();    // destroy attached effects/links, drop external subs, keep signals
 g.clear();  // full teardown
 ```

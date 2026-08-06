@@ -377,16 +377,21 @@ firing is non-deterministic — explicit cleanup remains preferred.
 | Method                                  | Purpose                                                                |
 | --------------------------------------- | ---------------------------------------------------------------------- |
 | `attachSignal(sig)`                     | Add a signal; group destroys it on `clear()`.                          |
-| `attachSignalByName(name, sig?)`        | Add and register a name. Pass `undefined` to drop the name only.       |
+| `attachSignalByName(name, sig?)`        | Add and register a name. The name is the group's only hold on the signal unless `attachSignal()` was called for it too — so rebinding the name **destroys** the signal it displaces. Exempt: signals held by another name, and explicitly attached ones. Passing `undefined` releases the name the same way. |
 | `detachSignal(sig)`                     | Remove a signal (does **not** destroy it).                             |
 | `hasSignal(name)`                       | Lookup walks parent chain.                                             |
 | `signal<T>(name)`                       | Returns the named `Signal<T>` (parent fallback) or `undefined`.        |
 | `attachEffect(eff)` / `runEffects()`    | Track an effect / run all attached and child effects.                  |
 | `attachLink(link)` / `detachLink(link)` | Track / untrack a link.                                                |
-| `attachGroup(child)` / `detachGroup(child)` | Nest groups.                                                       |
+| `attachGroup(child)` / `detachGroup(child)` | Nest groups. `attachGroup()` throws when the edge would create a cycle — attaching a group to itself, or to one of its own descendants. |
 | `off()`                                 | Destroy attached effects/links and drop all external subscriptions on group signals; signals stay alive, the group remains reusable. Child groups are `off()`'d recursively. Emits an `OFF` event. |
 | `clear()`                               | Destroy all attached signals / effects / links and child groups, detach from parent, remove from registry. |
 | `destroy()`                             | **Deprecated.** Use `clear()`.                                         |
+
+The five walks over the group graph — `hasSignal()`, `signal()`, `runEffects()`,
+`off()`, `clear()` — refuse to re-enter a group they are already walking. A
+`DESTROY` listener that calls `clear()` again, or an `OFF` listener calling
+`off()`, gets a no-op instead of a blown stack.
 
 ---
 

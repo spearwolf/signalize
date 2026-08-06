@@ -192,6 +192,19 @@ g.off();            // destroy attached effects/links, drop external subs, KEEP 
 g.clear();          // full teardown
 ```
 
+Binding a name transfers ownership: unless `attachSignal()` was called for the
+signal too, the name is the group's only hold on it. Rebinding the name
+(`attachSignalByName('n', other)`) therefore **destroys** the signal it
+displaces, and `attachSignalByName('n')` without a signal releases the name the
+same way. A signal that is also bound under another name survives; one that was
+explicitly attached survives *and* stays group-owned, losing only the name.
+
+`attachGroup()` throws when the edge would create a cycle: a group cannot be
+attached to itself or to one of its own descendants. The recursive walks
+(`hasSignal`, `signal`, `runEffects`, `off`, `clear`) additionally refuse to
+re-enter a group they are already walking, so a `DESTROY` listener calling
+`clear()` again is a no-op rather than a stack overflow.
+
 The registry is a `WeakMap<object, SignalGroup>` and the back-pointer to the host object is a `WeakRef` — attaching a group does **not** keep the host object alive.
 
 A group created against a host object is also registered with a `FinalizationRegistry`; if that object becomes unreachable without an explicit `SignalGroup.delete(obj)` / `group.clear()`, the callback runs `clear()`. Self-keyed groups (`object === this`) are not registered. FR timing is non-deterministic — see pitfall 16a.

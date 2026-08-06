@@ -1,8 +1,10 @@
+import {on} from '@spearwolf/eventize';
 import {
   assertEffectsCount,
   assertLinksCount,
   assertSignalsCount,
 } from './assert-helpers.js';
+import {DESTROY} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {getSignalGroupsCount, SignalGroup} from './SignalGroup.js';
@@ -90,6 +92,31 @@ gcDescribe('SignalGroup GC behavior (requires --expose-gc)', () => {
     expect(getSignalGroupsCount()).toBe(baselineGroups);
     assertSignalsCount(0, 'after FR cleanup');
     assertEffectsCount(0, 'after FR cleanup');
+  });
+
+  it('FinalizationRegistry survives a group whose DESTROY listener re-enters clear()', async () => {
+    const baselineGroups = getSignalGroupsCount();
+
+    let host: object | null = {marker: 'fr-reentrant-clear'};
+
+    const group = SignalGroup.findOrCreate(host);
+    group.attachSignal(createSignal(1, {attach: host}));
+
+    // Re-entering clear() from a DESTROY listener used to recurse until the
+    // stack gave out. From the FR callback that RangeError is uncatchable for
+    // application code and takes the whole process down (BUG-002).
+    on(group, DESTROY, () => {
+      group.clear();
+    });
+
+    host = null;
+
+    for (let i = 0; i < 20 && getSignalGroupsCount() > baselineGroups; i += 1) {
+      await forceGc();
+    }
+
+    expect(getSignalGroupsCount()).toBe(baselineGroups);
+    assertSignalsCount(0, 'after FR cleanup with re-entrant clear');
   });
 
   it('explicit clear() unregisters from FinalizationRegistry (no double-fire)', async () => {

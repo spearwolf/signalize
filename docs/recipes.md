@@ -359,8 +359,55 @@ root.attachGroup(child);
 child.signal('theme');     // → falls through to root's 'theme'
 ```
 
-Named lookup walks the parent chain. `attachSignalByName(name, undefined)`
-drops the name binding only.
+Named lookup walks the parent chain.
+
+### Binding a name transfers ownership
+
+Unless you also call `attachSignal()`, the name is the group's *only* hold on
+the signal. Rebinding the name — the swap-a-slot case — therefore destroys the
+signal it displaces:
+
+```ts
+root.attachSignalByName('theme', createSignal('light'));  // the old one is destroyed
+root.attachSignalByName('theme');                         // so is this one
+```
+
+Two exemptions: a signal still bound under another name stays alive, and a
+signal that was additionally handed to `attachSignal()` stays alive *and*
+group-owned — it only loses the name, and `clear()` still destroys it.
+
+Keep a signal past a rebind by attaching it explicitly **to the same group**:
+
+```ts
+root.attachSignal(mine);
+root.attachSignalByName('theme', mine);
+root.attachSignalByName('theme', other);   // `mine` survives
+```
+
+The exemption is group-local, and destruction is not: a signal owned by group A
+carries no protection into group B. Give B a name for it and B's next rebind
+destroys it globally — A keeps a dead signal it still believes it owns. This is
+reachable whenever a signal is created against one group and named in another:
+
+```ts
+const s = createSignal(0, {attach: componentA});   // A owns it
+SignalGroup.findOrCreate(componentB)
+  .attachSignalByName('shared', s);                 // B may now destroy it
+```
+
+Do not register a foreign-owned signal under a name in a second group. Reach it
+through the owning group, or hand the second group its own signal and `link()`
+the two.
+
+That is also the only case in which the `detachSignal()` fallback still fires:
+detaching the active signal of a name reverts to the most recently attached
+remaining candidate, and after the pruning above the only candidates left are
+explicitly attached signals. It is a corner, not the normal course.
+
+### Cycles
+
+`attachGroup()` refuses to close a cycle: attaching a group to itself, or to
+one of its own descendants, throws.
 
 ## Links: data flow
 
