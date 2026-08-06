@@ -343,4 +343,43 @@ describe('EffectImpl.destroy() teardown order', () => {
 
     destroySignal(a, b);
   });
+
+  describe('Effect#onDestroy() (internal)', () => {
+    it('returns an unsubscribe function that cancels the subscription', () => {
+      const a = createSignal(0);
+      const onDestroyed = vi.fn();
+
+      const effect = createEffect(() => {
+        a.get();
+      });
+
+      const unsubscribe = effect.onDestroy(onDestroyed);
+      expect(typeof unsubscribe).toBe('function');
+
+      unsubscribe();
+      effect.destroy();
+
+      expect(onDestroyed).not.toHaveBeenCalled();
+
+      destroySignal(a);
+    });
+
+    it('runs the callback right away and returns a no-op when the effect is already gone', () => {
+      const a = createSignal(0);
+      const onDestroyed = vi.fn();
+
+      const effect = createEffect(() => {
+        a.get();
+      });
+      effect.destroy();
+
+      const unsubscribe = effect.onDestroy(onDestroyed);
+
+      expect(onDestroyed).toHaveBeenCalledTimes(1);
+      expect(() => unsubscribe()).not.toThrow();
+      expect(onDestroyed).toHaveBeenCalledTimes(1);
+
+      destroySignal(a);
+    });
+  });
 });

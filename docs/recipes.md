@@ -93,11 +93,17 @@ rerun and on `destroy()` — same as under dynamic deps. Only subscribe-on-read
 is suppressed. Use `hibernate()` around the creation if an inner effect is
 meant to outlive its parent.
 
-`createMemo()` in an effect body follows the same rule for its internal effect,
-which means the memo stops recomputing once the parent reruns; its signal
-survives and keeps handing out the last computed value. A memo handle that
-escapes such a callback is a frozen constant. Create memos outside the effect,
-or attach them to a group.
+`createMemo()` in an effect body follows the same child-effect rule for its
+internal effect: it is a child and dies with the parent, so the memo stops
+recomputing. Without `{attach}`, its signal now dies right along with it —
+a memo handle that escapes such a callback reads a destroyed signal, still
+usable since destroyed signals keep handing out the last value they held, so
+it reads as a frozen constant. With `{attach}`, the group owns the signal
+instead and it survives — but the memo's internal effect is *still* a child
+of the parent and still dies on every rerun, so an attached memo also freezes,
+just without losing the signal. `{attach}` is not an escape hatch for a live
+memo, only for its last value; `hibernate()` around the creation is the only
+way to keep the memo itself recomputing past the parent's rerun.
 
 When `attach` is set, static deps may be names (`string | symbol`); they are
 resolved against the attached group.

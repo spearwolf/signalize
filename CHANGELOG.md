@@ -19,6 +19,11 @@
 - A cleanup callback that throws no longer leaves the effect half-destroyed — child effects, subscriptions and `getEffectsCount()` are settled either way, and the error still reaches the caller
 - A child effect whose cleanup throws no longer aborts the destruction of its siblings. They used to survive their parent as zombies — still subscribed, still reacting to signal writes
 - `Effect.destroy()` reports every failing cleanup instead of only the last one. Several errors (own cleanup plus a child's, or several children's) arrive as an `AggregateError` in teardown order; a single error is rethrown unchanged
+- `createMemo()` called inside an effect body, without `{attach}`, no longer leaks its internal signal on every rerun. The memo's internal effect was already destroyed as a child effect (MEM-001), but the memo signal itself lived on unreachable and uncounted; it is now destroyed together with that effect (MEM-005)
+- An effect no longer destroys itself mid-run when its dependencies vanish while it is rebuilding them — the verdict "nothing can trigger me anymore" is postponed to the end of the outermost run and re-checked there
+- An effect whose only dependencies are memos it creates in its own body therefore keeps rerunning; it used to stop firing after the first change and leave a zombie effect behind
+- An effect that really did lose every dependency still dies, one run later than before
+- An error thrown by a cleanup during that deferred teardown goes to `onEffectError()` with `phase: 'cleanup'` instead of surfacing at whoever wrote the signal
 
 ### Chores
 

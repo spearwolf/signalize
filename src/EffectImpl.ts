@@ -199,7 +199,31 @@ export class EffectImpl {
 
   #destroyed = false;
 
+  /**
+   * Whether `destroy()` has already run.
+   *
+   * Exposed so a caller that missed the synchronous window for subscribing
+   * to `DESTROY` — the effect died during its own construction, before
+   * control returned to them — can tell "already gone" apart from "still
+   * alive" instead of registering a `once` that will never fire. See
+   * `Effect#onDestroy()`.
+   */
+  get destroyed(): boolean {
+    return this.#destroyed;
+  }
+
   #runDepth = 0;
+
+  /**
+   * Set when the `[$destroySignal]` handler found nothing left that could
+   * trigger this effect *while a run was in progress* — see
+   * {@link destroyWhenUntriggerable}.
+   *
+   * Consumed at the end of the outermost `run()` — in its `finally`, so a
+   * run that threw settles it too — which re-checks the condition against the
+   * dependency set the callback actually built and only then destroys.
+   */
+  #selfDestroyPending = false;
 
   /**
    * Monotonically increasing run counter, bumped before each callback
@@ -413,6 +437,28 @@ export class EffectImpl {
       }
     } finally {
       this.#runDepth--;
+
+      // Deferred self-destruction — see #selfDestroyPending. In the `finally`
+      // because a run that throws leaves the effect just as unwakeable as one
+      // that returns: skipping the teardown there would strand it in
+      // getEffectsCount() and on the effect queue forever, since the very
+      // condition that set the flag means no further run is coming.
+      //
+      // The teardown gets its own guard so it cannot displace whatever the
+      // run is already propagating. A cleanup that throws during this
+      // destroy() goes to the error channel instead — same treatment an
+      // async cleanup's rejection gets, and for the same reason: there is
+      // nobody left to throw it at.
+      if (this.#runDepth === 0 && this.#selfDestroyPending) {
+        this.#selfDestroyPending = false;
+        if (!this.#destroyed && this.hasNoLiveSignals()) {
+          try {
+            this.destroy();
+          } catch (err) {
+            emitEffectError(this, err, 'cleanup');
+          }
+        }
+      }
     }
   };
 
@@ -478,7 +524,7 @@ export class EffectImpl {
 
       if (this.#signals.size === 0) {
         // no signals left, so nobody can trigger this effect anymore
-        this.destroy();
+        this.destroyWhenUntriggerable();
       }
       return;
     }
@@ -490,9 +536,50 @@ export class EffectImpl {
 
       if (this.#destroyedSignals.size === this.#signals.size) {
         // no signals left, so nobody can trigger this effect anymore
-        this.destroy();
+        this.destroyWhenUntriggerable();
       }
     }
+  }
+
+  /**
+   * Nothing is left that could trigger this effect, so it destroys itself —
+   * but not from inside its own `run()`.
+   *
+   * A running effect is in the middle of rebuilding its dependency set: the
+   * old subscriptions are still listed while the callback has not yet
+   * re-read anything. An emptied set at that moment says nothing about the
+   * effect's future. It happens routinely — an effect whose dependencies are
+   * all self-created (`createMemo()` in the body) sees every one of them
+   * destroyed by `destroyChildEffects()` before the callback runs, and would
+   * otherwise kill itself on its very first rerun, mid-run, with `run()`
+   * carrying on regardless because it checks `#destroyed` only on entry.
+   *
+   * So the verdict is postponed to the end of the outermost run, where it is
+   * re-checked against the dependency set the callback actually built. An
+   * effect that really did lose everything still dies — one run later, not
+   * never.
+   */
+  private destroyWhenUntriggerable(): void {
+    if (this.#runDepth > 0) {
+      this.#selfDestroyPending = true;
+      return;
+    }
+    this.destroy();
+  }
+
+  /**
+   * Whether nothing tracked can wake this effect anymore.
+   *
+   * `#signalSubscriptions` is the honest register for that question — an
+   * entry exists exactly as long as the effect holds a live `RECALL`
+   * subscription for that signal, and both teardown paths
+   * (`[$destroySignal]`, `cleanupLostSignals()`) remove it. `#signals` and
+   * `#destroyedSignals` cannot answer it at the end of a run: the dynamic
+   * branch clears the destroyed-markers there, and a signal destroyed *after*
+   * the callback read it stays listed in `#signals` unsubscribed.
+   */
+  private hasNoLiveSignals(): boolean {
+    return this.#signalSubscriptions.size === 0;
   }
 
   private cleanupLostSignals(): void {
