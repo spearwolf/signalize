@@ -149,11 +149,18 @@ con.lastValue;  con.isMuted;  con.isDestroyed;
 con.mute();  con.unmute();  con.toggleMute();
 con.touch();  con.destroy();  con.attach(obj);
 
-await con.nextValue();
-for await (const v of con.asyncValues((v, i) => i >= 5)) { /* … */ }
+await con.nextValue({signal});                                    // optional AbortSignal; rejects with an Error on destroy, with signal.reason on abort
+for await (const v of con.asyncValues((v, i) => i >= 5, {signal})) { /* … */ }
+// abort throws the signal's reason out of the loop; the link being
+// destroyed ends it quietly instead, same as `stop(value, i) → true`
 ```
 
 A link is an eventize object and emits `'value'`, `'mute'`, `'unmute'`, `'destroy'` on itself.
+
+`asyncValues()` retains only the last propagated value — intermediate values
+between two reads are lost. Several `asyncValues()` iterators over the same
+link share that one retained slot; it's released only once the last of them
+stops, so one finishing early doesn't cut off a still-running sibling.
 
 ## Context modes
 

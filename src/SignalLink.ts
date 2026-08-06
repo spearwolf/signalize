@@ -26,6 +26,29 @@ export abstract class SignalLink<ValueType = any> {
   #unsubscribe?: () => void;
   #attachedGroups?: Set<SignalGroup>;
 
+  // MEM-004: every `once(globalDestroySignalQueue, ...)` subscription this
+  // link registers — one from this constructor, plus one more from
+  // `SignalLinkToSignal`'s own constructor — needs its unsubscribe handle
+  // released in `destroy()`. Without it, the closure (routed through
+  // `selfRef`, so it no longer *pins* the link — see MEM-002 above) stays
+  // subscribed on a permanent module-level queue until the *other* side's
+  // signal is destroyed too, which for a link torn down well before its
+  // signals is never. `destroy()` must run these before `Object.freeze(this)`
+  // (S7: not *because of* the freeze — `Object.freeze(this)` reaches
+  // neither private fields, which live outside the object's own-property
+  // list entirely, nor the array object this field points to, which is a
+  // separate, unfrozen object one hop away; nothing here would stop a push
+  // after the fact). It runs before the freeze because that's simply where
+  // `destroy()`'s one-shot teardown sequence puts it — the guard at the top
+  // of this method (`if (this.isDestroyed) return`) is what actually rules
+  // out a second run pushing anything new.
+  #releaseOnDestroy: (() => void)[] = [];
+
+  // ASYNC-005: how many `asyncValues()` generators are currently iterating
+  // this link. `retainClear(this, VALUE)` in that generator's `finally`
+  // block only runs once this drops back to 0.
+  #activeAsyncValuesCount = 0;
+
   readonly source: ISignalImpl<ValueType>;
 
   lastValue?: ValueType;
@@ -58,9 +81,24 @@ export abstract class SignalLink<ValueType = any> {
       }
     });
 
-    once(globalDestroySignalQueue, this.source.id, () =>
-      selfRef.deref()?.destroy(),
+    this.#releaseOnDestroy.push(
+      once(globalDestroySignalQueue, this.source.id, () =>
+        selfRef.deref()?.destroy(),
+      ),
     );
+  }
+
+  /**
+   * Register an unsubscribe handle (from a `once(globalDestroySignalQueue,
+   * ...)` subscription or similar) to be released in `destroy()`, before
+   * `Object.freeze(this)`. Subclasses that add their own subscriptions on a
+   * permanent global queue (see `SignalLinkToSignal`) go through this
+   * instead of touching the private field directly — private class fields
+   * aren't reachable from a subclass body, only from methods of the class
+   * that declares them.
+   */
+  protected releaseOnDestroy(unsubscribe: () => void) {
+    this.#releaseOnDestroy.push(unsubscribe);
   }
 
   attach(to: object) {
@@ -94,13 +132,92 @@ export abstract class SignalLink<ValueType = any> {
     return group;
   }
 
-  nextValue(): Promise<ValueType> {
+  /**
+   * Resolves on the next value propagated through this link, or rejects
+   * with an `Error` if the link is destroyed first.
+   *
+   * `options.signal` — an `AbortSignal` — rejects (and unsubscribes) early:
+   * an already-aborted signal rejects immediately, without waiting for the
+   * next value or a destroy.
+   *
+   * Deliberately a hand-rolled `Promise` rather than eventize's own
+   * `onceAsync(obj, name, {signal})` (which does support an `AbortSignal`
+   * out of the box, and — despite taking a single `eventName` parameter
+   * here — does accept an array of names, so watching both `VALUE` and
+   * `DESTROY` in one call isn't the blocker). What `onceAsync` can't do is
+   * tell the two apart: it always *resolves*, with whichever event's first
+   * argument arrived — `VALUE`'s value or `DESTROY`'s payload (`this`, the
+   * link itself). A `VALUE` of `this` is exactly the value a link carrying
+   * itself would propagate, so a `result === this` check to tell "resolved
+   * because of DESTROY" from "resolved because of VALUE" is not reliable.
+   * `DESTROY` needs to *reject* here, and `onceAsync` has no way to make
+   * one name in its list do that while another resolves.
+   */
+  nextValue(options?: {signal?: AbortSignal}): Promise<ValueType> {
+    const {signal} = options ?? {};
+
     return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(signal.reason);
+        return;
+      }
+
+      // A link destroyed before this call even started never emits DESTROY
+      // again (destroy() is a one-shot; off(this) already ran) — without
+      // this guard the promise below would simply hang forever, and its
+      // VALUE/DESTROY subscriptions would sit on the dead link permanently
+      // (only an {signal} would ever pull the caller back out). Same
+      // rejection as the "destroyed while pending" path below; from the
+      // caller's side there is no meaningful difference between the two.
+      if (this.isDestroyed) {
+        reject(new Error('SignalLink destroyed before the next value arrived'));
+        return;
+      }
+
       const subscriptions: (() => void)[] = [];
       const unsubscribe = () =>
         subscriptions.forEach((unsub) => {
           unsub();
         });
+
+      // K1: DESTROY and the abort listener are subscribed *before* VALUE,
+      // and each is pushed onto `subscriptions` immediately, not batched
+      // into one `push()` call after all three exist. Reason: eventize
+      // replays a *retained* event synchronously, inside the `once()` call
+      // itself, before that call returns — and `asyncValues()` retains
+      // VALUE (ASYNC-005). If VALUE were subscribed first, its own replay
+      // could run before `subscriptions` holds anything else at all —
+      // including the not-yet-registered DESTROY/abort handles — so the
+      // `unsubscribe()` it calls would walk an empty array and release
+      // nothing, leaking the other two for however long `this` and the
+      // caller's `AbortSignal` live. DESTROY is never retained, and
+      // `addEventListener('abort', ...)` cannot fire synchronously on
+      // registration, so subscribing them first is both safe and
+      // sufficient — VALUE is the only one of the three that can go off
+      // inline, right here, and only it needs everything else in place
+      // first.
+      subscriptions.push(
+        once(this, DESTROY, () => {
+          unsubscribe();
+          reject(
+            new Error('SignalLink destroyed before the next value arrived'),
+          );
+        }),
+      );
+
+      if (signal != null) {
+        const onAbort = () => {
+          unsubscribe();
+          reject(signal.reason);
+        };
+        signal.addEventListener('abort', onAbort, {once: true});
+        // Also part of `unsubscribe()`: whichever of VALUE/DESTROY/abort
+        // settles the promise first must detach the *other* listeners too,
+        // this one included — otherwise a `nextValue()` that resolves
+        // normally leaves its abort listener on the caller's `AbortSignal`
+        // for as long as that signal lives (ASYNC-004).
+        subscriptions.push(() => signal.removeEventListener('abort', onAbort));
+      }
 
       subscriptions.push(
         // we can not just use 'once' here because the value is retained
@@ -108,31 +225,84 @@ export abstract class SignalLink<ValueType = any> {
           unsubscribe();
           resolve(val);
         }),
-        once(this, DESTROY, () => {
-          unsubscribe();
-          reject();
-        }),
       );
     });
   }
 
+  /**
+   * An `AsyncIterable` of values propagated through this link. Stops when
+   * `stopAction(value, index)` returns `true`, or when the link is
+   * destroyed — in both cases the loop simply ends, `for await` sees a
+   * normal completion.
+   *
+   * `options.signal` — an `AbortSignal`, forwarded to every internal
+   * `nextValue()` call — makes an *aborted* iteration end differently: it
+   * **throws** the abort reason out of the loop instead of ending quietly.
+   * That is deliberate, not an oversight: destroy is this link's own
+   * lifecycle, expected and unremarkable; abort is the caller cancelling
+   * their own wait from the outside, and swallowing that silently would
+   * make a signalled cancellation indistinguishable from `stopAction`
+   * returning `true` on its own.
+   *
+   * Retains only the **last** propagated value (a sampler, not a lossless
+   * stream) — a value that arrives between two reads of a slow consumer is
+   * lost, same as a single `retain()`'d event anywhere else. Several
+   * `asyncValues()` iterators may run over the same link concurrently; they
+   * share that one retained slot, released only once the *last* active
+   * iterator stops (ASYNC-005) — an iterator finishing early must not cut a
+   * still-running sibling off from the next value.
+   *
+   * Caveat shared with every JS async generator, not specific to this one:
+   * the `finally` block below — where the iterator count is decremented —
+   * only runs if the generator is driven to completion or explicitly closed
+   * (`.return()`, `.throw()`, or the implicit `.return()` a `for await`
+   * loop issues on `break`/an exception). A caller that calls `.next()` a
+   * few times and then simply drops the generator without closing it takes
+   * this link's retained-value bookkeeping down with it: the count never
+   * comes back to 0, so `retainClear()` never runs again for this link.
+   * There is no fix within the iterator protocol itself; the caller closing
+   * what it opens is the contract, same as any other manually-driven
+   * iterator.
+   */
   async *asyncValues(
     stopAction?: (value: ValueType, index: number) => boolean,
+    options?: {signal?: AbortSignal},
   ) {
     retain(this, VALUE);
+    this.#activeAsyncValuesCount += 1;
     try {
       let i = 0;
       while (!this.isDestroyed) {
         try {
-          const next = await this.nextValue();
+          const next = await this.nextValue(options);
           if (stopAction?.(next, i++)) break;
           yield next;
-        } catch {
+        } catch (err) {
+          // S9: distinguish *why* nextValue() rejected, and rethrow only
+          // for an actual abort. `options.signal?.aborted` alone answers
+          // "was this signal ever aborted", not "did *this* rejection come
+          // from that abort" — a destroy() and an abort() landing in the
+          // same synchronous block (a teardown calling both, e.g. an
+          // unmount that also cancels its own controller) would otherwise
+          // have the destroy-driven rejection misread as an abort, purely
+          // because the signal happens to be aborted *now*, one line later.
+          // Both of `nextValue()`'s abort paths (already-aborted, aborted
+          // while pending) reject with exactly `signal.reason`; the destroy
+          // path rejects with its own freshly constructed `Error`. Matching
+          // the rejection itself against `signal.reason` is what actually
+          // ties this rethrow to *this* rejection's cause instead of the
+          // signal's current state.
+          if (options?.signal?.aborted && err === options.signal.reason) {
+            throw err;
+          }
           break;
         }
       }
     } finally {
-      retainClear(this, VALUE);
+      this.#activeAsyncValuesCount -= 1;
+      if (this.#activeAsyncValuesCount === 0) {
+        retainClear(this, VALUE);
+      }
     }
   }
 
@@ -141,6 +311,28 @@ export abstract class SignalLink<ValueType = any> {
 
     this.#unsubscribe?.();
     this.#unsubscribe = undefined;
+
+    // MEM-004: release every globalDestroySignalQueue subscription this
+    // link (and its subclass, if any) registered. Safe to call even for an
+    // obligation that already fired and self-removed (e.g. this destroy()
+    // run *is* the callback from one of them) — eventize's once() handles
+    // are inert once their obligation is settled.
+    //
+    // S6: one throwing handle must not skip releasing the rest, nor skip
+    // the teardown steps below — a half-destroyed link (still subscribed on
+    // globalSignalQueue, DESTROY never emitted, never frozen) is worse than
+    // a rethrown error once everything else is done. Same shape as
+    // `EffectImpl.destroy()`'s cleanup collection: gather, keep going,
+    // report at the end.
+    const releaseErrors: unknown[] = [];
+    for (const unsubscribe of this.#releaseOnDestroy) {
+      try {
+        unsubscribe();
+      } catch (err) {
+        releaseErrors.push(err);
+      }
+    }
+    this.#releaseOnDestroy.length = 0;
 
     emit(this, DESTROY, this);
     retainClear(this, VALUE);
@@ -151,6 +343,16 @@ export abstract class SignalLink<ValueType = any> {
     this.isDestroyed = true;
 
     Object.freeze(this);
+
+    if (releaseErrors.length === 1) {
+      throw releaseErrors[0];
+    }
+    if (releaseErrors.length > 1) {
+      throw new AggregateError(
+        releaseErrors,
+        `[signalize] ${releaseErrors.length} errors while releasing SignalLink destroy-queue subscriptions`,
+      );
+    }
   }
 
   get isMuted(): boolean {
@@ -206,8 +408,10 @@ export class SignalLinkToSignal<ValueType = any> extends SignalLink<ValueType> {
     // through it `source`/`target` — for the process lifetime, same as the
     // base class's two subscriptions did before they were fixed.
     const selfRef = new WeakRef(this);
-    once(globalDestroySignalQueue, this.target.id, () =>
-      selfRef.deref()?.destroy(),
+    this.releaseOnDestroy(
+      once(globalDestroySignalQueue, this.target.id, () =>
+        selfRef.deref()?.destroy(),
+      ),
     );
     this.touch();
   }

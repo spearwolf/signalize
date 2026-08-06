@@ -286,11 +286,34 @@ Total link count, or count for a single source.
 | `touch()`               | Force one propagation of the current value.                              |
 | `attach(obj)`           | Attach to the group of `obj` for cleanup. Idempotent — attaching the same group again is a no-op, it does not register a second cleanup listener. |
 | `destroy()`             | Drop the link and free subscriptions.                                    |
-| `nextValue()`           | `Promise<T>` that resolves on the next propagation, rejects on destroy.  |
-| `asyncValues(stop?)`    | `AsyncIterable<T>` of propagated values; stops on `stop(value, i) → true` or destroy. |
+| `nextValue(options?)`   | `Promise<T>` that resolves on the next propagation, rejects with an `Error` if the link is destroyed first. |
+| `asyncValues(stop?, options?)` | `AsyncIterable<T>` of propagated values; stops on `stop(value, i) → true` or destroy. |
 
 The link is destroyed automatically when `source` or `target` (if it's a
 signal) is destroyed.
+
+### `nextValue(options?)` / `asyncValues(stop?, options?)`
+
+`options.signal` — an `AbortSignal` — aborts the wait: an already-aborted
+signal rejects immediately, and one that aborts while a value is pending
+rejects at that point, with the signal's `reason`. `asyncValues()` forwards
+the same `options` to every internal `nextValue()` call, but does **not**
+end the same way `nextValue()` does: an abort makes the loop **throw** the
+abort reason out of the `for await`, instead of ending it quietly. The link
+being destroyed still ends the loop quietly, same as `stop(value, i) →
+true` — only an externally requested abort is meant to be distinguishable
+from a normal stop.
+
+A link destroyed while a `nextValue()` is pending rejects with
+`Error('SignalLink destroyed before the next value arrived')` — not
+`undefined` — so a `catch` block has something to inspect.
+
+`asyncValues()` only ever holds the **last** propagated value — it is a
+sampler, not a lossless stream. Several `asyncValues()` iterators can run
+over the same link concurrently; they share that one retained slot, and it
+is only released once the *last* of them stops (finishes, breaks, or is
+`.return()`ed) — an earlier one finishing does not cut a still-running
+sibling off from the next value.
 
 **Events** (eventize) emitted on the link object: `'value'`, `'mute'`,
 `'unmute'`, `'destroy'`.

@@ -391,7 +391,19 @@ log.unmute();
   ```
 
 - `nextValue()` and `asyncValues()` integrate with `for await` loops; useful
-  for testing and for one-shot waits.
+  for testing and for one-shot waits. Both take an optional `{signal}`
+  (`AbortSignal`) to cancel the wait without destroying the link. `nextValue()`
+  rejects with an `Error` — not `undefined` — if the link is destroyed first,
+  and with the signal's `reason` if aborted first. `asyncValues()` treats the
+  two differently: the link being destroyed ends its loop quietly, same as
+  `stop(value, i) → true`, but an abort **throws** the reason out of the
+  `for await` instead — a cancellation the caller asked for should not look
+  like a normal stop.
+- `asyncValues()` retains only the most recent value; a slow consumer misses
+  whatever arrived between two of its reads. Running several `asyncValues()`
+  iterators over the same link is fine — they share that one retained slot,
+  and it's cleared only once the last iterator stops, so an early-finishing
+  one doesn't starve the others.
 
 ## SignalAutoMap with destroyed entries
 

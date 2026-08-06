@@ -61,7 +61,12 @@ describe('link.nextValue', () => {
 
     con.destroy();
 
-    await expect(nextValue).rejects.toBeUndefined();
+    // ASYNC-004: a destroyed-while-pending nextValue() rejects with an
+    // Error, not `undefined` — a caller catching it gets a message and a
+    // stack instead of an unidentifiable rejection reason.
+    await expect(nextValue).rejects.toThrow(
+      'SignalLink destroyed before the next value arrived',
+    );
 
     assertLinksCount(0, 'link(getA, b) - after destruction');
 
