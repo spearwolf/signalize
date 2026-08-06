@@ -49,6 +49,10 @@
 - `SignalGroup.attachSignalByName(name, undefined)` releases the name the same way instead of only deleting the lookup entry. The name used to read as gone while every signal ever bound to it stayed attached and was destroyed by the next `clear()` (MEM-003)
 - `createMemo(fn, {attach, name})` called in an effect body no longer leaves one dead memo signal per rerun in the group. The memo's internal effect dies as a child effect, but its signal was reachable only through the name the next rerun rebinds — it is now destroyed at that point (MEM-003, follow-up to MEM-005)
 
+### Documentation
+
+- Documented the condition under which automatic `SignalGroup` cleanup via `FinalizationRegistry` cannot fire: when an attached signal's value holds a reference to the user object, creating a strong reference cycle. For `@signal accessor` fields storing a reference to `this`, explicit `SignalGroup.delete()` or `group.clear()` in a destructor remains the reliable cleanup path (MEM-006)
+
 ### Chores
 
 - Removed the child-effect slot-recycling machinery from `EffectImpl` (`curChildEffectSlot`, `getCurrentChildEffect()`). It was unreachable — `run()` clears the child list before every callback — and suggested an optimization that never existed. `childEffects` is a plain list now; behaviour is unchanged (IMP-001)

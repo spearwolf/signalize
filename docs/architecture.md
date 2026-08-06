@@ -107,6 +107,15 @@ groups. Clearing a group destroys everything in it.
   `group.clear()` (the older `destroy()` is deprecated and warns).
 - Groups can nest via `attachGroup()`. Named signal lookup
   (`group.signal(name)`) walks up the parent chain.
+- **Automatic cleanup via `FinalizationRegistry`:** When the user object
+  becomes unreachable, a registry callback invokes `group.clear()`. This
+  requires that no strong reference path from the group back to the object
+  exists. However, an attached signal whose value holds a reference to the
+  object creates exactly such a path — the group holds the signal, the signal
+  holds the value. In this case, the object is never reclaimed and the callback
+  never fires. For `@signal accessor` fields storing a reference to `this`,
+  this is the normal pattern. Explicit `SignalGroup.delete(obj)` or
+  `group.clear()` in cleanup remains the reliable path.
 
 ## Decorators
 
@@ -116,6 +125,10 @@ TC39 standard form (`accessor` keyword, stage-3 semantics).
 - Each instance of a decorated class implicitly owns a `SignalGroup` keyed by
   the instance — destroying the group via `SignalGroup.delete(instance)` or
   `destroyObjectSignals(instance)` cleans up.
+- When a decorated field holds a reference to the instance (e.g.
+  `@signal() accessor self = this`), automatic cleanup via `FinalizationRegistry`
+  cannot fire (see "Automatic cleanup" above). Explicit cleanup in a destructor
+  or dispose method is required.
 - There is no memo decorator; a class-bound derived value is a
   `createMemo(..., {attach: this})` in the class body.
 

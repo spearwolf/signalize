@@ -376,8 +376,12 @@ class Player {
 - `WeakMap` registry: the group does not keep `this` alive; once `this` is
   unreachable, the registry slot can be reclaimed.
 - A `FinalizationRegistry` runs `clear()` on the orphaned group when the user
-  object is GC'd — best-effort, non-deterministic; explicit cleanup is still
-  the right pattern.
+  object is GC'd — **but only if no strong reference path from the group back
+  to the object exists**. An attached signal whose value holds a reference to
+  the object, or an effect whose callback closure captures it, creates such a
+  path and prevents the callback from firing. Explicit `SignalGroup.delete(this)`
+  or `group.clear()` remains the reliable pattern; the registry is best-effort,
+  non-deterministic.
 - Use `SignalGroup.findOrCreate(this).attachGroup(child)` to nest scopes.
 
 ## Pausing a SignalGroup without destroying it (`off()`)

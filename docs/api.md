@@ -398,8 +398,13 @@ does not pin user objects.
 | `getSignalGroupsCount()`            | Count of live `SignalGroup` instances (debugging / leak checks).               |
 
 When a user object becomes unreachable without an explicit `clear()` / `delete()`,
-a `FinalizationRegistry` callback runs `clear()` on the orphaned group. FR
-firing is non-deterministic — explicit cleanup remains preferred.
+a `FinalizationRegistry` callback runs `clear()` on the orphaned group. This
+requires that no strong reference path from the group back to the object exists
+— specifically, an attached signal whose value holds a reference to the object
+will keep it alive and prevent the callback from firing. For `@signal accessor`
+fields storing `this`, explicit `delete()` or `group.clear()` in your cleanup
+is the reliable approach. FR firing is non-deterministic — explicit cleanup
+remains preferred.
 
 ### Instance
 

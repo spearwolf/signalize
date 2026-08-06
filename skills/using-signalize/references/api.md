@@ -260,7 +260,7 @@ class Foo {
 }
 ```
 
-Every instance gets its own per-property signal. Cleanup: `SignalGroup.delete(instance)` for everything, or `destroyObjectSignals(instance)` for signals only.
+Every instance gets its own per-property signal. Cleanup: `SignalGroup.delete(instance)` for everything, or `destroyObjectSignals(instance)` for signals only. If a decorated field holds a reference to the instance (e.g. `@signal() accessor self = this`), automatic cleanup via `FinalizationRegistry` cannot fire — explicit cleanup is required.
 
 ## Counters
 
