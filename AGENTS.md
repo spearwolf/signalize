@@ -81,6 +81,8 @@ Effects subscribe to signals with a numeric priority — **higher runs first**.
 
 Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscription per signalId per run); cleanup happens before each rerun and on destroy.
 
+**Static-deps effects take the same route with step 5 disarmed.** They are pushed onto the stack like any other effect — that is what makes effects created in their callback child effects — but `EffectImpl.#suppressAutoTracking` is set for the duration of the callback, and `whenSignalIsRead()` returns early while it is. The declared dependencies are subscribed from `saveSignalsFromDeps()`, called by `createEffect()` on the fresh instance whose flag is still `false`. The flag is per instance and saved/restored around the callback, so neither a child effect nor the outer frame of a re-entrant run inherits the suppression.
+
 ### Batching
 
 `batch(callback)`:

@@ -32,6 +32,12 @@ queue, no virtual graph.
 Subscribe-on-read happens once per signal per effect run. On every rerun the
 effect snapshots its previous deps, then drops anything not re-read.
 
+An effect with **static deps** goes through the same steps 1–3: it is pushed
+onto the stack like any other, which is what makes effects created inside its
+callback child effects. Step 5 is where it differs — `whenSignalIsRead()`
+returns early while a static-deps callback is running, so no subscription is
+created. The declared deps are subscribed separately, from `createEffect()`.
+
 ## Synchronous everything
 
 `emit()` calls every subscriber inline before returning. This means a

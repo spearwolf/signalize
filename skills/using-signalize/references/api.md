@@ -89,7 +89,8 @@ createEffect(() => {
   return () => cleanup();       // optional cleanup, runs before each rerun and on destroy
 }, {
   autorun:      true,           // false → run manually via eff.run()
-  dependencies: [c],            // STATIC deps → disables auto-tracking; does NOT autorun
+  dependencies: [c],            // STATIC deps → disables auto-tracking (not the
+                                //   effect context); does NOT autorun
   priority:     0,              // higher runs first
   attach:       obj,
 });

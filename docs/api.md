@@ -35,7 +35,7 @@ existing signal-like (then this very signal is returned, no new one created).
 | `set(v, params?)` | Write. `v` may be a value or, with `{lazy: true}`, a factory.                              |
 | `value = v`       | Setter shortcut for `set(v)`.                                                              |
 | `touch()`         | Emit a change without changing the value.                                                  |
-| `onChange(cb)`    | Subscribe to changes. Returns `() => void` unsubscribe.                                    |
+| `onChange(cb)`    | Subscribe to changes. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect — an effect created inside it is a child effect and is destroyed on the next change (see below). |
 | `muted`           | `boolean` getter/setter — pause/resume notifications. Writes still store their value.      |
 | `destroy()`       | Destroy the signal (alias for `destroySignal(this)`).                                      |
 
@@ -97,6 +97,19 @@ The shorthand `createEffect(cb, [sigA, sigB])` is equivalent to
 `createEffect(cb, {dependencies: [sigA, sigB]})`. With static dependencies the
 effect does **not** auto-run on creation — call `.run()` once manually if you
 need an initial pass.
+
+Static deps switch off dependency tracking, not the effect context: the
+callback still runs as the current effect, so effects created inside it —
+directly, or through `Signal.onChange()` — become child effects and are
+destroyed before the next rerun and on `destroy()`. Wrap the creation in
+`hibernate()` if an inner effect must outlive its parent.
+
+`createMemo()` inside such a callback is a half case: the memo's internal
+effect is a child and is destroyed with the parent, so the memo stops
+recomputing — but the memo's signal is not, and keeps returning the last value
+it computed. A memo handle that escapes the callback therefore reads as a
+frozen constant. Create memos outside the effect, or bind them to a group with
+`{attach}`.
 
 > ⚠️ **Recursion guard.** If a callback writes to a signal it depends on,
 > `run()` re-enters synchronously. The depth is capped by

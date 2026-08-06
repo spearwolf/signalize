@@ -183,8 +183,12 @@ export class EffectImpl {
 
   readonly #destroyedSignals: Set<symbol> = new Set();
 
+  /**
+   * Effects created while this effect's callback was on the effect stack.
+   * Destroyed and rebuilt from scratch on every rerun — there is no slot
+   * recycling; see {@link collectDestroyChildEffects}.
+   */
   private readonly childEffects: EffectImpl[] = [];
-  private curChildEffectSlot = 0;
 
   autorun = true;
   shouldRun = true;
@@ -204,6 +208,29 @@ export class EffectImpl {
    * one to tell a still-current run from a superseded one.
    */
   #generation = 0;
+
+  /**
+   * Set while a **static-deps** callback is running.
+   *
+   * Such an effect still runs on the global effect stack — that is what makes
+   * effects created inside it child effects that die with their parent. But
+   * being on the stack is also what `readSignal()` looks for, so without this
+   * flag a static-deps effect would suddenly subscribe to everything its
+   * callback reads. The flag draws the line: visible as the current effect,
+   * deaf to signal reads.
+   *
+   * `saveSignalsFromDeps()` calls `whenSignalIsRead()` too and is not spared
+   * by timing — create a static-deps effect inside another effect's callback
+   * and it runs in the middle of a run. What spares it is the instance: it
+   * runs on the freshly constructed effect, whose own flag is still `false`.
+   * The suppression is per instance and never consulted through anything but
+   * `this`, so a suppressed parent cannot silence a child.
+   *
+   * Saved and restored rather than cleared: an effect that writes a signal it
+   * depends on re-enters `run()`, and the inner run must not un-suppress the
+   * outer one on its way out.
+   */
+  #suppressAutoTracking = false;
 
   /**
    * An effect subscribes to the _global effects queue_ by its `id`.
@@ -304,21 +331,13 @@ export class EffectImpl {
       options.dependencies = dependencies;
     }
 
-    let effect: EffectImpl | undefined;
+    const effect = new EffectImpl(callback, options);
 
-    const parentEffect = getCurrentEffect();
-    if (parentEffect != null) {
-      effect = parentEffect.getCurrentChildEffect();
-      if (effect == null) {
-        effect = new EffectImpl(callback, options);
-        parentEffect.attachChildEffect(effect);
-        emit(globalEffectQueue, $createEffect, effect);
-      }
-      parentEffect.curChildEffectSlot++;
-    } else {
-      effect = new EffectImpl(callback, options);
-      emit(globalEffectQueue, $createEffect, effect);
-    }
+    // An effect born while another effect's callback is running belongs to
+    // that effect and dies with it — see collectDestroyChildEffects().
+    getCurrentEffect()?.attachChildEffect(effect);
+
+    emit(globalEffectQueue, $createEffect, effect);
 
     if (effect.hasStaticDeps()) {
       effect.saveSignalsFromDeps();
@@ -327,10 +346,6 @@ export class EffectImpl {
     }
 
     return new Effect(effect);
-  }
-
-  private getCurrentChildEffect(): EffectImpl | undefined {
-    return this.childEffects[this.curChildEffectSlot];
   }
 
   private attachChildEffect(effect: EffectImpl): void {
@@ -369,7 +384,6 @@ export class EffectImpl {
       this.runCleanupCallback();
       this.destroyChildEffects();
 
-      this.curChildEffectSlot = 0;
       this.shouldRun = false;
 
       emit(globalEffectCalledQueue, this.id, this.id);
@@ -384,7 +398,7 @@ export class EffectImpl {
       const generation = ++this.#generation;
 
       if (this.hasStaticDeps()) {
-        this.storeCleanupCallback(this.callback(), generation);
+        this.storeCleanupCallback(this.runWithoutAutoTracking(), generation);
       } else {
         this.#lostSignals.clear();
         for (const id of this.#signals) {
@@ -401,6 +415,21 @@ export class EffectImpl {
       this.#runDepth--;
     }
   };
+
+  /**
+   * Run the callback on the effect stack with subscribe-on-read turned off —
+   * the static-deps counterpart to the plain `runWithinEffect()` call in the
+   * dynamic branch. See the `#suppressAutoTracking` field.
+   */
+  private runWithoutAutoTracking(): unknown {
+    const wasSuppressed = this.#suppressAutoTracking;
+    this.#suppressAutoTracking = true;
+    try {
+      return runWithinEffect(this, this.callback);
+    } finally {
+      this.#suppressAutoTracking = wasSuppressed;
+    }
+  }
 
   /**
    * Eventually run the _effect callback_
@@ -420,6 +449,8 @@ export class EffectImpl {
   }
 
   whenSignalIsRead(signalId: symbol): void {
+    if (this.#suppressAutoTracking) return;
+
     this.#lostSignals.delete(signalId);
 
     if (!this.#signals.has(signalId)) {

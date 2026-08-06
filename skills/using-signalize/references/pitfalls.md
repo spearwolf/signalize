@@ -20,11 +20,13 @@ Behaviours that surprise people (and models) coming from React, Solid, Vue or Mo
 
 **7 — Static deps disable autorun *and* auto-tracking.** `createEffect(cb, [a, b])` — and equally `{dependencies: [a, b]}` — does not run at creation time, and signals read inside the callback are not subscribed. Only the listed deps trigger reruns. Call `.run()` once when an initial pass is wanted.
 
+**7a — Static deps do not disable the effect *context*.** The callback still runs as the current effect, so effects created inside it — directly, or via `Signal.onChange()` — are child effects and die with the parent (pitfall 10). Only the subscribe-on-read is suppressed. `hibernate()` is the escape hatch when an inner effect must outlive its parent. `createMemo()` in an effect body is the half case: its internal effect dies with the parent, its signal does not, so a memo handle that escapes the callback freezes at its last computed value. Create memos outside the effect, or pass `{attach}`.
+
 **8 — Dynamic deps may shrink between runs.** Signals read in run N but not in run N+1 are unsubscribed at the end of run N+1. `if (a.get()) b.get()` is entirely fine — conditional subscription is the point of dynamic tracking.
 
 **9 — Synchronous self-write recursion is bounded, not forbidden.** An effect that writes a signal it depends on re-enters `run()` synchronously. The depth is capped at `EffectImpl.maxDepth = 256`; beyond that a descriptive `Error` is thrown rather than a stack overflow. Prefer breaking the cycle — `beQuiet` around the self-write, a conditional guard, or splitting the effect. Raise `EffectImpl.maxDepth` only when the recursion is intentional.
 
-**10 — Nested effects are recreated on every parent rerun.** Order on a rerun: parent's own cleanup → child effects destroyed (each child's cleanup runs as part of its destroy) → parent callback re-executes → fresh inner effects created. Do not stash an inner `Effect` handle in long-lived state.
+**10 — Nested effects are recreated on every parent rerun.** Order on a rerun: parent's own cleanup → child effects destroyed (each child's cleanup runs as part of its destroy) → parent callback re-executes → fresh inner effects created. Nothing is recycled — every run yields new instances with new ids. Do not stash an inner `Effect` handle in long-lived state. Applies to static-deps parents as well (pitfall 7a).
 
 **11 — Async callbacks do not make propagation async.** An effect callback may be `async`, but propagation itself stays synchronous: nothing waits for the promise. There is no microtask debounce; write one if the use case needs it.
 

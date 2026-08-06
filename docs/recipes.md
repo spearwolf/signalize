@@ -86,6 +86,19 @@ accept "value or signal".
 Static deps **disable** dynamic tracking entirely — signals read inside the
 callback do not subscribe.
 
+They do **not** disable the effect context. The callback still runs as the
+current effect, so an effect created inside it (directly, or through
+`Signal.onChange()`) becomes a child effect and is destroyed before the next
+rerun and on `destroy()` — same as under dynamic deps. Only subscribe-on-read
+is suppressed. Use `hibernate()` around the creation if an inner effect is
+meant to outlive its parent.
+
+`createMemo()` in an effect body follows the same rule for its internal effect,
+which means the memo stops recomputing once the parent reruns; its signal
+survives and keeps handing out the last computed value. A memo handle that
+escapes such a callback is a frozen constant. Create memos outside the effect,
+or attach them to a group.
+
 When `attach` is set, static deps may be names (`string | symbol`); they are
 resolved against the attached group.
 
@@ -109,7 +122,10 @@ createEffect(() => {
 ```
 
 - Cleanup runs **before** the next execution and on `destroy()`.
-- Nested effects are destroyed (with their cleanup) before the parent re-runs.
+- Nested effects are destroyed (with their cleanup) before the parent re-runs —
+  regardless of whether the parent uses dynamic or static deps.
+- Nested effects are never reused across reruns: every parent run builds a
+  fresh set. Do not stash an inner `Effect` handle in long-lived state.
 - On `destroy()` the effect is already marked destroyed and unsubscribed when
   the cleanup runs. A cleanup that resets a signal the effect depends on
   therefore triggers no final run — and no cleanup gets stranded.

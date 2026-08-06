@@ -42,7 +42,8 @@ createEffect(() => {
   return () => cleanup();
 }, {
   autorun:      true,    // false → manual eff.run()
-  dependencies: [c],     // static deps; disables auto-tracking; no autorun
+  dependencies: [c],     // static deps; disables auto-tracking (child effects
+                         //   still work); no autorun
   priority:     0,       // higher first
   attach:       obj,
 });

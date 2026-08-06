@@ -11,12 +11,18 @@
 - A rejecting `async` effect callback no longer becomes an unhandled rejection — which, since Node 15, terminates the process by default. It goes to `onEffectError()`, or to `console.error` with the effect id while no handler is registered (ASYNC-001)
 - A rejecting `async` cleanup callback is reported through the same channel with `phase: 'cleanup'` instead of being swallowed
 - An effect callback that returns something other than a function no longer throws `TypeError: cleanupCallback is not a function` on the next run — the value counts as "no cleanup". Mostly hits `Signal.onChange(cb)`, whose callback is free to return `any`
+- An effect created inside a **static-deps** effect callback is now registered as a child effect. It used to be orphaned: every rerun of the parent left another live effect subscribed to the global signal queue, without limit. Also hits `Signal.onChange()` and `createMemo()` calls in such a callback (MEM-001)
+- Static deps still disable auto-tracking — signals read inside the callback do not subscribe. Only the effect context came back, not the tracking
 - `Effect.destroy()` unsubscribes the effect before running its cleanup callback, so a cleanup that writes to a signal the effect depends on no longer triggers one last run whose own cleanup would never be called (MEM-007)
 - `Effect.destroy()` marks the effect as destroyed before it emits its destroy events, so an `onDestroyEffect()` handler no longer receives an effect whose `run()` still executes the callback (BUG-008)
 - A re-entrant `Effect.destroy()` (from a cleanup callback or a destroy handler) is now a no-op instead of decrementing `getEffectsCount()` a second time
 - A cleanup callback that throws no longer leaves the effect half-destroyed — child effects, subscriptions and `getEffectsCount()` are settled either way, and the error still reaches the caller
 - A child effect whose cleanup throws no longer aborts the destruction of its siblings. They used to survive their parent as zombies — still subscribed, still reacting to signal writes
 - `Effect.destroy()` reports every failing cleanup instead of only the last one. Several errors (own cleanup plus a child's, or several children's) arrive as an `AggregateError` in teardown order; a single error is rethrown unchanged
+
+### Chores
+
+- Removed the child-effect slot-recycling machinery from `EffectImpl` (`curChildEffectSlot`, `getCurrentChildEffect()`). It was unreachable — `run()` clears the child list before every callback — and suggested an optimization that never existed. `childEffects` is a plain list now; behaviour is unchanged (IMP-001)
 
 ### Tests
 
