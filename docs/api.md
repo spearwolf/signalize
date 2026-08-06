@@ -224,13 +224,28 @@ function tracks the memo as a dependency.
 | `priority` | `number`                      | `1000`       | Higher than default effects so memos resolve first in a flush.               |
 | `attach`   | `object \| SignalGroup`       | `—`          | Lifecycle group.                                                             |
 | `name`     | `string \| symbol`            | `—`          | Name within the attached group (`group.signal(name)`).                       |
+| `batchWrites` | `boolean`                   | `false`      | Wrap the recompute in `batch()`. See below — this is a trade-off, not a free upgrade. |
 
 **Eager (default) vs lazy.** Effects that depend on a memo only re-run if the
 memo value changes. With `lazy: true` the memo is not evaluated on dep change,
 so dependent effects are not notified until something reads the memo.
 
-The internal recompute is wrapped in a `batch()`, so multiple memo writes
-inside a single effect propagate cleanly.
+**`batchWrites`.** By default the recompute writes the memo's signal directly,
+no `batch()` involved. Set `batchWrites: true` only if `computer` itself
+writes to *other* signals as a side effect (uncommon — `computer` is meant to
+read and return, not write) — the batch then groups those writes with the
+memo's own write so a downstream effect depending on both sees one
+consistent run instead of one per write with a torn intermediate value.
+
+That grouping has a real cost: any effect's run is deferred while a batch is
+open, including another memo's recompute triggered by reading it — reading a
+*composed* memo (a normal, common pattern) from inside a `batchWrites: true`
+callback can return that memo's stale, pre-recompute value instead of a
+fresh one. For a `{lazy: true}` memo read this way, the staleness can persist
+indefinitely — a lazy memo's deferred run is a no-op (it only marks itself
+dirty), so nothing but a later direct, unbatched read forces it to catch up.
+This is why the default is `false`: composed memos are the common case,
+side-effect-writing callbacks are not.
 
 **Lifetime when created inside another effect's body.** The memo's internal
 effect is registered there as a child effect (see "Effects: dynamic vs static

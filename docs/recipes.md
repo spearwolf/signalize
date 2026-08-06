@@ -241,6 +241,53 @@ calculations.
 > For a class-bound memo, call `createMemo(..., {attach: this})` in the class
 > body — there is no memo decorator.
 
+## Memos: `batchWrites` is opt-in, and reading a composed memo is why
+
+A memo's recompute writes its signal directly — no `batch()` involved. Turn
+that on with `{batchWrites: true}` only if the memo's `computer` itself
+writes to *other* signals as a side effect (uncommon; `computer` is meant to
+read and return):
+
+```ts
+const source = createSignal(0);
+const flag = createSignal('idle');
+
+const doubled = createMemo(
+  () => {
+    const v = source.get();
+    flag.set(v > 0 ? 'touched' : 'idle');   // side effect
+    return v * 2;
+  },
+  {batchWrites: true},                      // groups both writes together
+);
+```
+
+Without `batchWrites`, a downstream effect depending on both `doubled` and
+`flag` sees two separate runs — the first with `flag` already updated but
+`doubled` still at its old value. `batchWrites: true` restores the old
+one-run grouping, at a cost: **any** effect run is deferred while a batch is
+open, including another memo's recompute triggered by reading it inside the
+callback. Reading a *composed* memo — a normal pattern — from inside a
+`batchWrites: true` callback can therefore return that memo's stale,
+pre-recompute value:
+
+```ts
+const source = createSignal(0);
+const inner = createMemo(() => source.get() * 10, {lazy: true});
+
+const outer = createMemo(
+  () => source.get() + inner(),   // reads a composed memo
+  {batchWrites: true},
+);
+```
+
+If `inner` is dirty when `outer` recomputes, its deferred run inside
+`outer`'s batch is a no-op for a `{lazy: true}` memo specifically — `[RECALL]`
+only marks a lazy memo dirty, it never calls `run()` for it — so `outer`
+keeps reading `inner`'s stale value until something else reads `inner`
+directly, outside any batch. This is why the default is `false`: composed
+memos are the common case, side-effect-writing callbacks are not.
+
 ## Batching
 
 ```ts

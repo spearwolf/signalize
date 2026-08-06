@@ -39,12 +39,27 @@ describe('batch() around a single write', () => {
 });
 
 /*
- * Baseline (reference point for package 12 / PERF-004), measured on commit
- * 5cb75f4, single run, one dev laptop — not a gate:
+ * Baseline history, single run, one dev laptop each time — not a gate.
+ * `batch()` itself is untouched by package 12 — these numbers are the
+ * reference PERF-004 fixes against, not something this package changes.
  *
+ * Commit 5cb75f4:
  *   write inside batch()      ~727,177 hz
  *   write without batch()     ~2,700,674 hz  (batch() is ~3.7x slower here,
  *                                             entirely expected: one write
  *                                             cannot recoup Batch's own
  *                                             allocation + queue overhead)
+ *
+ * Same machine, same session as the PERF-004 change (package 12 —
+ * `SignalAutoMap.updateFromProps()` now computes its entries before
+ * opening a batch and returns early when there are none, matching
+ * `update()`'s existing `props.size` guard; the cost measured below is
+ * what an empty `updateFromProps()` call now skips entirely instead of
+ * paying once per call):
+ *   before: write inside batch()      644,480 hz
+ *   after:  write inside batch()      691,055 hz
+ *   before: write without batch()   2,596,498 hz
+ *   after:  write without batch()   2,496,550 hz
+ *   (batch() is ~3.6-4.0x slower than a raw write across both runs — run-to-
+ *   run noise on this machine, not a regression from this package)
  */

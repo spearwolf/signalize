@@ -158,6 +158,37 @@ describe('SignalAutoMap', () => {
     sm.clear();
   });
 
+  it('updateFromProps() with empty object does nothing (PERF-004)', () => {
+    // NOTE this is not a regression test for the PERF-004 guard itself: an
+    // empty `updateFromProps({})` behaved identically before the fix — it
+    // opened a `batch()` whose loop body never ran, so there was no write
+    // and no rerun either way. The guard's actual effect (skipping the
+    // `batch()` call, its `Batch` instance and its two temporary queue
+    // subscriptions entirely) is allocation-only and has no observable
+    // difference a functional test can catch — see bench/batch.bench.ts for
+    // the cost it now skips. This test documents the *outcome* the guard
+    // mirrors from update()'s existing `props.size` check, nothing more.
+    const sm = SignalAutoMap.fromProps({a: 1, b: 2});
+
+    let effectCallCount = 0;
+    const effect = createEffect(() => {
+      sm.get<number>('a').get();
+      sm.get<number>('b').get();
+      effectCallCount++;
+    });
+
+    expect(effectCallCount).toBe(1);
+
+    sm.updateFromProps({});
+
+    expect(effectCallCount, 'no write happened, so no rerun').toBe(1);
+    expect(sm.get('a').value).toBe(1);
+    expect(sm.get('b').value).toBe(2);
+
+    effect.destroy();
+    sm.clear();
+  });
+
   it('updateFromProps() without explicit keys', () => {
     const sm = SignalAutoMap.fromProps({a: 1, b: 2});
     sm.updateFromProps({a: 10, b: 20, c: 30});

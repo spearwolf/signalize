@@ -131,7 +131,20 @@ export class SignalGroup {
     if (object == null) {
       throw new Error('Cannot create a group with a null object');
     }
-    return new SignalGroup(object);
+    // PERF-002: check the store before constructing. The field initializers
+    // alone allocate four Sets, two Maps and a WeakMap, so `new
+    // SignalGroup(object)` on a cache hit built and discarded all of that
+    // just to have the constructor's own `store.has()` check hand back the
+    // existing instance. Checked here first, this path is a plain WeakMap
+    // lookup on a hit. The constructor's `store.has()` check (and the
+    // `instanceof SignalGroup` early return) stay in place as the
+    // authoritative safety net — for direct/re-entrant construction and for
+    // the race between this lookup and the constructor's own set — they just
+    // no longer carry the common case.
+    if (object instanceof SignalGroup) {
+      return object;
+    }
+    return store.get(object) ?? new SignalGroup(object);
   }
 
   static destroy(object: object) {

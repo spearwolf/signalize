@@ -5,6 +5,7 @@
 ### Features
 
 - New `onEffectError(cb, priority?)` export: subscribes to rejections of `async` effect and cleanup callbacks, which cannot be thrown at a caller. The handler receives `{error, effect, effectId, phase}` (ASYNC-001)
+- `createMemo(fn, {batchWrites})`: new option (default `false`) to wrap the memo's recompute write in `batch()`. Only needed when `fn` itself writes to other signals as a side effect — the default trades that grouping away for read consistency on composed memos, see the Breaking Changes entry below (PERF-001)
 
 ### Bug Fixes
 
@@ -51,6 +52,8 @@
 ### Chores
 
 - Removed the child-effect slot-recycling machinery from `EffectImpl` (`curChildEffectSlot`, `getCurrentChildEffect()`). It was unreachable — `run()` clears the child list before every callback — and suggested an optimization that never existed. `childEffects` is a plain list now; behaviour is unchanged (IMP-001)
+- `SignalGroup.findOrCreate()` checks `store.get(object)` before constructing, instead of unconditionally building a full `SignalGroup` (four `Set`s, two `Map`s, a `WeakMap`, `WeakRef`, `FinalizationRegistry.register`, `eventize(this)`) and discarding it on every cache hit. The private constructor's own `store.has()` check stays in place as a safety net for direct/re-entrant construction, it just no longer carries the common case (PERF-002)
+- `SignalAutoMap.updateFromProps()` now computes its entries and returns before opening a `batch()` when there are none, matching the guard `update()` already had for an empty `Map` (PERF-004)
 
 ### Tests
 
@@ -64,6 +67,7 @@
 - `SignalLink.nextValue()` now rejects with `Error('SignalLink destroyed before the next value arrived')` instead of `undefined` when the link is destroyed while the call is pending. A `catch` that checked `err === undefined`, or otherwise depended on the rejection reason being empty, observes a different value now (ASYNC-004)
 - `SignalGroup.attachSignalByName()` gives the name ownership of the signal: rebinding the name, or passing `undefined`, destroys the signal that was bound to it. Code that rebound a name and kept using the old signal now holds a destroyed one — it still works as a value container, but no longer drives effects. Attach such a signal explicitly with `attachSignal()` to keep it alive. Conversely, `clear()` no longer destroys the pile of signals a repeatedly rebound name used to accumulate; they are gone by then (MEM-003)
 - `batch(callback)`'s signature now rejects an `async` callback (or anything else typed to return `Promise`/`PromiseLike`) at `tsc` time, and throws `TypeError` at runtime if `callback` returns a thenable. Code that passed an `async` callback previously compiled and appeared to work — it silently stopped batching at the first `await` — and now fails both to compile and, if the type error is ignored or the callback is untyped, at runtime (ASYNC-003)
+- `createMemo()`'s recompute no longer wraps `si.set(callback())` in `batch()` by default. This fixes a read-consistency bug present since `batch()` was unconditional: `EffectImpl.run()` defers any run while a batch is open, including another memo's recompute triggered by reading it (a memo's tracked read runs it via exactly that path) — so a `callback` that read a dirty *composed* memo got that memo's stale, pre-recompute value, permanently so for a `{lazy: true}` one (its deferred run inside the batch flush is a no-op, since `autorun` is `false`). Composed memos are the common case; removing the batch stops that specific deferral, so the default no longer turns an already-dirty one's read stale on that account. The trade-off: if `callback` itself writes to *other* signals as a side effect (uncommon), those writes used to be grouped with the memo's own write so a dependent effect tracking both saw one deduplicated run — without the batch it now sees one run per write, with a torn intermediate value on the first of the two. Pass `{batchWrites: true}` to restore the old grouping, at the cost of reintroducing the staleness risk above (PERF-001)
 
 ## `v0.31.1` (2026-07-25)
 

@@ -62,7 +62,7 @@ Framework-agnostic signal/effect/memo/link library. Synchronous reactivity. Buil
 
 Effects subscribe to signals with a numeric priority — **higher runs first**.
 
-- Memos: `Priority.C` = 1000 (`createMemo.ts:59`)
+- Memos: `Priority.C` = 1000 (`createMemo.ts:111`)
 - Effects: `0` (`EffectImpl.ts:112`, `options.priority ?? 0`)
 
 ### Dependency tracking flow

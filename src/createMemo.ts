@@ -20,6 +20,33 @@ export interface CreateMemoOptions {
   lazy?: boolean;
   /** Effect priority for dependency tracking (default: Priority.C = 1000) */
   priority?: number;
+  /**
+   * Wrap each recompute in `batch()` (default: false).
+   *
+   * Only needed when `callback` itself writes to *other* signals as a side
+   * effect — the batch groups those writes together with the memo's own
+   * write, so a downstream effect that depends on both sees one
+   * deduplicated run instead of one per write with a torn intermediate
+   * state (some signals updated, others not yet).
+   *
+   * That grouping has a price, and it is the reason the default is `false`
+   * rather than `true`: `EffectImpl.run()` defers *any* run while a batch is
+   * open, and a memo's tracked read triggers its own recompute via exactly
+   * that path (`beforeRead`). So a `callback` that reads another memo which
+   * happens to be dirty at that moment gets that memo's *stale*
+   * pre-recompute value instead of a fresh one — for a `{lazy: true}` memo
+   * this is not just delayed but potentially permanent, since a lazy memo's
+   * deferred run inside the batch flush is *also* a no-op (`autorun` is
+   * `false`, so `[RECALL]` only marks it dirty without running it; nothing
+   * but a later direct, unbatched read forces it to catch up).
+   *
+   * Reading other memos from inside a `callback` — composed memos — is
+   * normal use; writing to unrelated signals as a side effect is not. `true`
+   * trades read consistency for that side-effect grouping; the default
+   * trades it back for read consistency, which is what composed memos rely
+   * on (PERF-001).
+   */
+  batchWrites?: boolean;
 }
 
 /**
@@ -67,11 +94,17 @@ export function createMemo<Type>(
     }
   }
 
+  const useBatch = options?.batchWrites ?? false;
+
   const e = createEffect(
     () => {
-      batch(() => {
+      if (useBatch) {
+        batch(() => {
+          si.set(callback());
+        });
+      } else {
         si.set(callback());
-      });
+      }
     },
     {
       autorun: !(options?.lazy ?? false),

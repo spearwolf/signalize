@@ -112,10 +112,13 @@ export class SignalAutoMap {
     obj: PropsObjType,
     propKeys?: (keyof PropsObjType)[],
   ): void {
+    const entries = propKeys
+      ? propKeys.map((key) => [key, obj[key]])
+      : Object.entries(obj);
+    if (entries.length === 0) {
+      return;
+    }
     batch(() => {
-      const entries = propKeys
-        ? propKeys.map((key) => [key, obj[key]])
-        : Object.entries(obj);
       for (const [key, value] of entries) {
         this.get(key as any).set(value);
       }

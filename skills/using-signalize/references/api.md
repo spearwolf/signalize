@@ -130,10 +130,17 @@ The cleanup an `async` callback resolves to is **discarded** when the effect has
 
 ```ts
 const m = createMemo(() => a.get() * 2, {
-  lazy:     false,   // true → recompute on read; dependent effects do NOT re-run
-  priority: 1000,
-  attach:   obj,
-  name:     'm',     // group registration name
+  lazy:         false,   // true → recompute on read; dependent effects do NOT re-run
+  priority:     1000,
+  attach:       obj,
+  name:         'm',     // group registration name
+  batchWrites:  false,   // true only if the computer itself writes OTHER signals as
+                          // a side effect. Costs freshness: reading a composed memo
+                          // that's dirty from inside the batch returns its stale
+                          // value (permanently, if that memo is lazy — its deferred
+                          // run inside the batch flush is a no-op, `autorun` is
+                          // false). Composed memos are the common case, side-effect
+                          // writes are not — that's why the default is false.
 });
 m();                 // SignalReader<T>
 ```

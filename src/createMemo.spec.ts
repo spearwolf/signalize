@@ -5,7 +5,7 @@ import type {EffectImpl} from './EffectImpl.js';
 import {createEffect, getEffectsCount, onCreateEffect} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
-import {destroySignal, getSignalsCount} from './signal-core.js';
+import {destroySignal, getSignalsCount, signalImpl} from './signal-core.js';
 
 describe('createMemo', () => {
   it('non-lazy by default', () => {
@@ -382,6 +382,174 @@ describe('createMemo', () => {
       ).toBe(2);
 
       destroySignal(trigger, src);
+    });
+  });
+
+  describe('batchWrites option (PERF-001)', () => {
+    // The memo effect used to unconditionally wrap `si.set(callback())` in
+    // `batch()`. Two consequences follow from that, pulling in opposite
+    // directions — this describe block covers both:
+    //
+    // 1. A callback that itself writes *other* signals as a side effect used
+    //    to have those writes grouped with the memo's own write, so a
+    //    downstream effect tracking both saw one deduplicated, consistent
+    //    run instead of one run per write with a torn intermediate state.
+    //    Losing the batch by default costs this grouping — see the first two
+    //    tests below.
+    //
+    // 2. `EffectImpl.run()` defers *every* run while a batch is open —
+    //    including a dirty dependency's run triggered by `beforeRead` while
+    //    the memo's own callback is reading it. Inside the old unconditional
+    //    batch(), a memo callback that reads another dirty (or lazy and
+    //    never-autorun) memo got that memo's *stale* pre-recompute value —
+    //    permanently stale for a lazy one, since nothing forces it to run on
+    //    its own. Losing the batch by default fixes this — see the third and
+    //    fourth tests below, which is the correctness case for the new
+    //    default, independent of the performance numbers in bench/.
+    //
+    // Composed memos (one memo reading another) are normal use; a memo
+    // callback that writes other signals as a side effect is not. `batch()`
+    // is opt-in via `{batchWrites: true}` for the latter, and reintroduces
+    // the staleness risk from point 2 as its price.
+
+    it('default (no batchWrites): a side-effect write in the callback is NOT grouped with the memo write', () => {
+      const source = createSignal(0);
+      const sideEffectSignal = createSignal('idle');
+
+      const doubled = createMemo(() => {
+        const v = source.get();
+        sideEffectSignal.set(v > 0 ? 'touched' : 'idle');
+        return v * 2;
+      });
+
+      const runs = vi.fn();
+      const downstream = createEffect(() => {
+        runs(doubled(), sideEffectSignal.get());
+      });
+
+      expect(runs).toHaveBeenCalledTimes(1);
+      runs.mockClear();
+
+      source.set(5);
+
+      // Unbatched: the side-effect write and the memo write each notify on
+      // their own, so the downstream effect (depending on both) reruns twice.
+      expect(runs).toHaveBeenCalledTimes(2);
+      // The first of those two runs sees the torn intermediate state: the
+      // side-effect signal already updated, the memo's own signal not yet
+      // (S1) — this is the price of the new default, spelled out.
+      expect(runs).toHaveBeenNthCalledWith(1, 0, 'touched');
+      expect(runs).toHaveBeenNthCalledWith(2, 10, 'touched');
+
+      downstream.destroy();
+      destroySignal(source, sideEffectSignal, doubled);
+    });
+
+    it('{batchWrites: true} restores the old grouping: side-effect write and memo write dedupe into one downstream run', () => {
+      const source = createSignal(0);
+      const sideEffectSignal = createSignal('idle');
+
+      const doubled = createMemo(
+        () => {
+          const v = source.get();
+          sideEffectSignal.set(v > 0 ? 'touched' : 'idle');
+          return v * 2;
+        },
+        {batchWrites: true},
+      );
+
+      const runs = vi.fn();
+      const downstream = createEffect(() => {
+        runs(doubled(), sideEffectSignal.get());
+      });
+
+      expect(runs).toHaveBeenCalledTimes(1);
+      runs.mockClear();
+
+      source.set(5);
+
+      // Batched: both writes happen inside the memo effect's own batch(), so
+      // the downstream effect (deduplicated by effect id) reruns exactly once
+      // with the final, consistent values.
+      expect(runs).toHaveBeenCalledTimes(1);
+      expect(runs).toHaveBeenLastCalledWith(10, 'touched');
+
+      downstream.destroy();
+      destroySignal(source, sideEffectSignal, doubled);
+    });
+
+    // W5 — the actual justification for defaulting to `false`: reading a
+    // composed (lazy, dirty) memo from within another memo's callback.
+    //
+    // `EffectImpl.run()` defers *any* run while a batch is open (see
+    // `run()`'s `getCurrentBatch()` check), and a memo's `beforeRead` is
+    // exactly `e.run`. With the old unconditional batch(), a dirty inner
+    // memo read from inside an outer memo's callback got deferred instead of
+    // recomputed — the read returned the stale pre-write value. For a lazy
+    // inner memo this isn't even "deferred": `[RECALL]` only sets
+    // `shouldRun = true` and calls `run()` solely when `autorun` is true, so
+    // a lazy memo's deferred run inside the batch flush is *also* a no-op —
+    // it stays stale until something reads it directly, outside any batch.
+
+    it('{batchWrites: true}: reading a dirty lazy memo from within a batched outer memo returns its stale value', () => {
+      const dep = createSignal(1);
+
+      const inner = createMemo(() => dep.get() * 10, {lazy: true});
+      expect(inner()).toBe(10); // prime: force the first run, subscribe to dep
+
+      const outer = createMemo(() => dep.get() + inner(), {
+        batchWrites: true,
+      });
+
+      expect(outer()).toBe(11);
+
+      dep.set(2);
+
+      // Read right after the write — nothing else has touched `inner` yet.
+      // Correct would be 2 + 20 = 22; instead outer's batch() deferred
+      // inner's dirty run, so the callback read inner's pre-write value.
+      expect(
+        outer(),
+        'stale: dep updated, inner did not — a torn value, not just delayed',
+      ).toBe(12);
+      expect(
+        signalImpl(inner)?.value,
+        "inner itself never recomputed on its own — lazy, autorun stays false through the batch's own deferred redispatch",
+      ).toBe(10);
+
+      // Only a direct, unbatched read of `inner` forces it to catch up, and
+      // that retroactively cascades into a second, now-correct `outer` run.
+      expect(inner()).toBe(20);
+      expect(outer()).toBe(22);
+
+      destroySignal(dep, inner, outer);
+    });
+
+    it('default (no batchWrites): reading a dirty lazy memo from within an outer memo returns its fresh value', () => {
+      const dep = createSignal(1);
+
+      const inner = createMemo(() => dep.get() * 10, {lazy: true});
+      // Prime: forces inner's first run now, subscribing it to `dep` before
+      // `outer` exists. This fixes the listener order on `dep`'s RECALL
+      // (inner before outer, same-priority ties break on registration
+      // order) that this test depends on — inner must be marked dirty
+      // before outer's callback reads it. Reversed, outer's read would hit
+      // `!shouldRun` and return 12 regardless of batching — for a reason
+      // that has nothing to do with the point this test makes.
+      expect(inner()).toBe(10);
+
+      const outer = createMemo(() => dep.get() + inner());
+
+      expect(outer()).toBe(11);
+
+      dep.set(2);
+
+      // No batch open during outer's recompute, so reading the dirty `inner`
+      // inside outer's callback runs it synchronously instead of deferring
+      // it — outer sees the correct, fresh value on the very first read.
+      expect(outer(), 'fresh on the first read, no second run needed').toBe(22);
+
+      destroySignal(dep, inner, outer);
     });
   });
 });

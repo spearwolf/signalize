@@ -70,10 +70,14 @@ onEffectError(({error, effectId, phase}) => {});  // → unsubscribe
 import {createMemo} from '@spearwolf/signalize';
 
 const m = createMemo(() => a.get() * 2, {
-  lazy:     false,   // true: recompute on read; effects do NOT re-run
-  priority: 1000,
-  attach:   obj,
-  name:     'm',     // group registration
+  lazy:         false,   // true: recompute on read; effects do NOT re-run
+  priority:     1000,
+  attach:       obj,
+  name:         'm',     // group registration
+  batchWrites:  false,   // true only if computer() itself writes OTHER signals —
+                          // costs read-freshness: a dirty composed memo read
+                          // inside the batch can come back stale (permanently,
+                          // if that memo is lazy)
 });
 m();                 // SignalReader
 ```
