@@ -64,6 +64,14 @@ describe('createSignal', () => {
     destroySignal(signal);
   });
 
+  it('isSignal rejects fake signals with generic Symbol.for keys (BUG-006)', () => {
+    // A fake object using the old unnamespaced Symbol.for keys should not pass isSignal
+    const fakeSignal = {
+      [Symbol.for('signal')]: {id: Symbol('fake')},
+    };
+    expect(isSignal(fakeSignal)).toBe(false);
+  });
+
   it('signal reader has an optional effect callback as argument', () => {
     const {get: signal, set} = createSignal(666);
     const effect = vi.fn();
