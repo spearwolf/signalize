@@ -409,9 +409,12 @@ Semantics:
 - All effects/links attached to the group are destroyed (their cleanup
   callbacks run).
 - External effects/links subscribed to group signals lose their subscription.
-  An external effect whose only dependency was a group signal is destroyed
-  automatically (cleanup runs); one with mixed deps survives and re-subscribes
-  to the group signal the next time it reads it (dynamic-deps self-healing).
+  An external effect is destroyed automatically (cleanup runs) as soon as no
+  live dependency is left — regardless of whether some of its other
+  dependencies were hard-destroyed (via `signal.destroy()`) before this
+  `off()` call. One with a live dependency outside the group survives and
+  re-subscribes to the group signal the next time it reads it (dynamic-deps
+  self-healing).
 - Signals stay alive, retain their values, and remain reachable by name.
 - Child groups are `off()`'d recursively.
 - The group emits an `OFF` event and remains registered — new attaches work

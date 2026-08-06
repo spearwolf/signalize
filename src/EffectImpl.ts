@@ -383,7 +383,9 @@ export class EffectImpl {
     emit(globalEffectQueue, $createEffect, effect);
 
     if (effect.hasStaticDeps()) {
-      effect.saveSignalsFromDeps();
+      if (!effect.destroyed) {
+        effect.saveSignalsFromDeps();
+      }
     } else if (effect.autorun) {
       effect.run();
     }
@@ -514,6 +516,9 @@ export class EffectImpl {
   }
 
   whenSignalIsRead(signalId: symbol): void {
+    // destroy()'s off() calls have already run and discarded the unsubscribe
+    // handles — a subscription created after that point would be unremovable.
+    if (this.#destroyed) return;
     if (this.#suppressAutoTracking) return;
 
     this.#lostSignals.delete(signalId);
@@ -541,7 +546,7 @@ export class EffectImpl {
       this.#destroyedSignals.delete(signalId);
       this.#lostSignals.delete(signalId);
 
-      if (this.#signals.size === 0) {
+      if (this.hasNoLiveSignals()) {
         // no signals left, so nobody can trigger this effect anymore
         this.destroyWhenUntriggerable();
       }
@@ -553,7 +558,7 @@ export class EffectImpl {
 
       this.unsubscribeSignal(signalId);
 
-      if (this.#destroyedSignals.size === this.#signals.size) {
+      if (this.hasNoLiveSignals()) {
         // no signals left, so nobody can trigger this effect anymore
         this.destroyWhenUntriggerable();
       }
@@ -596,6 +601,13 @@ export class EffectImpl {
    * `#destroyedSignals` cannot answer it at the end of a run: the dynamic
    * branch clears the destroyed-markers there, and a signal destroyed *after*
    * the callback read it stays listed in `#signals` unsubscribed.
+   *
+   * `[$destroySignal]` reads it too, in both its soft- and hard-destroy
+   * branches — not just `run()`. That decouples correctness from teardown
+   * order: a hard-destroyed signal is never removed from `#signals` (only
+   * marked in `#destroyedSignals`), so a soft-detach arriving afterwards for
+   * a different signal would never see `#signals` empty even though nothing
+   * live remains to trigger the effect.
    */
   private hasNoLiveSignals(): boolean {
     return this.#signalSubscriptions.size === 0;

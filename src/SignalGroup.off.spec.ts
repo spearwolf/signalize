@@ -188,6 +188,39 @@ describe('SignalGroup#off()', () => {
     group.clear();
   });
 
+  it('external effect is destroyed by off() even after one dep was destroyed first (MEM-006)', () => {
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+    const a = createSignal(0, {attach: host});
+    const b = createSignal(0, {attach: host});
+
+    let runs = 0;
+    let cleanupCalls = 0;
+
+    // Nicht an die Gruppe attached — der Effect hängt nur über seine
+    // Signal-Reads an ihr.
+    createEffect(() => {
+      runs += 1;
+      a.get();
+      b.get();
+      return () => {
+        cleanupCalls += 1;
+      };
+    });
+
+    expect(runs).toBe(1);
+
+    // Harte Zerstörung zuerst: der Effect behält `a` in #signals, nur
+    // unsubscribed. Danach der Soft-Detach über off().
+    a.destroy();
+    group.off();
+
+    expect(cleanupCalls).toBe(1);
+    assertEffectsCount(0, 'after hard destroy then off()');
+
+    group.clear();
+  });
+
   it('external effect with mixed deps survives off(); group signal re-subscribes on rerun', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
