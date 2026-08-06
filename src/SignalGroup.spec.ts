@@ -1175,7 +1175,7 @@ describe('SignalGroup', () => {
       const subscriptions = subscriptionSnapshot();
 
       const group = SignalGroup.findOrCreate({});
-      const signals: ReturnType<typeof createSignal>[] = [];
+      const signals: ReturnType<typeof createSignal<number>>[] = [];
 
       for (let i = 0; i < 500; i++) {
         const signal = createSignal(i);

@@ -1,6 +1,7 @@
 import {getSubscriptionCount, Priority} from '@spearwolf/eventize';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
+import type {EffectImpl} from './EffectImpl.js';
 import {createEffect, getEffectsCount, onCreateEffect} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
@@ -244,7 +245,7 @@ describe('createMemo', () => {
       // afterwards would never fire and the signal would leak silently.
       const trigger = createSignal(0);
 
-      const unsubscribe = onCreateEffect((effect) => {
+      const unsubscribe = onCreateEffect((effect: EffectImpl) => {
         if (effect.priority === Priority.C) {
           effect.destroy();
         }
