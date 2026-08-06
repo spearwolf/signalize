@@ -104,7 +104,20 @@ need an initial pass.
 | Member     | Description                                                                              |
 | ---------- | ---------------------------------------------------------------------------------------- |
 | `run()`    | Run the callback if dependencies have changed since the last run; otherwise no-op. Inside a `batch()`, queues the effect. |
-| `destroy()`| Run cleanup, destroy child effects, drop subscriptions, detach from group.               |
+| `destroy()`| Mark the effect destroyed, drop subscriptions, notify, then run cleanup and destroy child effects. |
+
+> **Teardown order.** `destroy()` marks the effect as destroyed and
+> unsubscribes it from all queues **before** it emits its destroy events and
+> **before** the cleanup callback runs. Everything that observes the teardown
+> — a cleanup callback, an `onDestroyEffect(cb)` handler — therefore sees an
+> effect that no longer reacts: writing to a signal the effect depends on
+> triggers no further run, and `run()` is a no-op. Repeated or re-entrant
+> `destroy()` calls do nothing. A cleanup that throws propagates to the
+> caller of `destroy()`, but the teardown still completes — including the
+> child effects, so a failing sibling never leaves a live effect behind. If
+> more than one cleanup throws (this effect's and a child's, or several
+> children's), the caller gets an `AggregateError` whose `errors` array holds
+> every failure in teardown order; a lone error is rethrown unchanged.
 
 ### Top-level helpers
 
@@ -112,7 +125,7 @@ need an initial pass.
 | ------------------------- | ---------------------------------------------------------------------------------- |
 | `getEffectsCount()`       | Live effect count.                                                                 |
 | `onCreateEffect(cb)`      | Subscribe to effect-create events; returns an unsubscribe function.                |
-| `onDestroyEffect(cb)`     | Subscribe to effect-destroy events; returns an unsubscribe function.               |
+| `onDestroyEffect(cb)`     | Subscribe to effect-destroy events; returns an unsubscribe function. The effect passed to `cb` is already destroyed — `run()` on it does nothing. |
 
 ---
 

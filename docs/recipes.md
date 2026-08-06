@@ -112,6 +112,9 @@ createEffect(() => {
 - For `async` callbacks: when the returned promise resolves to a function,
   that function is called (the next run won't wait for it).
 - Nested effects are destroyed (with their cleanup) before the parent re-runs.
+- On `destroy()` the effect is already marked destroyed and unsubscribed when
+  the cleanup runs. A cleanup that resets a signal the effect depends on
+  therefore triggers no final run — and no cleanup gets stranded.
 
 ## Lazy effects (`autorun: false`)
 

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Bug Fixes
+
+- `Effect.destroy()` unsubscribes the effect before running its cleanup callback, so a cleanup that writes to a signal the effect depends on no longer triggers one last run whose own cleanup would never be called (MEM-007)
+- `Effect.destroy()` marks the effect as destroyed before it emits its destroy events, so an `onDestroyEffect()` handler no longer receives an effect whose `run()` still executes the callback (BUG-008)
+- A re-entrant `Effect.destroy()` (from a cleanup callback or a destroy handler) is now a no-op instead of decrementing `getEffectsCount()` a second time
+- A cleanup callback that throws no longer leaves the effect half-destroyed — child effects, subscriptions and `getEffectsCount()` are settled either way, and the error still reaches the caller
+- A child effect whose cleanup throws no longer aborts the destruction of its siblings. They used to survive their parent as zombies — still subscribed, still reacting to signal writes
+- `Effect.destroy()` reports every failing cleanup instead of only the last one. Several errors (own cleanup plus a child's, or several children's) arrive as an `AggregateError` in teardown order; a single error is rethrown unchanged
+
 ### Tests
 
 - New microbenchmark suite under `bench/` (Vitest Bench, `pnpm bench`) covering signal writes (with/without subscribers), memo recompute, effect create/destroy, `SignalGroup.findOrCreate`, and `batch()` overhead. CI runs it informatively — no regression gate yet (PERF-003)

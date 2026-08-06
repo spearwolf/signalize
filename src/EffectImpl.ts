@@ -67,6 +67,23 @@ export interface EffectOptionsWithNameDeps {
 const isThenable = (value: unknown): value is Promise<unknown> =>
   value != null && typeof (value as Promise<unknown>).then === 'function';
 
+/**
+ * Re-raise errors collected while tearing down a tree of effects.
+ *
+ * A single error is rethrown unchanged, so the common case keeps the exact
+ * error the userland cleanup threw. Several errors are bundled into an
+ * `AggregateError` — none of them may be dropped just because a sibling
+ * failed first.
+ */
+const throwCollectedErrors = (errors: unknown[]): void => {
+  if (errors.length === 0) return;
+  if (errors.length === 1) throw errors[0];
+  throw new AggregateError(
+    errors,
+    `[signalize] ${errors.length} errors while destroying an effect`,
+  );
+};
+
 // Eventize injects EventizedObject members at runtime via eventize(this) in
 // the constructor — declaration merging tells TS the brand is present.
 export interface EffectImpl extends EventizedObject {}
@@ -377,9 +394,34 @@ export class EffectImpl {
     }
   }
 
+  /**
+   * Destroy every child effect and empty the child list.
+   *
+   * A child whose teardown throws must not take its siblings with it: an
+   * undestroyed sibling keeps its queue subscriptions and goes on reacting
+   * to signal writes long after its parent is gone. So each child is
+   * destroyed under its own guard, the errors are collected, and only
+   * afterwards re-raised — one error unchanged, several as an
+   * `AggregateError`.
+   */
   private destroyChildEffects(): void {
+    const errors: unknown[] = [];
+    this.collectDestroyChildEffects(errors);
+    throwCollectedErrors(errors);
+  }
+
+  /**
+   * The body of {@link destroyChildEffects}, but appending to a caller-owned
+   * error list instead of throwing. Lets `destroy()` merge the child errors
+   * with an error from its own cleanup into a single report.
+   */
+  private collectDestroyChildEffects(errors: unknown[]): void {
     for (const effect of this.childEffects) {
-      effect.destroy();
+      try {
+        effect.destroy();
+      } catch (err) {
+        errors.push(err);
+      }
     }
     this.childEffects.length = 0;
   }
@@ -409,28 +451,67 @@ export class EffectImpl {
     }
   }
 
+  /**
+   * Destroy the effect.
+   *
+   * The effect is marked as destroyed and unsubscribed from all queues
+   * _before_ any notification goes out and before the _cleanup callback_
+   * runs. Everything that observes the teardown — a `DESTROY` listener on
+   * the effect, an `onDestroyEffect()` handler, the cleanup callback itself
+   * — therefore sees an effect that no longer reacts: a signal write from a
+   * cleanup cannot trigger another run, and `run()` is a no-op.
+   *
+   * Calling `destroy()` again (including re-entrantly from a cleanup) does
+   * nothing. A cleanup callback that throws propagates to the caller, but
+   * does not stop the teardown: child effects, the internal bookkeeping and
+   * the effect counter are settled in any case.
+   *
+   * When more than one thing throws — this effect's cleanup and a child's,
+   * or several children's — every error is reported: the failures are
+   * collected during the teardown and re-raised afterwards as an
+   * `AggregateError` whose `errors` array holds them in teardown order (own
+   * cleanup first, then the children). A lone error is rethrown unchanged.
+   */
   destroy = (): void => {
     if (this.#destroyed) return;
 
-    emit(this, DESTROY, this);
-    off(this);
-
-    emit(globalEffectQueue, $destroyEffect, this);
-
-    this.runCleanupCallback();
-    this.destroyChildEffects();
+    // Flag first, unsubscribe second — from here on nothing can call the
+    // effect callback again. The early return above then makes every
+    // re-entrant destroy() a no-op, so --EffectImpl.count runs exactly once.
+    this.#destroyed = true;
 
     off(globalSignalQueue, this);
     off(globalEffectQueue, this);
     off(globalDestroySignalQueue, this);
 
-    this.#destroyed = true;
+    // Userland code below may throw. Since the early return has already
+    // sealed this instance, a half-finished teardown would be permanent:
+    // orphaned child effects and a counter that never comes back down. So
+    // nothing here rethrows before the last step is done.
+    const errors: unknown[] = [];
 
-    this.#signals.clear();
-    this.#lostSignals.clear();
-    this.#signalSubscriptions.clear();
-    this.#destroyedSignals.clear();
+    try {
+      emit(this, DESTROY, this);
+      off(this);
 
-    --EffectImpl.count;
+      emit(globalEffectQueue, $destroyEffect, this);
+
+      this.runCleanupCallback();
+    } catch (err) {
+      errors.push(err);
+    }
+
+    try {
+      this.collectDestroyChildEffects(errors);
+    } finally {
+      this.#signals.clear();
+      this.#lostSignals.clear();
+      this.#signalSubscriptions.clear();
+      this.#destroyedSignals.clear();
+
+      --EffectImpl.count;
+    }
+
+    throwCollectedErrors(errors);
   };
 }
