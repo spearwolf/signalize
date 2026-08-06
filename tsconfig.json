@@ -1,5 +1,11 @@
 {
-  "include": ["src/**/*.ts", "vitest.config.ts", "vitest.gc.config.ts"],
+  "include": [
+    "src/**/*.ts",
+    "bench/**/*.ts",
+    "vitest.config.ts",
+    "vitest.gc.config.ts",
+    "vitest.bench.config.ts"
+  ],
 
   "compilerOptions": {
     "target": "ES2023",

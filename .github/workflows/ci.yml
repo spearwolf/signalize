@@ -38,6 +38,14 @@ jobs:
       - run: pnpm test:gc
         name: Run GC suite (--expose-gc)
 
+      # Informative only: shared runners make absolute timings too noisy for
+      # a hard regression gate (see remediation-plan.md, PERF-003). This just
+      # keeps the suite itself honest — it must stay executable — and puts
+      # numbers in the log for humans to eyeball.
+      - run: pnpm bench
+        name: Run microbenchmarks (informative, non-blocking)
+        continue-on-error: true
+
       - name: Publish coverage summary
         if: always()
         run: |

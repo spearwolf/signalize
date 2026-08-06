@@ -8,6 +8,7 @@
   "files": {
     "includes": [
       "src/**/*.ts",
+      "bench/**/*.ts",
       "*.ts",
       "rollup/**/*.mjs",
       "scripts/**/*.cjs",

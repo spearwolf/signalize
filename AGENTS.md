@@ -165,6 +165,7 @@ Also avoid reading an imported binding at module-eval time across module boundar
 | `pnpm test:watch` | Vitest in watch mode, no coverage gate |
 | `pnpm test:gc` | adds `--expose-gc` so `SignalGroup.gc.spec.ts` runs instead of skipping |
 | `pnpm test:debug` | Vitest under `--inspect-brk`, one file at a time |
+| `pnpm bench` | Vitest Bench over `bench/*.bench.ts`; informative in CI, no regression gate |
 | `pnpm compile` | `tsc --project tsconfig.lib.json` → `lib/` (types + sourcemaps) |
 | `pnpm bundle` | rollup → `dist/index.js`, `dist/decorators.js` |
 | `pnpm clean` | `rimraf build types tests dist lib coverage` |

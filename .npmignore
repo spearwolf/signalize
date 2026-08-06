@@ -17,6 +17,8 @@ scripts
 rollup.config.*
 vitest.config.ts
 vitest.gc.config.ts
+vitest.bench.config.ts
+bench
 pnpm-workspace.yaml
 types
 hero.gif

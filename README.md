@@ -320,6 +320,7 @@ pnpm install
 | `pnpm test -- -t "<name>"` | Only tests whose name matches |
 | `pnpm test:watch` | Vitest in watch mode |
 | `pnpm test:gc` | Runs the GC suite that `pnpm test` skips |
+| `pnpm bench` | Runs the microbenchmark suite in `bench/` |
 | `pnpm check` / `pnpm fix` | Biome lint + format — check only / auto-fix |
 | `pnpm compile` | `tsc` → `lib/` (types + sourcemaps) |
 | `pnpm bundle` | rollup → `dist/` |

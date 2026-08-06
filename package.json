@@ -36,6 +36,7 @@
     "test:watch": "vitest",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:gc": "vitest run --config vitest.gc.config.ts",
+    "bench": "vitest bench --run --config vitest.bench.config.ts",
     "cbt": "run-s -sn clean compile bundle test",
     "dist": "run-s -sn clean compile bundle",
     "world": "run-s -sn clean check compile bundle test"
