@@ -1,1063 +1,1182 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Audit · @spearwolf/signalize v0.30.0</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projekt-Audit — @spearwolf/signalize</title>
 <style>
-  :root {
-    --bg: #0f172a;
-    --panel: #131c2f;
-    --panel-2: #18233a;
-    --text: #e2e8f0;
-    --muted: #94a3b8;
-    --border: #233149;
-    --accent: #8aa6ff;
-    --accent-dim: #4f6dc7;
-    --crit: #f15d6a;
-    --high: #f59f5a;
-    --med:  #f1c45a;
-    --low:  #6fb1ff;
-    --info: #94a3b8;
-    --ok:   #6ed29c;
-    --code-bg: #0b1322;
+  :root{
+    --bg:#0f172a; --bg-2:#151f38; --bg-3:#1b2744; --line:#26334f;
+    --fg:#e2e8f0; --fg-2:#a2b0c6; --fg-3:#7c8aa3;
+    --accent:#818cf8; --accent-2:#a5b4fc;
+    --crit:#f87171; --high:#fb923c; --med:#fbbf24; --low:#60a5fa; --info:#94a3b8;
+    --ok:#4ade80;
   }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    font-family: ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.65;
-    font-size: 15px;
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    line-height:1.65; font-size:16px;
   }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 36px 26px 72px; }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  h1 { margin: 0 0 6px; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
-  h2 { margin: 40px 0 14px; font-size: 20px; font-weight: 600; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
-  h3 { margin: 22px 0 8px; font-size: 15px; font-weight: 600; color: var(--accent); letter-spacing: 0.01em; }
-  p { margin: 8px 0; }
-  ul, ol { margin: 6px 0 14px; padding-left: 22px; }
-  li { margin: 4px 0; }
-  code, pre { font-family: ui-monospace, "JetBrains Mono", "Fira Code", Consolas, monospace; font-size: 12.5px; }
-  code {
-    background: var(--code-bg);
-    color: #d1d9ea;
-    padding: 1px 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
+  .wrap{max-width:1080px; margin:0 auto; padding:48px 24px 96px}
+  h1,h2,h3{font-weight:600; line-height:1.25; margin:0}
+  h1{font-size:2rem; letter-spacing:-.02em}
+  h2{font-size:1.35rem; margin:56px 0 16px; letter-spacing:-.01em}
+  h3{font-size:1.02rem; margin:28px 0 8px; color:var(--fg-2)}
+  p{margin:0 0 14px}
+  a{color:var(--accent-2)}
+  code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.86em; background:var(--bg-3); padding:.1em .38em;
+    border-radius:4px; border:1px solid var(--line); white-space:nowrap;
   }
-  pre {
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 12px 14px;
-    overflow-x: auto;
-    margin: 8px 0 14px;
-  }
-  pre code { background: none; border: 0; padding: 0; }
+  .muted{color:var(--fg-2)}
+  .small{font-size:.87rem}
 
-  header.report {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 24px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 20px;
-    margin-bottom: 28px;
-    flex-wrap: wrap;
+  header.top{border-bottom:1px solid var(--line); padding-bottom:28px}
+  .stack{display:flex; flex-wrap:wrap; gap:7px; margin:14px 0 0}
+  .badge{
+    font-size:.76rem; padding:.2em .6em; border-radius:999px;
+    background:var(--bg-3); border:1px solid var(--line); color:var(--fg-2);
   }
-  header .meta { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
-  header .meta strong { color: var(--text); }
-  .badges { margin-top: 10px; }
-  .badge {
-    display: inline-block;
-    font-size: 11.5px;
-    color: var(--muted);
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 2px 9px;
-    margin-right: 6px;
-    margin-bottom: 4px;
+  .scorebox{display:flex; flex-wrap:wrap; align-items:baseline; gap:16px; margin-top:26px}
+  .score{font-size:3.4rem; font-weight:600; letter-spacing:-.03em; line-height:1}
+  .delta{font-size:1rem; color:var(--fg-2)}
+  .delta .down{color:var(--high)}
+  .delta .note{color:var(--fg-3)}
+  .diffline{
+    margin-top:14px; padding:12px 16px; background:var(--bg-2);
+    border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:6px; font-size:.92rem;
   }
 
-  .score-box {
-    text-align: right;
-    min-width: 220px;
-  }
-  .score-box .score {
-    font-size: 44px;
-    font-weight: 600;
-    color: var(--text);
-    line-height: 1;
-  }
-  .score-box .score .max { color: var(--muted); font-size: 18px; font-weight: 400; }
-  .score-box .delta {
-    font-size: 13px;
-    color: var(--muted);
-    margin-top: 6px;
-  }
-  .score-box .delta .up   { color: var(--ok);   font-weight: 600; }
-  .score-box .delta .down { color: var(--crit); font-weight: 600; }
-  .score-box .delta .flat { color: var(--muted); font-weight: 600; }
-
-  .diff-line {
-    margin: 0 0 4px;
-    color: var(--muted);
-    font-size: 13px;
-  }
-  .diff-line strong { color: var(--text); }
-
-  .history {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 14px;
-    margin: 18px 0 26px;
-  }
-  .history svg { display: block; width: 100%; max-width: 640px; height: auto; }
-  .history .caption { color: var(--muted); font-size: 12.5px; margin-top: 6px; font-style: italic; }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 12px;
-    margin: 16px 0 22px;
-  }
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 16px;
-  }
-  .card .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em; }
-  .card .value { font-size: 22px; font-weight: 600; margin-top: 6px; }
-  .card .sub   { color: var(--muted); font-size: 12px; margin-top: 4px; }
-
-  .domain-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 12px;
-    margin: 10px 0 18px;
-  }
-  .domain {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent-dim);
-    border-radius: 8px;
-    padding: 12px 14px;
-  }
-  .domain h4 { margin: 0 0 4px; font-size: 14px; }
-  .domain p  { margin: 0; font-size: 13px; color: var(--muted); }
-  .domain .paths { margin-top: 6px; }
-  .domain .paths code { font-size: 11.5px; margin-right: 5px; }
-
-  .summary {
-    background: linear-gradient(180deg, rgba(138,166,255,0.06), rgba(138,166,255,0.01));
-    border: 1px solid rgba(138,166,255,0.20);
-    border-radius: 10px;
-    padding: 16px 18px;
-    margin: 16px 0 26px;
-  }
-  .summary p:first-child { margin-top: 0; }
-  .summary p:last-child  { margin-bottom: 0; }
-
-  /* severity bars */
-  .sev-row {
-    display: grid;
-    grid-template-columns: 110px 1fr 60px;
-    gap: 10px;
-    align-items: center;
-    margin: 6px 0;
-    font-size: 13px;
-  }
-  .sev-row .lbl { color: var(--muted); }
-  .sev-row .num { text-align: right; color: var(--muted); font-family: ui-monospace, monospace; }
-  .sev-bar {
-    height: 14px;
-    border-radius: 4px;
-    background: var(--panel-2);
-    overflow: hidden;
-    border: 1px solid var(--border);
-  }
-  .sev-bar > div { height: 100%; }
-  .sev-bar.critical > div { background: var(--crit); }
-  .sev-bar.high     > div { background: var(--high); }
-  .sev-bar.medium   > div { background: var(--med); }
-  .sev-bar.low      > div { background: var(--low); }
-  .sev-bar.info     > div { background: var(--info); }
-
-  .cat-list { columns: 2; column-gap: 28px; }
-  .cat-list .row { break-inside: avoid; display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; border-bottom: 1px dashed var(--border); }
-  .cat-list .row .n { color: var(--muted); font-family: ui-monospace, monospace; }
-
-  /* filters */
-  .filters { margin: 16px 0 12px; display: flex; flex-wrap: wrap; gap: 6px; }
-  .filters span.f-label { color: var(--muted); font-size: 12px; margin-right: 6px; align-self: center; text-transform: uppercase; letter-spacing: 0.08em; }
-  button.f {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    cursor: pointer;
-    font-family: inherit;
-  }
-  button.f:hover { border-color: var(--accent-dim); }
-  button.f.on { background: var(--accent-dim); border-color: var(--accent-dim); color: #fff; }
-
-  /* backlog table */
-  table.backlog {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 8px 0 20px;
-    font-size: 13.5px;
-  }
-  table.backlog th, table.backlog td {
-    text-align: left;
-    padding: 9px 10px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top;
-  }
-  table.backlog th {
-    color: var(--muted); font-weight: 600;
-    font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.07em;
-    border-bottom: 1px solid var(--border);
-  }
-  table.backlog tr.row.open { cursor: pointer; }
-  table.backlog tr.row.open:hover td { background: rgba(255,255,255,0.02); }
-  table.backlog tr.detail td {
-    background: var(--panel);
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-  }
-  table.backlog tr.detail .why    { color: var(--muted); margin-top: 6px; font-size: 13px; }
-  table.backlog tr.detail strong  { color: var(--text); }
-  table.backlog tr.detail pre     { margin: 6px 0 0; }
-  .hidden { display: none !important; }
-
-  .pill {
-    display: inline-block;
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 2px 7px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: var(--panel);
-    color: var(--muted);
-    margin-right: 4px;
-  }
-  .pill.critical { color: var(--crit); border-color: rgba(241,93,106,0.40);  background: rgba(241,93,106,0.10); }
-  .pill.high     { color: var(--high); border-color: rgba(245,159,90,0.40);  background: rgba(245,159,90,0.10); }
-  .pill.medium   { color: var(--med);  border-color: rgba(241,196,90,0.40);  background: rgba(241,196,90,0.10); }
-  .pill.low      { color: var(--low);  border-color: rgba(111,177,255,0.40); background: rgba(111,177,255,0.10); }
-  .pill.info     { color: var(--info); }
-  .pill.s-new        { color: var(--accent); border-color: rgba(138,166,255,0.4); }
-  .pill.s-improved   { color: var(--ok);     border-color: rgba(110,210,156,0.4); background: rgba(110,210,156,0.10); }
-  .pill.s-unchanged  { color: var(--muted); }
-  .pill.s-carried    { color: var(--muted); opacity: 0.7; }
-
-  .id { font-family: ui-monospace, monospace; color: var(--muted); font-size: 12px; }
-  .loc { font-family: ui-monospace, monospace; color: var(--muted); font-size: 12px; }
-
-  footer {
-    color: var(--muted);
-    font-size: 12px;
-    border-top: 1px solid var(--border);
-    margin-top: 50px;
-    padding-top: 16px;
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px}
+  .card{background:var(--bg-2); border:1px solid var(--line); border-radius:8px; padding:16px 18px}
+  .card h4{margin:0 0 6px; font-size:.97rem; font-weight:600}
+  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px}
+  .chip{
+    font-size:.73rem; font-family:ui-monospace,Menlo,monospace;
+    background:var(--bg-3); border:1px solid var(--line); color:var(--fg-3);
+    padding:.15em .45em; border-radius:4px;
   }
 
-  .architecture-svg {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-    margin: 10px 0 18px;
-    overflow-x: auto;
+  figure{margin:22px 0 0}
+  figure svg{width:100%; height:auto; display:block}
+  figcaption{font-size:.85rem; color:var(--fg-3); margin-top:10px}
+
+  .bars{display:flex; flex-direction:column; gap:9px; margin-top:6px}
+  .bar{display:grid; grid-template-columns:88px 1fr 42px; align-items:center; gap:12px; font-size:.88rem}
+  .bar .track{height:9px; background:var(--bg-3); border-radius:5px; overflow:hidden}
+  .bar .fill{height:100%; border-radius:5px}
+  .bar .n{text-align:right; color:var(--fg-2); font-variant-numeric:tabular-nums}
+
+  .catgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:8px; margin-top:6px}
+  .cat{
+    display:flex; justify-content:space-between; gap:10px; align-items:center;
+    background:var(--bg-2); border:1px solid var(--line); border-radius:6px;
+    padding:9px 13px; font-size:.88rem;
   }
-  .caption {
-    color: var(--muted);
-    font-size: 12.5px;
-    margin: 4px 0 16px;
-    font-style: italic;
+  .cat .n{color:var(--fg-2); font-variant-numeric:tabular-nums}
+
+  .filters{display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 14px; align-items:center}
+  .filters select, .filters button{
+    background:var(--bg-2); color:var(--fg); border:1px solid var(--line);
+    border-radius:6px; padding:7px 11px; font:inherit; font-size:.86rem; cursor:pointer;
   }
+  .filters button:hover{border-color:var(--accent)}
+  .count{color:var(--fg-3); font-size:.86rem; margin-left:auto}
+
+  .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:8px}
+  table{border-collapse:collapse; width:100%; min-width:720px; font-size:.9rem}
+  thead th{
+    text-align:left; font-weight:600; font-size:.78rem; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--fg-3); padding:11px 14px;
+    background:var(--bg-3); border-bottom:1px solid var(--line); white-space:nowrap;
+  }
+  tbody tr.row{border-top:1px solid var(--line); cursor:pointer}
+  tbody tr.row:hover{background:var(--bg-2)}
+  tbody td{padding:11px 14px; vertical-align:top}
+  td.id{font-family:ui-monospace,Menlo,monospace; font-size:.8rem; color:var(--fg-3); white-space:nowrap}
+  td.loc{font-family:ui-monospace,Menlo,monospace; font-size:.78rem; color:var(--fg-3)}
+  .sev{
+    display:inline-block; font-size:.72rem; font-weight:600; letter-spacing:.03em;
+    text-transform:uppercase; padding:.16em .55em; border-radius:4px; white-space:nowrap;
+  }
+  .sev-critical{background:rgba(248,113,113,.16); color:var(--crit); border:1px solid rgba(248,113,113,.35)}
+  .sev-high{background:rgba(251,146,60,.15); color:var(--high); border:1px solid rgba(251,146,60,.34)}
+  .sev-medium{background:rgba(251,191,36,.13); color:var(--med); border:1px solid rgba(251,191,36,.3)}
+  .sev-low{background:rgba(96,165,250,.13); color:var(--low); border:1px solid rgba(96,165,250,.3)}
+  .sev-info{background:rgba(148,163,184,.13); color:var(--info); border:1px solid rgba(148,163,184,.28)}
+  .st{
+    display:inline-block; font-size:.68rem; padding:.12em .48em; border-radius:4px;
+    border:1px solid var(--line); color:var(--fg-3); background:var(--bg-3); white-space:nowrap;
+  }
+  .st-new{color:var(--accent-2); border-color:rgba(129,140,248,.4); background:rgba(129,140,248,.12)}
+  .st-improved{color:var(--ok); border-color:rgba(74,222,128,.35); background:rgba(74,222,128,.1)}
+  .eff{font-family:ui-monospace,Menlo,monospace; font-size:.78rem; color:var(--fg-3)}
+  tr.detail{display:none; border-top:0}
+  tr.detail.open{display:table-row}
+  tr.detail td{padding:0 14px 18px; background:var(--bg-2)}
+  .det{border-left:2px solid var(--line); padding-left:16px}
+  .det .lbl{
+    font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--fg-3); margin:12px 0 4px;
+  }
+  .det p{margin:0; font-size:.9rem; color:var(--fg-2)}
+  .det .evi{
+    margin-top:6px; font-family:ui-monospace,Menlo,monospace; font-size:.79rem;
+    background:var(--bg-3); border:1px solid var(--line); border-radius:6px;
+    padding:9px 12px; color:var(--fg-2); overflow-x:auto; white-space:pre-wrap;
+  }
+  ul{margin:0 0 14px; padding-left:22px}
+  li{margin:5px 0}
+  .qbox{background:var(--bg-2); border:1px solid var(--line); border-radius:8px; padding:16px 20px 4px}
+  footer{margin-top:64px; padding-top:22px; border-top:1px solid var(--line); color:var(--fg-3); font-size:.85rem}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<header class="report">
-  <div>
-    <h1>Audit · <code>@spearwolf/signalize</code></h1>
-    <div class="meta">
-      Version <strong>0.30.0</strong> · ESM-only · Node ≥ 24.13 · TypeScript 6 · Erstellt am <strong>2026-05-20</strong>
-    </div>
-    <div class="badges">
-      <span class="badge">Reaktivitäts-Bibliothek</span>
-      <span class="badge">Framework-agnostisch</span>
-      <span class="badge">Eventize 5.x Pub/Sub</span>
-      <span class="badge">Jest + ts-jest ESM</span>
-      <span class="badge">Biome 2.4</span>
-      <span class="badge">Rollup</span>
+<header class="top">
+  <h1>Projekt-Audit — @spearwolf/signalize</h1>
+  <div class="stack">
+    <span class="badge">TypeScript 7</span>
+    <span class="badge">Node ≥ 24.13</span>
+    <span class="badge">ESM-only</span>
+    <span class="badge">ES2023</span>
+    <span class="badge">Vitest 4</span>
+    <span class="badge">Biome 2</span>
+    <span class="badge">Rollup 4</span>
+    <span class="badge">pnpm 11</span>
+    <span class="badge">v0.32.0-dev</span>
+  </div>
+  <div class="scorebox">
+    <div class="score">25,5</div>
+    <div class="delta">
+      <span class="down">▼ −46,5</span> gegenüber 72 (2026-05-20)
+      <span class="note">— Prüftiefe, nicht Codeverfall</span>
     </div>
   </div>
-  <div class="score-box">
-    <div class="score">72<span class="max"> / 100</span></div>
-    <div class="delta"><span class="down">▼ −1</span> vorher 73 · 2026-05-20</div>
+  <div class="diffline">
+    <strong>4 behoben</strong>, <strong>1 verbessert</strong>, <strong>28 neu</strong> seit dem 2026-05-20.
+    Der Vorlauf war ein reiner Lese-Audit. Dieser Lauf hat die kompilierte Bibliothek zusätzlich
+    ausgeführt: 30 Laufzeit-Proben, erzwungene GC-Runden und drei Mikrobenchmarks. Alle 28 neuen
+    Befunde stammen aus Pfaden, die sich durch Quelltextlesen allein nicht belegen lassen.
   </div>
 </header>
 
-<p class="diff-line">
-  <strong>Seit letztem Audit (gleicher Tag, v0.30.0):</strong> 4 Findings behoben (BUG-001, TEST-001, DOC-001, DX-005), 1 verbessert (API-001), 4 neu — darunter ein neuer <em>High</em>-Befund am <code>@memo</code>-Decorator. Net-Effekt am Score: −1.
-</p>
-
-<!-- ===================== Score-Verlauf ===================== -->
-<section class="history">
-  <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%"  stop-color="#8aa6ff" stop-opacity="0.35"/>
-        <stop offset="100%" stop-color="#8aa6ff" stop-opacity="0"/>
-      </linearGradient>
-    </defs>
-    <!-- gridlines -->
-    <line x1="60" y1="30"  x2="620" y2="30"  stroke="#233149" stroke-dasharray="2 4"/>
-    <line x1="60" y1="100" x2="620" y2="100" stroke="#233149" stroke-dasharray="2 4"/>
-    <line x1="60" y1="170" x2="620" y2="170" stroke="#233149" stroke-dasharray="2 4"/>
-    <!-- y-axis labels -->
-    <text x="52" y="34"  fill="#94a3b8" font-size="11" text-anchor="end">100</text>
-    <text x="52" y="104" fill="#94a3b8" font-size="11" text-anchor="end">50</text>
-    <text x="52" y="174" fill="#94a3b8" font-size="11" text-anchor="end">0</text>
-    <!-- area fill -->
-    <path d="M 80,124 L 350,54 L 620,58 L 620,170 L 80,170 Z" fill="url(#g)"/>
-    <!-- line -->
-    <polyline points="80,124 350,54 620,58" fill="none" stroke="#8aa6ff" stroke-width="2"/>
-    <!-- points -->
-    <circle cx="80"  cy="124" r="4" fill="#131c2f" stroke="#8aa6ff" stroke-width="2"/>
-    <circle cx="350" cy="54"  r="4" fill="#131c2f" stroke="#8aa6ff" stroke-width="2"/>
-    <circle cx="620" cy="58"  r="6" fill="#8aa6ff" stroke="#0f172a" stroke-width="2"/>
-    <!-- value labels -->
-    <text x="80"  y="118" fill="#e2e8f0" font-size="11" text-anchor="middle">68</text>
-    <text x="350" y="48"  fill="#e2e8f0" font-size="11" text-anchor="middle">73</text>
-    <text x="620" y="48"  fill="#e2e8f0" font-size="12" font-weight="600" text-anchor="middle">72</text>
-    <!-- date labels -->
-    <text x="80"  y="192" fill="#94a3b8" font-size="11" text-anchor="middle">2026-05-14</text>
-    <text x="350" y="192" fill="#94a3b8" font-size="11" text-anchor="middle">2026-05-20 (Lauf 1)</text>
-    <text x="620" y="192" fill="#94a3b8" font-size="11" text-anchor="end">2026-05-20 (Lauf 2)</text>
-  </svg>
-  <div class="caption">Verlauf der Health-Scores seit 2026-05-14 (drei Audits). Der heutige Stand liegt einen Punkt unter dem vorherigen Lauf, weil <code>MEMO-001</code> als neues High-Finding hinzukommt — die Trendlinie über zwei Wochen bleibt klar positiv (+4).</div>
-</section>
-
-<!-- ===================== Projektportrait ===================== -->
-<section>
-<h2>Projektportrait</h2>
+<h2>Was das Projekt ist</h2>
 <p>
-  <code>@spearwolf/signalize</code> ist eine kleine, framework-agnostische
-  <strong>Reaktivitäts-Bibliothek</strong> für JavaScript/TypeScript. Sie liefert vier
-  Primitive — Signal, Effect, Memo, Link — und propagiert jede Wert-Änderung
-  <em>inline und synchron</em> über vier globale Eventize-Queues. Kein Scheduler,
-  keine Microtask, kein virtueller Graph: nach <code>set()</code> sind alle
-  abhängigen Effects bereits gelaufen.
+  <code>@spearwolf/signalize</code> ist eine framework-agnostische Reaktivitäts-Bibliothek:
+  Signals, Effects, Memos und Links, und zwar durchgehend synchron. Ein Signal-Write ruft seine
+  abhängigen Effects inline auf, bevor der Write zurückkehrt. Es gibt keinen Scheduler, keine
+  Microtask-Queue, kein Render-Fenster, in dem sich Änderungen sammeln könnten.
 </p>
 <p>
-  Zielgruppe sind nach eigener Aussage <strong>3D-Konfiguratoren, Render-/Game-Loops,
-  Real-Time-Dashboards und gamifizierte PWAs</strong> — also Kontexte, in denen
-  „settle before I move on" wichtiger ist als implizites Batching. Die Bibliothek
-  bietet zudem eine Lifecycle-Schicht (<code>SignalGroup</code>), TC39-Standard-Decorators
-  und einen separaten Subpath für die Klassen-API.
+  Die gesamte interne Kommunikation läuft über vier globale Event-Busse aus
+  <code>@spearwolf/eventize</code>. Signale identifizieren sich über Symbole, die zugleich die
+  Event-Namen auf diesen Bussen sind. Zielgruppe sind Anwendungen ohne eingebaute
+  Framework-Reaktivität: WebGL- und Canvas-Loops, Web Components, Node-Prozesse. Zwei Entry
+  Points, <code>.</code> und <code>./decorators</code>, letzterer für die TC39-Decorators
+  <code>@signal</code> und <code>@memo</code>.
 </p>
 
 <h3>Domänen</h3>
-<div class="domain-grid">
-  <div class="domain">
-    <h4>Reactive Core</h4>
-    <p>Signal- und Effect-Implementierungen, Dependency-Tracking, RECALL-Loop, Re-Run-Guards.</p>
-    <div class="paths"><code>src/createSignal.ts</code><code>src/EffectImpl.ts</code><code>src/Signal.ts</code><code>src/Effect.ts</code></div>
+<div class="grid">
+  <div class="card">
+    <h4>Signal-Kern</h4>
+    <div class="small muted">Wert, Identität, Lese- und Schreibpfad, Mute und Destroy. Die Blattschicht, die nichts über sich importiert.</div>
+    <div class="chips"><span class="chip">signal-core.ts</span><span class="chip">createSignal.ts</span><span class="chip">Signal.ts</span><span class="chip">value.ts</span><span class="chip">touch.ts</span></div>
   </div>
-  <div class="domain">
-    <h4>Derived &amp; Linked Values</h4>
-    <p>Memos (gecachte Derivate) und Links (One-Way Signal→Signal / Signal→Callback).</p>
-    <div class="paths"><code>src/createMemo.ts</code><code>src/link.ts</code><code>src/SignalLink.ts</code></div>
+  <div class="card">
+    <h4>Effect-Engine</h4>
+    <div class="small muted">Dependency-Tracking über den globalen Effect-Stack, Rerun-Logik, Kind-Effects, Rekursionsschutz.</div>
+    <div class="chips"><span class="chip">EffectImpl.ts</span><span class="chip">effects.ts</span><span class="chip">Effect.ts</span><span class="chip">globalEffectStack.ts</span></div>
   </div>
-  <div class="domain">
-    <h4>Lifecycle &amp; Grouping</h4>
-    <p>Signal-/Effect-/Link-Container mit explizitem <code>clear()</code>, <code>off()</code> und FR-Auto-Cleanup. Namespace-Lookup und Auto-Map.</p>
-    <div class="paths"><code>src/SignalGroup.ts</code><code>src/SignalAutoMap.ts</code><code>src/object-signals.ts</code></div>
+  <div class="card">
+    <h4>Abgeleitete Werte</h4>
+    <div class="small muted">Memos als Kombination aus Signal und hochpriorisiertem Effect (Priority 1000), wahlweise eager oder lazy.</div>
+    <div class="chips"><span class="chip">createMemo.ts</span></div>
   </div>
-  <div class="domain">
-    <h4>Context Modes</h4>
-    <p>Synchron-Kontroll-Schalter: <code>batch</code>, <code>beQuiet</code>, <code>hibernate</code>, <code>value</code>, <code>touch</code>.</p>
-    <div class="paths"><code>src/batch.ts</code><code>src/bequiet.ts</code><code>src/hibernate.ts</code><code>src/value.ts</code><code>src/touch.ts</code></div>
+  <div class="card">
+    <h4>Links</h4>
+    <div class="small muted">Explizite Einweg-Datenflüsse von Signal zu Signal oder Callback, plus Promise- und AsyncIterator-Brücke.</div>
+    <div class="chips"><span class="chip">link.ts</span><span class="chip">SignalLink.ts</span></div>
   </div>
-  <div class="domain">
-    <h4>Pub/Sub-Infrastruktur</h4>
-    <p>Vier globale Eventize-Queues (Signal/Destroy/Effect/Called), Effect-Stack, Symbol-IDs.</p>
-    <div class="paths"><code>src/global-queues.ts</code><code>src/globalEffectStack.ts</code><code>src/UniqIdGen.ts</code><code>src/constants.ts</code></div>
+  <div class="card">
+    <h4>Lebenszyklus</h4>
+    <div class="small muted">Gruppen als Bündel, Objekt-Signale, Auto-Map, Decorators. Regelt, wer wann zerstört wird.</div>
+    <div class="chips"><span class="chip">SignalGroup.ts</span><span class="chip">object-signals.ts</span><span class="chip">SignalAutoMap.ts</span><span class="chip">decorators.ts</span></div>
   </div>
-  <div class="domain">
-    <h4>Decorators &amp; Class API</h4>
-    <p>TC39-Standard-Decorators <code>@signal</code> / <code>@memo</code> auf separatem Subpath.</p>
-    <div class="paths"><code>src/decorators.ts</code></div>
+  <div class="card">
+    <h4>Ausführungskontexte</h4>
+    <div class="small muted">Batch, Quiet und Hibernate: globale Modi, die das Propagationsverhalten für die Dauer eines Callbacks umschalten.</div>
+    <div class="chips"><span class="chip">batch.ts</span><span class="chip">bequiet.ts</span><span class="chip">hibernate.ts</span><span class="chip">global-queues.ts</span></div>
   </div>
 </div>
 
-<h3>Architektur-Diagramm</h3>
-<div class="architecture-svg">
-<svg viewBox="0 0 980 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:980px;height:auto;display:block;">
+<figure>
+<svg viewBox="0 0 900 300" role="img" aria-label="Reaktivitätsschleife von signalize">
   <defs>
-    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#8aa6ff"/>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#818cf8"/>
+    </marker>
+    <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c8aa3"/>
     </marker>
   </defs>
-  <style>
-    .b { fill: #18233a; stroke: #233149; stroke-width: 1; }
-    .b-core { stroke: #8aa6ff; }
-    .lbl { fill: #e2e8f0; font: 600 13px ui-sans-serif, system-ui; }
-    .sub { fill: #94a3b8; font: 11.5px ui-monospace, monospace; }
-    .arrow { stroke: #8aa6ff; stroke-width: 1.4; fill: none; }
-    .ctx { fill: #131c2f; stroke: #233149; }
-    .titlebar { fill: #94a3b8; font: 11px ui-sans-serif; letter-spacing: 0.08em; }
-  </style>
+  <g font-family="ui-monospace,Menlo,monospace" font-size="13">
+    <rect x="20" y="28" width="196" height="52" rx="7" fill="#1b2744" stroke="#26334f"/>
+    <text x="118" y="50" fill="#e2e8f0" text-anchor="middle">SignalImpl.writer</text>
+    <text x="118" y="68" fill="#7c8aa3" text-anchor="middle" font-size="11">createSignal.ts:99</text>
 
-  <!-- User code -->
-  <rect class="b" x="20" y="20" width="180" height="56" rx="8"/>
-  <text class="lbl" x="110" y="44" text-anchor="middle">User-Code</text>
-  <text class="sub" x="110" y="62" text-anchor="middle">createSignal · createEffect</text>
+    <rect x="332" y="18" width="236" height="72" rx="7" fill="#1b2744" stroke="#818cf8"/>
+    <text x="450" y="44" fill="#a5b4fc" text-anchor="middle">globalSignalQueue</text>
+    <text x="450" y="64" fill="#7c8aa3" text-anchor="middle" font-size="11">Event-Name = signal.id (Symbol)</text>
+    <text x="450" y="79" fill="#7c8aa3" text-anchor="middle" font-size="11">eventize, synchron</text>
 
-  <!-- Wrappers -->
-  <rect class="b" x="240" y="20" width="200" height="56" rx="8"/>
-  <text class="lbl" x="340" y="44" text-anchor="middle">Public Wrapper</text>
-  <text class="sub" x="340" y="62" text-anchor="middle">Signal · Effect · Memo</text>
+    <rect x="684" y="28" width="196" height="52" rx="7" fill="#1b2744" stroke="#26334f"/>
+    <text x="782" y="50" fill="#e2e8f0" text-anchor="middle">EffectImpl.run()</text>
+    <text x="782" y="68" fill="#7c8aa3" text-anchor="middle" font-size="11">EffectImpl.ts:267</text>
 
-  <!-- Impls -->
-  <rect class="b b-core" x="480" y="20" width="220" height="56" rx="8"/>
-  <text class="lbl" x="590" y="44" text-anchor="middle">Impl-Klassen</text>
-  <text class="sub" x="590" y="62" text-anchor="middle">SignalImpl · EffectImpl</text>
+    <rect x="684" y="176" width="196" height="52" rx="7" fill="#1b2744" stroke="#26334f"/>
+    <text x="782" y="198" fill="#e2e8f0" text-anchor="middle">runWithinEffect</text>
+    <text x="782" y="216" fill="#7c8aa3" text-anchor="middle" font-size="11">globalEffectStack.ts:9</text>
 
-  <!-- Lifecycle -->
-  <rect class="b" x="740" y="20" width="220" height="56" rx="8"/>
-  <text class="lbl" x="850" y="44" text-anchor="middle">Lifecycle</text>
-  <text class="sub" x="850" y="62" text-anchor="middle">SignalGroup · FinalizationRegistry</text>
+    <rect x="332" y="176" width="236" height="52" rx="7" fill="#1b2744" stroke="#26334f"/>
+    <text x="450" y="198" fill="#e2e8f0" text-anchor="middle">whenSignalIsRead(id)</text>
+    <text x="450" y="216" fill="#7c8aa3" text-anchor="middle" font-size="11">EffectImpl.ts:328</text>
 
-  <!-- Queues -->
-  <rect class="b b-core" x="240" y="140" width="460" height="82" rx="8"/>
-  <text class="titlebar" x="470" y="158" text-anchor="middle">GLOBALE EVENTIZE-QUEUES</text>
-  <text class="sub" x="280" y="180">globalSignalQueue</text>
-  <text class="sub" x="280" y="198">globalDestroySignalQueue</text>
-  <text class="sub" x="490" y="180">globalEffectQueue</text>
-  <text class="sub" x="490" y="198">globalEffectCalledQueue</text>
+    <rect x="20" y="176" width="196" height="52" rx="7" fill="#1b2744" stroke="#26334f"/>
+    <text x="118" y="198" fill="#e2e8f0" text-anchor="middle">signal.get()</text>
+    <text x="118" y="216" fill="#7c8aa3" text-anchor="middle" font-size="11">createSignal.ts:40</text>
 
-  <!-- Context modes -->
-  <rect class="b ctx" x="20" y="240" width="200" height="50" rx="8"/>
-  <text class="lbl" x="120" y="262" text-anchor="middle">Context Modes</text>
-  <text class="sub" x="120" y="278" text-anchor="middle">batch · beQuiet · hibernate</text>
+    <path d="M 216 54 L 326 54" stroke="#818cf8" stroke-width="1.6" fill="none" marker-end="url(#ar)"/>
+    <text x="271" y="45" fill="#a5b4fc" text-anchor="middle" font-size="11">emit</text>
 
-  <!-- eventize -->
-  <rect class="b" x="740" y="240" width="220" height="50" rx="8"/>
-  <text class="lbl" x="850" y="262" text-anchor="middle">@spearwolf/eventize</text>
-  <text class="sub" x="850" y="278" text-anchor="middle">synchrones Pub/Sub (peer dep)</text>
+    <path d="M 568 54 L 678 54" stroke="#818cf8" stroke-width="1.6" fill="none" marker-end="url(#ar)"/>
+    <text x="623" y="45" fill="#a5b4fc" text-anchor="middle" font-size="11">RECALL</text>
 
-  <!-- arrows -->
-  <line class="arrow" x1="200" y1="48" x2="240" y2="48" marker-end="url(#arr)"/>
-  <line class="arrow" x1="440" y1="48" x2="480" y2="48" marker-end="url(#arr)"/>
-  <line class="arrow" x1="700" y1="48" x2="740" y2="48" marker-end="url(#arr)"/>
+    <path d="M 782 80 L 782 170" stroke="#7c8aa3" stroke-width="1.4" fill="none" marker-end="url(#ar2)"/>
+    <path d="M 678 202 L 574 202" stroke="#7c8aa3" stroke-width="1.4" fill="none" marker-end="url(#ar2)"/>
+    <text x="626" y="193" fill="#7c8aa3" text-anchor="middle" font-size="11">Callback liest</text>
+    <path d="M 326 202 L 222 202" stroke="#7c8aa3" stroke-width="1.4" fill="none" marker-end="url(#ar2)"/>
+    <path d="M 450 170 L 450 96" stroke="#7c8aa3" stroke-width="1.4" stroke-dasharray="4 4" fill="none" marker-end="url(#ar2)"/>
+    <text x="462" y="136" fill="#7c8aa3" font-size="11">on(queue, id, priority)</text>
 
-  <line class="arrow" x1="590" y1="76" x2="470" y2="140" marker-end="url(#arr)"/>
-  <line class="arrow" x1="850" y1="76" x2="600" y2="140" marker-end="url(#arr)"/>
-  <line class="arrow" x1="340" y1="76" x2="380" y2="140" marker-end="url(#arr)"/>
+    <path d="M 118 170 L 118 86" stroke="#7c8aa3" stroke-width="1.4" stroke-dasharray="4 4" fill="none" marker-end="url(#ar2)"/>
 
-  <line class="arrow" x1="220" y1="262" x2="280" y2="222" marker-end="url(#arr)"/>
-  <line class="arrow" x1="740" y1="262" x2="690" y2="222" marker-end="url(#arr)"/>
+    <text x="20" y="272" fill="#7c8aa3" font-size="11">Drei weitere Busse laufen parallel: globalDestroySignalQueue, globalEffectQueue, globalEffectCalledQueue.</text>
+    <text x="20" y="290" fill="#7c8aa3" font-size="11">Alle vier sind Modul-Singletons ohne Scoping (INF-001, ARCH-001).</text>
+  </g>
 </svg>
-</div>
-<p class="caption">
-  Vier globale Eventize-Queues bilden den reaktiven Bus. Public Wrapper kapseln <code>SignalImpl</code>/<code>EffectImpl</code>;
-  <code>SignalGroup</code> bündelt Lifecycle. Context-Modes (Batch/Quiet/Hibernate) sind seitliche Schalter.
+<figcaption>
+  Die Reaktivitätsschleife. Durchgezogene Pfeile sind der Propagationspfad eines Writes, gestrichelte
+  die Subscription, die ein tracked Read anlegt. Der gesamte Zyklus läuft synchron innerhalb des
+  auslösenden <code>set()</code>. Die Mehrzahl der Befunde in diesem Report sitzt an genau drei
+  Stellen dieser Schleife: an der Abzweigung, die <code>runWithinEffect</code> überspringt
+  (MEM-001), an der Abmeldung beim Teardown (MEM-004, MEM-007) und an der Stelle, an der ein
+  Callback ein Promise statt einer Cleanup-Funktion zurückgibt (ASYNC-001, ASYNC-002).
+</figcaption>
+</figure>
+
+<h2>Zusammenfassung</h2>
+<p>
+  Die Bibliothek ist handwerklich sorgfältig gebaut: 255 Tests laufen grün, 97,6 % Statement-Coverage,
+  Biome meldet nichts, der Import-Graph ist nachweislich zyklenfrei, und die Doku-Ebene aus
+  <code>docs/</code> plus Agent-Skill gehört zum Besseren, was man in Projekten dieser Größe findet.
+  Zwei Verdachtsmomente haben sich im Test ausdrücklich <em>nicht</em> bestätigt: eventize hinterlässt
+  nach 2000 Create-Destroy-Zyklen keine einzige verwaiste Subscription auf den globalen Bussen, und
+  die FinalizationRegistry räumt Gruppen ohne Rückreferenz zuverlässig ab (200 Gruppen fielen auf 1).
 </p>
-</section>
+<p>
+  Die Schwachstellen liegen nicht im synchronen Kernpfad, sondern an seinen Rändern. Vier Befunde
+  wiegen schwer: ein <code>async</code>-Effect-Callback, der rejiziert, wird zur unbehandelten
+  Rejection und beendet unter Node-Standardeinstellung den Prozess; async-Cleanups laufen
+  nachweislich in falscher Reihenfolge und nach späteren Runs, was Ressourcen doppelt belegt;
+  verschachtelte Effects innerhalb eines Static-Deps-Effects werden nie zerstört und wachsen pro
+  Rerun; und der <code>@memo</code>-Decorator liefert für jedes Argument nach dem ersten still das
+  Ergebnis des ersten Aufrufs. Alle vier sind mit reproduzierbaren Läufen belegt.
+</p>
+<p>
+  Dazu kommen drei gemessene Performance-Posten im mittleren Bereich, eine Reihe unbegrenzt
+  wachsender globaler Register ohne Eviction, und eine Lücke zwischen Doku und Exporten:
+  <code>EffectImpl.maxDepth</code> wird an vier Stellen als Stellschraube beschrieben, ist aus dem
+  Paket aber nicht erreichbar.
+</p>
 
-<!-- ===================== Executive Summary ===================== -->
-<section>
-<h2>Executive Summary</h2>
-<div class="summary">
-  <p>
-    Die v0.30.0 hat die schwersten Punkte aus dem Vor-Audit sauber zugemacht:
-    <code>createEffect</code> verbietet jetzt am Typ-System String-/Symbol-Deps
-    ohne <code>attach</code> (BUG-001 erledigt), CI misst Coverage mit harten
-    Schwellen von 95 % Lines/Statements und 85 % Branches (TEST-001 erledigt),
-    und ein paar kleinere Doku-Lücken wurden geschlossen. Die echte Coverage
-    liegt aktuell bei 98,5 % Lines / 90,5 % Branches — komfortabler Puffer.
-  </p>
-  <p>
-    Der frische Audit findet dafür einen <strong>High</strong>-Befund am
-    <code>@memo</code>-Decorator: das Memo speichert die Args aus dem
-    <em>ersten</em> Aufruf in seiner Closure; spätere Aufrufe mit anderen Args
-    bekommen still den alten Cache-Treffer. Der Typ akzeptiert Methoden mit
-    Parametern, der Test deckt nur den argumentlosen Fall ab — eine klassische
-    LLM-Falle in dokumentierter API. Daneben drei Befunde mittlerer/niedriger
-    Härte: ein schmaler Subscription-Leak in <code>SignalLink</code>
-    (<code>once()</code>-Listener auf globalen Queues werden bei früherem
-    <code>destroy()</code> nicht entkoppelt), <code>createSignal(existing, params)</code>
-    verwirft <code>lazy</code>/<code>compare</code>/<code>beforeRead</code> still,
-    und der Score-Liniendiagramm-Trend zeigt sauber, dass der Backlog im
-    Großen abnimmt — die neue High-Position verdient Priorität vor v0.31.
-  </p>
-</div>
-</section>
-
-<!-- ===================== Severity-Übersicht ===================== -->
-<section>
 <h2>Severity</h2>
-<div id="sev-overview"></div>
-</section>
+<div class="bars" id="sevbars"></div>
 
-<!-- ===================== Kategorie-Übersicht ===================== -->
-<section>
 <h2>Kategorien</h2>
-<div id="cat-overview" class="cat-list"></div>
-</section>
+<div class="catgrid" id="catgrid"></div>
 
-<!-- ===================== Backlog ===================== -->
-<section>
 <h2>Backlog</h2>
-
 <div class="filters">
-  <span class="f-label">Severity</span>
-  <button class="f on" data-filter="sev" data-value="all">Alle</button>
-  <button class="f" data-filter="sev" data-value="critical">Critical</button>
-  <button class="f" data-filter="sev" data-value="high">High</button>
-  <button class="f" data-filter="sev" data-value="medium">Medium</button>
-  <button class="f" data-filter="sev" data-value="low">Low</button>
-  <button class="f" data-filter="sev" data-value="info">Info</button>
+  <select id="f-sev"><option value="">Alle Severities</option></select>
+  <select id="f-cat"><option value="">Alle Kategorien</option></select>
+  <select id="f-st"><option value="">Alle Status</option></select>
+  <button id="f-reset">Zurücksetzen</button>
+  <button id="f-expand">Alle aufklappen</button>
+  <span class="count" id="f-count"></span>
+</div>
+<div class="tablewrap">
+  <table>
+    <thead><tr>
+      <th>ID</th><th>Severity</th><th>Status</th><th>Titel</th><th>Kategorie</th><th>Location</th><th>Aufwand</th>
+    </tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
 </div>
 
-<div class="filters">
-  <span class="f-label">Status</span>
-  <button class="f on" data-filter="status" data-value="all">Alle</button>
-  <button class="f" data-filter="status" data-value="new">Neu</button>
-  <button class="f" data-filter="status" data-value="improved">Verbessert</button>
-  <button class="f" data-filter="status" data-value="unchanged">Unverändert</button>
-  <button class="f" data-filter="status" data-value="carried-over">Fortgeschrieben</button>
-</div>
-
-<div class="filters">
-  <span class="f-label">Kategorie</span>
-  <button class="f on" data-filter="cat" data-value="all">Alle</button>
-  <button class="f" data-filter="cat" data-value="Bugs">Bugs</button>
-  <button class="f" data-filter="cat" data-value="API">API</button>
-  <button class="f" data-filter="cat" data-value="Impl">Impl</button>
-  <button class="f" data-filter="cat" data-value="Tests">Tests</button>
-  <button class="f" data-filter="cat" data-value="Performance">Performance</button>
-  <button class="f" data-filter="cat" data-value="Reliability">Reliability</button>
-  <button class="f" data-filter="cat" data-value="DX">DX</button>
-  <button class="f" data-filter="cat" data-value="Docs">Docs</button>
-  <button class="f" data-filter="cat" data-value="Repo">Repo</button>
-  <button class="f" data-filter="cat" data-value="Memory">Memory</button>
-</div>
-
-<table class="backlog" id="backlog">
-  <thead>
-    <tr>
-      <th style="width:60px;">ID</th>
-      <th style="width:90px;">Sev</th>
-      <th>Titel · Ort</th>
-      <th style="width:110px;">Kategorie</th>
-      <th style="width:170px;">Status</th>
-      <th style="width:60px;">Effort</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-<p style="color: var(--muted); font-size: 12.5px; margin-top: 0;">Tipp: Zeile anklicken, um Beschreibung &amp; Empfehlung auszuklappen.</p>
-</section>
-
-<!-- ===================== Offene Fragen ===================== -->
-<section>
-<h2>Offene Fragen / Unklarheiten</h2>
+<h2>Offene Fragen</h2>
+<div class="qbox">
 <ul>
   <li>
-    <strong>Soll <code>@memo</code> die Args mit-cachen?</strong>
-    Die heutige Implementierung ignoriert Args nach dem ersten Aufruf still. Sauberere
-    Alternativen: (a) eine <em>Args-Map</em> in der Closure (Memo pro Args-Tupel), oder
-    (b) der Decorator akzeptiert <em>nur</em> argumentlose Methoden und der Typ erzwingt
-    das. (a) hat unklare Memory-Implikationen; (b) ist ein dokumentiertes Breaking
-    Change. Designentscheidung vor dem Fix.
+    Ist es Absicht, dass der Static-Deps-Zweig in <code>EffectImpl.run()</code> den Callback ohne
+    <code>runWithinEffect</code> ausführt? Der Doku-Stand deckt nur die Folge »kein Auto-Tracking«
+    ab (Pitfall 7). Dass damit auch die Kind-Effect-Verwaltung ausfällt und verschachtelte Effects
+    unbegrenzt akkumulieren (MEM-001), steht nirgends und wirkt eher wie ein Nebeneffekt als wie
+    eine Entscheidung.
   </li>
   <li>
-    <strong>Lazy Reads in Combination mit <code>onChange</code>:</strong>
-    Liefert <code>Signal.onChange(cb)</code> bei lazy Signalen eine korrekte
-    Initialisierungssequenz? Der Effect liest <code>this.value</code> (untracked) —
-    Bei lazy materialisiert das die Factory. Sollte das beforeRead/Track-Verhalten
-    explizit dokumentiert sein?
+    Sollen <code>Symbol.for('signal')</code> und Geschwister absichtlich im globalen Registry und
+    ohne Namespace liegen, damit zwei Versionen der Bibliothek einander erkennen? Falls ja, ist
+    BUG-006 der Preis dafür und gehört dokumentiert statt behoben. Falls nein, ist die Umbenennung
+    ein Breaking Change und will in eine Major.
   </li>
   <li>
-    <strong>Multi-Bundle-Toleranz</strong> (REL-001 fortgeschrieben): Es gibt
-    weiterhin keinen <code>globalThis.__signalize__</code>-Sentinel. Ist das ein
-    bewusster Verzicht (z. B. weil Konsumenten in der Praxis nie zwei Instanzen ziehen)?
-  </li>
-  <li>
-    <strong>Subscription-Leak in <code>SignalLink</code> (LEAK-001):</strong>
-    Ist der Effekt in der Praxis spürbar (viele short-lived Links bei lang-lebigen
-    Source-Signalen) oder rein theoretisch? Eine Stresstest-Spec mit
-    <code>getSubscriptionCount(globalDestroySignalQueue)</code> würde das messbar machen.
+    Gilt bei <code>link()</code> explizites <code>unlink()</code> oder <code>attach</code> als
+    verpflichtend? Aktuell hält <code>gLinks</code> aufgegebene Links unbegrenzt fest (MEM-002).
+    Wenn die Vertragslage »explizit aufräumen« ist, ist das kein Defekt, sondern eine fehlende
+    Zeile in der Doku.
   </li>
 </ul>
-</section>
+</div>
 
-<!-- ===================== Optimierungspotenzial ===================== -->
-<section>
 <h2>Optimierungspotenzial</h2>
+<p class="muted small">Verbesserungen, die keinen Defekt beheben, sondern die Bibliothek an den Rändern robuster oder schneller machen.</p>
 <ul>
   <li>
-    <strong>Coverage-Lücken sind sichtbar:</strong> 90,5 % Branches und 90,5 % Functions
-    bei 98,5 % Lines deuten darauf hin, dass <em>seltene</em> Codepfade (Fehlerzweige,
-    deprecation-Pfade, einzelne Lifecycle-Edge-Cases) unbedacht bleiben. Ein
-    schneller Walk durch <code>coverage/lcov-report</code> würde ~5–8 gezielte Specs
-    ergeben — minimaler Aufwand, höchste Aussage.
+    <strong>Isolierbarer Scope.</strong> Ein <code>createScope()</code>, das eigene Queues,
+    eigenen Effect-Stack und eigene Register kapselt, würde Tests unabhängig voneinander machen,
+    SSR-Requests trennen und die Doppelinstanz-Falle (ARCH-001) auflösen. Das ist der einzige
+    Punkt in dieser Liste, der eine Major rechtfertigt.
   </li>
   <li>
-    <strong>Slot-Recycling klar entsorgen oder erklären:</strong> IMP-001 ist nicht
-    nur eine Codequalitätsfrage — der Pfad <em>liest</em>, als gäbe es eine
-    Optimierung, dabei wird das Kindeffekt-Array bei jedem <code>run()</code>
-    sofort wieder geleert. Entweder Recycling tatsächlich umsetzen oder vier
-    Zeilen ersatzlos streichen.
+    <strong>Microbench mit Regressionsgate.</strong> Die drei Messungen dieses Laufs (Memo 3,5×,
+    <code>findOrCreate</code> 10×, <code>batch()</code> 6×) waren in Minuten geschrieben. Als
+    Suite in CI würden sie Regressionen fangen, bevor sie in einem Release landen.
   </li>
   <li>
-    <strong>JSDoc → API-Doc → CHANGELOG-Hygiene</strong> ist diesmal mustergültig
-    gelaufen (v0.30.0). Das Muster verdient ein kurzes „How we ship a version"
-    in <code>CONTRIBUTING.md</code>, sonst geht es bei Wechseln der Maintainerschaft
-    verloren.
+    <strong><code>AbortSignal</code> für <code>nextValue()</code> und <code>asyncValues()</code>.</strong>
+    Beide sind heute nur über <code>link.destroy()</code> abbrechbar, was den Link mit erledigt.
   </li>
   <li>
-    <strong>Bench-Suite (PERF-001) jetzt günstig:</strong> mit gemessener Coverage
-    sind die Hot-Paths klar — ein <code>tinybench</code>-Lauf über die fünf
-    interessanten Szenarien (set/notify-Throughput, Memo-Recompute, Batch-Flush,
-    Dependency-Diff, nested-effects) wäre &lt; 1 h Arbeit und hätte sofort Wirkung.
+    <strong>Offizieller Test-Einstiegspunkt.</strong> <code>assert-helpers</code> liegt bereits im
+    Paket, ist über <code>exports</code> aber nicht erreichbar. Ein <code>./testing</code>-Subpath
+    mit den Zählern und <code>getSubscriptionCount</code> würde Konsumenten dieselben
+    Leak-Assertions geben, die das Projekt intern nutzt.
   </li>
   <li>
-    <strong>Repo-Asset-Diät</strong> (REPO-001): ~21 MB Hero-Bilder am Repo-Root.
-    Vorschlag bleibt: alte Hero-Varianten weg, nur das aktuell referenzierte
-    <code>hero2--noir.png</code> behalten — git-Historie bleibt erhalten, aber jeder
-    künftige <code>git clone</code> wird leichter.
+    <strong>Paketgewicht halbieren.</strong> 30 % des Tarballs sind <code>lib/*.js</code> plus
+    Sourcemaps, die keine <code>exports</code>-Route je auflöst (API-007).
   </li>
 </ul>
-</section>
 
-<!-- ===================== Methodik ===================== -->
-<section>
+<h2>Score-Verlauf</h2>
+<figure id="chartfig"></figure>
+
 <h2>Methodik</h2>
-<p>
-  Audit-Lauf am <strong>2026-05-20</strong> (zweiter Lauf an diesem Tag, nach Tag v0.30.0).
-  Vorheriges <code>./audit.html</code> wurde aus dem Daten-Objekt (eingebettetes
-  <code>AUDIT.summary/findings</code>) eingelesen — alle drei <code>scoreHistory</code>-Einträge
-  übernommen, Theme („dark") aus der Vor-Datei beibehalten.
+<p class="small muted">
+  Audit-Lauf am 2026-08-06 gegen <code>main</code> bei Commit <code>914f153</code>
+  (Version 0.32.0-dev). Das vorherige <code>./audit.html</code> vom 2026-05-20 wurde erst nach
+  Abschluss des frischen Laufs geöffnet und aus dem eingebetteten <code>AUDIT</code>-Objekt
+  gelesen; alle drei <code>scoreHistory</code>-Einträge wurden übernommen, das Theme
+  (»dark«) ebenfalls, da für diese Sitzung keine Theme-Anweisung vorlag.
 </p>
-<p>
-  Frischer Lauf zuerst, danach Abgleich. Befunde wurden über
-  Kategorie + Pfad-Overlap gematcht; bei Mehrdeutigkeit konservativ als
-  separate Einträge belassen. <strong>4 Findings entfallen</strong> (im Code
-  nicht mehr nachweisbar), <strong>1 als verbessert</strong> markiert,
-  <strong>20 fortgeschrieben</strong> und <strong>4 neu</strong> aufgenommen.
-  Behobene Findings tauchen — wie spezifiziert — bewusst nicht im Backlog auf,
-  nur im Zähler oben. Die Git-Historie der <code>audit.html</code> ist der
-  Detail-Speicher.
+<p class="small muted">
+  <strong>Was gelesen wurde:</strong> sämtliche 27 Nicht-Spec-Quelldateien unter <code>src/</code>
+  vollständig (2563 Zeilen), dazu <code>package.json</code>, beide TS-Configs,
+  <code>biome.json</code>, <code>pnpm-workspace.yaml</code>, <code>.npmignore</code>,
+  <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>README.md</code>, alle fünf Dateien unter
+  <code>docs/</code>, der Agent-Skill unter <code>skills/using-signalize/</code>, die
+  Workflow-Dateien und der Coverage-Report. Die generierte Bibliothek unter <code>lib/</code> wurde
+  nicht als Quelltext bewertet, sondern frisch kompiliert und als Prüfling ausgeführt.
 </p>
-<p>
-  <strong>Theme:</strong> dark (aus vorherigem Audit übernommen, keine
-  Nutzer-Anforderung in dieser Sitzung).
+<p class="small muted">
+  <strong>Was zusätzlich gemessen wurde:</strong> 30 Laufzeit-Proben gegen die kompilierte
+  Bibliothek in fünf Gruppen (strukturelle Leaks, Async und Ressourcen, GC-Kontrollen und
+  Gruppenzyklen, Teardown-Reihenfolge, Decorator-Verhalten), davon sechs zur Re-Verifikation von
+  Altbefunden. Dazu erzwungene GC-Runden unter <code>--expose-gc</code> mit Kontrollgruppe sowie
+  drei Mikrobenchmarks über je 200 000 Durchläufe. Jeder Befund im Backlog trägt die Ausgabe
+  seiner Probe im Feld »Beleg«. Rein statisch belegte Befunde tragen stattdessen die
+  Quellzeilenreferenz.
 </p>
-<p>
-  <strong>Score-Formel:</strong> Start 100; pro Finding −10 (critical), −5 (high),
-  −2 (medium), −0,5 (low), 0 (info). Untergrenze 0. Aktueller Stand: 100 −
-  (1×5 + 9×2 + 11×0,5) = 100 − 28,5 = 71,5 ≈ <strong>72</strong>.
+<p class="small muted">
+  <strong>Was nicht geprüft wurde:</strong> Build- und Harness-Konfiguration nur am Rand, wie
+  angefragt. Keine Bundle-Analyse über Rollup hinaus, keine Browser- oder Cross-Runtime-Tests,
+  keine Lizenz- oder Supply-Chain-Prüfung der Dependencies über <code>pnpm outdated</code> hinaus
+  (sechs Dev-Dependencies liegen ein bis zwei Minor-Versionen zurück, keine davon sicherheitsrelevant).
+  Die Spec-Dateien wurden stichprobenartig gelesen, nicht erschöpfend.
 </p>
-<p>
-  <strong>Was wurde gelesen:</strong> alle <code>src/*.ts</code>-Quelldateien
-  (kein generierter <code>lib/</code>/<code>dist/</code>-Code), beide Workflow-Dateien,
-  <code>package.json</code>, <code>biome.json</code>, <code>jest.config.js</code>,
-  beide TS-Configs, <code>rollup.config.mjs</code>, <code>scripts/publishPackage.cjs</code>,
-  <code>README.md</code>, <code>AGENTS.md</code>, <code>CONTRIBUTING.md</code>,
-  <code>CHANGELOG.md</code> (Top 60 Zeilen), <code>docs/api.md</code> (Anfang)
-  und <code>docs/architecture.md</code> (vollständig). Stichprobe der Tests:
-  <code>unsubscribeEffect.spec.ts</code>, <code>decorators.memo.spec.ts</code>,
-  <code>SignalGroup.gc.spec.ts</code>. Coverage-Report wurde gelesen, einzelne
-  Spec-Files nicht erschöpfend.
+<p class="small muted">
+  <strong>Merge:</strong> Matching primär über Kategorie plus Pfad-Overlap, sekundär über
+  Titelähnlichkeit; bei Zweifel wurden Befunde getrennt gelassen. Alle 23 Altbefunde wurden vor
+  einer Übernahme am Code re-verifiziert, sechs davon per Laufzeit-Probe. Vier entfallen: nicht
+  weil der Code sich geändert hätte, sondern weil ihr Gegenstand die Dokumentationslücke war und
+  diese geschlossen wurde (Commits <code>47deccf</code> und <code>8f0be2c</code>: Pitfall 1 zur
+  <code>set(fn)</code>-Falle, Pitfall 7 zu Static-Deps-Effects, Pitfall 6 und der JSDoc in
+  <code>signal-core.ts:72</code> zu zerstörten Signalen, die Read-API-Tabellen in
+  <code>docs/api.md:32,66</code>). Ein Befund wurde von medium auf low herabgestuft. 13 wurden
+  fortgeschrieben, 5 blieben unverändert, 28 sind neu. IDs wurden auf ein Präfix je
+  Analysedimension normalisiert; die vorherige ID steht bei betroffenen Einträgen in der
+  Beschreibung.
 </p>
+<p class="small muted">
+  <strong>Score:</strong> Start 100, Abzug −10 pro critical, −5 pro high, −2 pro medium, −0,5 pro
+  low, 0 für info, Untergrenze 0. Aktuell: 100 − (0×10 + 4×5 + 23×2 + 17×0,5) = 100 − 74,5 = 25,5.
+</p>
+<p class="small muted">
+  <strong>Einordnung des Sprungs:</strong> Das Delta von −46,5 ist ein Prüftiefen-Effekt, keine
+  Verschlechterung. Die Methodik des Vorlaufs weist ihn als reine Quelltextlesung aus
+  (»alle src/*.ts-Quelldateien«, Coverage-Report, drei Spec-Stichproben) ohne Ausführung der
+  Bibliothek. Sämtliche 28 neuen Befunde stammen aus Dimensionen, die eine Lesung nicht erreicht:
+  Async-Verhalten unter <code>await</code>, Teardown-Reihenfolge unter Rekursion, GC- und
+  FinalizationRegistry-Verhalten, sowie gemessene Laufzeitkosten. In der Gegenrichtung hat sich
+  der Code seit dem Vorlauf messbar verbessert: vier Befunde sind erledigt, keine Regression war
+  einem der jüngeren Commits zuzuordnen.
+</p>
+<p class="small muted">
+  Erzeugt mit dem <code>js-ts-project-audit</code>-Skill. Kein Auto-Fix durchgeführt, an keiner
+  Datei unter <code>src/</code> wurde etwas geändert. Alle Empfehlungen sind Vorschläge.
+</p>
+
 <footer>
-  Erzeugt mit dem <code>js-ts-project-audit</code>-Skill. Kein Auto-Fix
-  durchgeführt — alle Empfehlungen sind Vorschläge zur manuellen Bewertung.
+  <code>./audit.html</code> · @spearwolf/signalize 0.32.0-dev · 2026-08-06 · Theme: dark
 </footer>
 
 </div>
 
-<!-- ===================== Daten + JS ===================== -->
+<script id="audit-data" type="application/json">
+{
+  "summary": {
+    "project": "@spearwolf/signalize",
+    "version": "0.32.0-dev",
+    "commit": "914f153",
+    "stack": ["TypeScript 7", "Node >= 24.13", "ESM-only", "ES2023", "Vitest 4", "Biome 2", "Rollup 4", "pnpm 11"],
+    "date": "2026-08-06",
+    "previousDate": "2026-05-20",
+    "score": 25.5,
+    "previousScore": 72,
+    "scoreDelta": -46.5,
+    "theme": "dark",
+    "deltaCause": "coverage",
+    "deltaExplanation": "Der Vorlauf war laut eigener Methodik-Angabe eine reine Quelltextlesung ohne Ausfuehrung der Bibliothek. Dieser Lauf hat die kompilierte lib/ zusaetzlich als Pruefling betrieben: 30 Laufzeit-Proben, erzwungene GC-Runden mit Kontrollgruppe und drei Mikrobenchmarks. Alle 28 neuen Befunde stammen aus Dimensionen, die eine Lesung nicht erreicht (Async unter await, Teardown-Reihenfolge, FinalizationRegistry-Verhalten, gemessene Laufzeitkosten). Der Code selbst hat sich seit Mai verbessert: vier Altbefunde sind erledigt, keine Regression war einem juengeren Commit zuzuordnen.",
+    "counts": {"critical": 0, "high": 4, "medium": 23, "low": 17, "info": 3},
+    "resolvedCount": 4,
+    "improvedCount": 1,
+    "newCount": 28,
+    "carriedOverCount": 13,
+    "unchangedCount": 5,
+    "scoreHistory": [
+      {"date": "2026-05-14", "score": 68},
+      {"date": "2026-05-20", "score": 73},
+      {"date": "2026-05-20", "score": 72},
+      {"date": "2026-08-06", "score": 25.5}
+    ]
+  },
+  "acknowledged": [],
+  "findings": [
+    {
+      "id": "ASYNC-001",
+      "category": "Async & Concurrency",
+      "severity": "high",
+      "status": "new",
+      "title": "Rejizierender async-Effect-Callback wird zur unbehandelten Rejection",
+      "location": "src/EffectImpl.ts:396-410",
+      "effort": "S",
+      "description": "<code>runCleanupCallback()</code> erkennt ein Thenable und haengt <code>Promise.resolve(cb).then(...)</code> daran, ohne <code>.catch()</code>. Wirft ein <code>async</code>-Effect-Callback, landet der Fehler als unbehandelte Rejection im Prozess. Node beendet sich seit v15 in dieser Lage standardmaessig. Der Effect selbst laeuft danach weiter, als waere nichts gewesen: es gibt keinen Fehlerkanal, ueber den ein Konsument davon erfahren koennte. Betroffen ist die naheliegendste Form eines asynchronen Effects, naemlich <code>createEffect(async () =&gt; { await fetch(...) })</code> mit einem Fetch, der abweist.",
+      "recommendation": "Einen <code>.catch()</code>-Zweig anhaengen und den Fehler an einen konfigurierbaren Handler routen, analog zu <code>onCreateEffect</code>/<code>onDestroyEffect</code> etwa ein <code>onEffectError(cb)</code>. Minimalvariante: <code>console.error</code> mit Effect-ID, damit der Fehler wenigstens sichtbar wird statt den Prozess zu beenden.",
+      "evidence": "Probe K: createEffect(async () => { s.get(); throw new Error('boom') }); s.set(1)\n-> process 'unhandledRejection' feuert mit: boom from async effect"
+    },
+    {
+      "id": "ASYNC-002",
+      "category": "Async & Concurrency",
+      "severity": "high",
+      "status": "new",
+      "title": "Async-Cleanups laufen in falscher Reihenfolge und nach spaeteren Runs",
+      "location": "src/EffectImpl.ts:396-410",
+      "effort": "M",
+      "description": "Gibt ein Effect-Callback ein Promise zurueck, wird die Cleanup-Funktion erst beim Settle aufgerufen. Bis dahin kann der Effect bereits mehrfach neu gelaufen sein und neue Ressourcen belegt haben. Es gibt weder ein Generationskennzeichen noch eine Cancellation: der Cleanup von Run N raeumt auf, waehrend Run N+1 laengst laeuft. Das ist die klassische Double-Acquire-Late-Release-Situation, etwa ein Intervall aus Run 1, das erst nach dem Intervall aus Run 3 abgeraeumt wird. Der Cleanup des jeweils letzten Runs steht zum Messzeitpunkt ueberhaupt noch aus.",
+      "recommendation": "Jedem Run eine monoton steigende Generationsnummer geben und beim Settle pruefen, ob der Effect seither neu gelaufen oder zerstoert wurde; in dem Fall den Cleanup verwerfen oder vor dem naechsten Run abwarten. Die gewaehlte Semantik gehoert in <code>docs/recipes.md</code> neben den bestehenden Cleanup-Absatz.",
+      "evidence": "Probe L: async-Effect mit s.set(1); s.set(2)\n-> Ablauf: run:0 -> run:1 -> run:2 -> cleanup:0 -> cleanup:1\n   (cleanup:2 steht zum Messzeitpunkt noch aus)"
+    },
+    {
+      "id": "MEM-001",
+      "category": "Memory Leaks & Ressourcen",
+      "severity": "high",
+      "status": "new",
+      "title": "Verschachtelte Effects in Static-Deps-Effects werden nie zerstoert",
+      "location": "src/EffectImpl.ts:295-297",
+      "effort": "M",
+      "description": "<code>run()</code> ruft den Callback im Static-Deps-Zweig direkt auf (<code>this.callback()</code>), im dynamischen Zweig dagegen ueber <code>runWithinEffect(this, this.callback)</code>. Nur letzteres legt den Effect auf den globalen Effect-Stack. Folglich liefert <code>getCurrentEffect()</code> innerhalb eines Static-Deps-Callbacks <code>undefined</code>, jedes dort erzeugte <code>createEffect()</code> (und damit auch <code>Signal.onChange()</code>) wird nicht als Kind-Effect registriert und von <code>destroyChildEffects()</code> nie erfasst. Bei jedem Rerun entsteht ein weiterer Effect, der auf der globalen Signal-Queue subscribed bleibt. Unbegrenzt und ohne Warnung. Pitfall 7 dokumentiert am selben Codepfad nur das fehlende Auto-Tracking, nicht diese Folge.",
+      "recommendation": "Auch den Static-Deps-Zweig ueber <code>runWithinEffect</code> fuehren und stattdessen nur die automatische Subscription unterdruecken, etwa ueber ein Flag, das <code>whenSignalIsRead()</code> abfragt. Damit bleibt das dokumentierte Verhalten (keine Auto-Deps) erhalten, waehrend die Kind-Effect-Verwaltung wieder greift.",
+      "evidence": "Probe A: createEffect(() => { createEffect(() => a.get()) }, [trigger.get])\n-> nach 5 Reruns: 6 lebende Effects (1 aeusserer + 5 Waisen)\nProbe B (Gegenprobe, dynamische Deps): stabil bei 8 Effects ueber 5 Reruns"
+    },
+    {
+      "id": "BUG-001",
+      "category": "Bugs & Korrektheitsrisiken",
+      "severity": "high",
+      "status": "unchanged",
+      "title": "@memo ignoriert Argumente nach dem ersten Aufruf",
+      "location": "src/decorators.ts:60-83",
+      "effort": "M",
+      "description": "Der Memo-Decorator legt die Memo-Closure genau einmal an: <code>createMemo(() =&gt; target.call(this, ...args), ...)</code>. Die <code>args</code> des ersten Aufrufs sind in dieser Closure gefangen. Jeder spaetere Aufruf der Methode gibt <code>siGet()</code> zurueck, also das Ergebnis zum ersten Argumentsatz, unabhaengig davon, womit aufgerufen wurde. Es gibt weder eine Warnung noch eine Typbeschraenkung, die parameterlose Methoden erzwingen wuerde. Zusaetzlich haelt die Closure die ersten Argumente fuer die Lebensdauer des Objekts fest. Der JSDoc erwaehnt nur, dass das Memo lazy ist und nie autorun. Vormals MEMO-001.",
+      "recommendation": "Entweder Argumente ueber einen Cache-Key beruecksichtigen (ein Memo je Argumentsignatur, mit dokumentierter Eviction), oder Methoden mit Parametern beim Dekorieren ablehnen, zur Not per Typsignatur <code>(this: T) =&gt; R</code>. Stillschweigend das falsche Ergebnis zu liefern ist die schlechteste der drei Optionen.",
+      "evidence": "Probe AA: @memo() double(n) { return n*2 }\n-> double(2)=4, double(10)=4, double(100)=4\n   zugrundeliegende Methode genau 1x aufgerufen"
+    },
+    {
+      "id": "MEM-002",
+      "category": "Memory Leaks & Ressourcen",
+      "severity": "medium",
+      "status": "new",
+      "title": "Link-Register gLinks ist eine starke globale Map ohne Eviction",
+      "location": "src/link.ts:13-16",
+      "effort": "M",
+      "description": "<code>gLinks</code> ist eine <code>Map</code> von <code>ISignalImpl</code> auf eine weitere <code>Map</code> mit den Zielen. Alle Referenzen sind stark: das Quellsignal, der Link, das Zielsignal und bei Callback-Links die Callback-Funktion samt ihrer Closure. Wird ein Link aufgegeben, ohne <code>unlink()</code>, ohne <code>attach</code> und ohne <code>destroySignal()</code> auf der Quelle, bleibt die gesamte Kette fuer die Prozesslaufzeit erhalten. Der Garbage Collector hat an dieser Stelle keinen Ansatzpunkt, auch dann nicht, wenn ausserhalb der Bibliothek keine einzige Referenz mehr existiert.",
+      "recommendation": "Die aeussere Map auf <code>WeakMap</code> umstellen; die Suche erfolgt ohnehin immer ueber das Quellsignal. <code>getLinksCount()</code> ohne Argument braucht dann einen separaten Zaehler, der im vorhandenen <code>once(link, DESTROY, ...)</code>-Hook mitgefuehrt wird. Falls explizites Aufraeumen bewusst Vertragslage ist, gehoert das an prominenter Stelle in die Link-Doku (siehe Offene Fragen).",
+      "evidence": "Probe E: 100x { const s = createSignal(i); link(s.get, () => {}) }, danach alle Referenzen fallengelassen\n-> getLinksCount(): 0 -> 100, nach globalThis.gc(): unveraendert 100"
+    },
+    {
+      "id": "MEM-003",
+      "category": "Memory Leaks & Ressourcen",
+      "severity": "medium",
+      "status": "new",
+      "title": "attachSignalByName sammelt jedes je gebundene Signal",
+      "location": "src/SignalGroup.ts:205-230",
+      "effort": "M",
+      "description": "Jede Bindung eines Namens legt das Signal zusaetzlich in <code>#otherSignals.get(name)</code> ab, damit <code>detachSignal()</code> spaeter auf einen Vorgaenger zurueckfallen kann. Dieses Set wird beim erneuten Binden desselben Namens jedoch nie beschnitten. Wer einen Namen wiederholt auf ein neues Signal legt, etwa beim Austauschen eines Slots an einer langlebigen Gruppe, laesst <code>#otherSignals</code> und <code>#signals</code> unbegrenzt wachsen. Der Else-Zweig fuer <code>attachSignalByName(name, undefined)</code> loescht ausserdem nur den Eintrag in <code>#namedSignals</code>: der Name gilt danach als nicht vorhanden, waehrend saemtliche Signale weiter an der Gruppe haengen.",
+      "recommendation": "Beim Rebind das vorherige Signal aus <code>#otherSignals</code> und <code>#signals</code> entfernen, sofern es nicht separat ueber <code>attachSignal()</code> gebunden wurde. Den Undefined-Zweig ueber <code>detachSignal()</code> fuer alle unter dem Namen gefuehrten Signale fuehren, damit »Name geloest« und »Signale geloest« nicht auseinanderlaufen.",
+      "evidence": "Probe H: 500x g.attachSignalByName('slot', createSignal(i)), danach attachSignalByName('slot', undefined)\n-> hasSignal('slot') = false, g.clear() zerstoert dennoch 500 Signale"
+    },
+    {
+      "id": "MEM-004",
+      "category": "Memory Leaks & Ressourcen",
+      "severity": "medium",
+      "status": "unchanged",
+      "title": "SignalLink: once()-Listener auf der globalen Destroy-Queue ueberleben destroy()",
+      "location": "src/SignalLink.ts:49 · src/SignalLink.ts:167",
+      "effort": "S",
+      "description": "Der Konstruktor registriert <code>once(globalDestroySignalQueue, source.id, () =&gt; this.destroy())</code>, die Signal-zu-Signal-Variante zusaetzlich dasselbe fuer <code>target.id</code>. <code>destroy()</code> loest jedoch nur die Subscription auf der Signal-Queue (<code>#unsubscribe</code>) und die Listener auf dem Link selbst (<code>off(this)</code>). Die beiden Destroy-Queue-Eintraege bleiben stehen und halten je eine Closure auf den bereits eingefrorenen Link, bis das jeweilige Signal zerstoert wird. Bei Links, die haeufiger auf- und abgebaut werden als ihre Signale, summiert sich das. Vormals LEAK-001.",
+      "recommendation": "Die Rueckgabewerte der beiden <code>once()</code>-Aufrufe in Feldern halten und in <code>destroy()</code> vor <code>Object.freeze(this)</code> aufrufen, analog zum bestehenden <code>#unsubscribe</code>.",
+      "evidence": "Re-Check LEAK-001: getSubscriptionCount(globalDestroySignalQueue)\n-> Basis 0, nach link() 2, nach link.destroy() weiterhin 2"
+    },
+    {
+      "id": "MEM-005",
+      "category": "Memory Leaks & Ressourcen",
+      "severity": "medium",
+      "status": "new",
+      "title": "createMemo() im Effect-Body leakt ein Signal pro Rerun",
+      "location": "src/createMemo.ts:37 · src/EffectImpl.ts:288",
+      "effort": "M",
+      "description": "<code>createMemo()</code> legt intern ein Signal an. Wird die Funktion im Rumpf eines Effects aufgerufen, entsteht dieses Signal bei jedem Rerun neu. Der zugehoerige Effect wird als Kind-Effect erfasst und beim naechsten Rerun ordentlich zerstoert, das Signal jedoch nicht: es haengt an keiner Gruppe und wird von <code>destroyChildEffects()</code> nicht beruehrt. Zurueck bleibt pro Rerun ein Signal, dessen <code>beforeRead</code> auf einen zerstoerten Effect zeigt und das damit auch inhaltlich eingefroren ist. Pitfall 10 warnt vor verschachtelten Effects, sagt aber nichts ueber Memos.",
+      "recommendation": "Das Memo-Signal an den Lebenszyklus des erzeugenden Effects binden, also im <code>once(effect, DESTROY, ...)</code>-Hook mit zerstoeren. Solange das nicht geschieht, gehoert eine klare Warnung in <code>docs/recipes.md</code> und in Pitfall 10.",
+      "evidence": "Probe P: createEffect(() => { trigger.get(); createMemo(() => src.get()*2)() })\n-> getSignalsCount(): 11 nach dem ersten Run, 21 nach 10 Reruns"
+    },
+    {
+      "id": "MEM-006",
+      "category": "Memory Leaks & Ressourcen",
+      "severity": "medium",
+      "status": "new",
+      "title": "Selbstreferenzierender Signal-Wert hebelt die FinalizationRegistry aus",
+      "location": "src/SignalGroup.ts:13-30 · src/SignalGroup.ts:55-72",
+      "effort": "S",
+      "description": "Die Aufraeummechanik ist sauber gebaut: <code>store</code> ist eine WeakMap, <code>#storeKey</code> eine WeakRef, und die FinalizationRegistry ruft <code>group.clear()</code>, sobald das Nutzerobjekt unerreichbar wird. Sie setzt aber voraus, dass von der Gruppe kein starker Pfad zurueck zum Schluesselobjekt fuehrt. Genau den legt jedes attachte Signal an, dessen Wert das Host-Objekt referenziert: <code>allGroups</code> haelt die Gruppe stark, die Gruppe ihre Signale, das Signal seinen Wert. Damit wird das Objekt nie eingesammelt, die Registry feuert nie, und <code>allGroups</code> waechst unbegrenzt. Fuer <code>@signal accessor</code>-Felder mit Rueckreferenz auf das eigene Objekt ist das die Normalform, nicht der Sonderfall.",
+      "recommendation": "Die Bedingung in <code>docs/architecture.md</code> benennen: die automatische Bereinigung greift nur ohne Rueckreferenz, explizites <code>SignalGroup.delete(obj)</code> oder <code>group.clear()</code> im Teardown bleibt der verlaessliche Weg. Ein Hinweis in der Decorator-Doku waere der wirksamste Ort.",
+      "evidence": "Probe S mit Kontrollgruppe, je 200 Gruppen, zwei erzwungene GC-Runden:\n  ohne Rueckreferenz: 200 -> 1 (Registry raeumt ab)\n  mit createSignal(host): 201 -> 201 (Registry feuert nie)"
+    },
+    {
+      "id": "MEM-007",
+      "category": "Memory Leaks & Ressourcen",
+      "severity": "medium",
+      "status": "new",
+      "title": "Teardown-Reihenfolge in destroy(): zusaetzlicher Run, dessen Cleanup verfaellt",
+      "location": "src/EffectImpl.ts:412-435",
+      "effort": "S",
+      "description": "<code>destroy()</code> setzt <code>#destroyed = true</code> erst in Zeile 427, also nach <code>runCleanupCallback()</code> (420) und waehrend die Subscriptions auf der Signal-Queue noch stehen (abgemeldet erst in 423). Schreibt eine Cleanup-Funktion in ein Signal, von dem der Effect abhaengt, greift <code>[RECALL]</code>, <code>run()</code> laeuft durch, weil das Destroyed-Flag noch nicht gesetzt ist, und der Effect-Callback wird ein weiteres Mal ausgefuehrt. Der Cleanup, den dieser Lauf zurueckgibt, landet in <code>#nextCleanupCallback</code> und wird nie mehr aufgerufen: ein dort belegtes Intervall oder ein Listener bleibt bestehen. Eine Cleanup-Funktion, die Zustand zuruecksetzt, ist ein alltaegliches Muster.",
+      "recommendation": "<code>#destroyed = true</code> und die drei <code>off()</code>-Aufrufe vor <code>runCleanupCallback()</code> ziehen. Das behebt zugleich BUG-008.",
+      "evidence": "Probe X: Effect, dessen Cleanup s.set(99) auf einer eigenen Dependency ausfuehrt\n-> Ablauf: run:0 -> cleanup:0 -> run:99\nProbe X2: der Cleanup des Re-Entrant-Runs wird nie ausgefuehrt"
+    },
+    {
+      "id": "ASYNC-003",
+      "category": "Async & Concurrency",
+      "severity": "medium",
+      "status": "new",
+      "title": "batch(async fn) hoert beim ersten await auf zu batchen",
+      "location": "src/batch.ts:86-103",
+      "effort": "S",
+      "description": "<code>batch()</code> typisiert den Callback als <code>VoidFunc</code>. Eine <code>async</code>-Arrowfunktion ist darauf zuweisbar, weil ihr <code>Promise</code>-Rueckgabewert gegen <code>void</code> nicht anschlaegt. Der <code>finally</code>-Block leert die Queue, sobald der Callback sein Promise zurueckgibt, also beim ersten <code>await</code>. Alle danach folgenden Writes laufen ungebatcht durch. Weder Typsystem noch Laufzeit sagen etwas dazu, und das Ergebnis sieht funktionierendem Code zum Verwechseln aehnlich.",
+      "recommendation": "Nach dem Callback pruefen, ob der Rueckgabewert ein Thenable ist, und in dem Fall mit einer klaren Meldung werfen. Zusaetzlich die Signatur auf einen expliziten Nicht-Promise-Rueckgabetyp verengen, damit der Fehler moeglichst schon beim Kompilieren auffaellt.",
+      "evidence": "Probe I: await batch(async () => { s.set(1); await Promise.resolve(); s.set(2); s.set(3) })\n-> Effect lief 3x statt 1x"
+    },
+    {
+      "id": "ASYNC-004",
+      "category": "Async & Concurrency",
+      "severity": "medium",
+      "status": "new",
+      "title": "nextValue() rejiziert ohne Grund und ist nicht abbrechbar",
+      "location": "src/SignalLink.ts:61-81",
+      "effort": "S",
+      "description": "Wird der Link zerstoert, waehrend ein <code>nextValue()</code> aussteht, ruft der Destroy-Handler <code>reject()</code> ohne Argument. Der Aufrufer faengt <code>undefined</code>: kein Error, keine Message, kein Stack. In einem <code>catch</code>-Block ist damit nicht unterscheidbar, ob der Link zerstoert wurde oder etwas anderes schiefging; bleibt der Aufruf unbewacht, entsteht eine unbehandelte Rejection mit <code>undefined</code> als Grund. Eine Moeglichkeit, ein ausstehendes <code>nextValue()</code> abzubrechen, ohne den Link mit zu zerstoeren, gibt es nicht.",
+      "recommendation": "<code>reject(new Error('SignalLink destroyed before the next value arrived'))</code>. Optional ein <code>AbortSignal</code> in der Signatur, das auch <code>asyncValues()</code> nutzen kann.",
+      "evidence": "Probe M: l.nextValue().catch(e => ...); l.destroy()\n-> catch erhaelt: undefined (typeof 'undefined')"
+    },
+    {
+      "id": "BUG-002",
+      "category": "Bugs & Korrektheitsrisiken",
+      "severity": "medium",
+      "status": "new",
+      "title": "Zyklischer Gruppen-Graph sprengt den Stack, Absturz auch aus dem GC-Callback",
+      "location": "src/SignalGroup.ts:151-164 · 237-250 · 309-316 · 370-404 · 410-448",
+      "effort": "M",
+      "description": "<code>attachGroup()</code> prueft nur auf <code>group === this</code>. Zwei Gruppen, die einander gegenseitig anhaengen, bilden einen Zyklus, den keine der rekursiven Methoden erkennt: <code>hasSignal()</code>, <code>signal()</code>, <code>runEffects()</code>, <code>off()</code> und <code>clear()</code> laufen bis zum <code>RangeError</code>. Besonders unangenehm ist der Weg ueber die FinalizationRegistry: sie ruft <code>group.clear()</code> aus dem GC-Callback heraus, wo der <code>RangeError</code> von keinem <code>try/catch</code> des Anwendungscodes mehr erreichbar ist. Im Probelauf hat der Prozess genau daran quittiert, nachdem der eigentliche Test laengst durch war.",
+      "recommendation": "In <code>attachGroup()</code> die Elternkette hochlaufen und einen Zyklus mit einer klaren Meldung ablehnen, analog zum bestehenden Selbstbezugs-Check. Ergaenzend die rekursiven Methoden mit einem Visited-Set absichern, damit ein auf anderem Weg entstandener Zyklus nicht denselben Effekt hat.",
+      "evidence": "Probe T: a.attachGroup(b); b.attachGroup(a)\n-> hasSignal RangeError, signal RangeError, runEffects RangeError, off RangeError, clear RangeError\n-> danach zusaetzlich uncaught RangeError aus dem FinalizationRegistry-Callback"
+    },
+    {
+      "id": "BUG-003",
+      "category": "Bugs & Korrektheitsrisiken",
+      "severity": "medium",
+      "status": "new",
+      "title": "Unaufloesbare String-Dependency wirft einen nichtssagenden TypeError",
+      "location": "src/EffectImpl.ts:152-162 · 178-182",
+      "effort": "S",
+      "description": "Die Overloads von <code>createEffect</code> erzwingen zu Recht ein <code>attach</code>, sobald die Dependencies Strings oder Symbole enthalten. Sie koennen aber nicht garantieren, dass der Name in der Gruppe auch registriert ist. Ist er es nicht, liefert <code>group.signal(name)</code> <code>undefined</code>, und <code>saveSignalsFromDeps()</code> dereferenziert das ungeprueft. Der Aufrufer sieht <code>TypeError: Cannot read properties of undefined (reading 'id')</code>, ohne Hinweis auf den Namen, die Gruppe oder auch nur darauf, dass es um eine Dependency geht.",
+      "recommendation": "In <code>saveSignalsFromDeps()</code> auf <code>null</code> pruefen und mit einer Meldung werfen, die den fehlenden Namen und die Gruppe nennt. Dieselbe Pruefung fuer den <code>group === undefined</code>-Fall in Zeile 157, den JavaScript-Konsumenten ohne Typpruefung erreichen koennen.",
+      "evidence": "Probe F: createEffect(() => {}, ['doesNotExist'], {attach: g})\n-> TypeError: Cannot read properties of undefined (reading 'id')"
+    },
+    {
+      "id": "BUG-004",
+      "category": "Bugs & Korrektheitsrisiken",
+      "severity": "medium",
+      "status": "new",
+      "title": "link() liefert den Cache-Treffer und ignoriert die zweite attach-Gruppe",
+      "location": "src/link.ts:61-65",
+      "effort": "S",
+      "description": "Existiert bereits ein Link von derselben Quelle zu demselben Ziel, kehrt <code>link()</code> vorzeitig mit der vorhandenen Instanz zurueck. Der Rueckweg liegt vor der Auswertung von <code>options.attach</code>, sodass die uebergebene Gruppe folgenlos bleibt. Wer den Link fuer die Lebensdauer einer zweiten Komponente anmelden will, bekommt eine Instanz, die an dieser Gruppe nicht haengt: das Aufraeumen der Gruppe zerstoert den Link nicht, er schreibt danach weiter. Kein Rueckgabewert und keine Warnung deuten darauf hin.",
+      "recommendation": "Den zwischengespeicherten Link zusaetzlich an die neue Gruppe anhaengen, statt <code>attach</code> zu verwerfen. Alternativ bei abweichendem <code>attach</code> werfen, wenn Mehrfachbindung nicht gewuenscht ist.",
+      "evidence": "Probe D: link(a,b,{attach:g1}); link(a,b,{attach:g2}) liefert dieselbe Instanz\n-> nach SignalGroup.delete(g2) und a.set(42): b = 42, der Link lebt weiter"
+    },
+    {
+      "id": "BUG-005",
+      "category": "Bugs & Korrektheitsrisiken",
+      "severity": "medium",
+      "status": "new",
+      "title": "createEffect mutiert das Options-Objekt des Aufrufers",
+      "location": "src/EffectImpl.ts:210-223",
+      "effort": "S",
+      "description": "In der positionalen Form schreibt <code>createEffect</code> die Dependencies mit <code>options.dependencies = dependencies</code> direkt in das vom Aufrufer uebergebene Objekt. Wer ein gemeinsames Options-Objekt fuer mehrere Effects wiederverwendet, ein durchaus uebliches Muster bei gleicher Prioritaet oder gleichem <code>attach</code>, schleppt ab dem zweiten Aufruf die Dependencies des ersten mit. Ein Effect haengt dann an Signalen, die an seiner Aufrufstelle nirgends stehen.",
+      "recommendation": "Ein frisches Objekt bilden statt zu mutieren: <code>const options = dependencies ? {...opts, dependencies} : optsOrDeps</code>.",
+      "evidence": "Probe G: const shared = {autorun:false}; createEffect(fn, [s.get], shared)\n-> shared danach: {autorun, dependencies}"
+    },
+    {
+      "id": "BUG-006",
+      "category": "Bugs & Korrektheitsrisiken",
+      "severity": "medium",
+      "status": "new",
+      "title": "Symbol.for-Schluessel ohne Namespace im globalen Registry",
+      "location": "src/constants.ts:1-14",
+      "effort": "S",
+      "description": "Die internen Schluessel liegen im realm-uebergreifenden Symbol-Registry unter denkbar allgemeinen Namen: <code>Symbol.for('signal')</code>, <code>Symbol.for('effect')</code>, <code>Symbol.for('recall')</code>, <code>Symbol.for('destroySignal')</code>. Jede andere Bibliothek und jeder Anwendungscode, der auf denselben naheliegenden Namen kommt, teilt sich denselben Schluessel. <code>isSignal()</code> prueft ausschliesslich auf dessen Anwesenheit und meldet fuer ein fremdes Objekt <code>true</code>; <code>signalImpl()</code> reicht dessen Inhalt anschliessend als Signal-Implementierung weiter.",
+      "recommendation": "Auf <code>Symbol.for('@spearwolf/signalize/signal')</code> und Analoges umstellen. Das ist ein Breaking Change fuer die Interoperabilitaet zwischen zwei geladenen Versionen und gehoert in eine Major, gemeinsam mit der Entscheidung aus den Offenen Fragen.",
+      "evidence": "Probe Q: isSignal({[Symbol.for('signal')]: {id: Symbol('fake')}})\n-> true"
+    },
+    {
+      "id": "PERF-001",
+      "category": "Performance",
+      "severity": "medium",
+      "status": "new",
+      "title": "Jeder Memo-Recompute zahlt die volle Batch-Maschinerie",
+      "location": "src/createMemo.ts:52-57 · src/batch.ts:33-62",
+      "effort": "M",
+      "description": "Der Memo-Effect umschliesst sein einzelnes <code>si.set(callback())</code> mit <code>batch()</code>. Laeuft der Recompute ausserhalb eines bestehenden Batches, entsteht dafuer jedes Mal eine <code>Batch</code>-Instanz, und <code>Batch.run()</code> legt zusaetzlich ein <code>Set</code> sowie ein Array an und meldet zwei Listener auf globalen Queues an und wieder ab. Fuer genau einen Write. Die Klammer ist nur dann noetig, wenn der Memo-Callback selbst mehrere Signale schreibt, was der Normalfall nicht ist.",
+      "recommendation": "Direkt schreiben und den Batch nur dann oeffnen, wenn er gebraucht wird, etwa gesteuert ueber eine Option. Alternativ die Batch-Instanz poolen, damit zumindest die Allokation entfaellt.",
+      "evidence": "Probe U, 200 000 Updates:\n  Memo mit Batch-Klammer: 185 ms\n  aequivalenter Effect ohne Batch: 53 ms\n  Faktor 3,5x"
+    },
+    {
+      "id": "PERF-002",
+      "category": "Performance",
+      "severity": "medium",
+      "status": "new",
+      "title": "SignalGroup.findOrCreate() allokiert bei jedem Cache-Treffer eine Wegwerf-Instanz",
+      "location": "src/SignalGroup.ts:93-98 · 126-144",
+      "effort": "S",
+      "description": "<code>findOrCreate()</code> ruft bedingungslos <code>new SignalGroup(object)</code>. Die Feld-Initialisierer laufen vor dem Konstruktorrumpf, also entstehen vier Sets, zwei Maps und eine WeakMap, bevor der Rumpf ueberhaupt bemerkt, dass es die Gruppe bereits gibt und die vorhandene zurueckgibt. Die frisch gebaute Instanz wird verworfen. Die Funktion liegt auf dem heissen Pfad von <code>createSignal({attach})</code>, <code>createEffect({attach})</code>, <code>link({attach})</code> und jedem <code>@signal</code>-Init.",
+      "recommendation": "In der statischen Methode zuerst <code>store.get(object)</code> abfragen und nur bei einem Fehltreffer konstruieren. Der Konstruktor-Trick bleibt als Absicherung erhalten (siehe ARCH-003), traegt dann aber nicht mehr die Hauptlast.",
+      "evidence": "Probe V, 200 000 Lookups auf dieselbe Gruppe:\n  findOrCreate: 21 ms\n  SignalGroup.get: 2 ms\n  Faktor 10x"
+    },
+    {
+      "id": "PERF-003",
+      "category": "Performance",
+      "severity": "medium",
+      "status": "carried-over",
+      "title": "Keine Microbench-Suite, keine Regressionserkennung im CI",
+      "location": "package.json scripts · kein bench/",
+      "effort": "M",
+      "description": "Es gibt keinen Benchmark und keinen Schwellwert, an dem eine Performance-Regression auffallen wuerde. Die drei Messungen dieses Laufs (PERF-001, PERF-002, PERF-004) waren in wenigen Minuten geschrieben und haetten als staendige Suite jede dieser Regressionen bei ihrer Entstehung gemeldet. Fuer eine Bibliothek, deren zentrales Versprechen synchrone Reaktivitaet ist, ist die Ausfuehrungsgeschwindigkeit ein funktionales Merkmal und kein Nebenaspekt. Vormals PERF-001.",
+      "recommendation": "Eine kleine Suite unter <code>bench/</code> mit Vitest Bench oder mitata: Signal-Write ohne Abnehmer, Write mit n Effects, Memo-Recompute, Effect-Auf- und -Abbau, <code>findOrCreate</code>. Im CI gegen die Werte des Basisbranches vergleichen und ab einer definierten Abweichung fehlschlagen lassen.",
+      "evidence": "package.json enthaelt kein bench-Script; kein bench/ oder benchmarks/ im Repo"
+    },
+    {
+      "id": "API-001",
+      "category": "Öffentliche API",
+      "severity": "medium",
+      "status": "new",
+      "title": "EffectOptions und EffectImpl sind dokumentiert, aber nicht exportiert",
+      "location": "src/index.ts · docs/api.md:83,351 · docs/cheat-sheet.md:57 · docs/recipes.md:147 · skills/using-signalize/references/api.md:109",
+      "effort": "S",
+      "description": "<code>docs/api.md:351</code> fuehrt <code>EffectOptions</code> in der Tabelle der exportierten Typen. Vier weitere Dokumente, darunter der Agent-Skill, weisen Konsumenten an, <code>EffectImpl.maxDepth = N</code> zu setzen, wenn die Rekursionsgrenze stoert. Beide Bezeichner stehen in <code>src/EffectImpl.ts</code> und werden von <code>src/index.ts</code> nicht weitergereicht; in <code>lib/index.d.ts</code> kommen sie nicht vor. Der Optionstyp von <code>createEffect</code> ist damit nicht benennbar, und die dokumentierte Stellschraube ist aus dem Paket heraus nicht erreichbar.",
+      "recommendation": "<code>EffectOptions</code>, <code>EffectDeps</code> und die beiden Varianten-Interfaces als Typen aus <code>src/index.ts</code> re-exportieren. Fuer <code>maxDepth</code> entweder <code>EffectImpl</code> selbst exportieren oder, sauberer, eine Funktion <code>setMaxEffectDepth(n)</code> anbieten und die Doku darauf umstellen.",
+      "evidence": "lib/index.d.ts enthaelt weder EffectOptions noch EffectImpl (vollstaendig geprueft)"
+    },
+    {
+      "id": "API-002",
+      "category": "Öffentliche API",
+      "severity": "medium",
+      "status": "carried-over",
+      "title": "createMemo({name}) ohne attach ignoriert den Namen stillschweigend",
+      "location": "src/createMemo.ts:39-50",
+      "effort": "S",
+      "description": "Die Option <code>name</code> wird ausschliesslich innerhalb des <code>group != null</code>-Zweigs ausgewertet. Ohne <code>attach</code> gibt es keine Gruppe, in der ein Name registriert werden koennte, und die Option verfaellt ohne Rueckmeldung. Der Typ <code>CreateMemoOptions</code> laesst die Kombination zu, und der JSDoc beschreibt <code>name</code> als »Optional name for the memo when attached to a group«, was die Abhaengigkeit eher andeutet als festlegt. Vormals API-003.",
+      "recommendation": "Die Abhaengigkeit im Typ abbilden, wie es <code>EffectOptionsWithNameDeps</code> fuer <code>createEffect</code> bereits vormacht: <code>name</code> nur in einer Variante zulassen, die <code>attach</code> verlangt. Zur Laufzeit bei <code>name</code> ohne <code>attach</code> werfen.",
+      "evidence": "Re-Check API-003: createMemo(() => 42, {name:'answer'}) ohne attach\n-> g.hasSignal('answer') = false; mit attach = true"
+    },
+    {
+      "id": "API-003",
+      "category": "Öffentliche API",
+      "severity": "medium",
+      "status": "new",
+      "title": "Deprecated API ohne @deprecated-Tag und ohne Entfernungsplan",
+      "location": "src/SignalGroup.ts:100-105 · src/SignalGroup.ts:348-353 · src/types.ts:30-41",
+      "effort": "S",
+      "description": "Drei Bestandteile sind als veraltet gekennzeichnet und warnen zur Laufzeit ueber <code>console.warn</code>: <code>SignalGroup.destroy(obj)</code>, <code>SignalGroup#destroy()</code> und die Callback-Form von <code>signalReader(cb)</code>. Keiner traegt den <code>@deprecated</code>-JSDoc-Tag, den TypeScript und alle gaengigen Editoren auswerten. Die beiden <code>SignalGroup</code>-Varianten haben ueberhaupt keinen JSDoc, die Reader-Variante beschreibt die Ablehnung nur als Fliesstext. Die Warnung erscheint damit erst zur Laufzeit, in genau einer Instanz pro Prozess (siehe API-005), und in keinem Fall waehrend der Entwicklung. Ein Zielrelease ist nirgends genannt.",
+      "recommendation": "An allen drei Stellen <code>@deprecated</code> mit Nachfolger und Zielversion setzen. Die Zielversion zusaetzlich als Zeile unter <code>## Unreleased</code> im CHANGELOG festhalten, damit die Entfernung nicht als Ueberraschung ankommt.",
+      "evidence": "src/SignalGroup.ts:100 und :348 ohne JSDoc-Block; src/types.ts:34 mit Prosa statt @deprecated-Tag"
+    },
+    {
+      "id": "ARCH-001",
+      "category": "Architektur & Struktur",
+      "severity": "medium",
+      "status": "carried-over",
+      "title": "Kein Multi-Bundle-Sentinel: doppelte Instanzen bilden zwei unsichtbare Universen",
+      "location": "src/global-queues.ts · src/link.ts:13 · src/SignalGroup.ts:13-19",
+      "effort": "M",
+      "description": "Der gesamte reaktive Zustand liegt in Modul-Singletons: die vier Queues, der Effect-Stack, der Batch-Kontext, der Quiet-Zaehler, das Link-Register, die Gruppen-Registry und beide ID-Generatoren. Sind zwei Kopien des Pakets im Prozess, eine Lage, die ueber transitive Abhaengigkeiten leicht entsteht, arbeiten sie in getrennten Universen: ein Signal aus Kopie A loest keinen Effect aus Kopie B aus. Weil <code>Symbol.for</code> die Schluessel teilt (BUG-006), bestehen die Objekte gegenseitig den <code>isSignal()</code>-Test, sehen also kompatibel aus, waehrend die Reaktivitaet still ausbleibt. Nichts an der Bibliothek bemerkt oder meldet diese Lage. Vormals REL-001.",
+      "recommendation": "Beim Modul-Init einen Marker im globalen Registry setzen, etwa <code>Symbol.for('@spearwolf/signalize/instance')</code> mit der eigenen Version, und beim Auftreffen auf einen fremden Marker einmalig warnen. Das ist wenige Zeilen und macht eine sonst nur ueber stundenlanges Debuggen auffindbare Lage sofort sichtbar. Die weiterreichende Loesung ist ein isolierbarer Scope, siehe Optimierungspotenzial.",
+      "evidence": "src/global-queues.ts:3-6 erzeugt vier Modul-Singletons ohne jede Instanzpruefung"
+    },
+    {
+      "id": "IMP-001",
+      "category": "Implementierungsstand",
+      "severity": "medium",
+      "status": "carried-over",
+      "title": "Slot-Recycling fuer Kind-Effects ist ein unerreichbarer Pfad",
+      "location": "src/EffectImpl.ts:112-113 · 229-235 · 250-256 · 380-385",
+      "effort": "M",
+      "description": "<code>childEffects</code>, <code>curChildEffectSlot</code>, <code>getCurrentChildEffect()</code> und <code>attachChildEffect()</code> bilden einen Mechanismus, der Kind-Effects ueber Reruns hinweg wiederverwenden soll. Er greift nie: <code>run()</code> ruft <code>destroyChildEffects()</code>, das das Array leert, und setzt <code>curChildEffectSlot = 0</code>, beides vor dem Callback. <code>getCurrentChildEffect()</code> liefert deshalb ausnahmslos <code>undefined</code>, und der Zweig <code>if (effect == null)</code> ist der einzige, der je genommen wird. Das dokumentierte Verhalten (Pitfall 10: Kind-Effects werden bei jedem Rerun neu erzeugt) entspricht dem, der Code suggeriert aber eine Optimierung, die es nicht gibt. Vormals IMP-001.",
+      "recommendation": "Entweder ersatzlos entfernen und <code>childEffects</code> auf eine einfache Liste reduzieren, oder das Recycling tatsaechlich implementieren, indem <code>run()</code> die Slots wiederverwendet statt sie zu leeren. Die erste Variante deckt sich mit der dokumentierten Semantik und ist die kleinere Aenderung.",
+      "evidence": "Probe BB: verschachtelter Effect ueber 5 Reruns\n-> Symbol(ef3), Symbol(ef4), Symbol(ef5), Symbol(ef6), Symbol(ef7): 5 verschiedene Instanzen"
+    },
+    {
+      "id": "TYPE-001",
+      "category": "Typsicherheit",
+      "severity": "medium",
+      "status": "new",
+      "title": "onCreateEffect und onDestroyEffect sind untypisiert hinter @ts-ignore",
+      "location": "src/effects.ts:37-48",
+      "effort": "S",
+      "description": "Beide Funktionen nehmen <code>...args: unknown[]</code> und leiten mit <code>@ts-ignore</code> an <code>on()</code> weiter. Konsumenten bekommen keine Parametertypen, keine Vervollstaendigung und keinen Hinweis darauf, dass der Handler eine <code>EffectImpl</code>-Instanz erhaelt und optional eine Prioritaet als erstes Argument akzeptiert. Der <code>@ts-ignore</code> verdeckt zudem, was genau nicht passt: die Biome-Regel <code>noTsIgnore</code> ist projektweit abgeschaltet, sodass auch der Linter schweigt. Erschwerend kommt hinzu, dass der Handler-Parametertyp <code>EffectImpl</code> gar nicht exportiert ist (API-001) und sich derzeit nicht sauber benennen liesse.",
+      "recommendation": "Gemeinsam mit API-001 loesen: einen oeffentlichen Handler-Typ definieren und beide Funktionen darauf typisieren, etwa <code>(callback: (effect: Effect) =&gt; void, priority?: number) =&gt; VoidFunc</code>. Danach kann der <code>@ts-ignore</code> entfallen.",
+      "evidence": "src/effects.ts:37-48, zwei @ts-ignore; biome.json schaltet noTsIgnore projektweit ab"
+    },
+    {
+      "id": "REPO-001",
+      "category": "Projektaufbau & Build",
+      "severity": "medium",
+      "status": "carried-over",
+      "title": "Repo-Wurzel mit rund 21 MB Hero-Assets und Scratch-Dateien",
+      "location": "hero.gif (9,6 MB) · hero.png (4,8 MB) · hero.webp (2,9 MB) · hero2.png (2,0 MB) · hero2--noir.png (1,1 MB) · hero-web.webp · hero-next.xcf · foo.mjs · diamond-example.mjs",
+      "effort": "M",
+      "description": "Die Wurzel enthaelt sieben Bilddateien mit zusammen rund 21 MB, darunter eine GIF-Datei mit 9,6 MB und eine XCF-Arbeitsdatei, dazu zwei Scratch-Skripte. Das npm-Paket ist davon nicht betroffen, <code>.npmignore</code> listet alle auf, aber jeder Clone zieht die volle Historie dieser Binaerdateien. Fuer eine Bibliothek, deren gesamter Quelltext 2563 Zeilen umfasst, ist das ein auffaelliges Verhaeltnis.",
+      "recommendation": "Assets nach <code>assets/</code> oder in ein getrenntes Repository fuer die Praesentation verschieben, die XCF-Arbeitsdatei und die Scratch-Skripte entfernen. Ein echtes Verkleinern der Historie erfordert ein Rewrite und will separat entschieden werden.",
+      "evidence": "ls -la im Repo-Root: hero.gif 9976739 B, hero.png 4942959 B, hero.webp 2943104 B, hero2.png 2111973 B, hero2--noir.png 1147986 B, hero-next.xcf 305795 B, hero-web.webp 466140 B"
+    },
+    {
+      "id": "ASYNC-005",
+      "category": "Async & Concurrency",
+      "severity": "low",
+      "status": "new",
+      "title": "asyncValues() verliert Zwischenwerte, parallele Iteratoren stoeren einander",
+      "location": "src/SignalLink.ts:83-101",
+      "effort": "S",
+      "description": "<code>retain(this, VALUE)</code> haelt genau den zuletzt gesendeten Wert vor. Werte, die eintreffen, waehrend der Konsument zwischen zwei <code>next()</code> haengt, gehen bis auf den letzten verloren. Der Generator sieht damit ein Sample, keinen Stream. Zusaetzlich raeumt der <code>finally</code>-Block des zuerst beendeten Iterators mit <code>retainClear</code> die Zurueckhaltung fuer alle weiteren ab.",
+      "recommendation": "Die verlustbehaftete Semantik in <code>docs/api.md</code> benennen, damit niemand einen lueckenlosen Stream erwartet. Aktive Iteratoren zaehlen und <code>retainClear</code> erst beim letzten ausfuehren.",
+      "evidence": "src/SignalLink.ts:86 retain(this, VALUE) und :99 retainClear ohne Zaehlung"
+    },
+    {
+      "id": "PERF-004",
+      "category": "Performance",
+      "severity": "low",
+      "status": "new",
+      "title": "batch() um einen einzelnen Write kostet das Sechsfache; updateFromProps ohne Size-Guard",
+      "location": "src/batch.ts:33-62 · src/SignalAutoMap.ts:111-123",
+      "effort": "S",
+      "description": "Ein <code>batch()</code> um genau einen Write kostet das Sechsfache des rohen Writes. Das ist fuer den bewussten Einsatz durch Konsumenten unerheblich, faellt aber dort ins Gewicht, wo die Bibliothek selbst bedingungslos klammert. <code>SignalAutoMap.update()</code> prueft immerhin <code>props.size</code> vor dem Batch, <code>updateFromProps()</code> tut das nicht und oeffnet auch fuer ein leeres Objekt einen vollstaendigen Batch.",
+      "recommendation": "<code>updateFromProps()</code> denselben Guard geben wie <code>update()</code>, also die Eintraege vor dem Batch ermitteln und bei Laenge null direkt zurueckkehren. Siehe auch PERF-001 fuer die gleiche Klammer im Memo-Pfad.",
+      "evidence": "Probe W, 200 000 Writes:\n  roh: 42 ms\n  je in batch() geklammert: 251 ms\n  Faktor 6x"
+    },
+    {
+      "id": "BUG-007",
+      "category": "Bugs & Korrektheitsrisiken",
+      "severity": "low",
+      "status": "new",
+      "title": "Fehlgeschlagenes link() hinterlaesst einen undefined-Schluessel im Register",
+      "location": "src/link.ts:60-74",
+      "effort": "S",
+      "description": "<code>gLinks.set(sourceSignal, links)</code> steht vor der Konstruktion des Links. Ist die Quelle kein Signal, ist <code>sourceSignal</code> bereits <code>undefined</code>, der Eintrag wird trotzdem angelegt, und erst der <code>SignalLink</code>-Konstruktor wirft beim Zugriff auf <code>this.source.id</code>. Zurueck bleibt ein dauerhafter <code>undefined</code>-Schluessel mit leerer Map. Sichtbare Folgen hat das keine, <code>getLinksCount()</code> zaehlt korrekt null, es ist schlicht ein inkonsistenter Zustand nach einem Fehler.",
+      "recommendation": "<code>sourceSignal</code> zu Beginn pruefen und mit einer Meldung werfen, die sagt, dass die Quelle ein Signal sein muss. Der Registereintrag entsteht dann gar nicht erst.",
+      "evidence": "src/link.ts:68 gLinks.set vor der Konstruktion in :71-74"
+    },
+    {
+      "id": "BUG-008",
+      "category": "Bugs & Korrektheitsrisiken",
+      "severity": "low",
+      "status": "new",
+      "title": "onDestroyEffect sieht einen noch nicht als zerstoert markierten Effect",
+      "location": "src/EffectImpl.ts:412-427",
+      "effort": "S",
+      "description": "<code>destroy()</code> sendet <code>$destroyEffect</code> in Zeile 418, setzt <code>#destroyed</code> aber erst in Zeile 427. Ein Handler an <code>onDestroyEffect</code> bekommt damit eine Instanz, die auf <code>run()</code> noch antwortet und den Callback ausfuehrt. Gleiche Ursache wie MEM-007.",
+      "recommendation": "Mit MEM-007 zusammen beheben, indem das Destroyed-Flag vor allen Benachrichtigungen gesetzt wird.",
+      "evidence": "Probe Y: impl.run() innerhalb eines onDestroyEffect-Handlers\n-> Callback wurde ausgefuehrt (1x)"
+    },
+    {
+      "id": "API-004",
+      "category": "Öffentliche API",
+      "severity": "low",
+      "status": "carried-over",
+      "title": "createSignal(existing, params) verwirft alle Parameter ausser attach",
+      "location": "src/createSignal.ts:174-183",
+      "effort": "S",
+      "description": "Wird ein bereits bestehendes Signal uebergeben, reicht <code>createSignal()</code> es unveraendert durch. Der <code>else</code>-Zweig mit <code>beforeRead</code>, <code>compare</code> und <code>lazy</code> wird nicht betreten, nur <code>attach</code> wirkt danach noch. Wer eine »Wert oder Signal«-Hilfsfunktion baut und dabei ein <code>compare</code> mitgibt, bekommt es fuer den Signal-Fall folgenlos zurueck. Pitfall 5 beschreibt den Passthrough, erwaehnt aber die verworfenen Parameter nicht. Vormals API-007.",
+      "recommendation": "Entweder die uebrigen Parameter auch auf das bestehende Signal anwenden, oder bei ihrer Anwesenheit im Passthrough-Fall werfen. Die dritte Moeglichkeit ist ein Satz in Pitfall 5.",
+      "evidence": "Re-Check API-007: createSignal(orig, {beforeRead}) liefert dieselbe Instanz,\nbeforeRead nach zwei get()-Aufrufen 0x ausgefuehrt (erwartet 2x, wenn beruecksichtigt)"
+    },
+    {
+      "id": "API-005",
+      "category": "Öffentliche API",
+      "severity": "low",
+      "status": "carried-over",
+      "title": "Deprecation-Warnung feuert nur einmal pro Prozess",
+      "location": "src/createSignal.ts:27-35",
+      "effort": "S",
+      "description": "<code>warnSignalReaderCallbackDeprecated()</code> schaltet sich nach der ersten Ausgabe ueber ein Modul-Flag ab. Das haelt die Konsole sauber, verbirgt aber, wie viele Stellen betroffen sind: die Warnung nennt keine Aufrufstelle, und ab der zweiten bleibt sie ganz aus. Wer migrieren will, hat keinen Anhaltspunkt, wo. Vormals API-005.",
+      "recommendation": "Pro Aufrufstelle einmal warnen, etwa geschluesselt ueber die erste Zeile des Stacks, oder wenigstens einen Stack-Ausschnitt mitgeben. Alternativ ueber eine Umgebungsvariable auf »immer warnen« umschaltbar machen.",
+      "evidence": "Re-Check API-005: zwei verschiedene deprecated Aufrufstellen -> genau 1 Warnung"
+    },
+    {
+      "id": "API-006",
+      "category": "Öffentliche API",
+      "severity": "low",
+      "status": "new",
+      "title": "export * verbreitert die oeffentliche Oberflaeche implizit",
+      "location": "src/index.ts:13 · src/index.ts:21",
+      "effort": "S",
+      "description": "<code>src/index.ts</code> listet alle Exporte namentlich auf, mit zwei Ausnahmen: <code>export * from './link.js'</code> und <code>export * from './SignalAutoMap.js'</code>. Jeder kuenftige Export aus diesen beiden Modulen wird damit automatisch Teil der oeffentlichen API, ohne dass es an der zentralen Stelle sichtbar waere. Bei einer Bibliothek, die ihre Oberflaeche versioniert, ist das die einzige Stelle, an der ein Export unbeabsichtigt entstehen kann.",
+      "recommendation": "Beide auf namentliche Exporte umstellen, passend zum Rest der Datei.",
+      "evidence": "src/index.ts:13 und :21, alle uebrigen 15 Zeilen sind namentlich"
+    },
+    {
+      "id": "API-007",
+      "category": "Öffentliche API",
+      "severity": "low",
+      "status": "new",
+      "title": "30 Prozent des Pakets sind nicht referenzierte lib/*.js plus kaputte Declaration-Maps",
+      "location": "package.json exports · tsconfig.lib.json:9-10 · .npmignore",
+      "effort": "S",
+      "description": "Das Paket umfasst 119 Dateien und 305 kB entpackt. Davon entfallen 92,2 kB, also 30 Prozent, auf <code>lib/*.js</code> und deren Sourcemaps. Keine <code>exports</code>-Route loest je dorthin auf: die Typen zeigen auf <code>lib/*.d.ts</code>, die Laufzeit auf <code>dist/</code> mit 39,4 kB. Die mitgelieferten <code>.d.ts.map</code> zeigen ausserdem auf <code>src/</code>, das <code>.npmignore</code> ausschliesst, sodass »Gehe zu Definition« beim Konsumenten ins Leere laeuft. Mitgeliefert wird auch <code>lib/assert-helpers.*</code>, reiner Testcode, der die globale <code>expect</code>-Funktion von Vitest erwartet.",
+      "recommendation": "<code>lib/*.js</code> und <code>lib/*.js.map</code> aus dem Paket nehmen, etwa ueber ein <code>files</code>-Feld statt der <code>.npmignore</code>-Ausschlussliste. Entweder <code>declarationMap</code> abschalten oder <code>src/</code> mitliefern, damit die Maps auch stimmen. Fuer <code>assert-helpers</code> siehe den Vorschlag zum Test-Einstiegspunkt im Optimierungspotenzial.",
+      "evidence": "npm pack --dry-run, Aufteilung nach Gruppen:\n  lib/*.js(+map)  92,2 kB  30%  (von keiner exports-Route erreichbar)\n  lib/*.d.ts(+map) 34,7 kB  11%\n  dist/*           39,4 kB  13%  (die tatsaechliche Laufzeit)\n  docs/            45,4 kB  15%\n  skills/          28,1 kB   9%"
+    },
+    {
+      "id": "ARCH-002",
+      "category": "Architektur & Struktur",
+      "severity": "low",
+      "status": "new",
+      "title": "AGENTS.md nennt die falsche Peer-Dependency-Version",
+      "location": "AGENTS.md:13",
+      "effort": "S",
+      "description": "<code>AGENTS.md</code> fuehrt unter »What it is« die Peer-Dependency als <code>@spearwolf/eventize ^5.0.0</code>. <code>package.json</code> deklariert seit dem Upgrade in Commit <code>914f153</code> <code>^6.0.0</code>. Da die Datei sich selbst als kanonische, eigenstaendige Beschreibung der Codebasis bezeichnet und Agenten als erste Quelle dient, wirkt eine falsche Versionsangabe an dieser Stelle direkt in jede darauf gestuetzte Aenderung hinein.",
+      "recommendation": "Auf <code>^6.0.0</code> korrigieren. Der Absatz zur Eventize-Version gehoert in die Checkliste fuer Dependency-Upgrades, damit die Angabe nicht erneut auseinanderlaeuft.",
+      "evidence": "AGENTS.md:13 'Peer dep: @spearwolf/eventize ^5.0.0' gegen package.json peerDependencies '^6.0.0'"
+    },
+    {
+      "id": "ARCH-003",
+      "category": "Architektur & Struktur",
+      "severity": "low",
+      "status": "carried-over",
+      "title": "private constructor mit return-Trick in SignalGroup",
+      "location": "src/SignalGroup.ts:126-144",
+      "effort": "M",
+      "description": "Der private Konstruktor gibt in zwei Faellen ein anderes Objekt zurueck als das frisch angelegte: bei einer uebergebenen <code>SignalGroup</code> und bei einem Treffer im Store. Das funktioniert, verlangt aber die abgeschaltete Biome-Regel <code>noConstructorReturn</code> und laesst sich beim Lesen leicht uebersehen: <code>new SignalGroup(x)</code> liefert nicht zwangslaeufig eine neue Gruppe. PERF-002 ist die messbare Folge dieser Konstruktion. Vormals IMP-002.",
+      "recommendation": "Die Fallunterscheidung in die statische Fabrik ziehen und den Konstruktor auf den reinen Neuanlage-Fall reduzieren. Das macht den Ablauf lesbar und behebt PERF-002 im selben Zug.",
+      "evidence": "src/SignalGroup.ts:127-133, zwei return-Anweisungen im Konstruktor; biome.json schaltet noConstructorReturn ab"
+    },
+    {
+      "id": "TYPE-002",
+      "category": "Typsicherheit",
+      "severity": "low",
+      "status": "new",
+      "title": "findObjectSignalByName typisiert den Namen als keyof O",
+      "location": "src/object-signals.ts:19-23 · src/decorators.ts:24 · src/decorators.ts:42",
+      "effort": "S",
+      "description": "Die Signatur verlangt <code>K extends keyof O</code>. Der Decorator legt das Signal jedoch unter <code>options?.name || context.name</code> ab: mit <code>@signal({name: 'custom'})</code> lautet der Schluessel <code>'custom'</code>, was kein <code>keyof O</code> ist. Der korrekte Aufruf wird damit vom Compiler abgelehnt, waehrend der Aufruf mit dem Property-Namen typprueft und zur Laufzeit <code>undefined</code> liefert. Dieselbe Signatur liegt unter den Tupel-Overloads von <code>value()</code> und <code>touch()</code>.",
+      "recommendation": "Auf <code>K extends keyof O | string | symbol</code> erweitern und den Rueckgabetyp entsprechend auf <code>Signal&lt;unknown&gt;</code> zuruecknehmen, wenn der Schluessel nicht in <code>O</code> liegt.",
+      "evidence": "src/object-signals.ts:19 gegen src/decorators.ts:24 (name = options?.name || context.name)"
+    },
+    {
+      "id": "TEST-001",
+      "category": "Testabdeckung & Teststrategie",
+      "severity": "low",
+      "status": "carried-over",
+      "title": "Keine Property-Based-Tests fuer Scheduler-Reihenfolgen",
+      "location": "src/**/*.spec.ts",
+      "effort": "M",
+      "description": "255 Tests decken 97,6 Prozent der Statements ab, arbeiten aber durchweg mit festen Szenarien. Die Reihenfolge, in der Effects bei mehreren Signalen, gemischten Prioritaeten, verschachtelten Batches und Quiet-Bereichen laufen, ist ein kombinatorischer Raum, in dem feste Faelle systematisch Luecken lassen. Vormals TEST-002.",
+      "recommendation": "Mit fast-check eine kleine Zahl von Invarianten pruefen: jeder Effect laeuft pro Batch hoechstens einmal, hoehere Prioritaet laeuft nie nach niedrigerer, nach dem Teardown sind alle Zaehler auf dem Ausgangswert. Gerade der letzte Punkt haette mehrere Befunde dieses Laufs gefunden.",
+      "evidence": "keine fast-check- oder aehnliche Abhaengigkeit in package.json"
+    },
+    {
+      "id": "TEST-002",
+      "category": "Testabdeckung & Teststrategie",
+      "severity": "low",
+      "status": "carried-over",
+      "title": "Kein Browser-Smoke-Test",
+      "location": ".github/workflows/ci.yml · .github/workflows/main.yml",
+      "effort": "M",
+      "description": "Die Bibliothek nennt DOM und DOM.Iterable in ihren <code>lib</code>-Optionen und richtet sich ausdruecklich auch an Web Components und Canvas-Anwendungen. Getestet wird ausschliesslich unter Node. Ein Bruch, der nur im Browser auftritt, etwa an FinalizationRegistry-Verhalten oder am Decorator-Transform, faellt erst beim Konsumenten auf. Vormals TEST-003.",
+      "recommendation": "Einen minimalen Smoke-Test unter Vitest Browser Mode oder Playwright: Bundle importieren, Signal anlegen, Effect ausloesen, Gruppe aufraeumen. Das deckt keine Semantik ab, faengt aber Bruch beim Laden und beim Decorator-Transform.",
+      "evidence": "beide Workflow-Dateien ohne Browser- oder Playwright-Schritt"
+    },
+    {
+      "id": "DX-001",
+      "category": "Developer Experience",
+      "severity": "low",
+      "status": "improved",
+      "previousSeverity": "medium",
+      "title": "Kein examples/-Ordner mit Framework-Adaptern",
+      "location": "repo root",
+      "effort": "M",
+      "description": "Es gibt kein <code>examples/</code> und keinen lauffaehigen Adapter fuer eine konkrete Umgebung. Die Lage hat sich seit dem Vorlauf deutlich entspannt: <code>docs/quickstart.md</code>, <code>docs/recipes.md</code>, <code>docs/cheat-sheet.md</code> und <code>skills/using-signalize/references/patterns.md</code> liefern inzwischen umfangreiche Codebeispiele. Was fehlt, ist ein Projekt, das man klonen und starten kann, insbesondere fuer die Anbindung an Web Components oder eine Render-Schleife.",
+      "recommendation": "Ein einzelnes lauffaehiges Beispiel genuegt, am besten das im README skizzierte Szenario als vollstaendiges Miniprojekt. Framework-Adapter erst dann, wenn es Nachfrage dafuer gibt.",
+      "evidence": "kein examples/-Verzeichnis im Repo; Codebeispiele liegen in docs/ und skills/"
+    },
+    {
+      "id": "DX-002",
+      "category": "Developer Experience",
+      "severity": "low",
+      "status": "carried-over",
+      "title": "Kein DevTools-Inspector fuer den Signal-Graphen",
+      "location": "—",
+      "effort": "L",
+      "description": "Zur Fehlersuche stehen die Zaehler <code>getSignalsCount</code>, <code>getEffectsCount</code>, <code>getLinksCount</code> und <code>getSignalGroupsCount</code> zur Verfuegung, dazu <code>onCreateEffect</code> und <code>onDestroyEffect</code>. Wer wissen will, welcher Effect an welchem Signal haengt und warum er gerade lief, muss das aus Zaehlerdifferenzen erschliessen. Die Symbol-IDs tragen zwar sprechende Beschreibungen, sind von aussen aber nicht auf ihre Quelle zurueckfuehrbar.",
+      "recommendation": "Ein schmaler Hook, der den Graphen als serialisierbare Struktur ausgibt, waere die Grundlage. Eine Browser-Extension ist ein eigenes Projekt und lohnt sich erst, wenn die Nutzerbasis das traegt.",
+      "evidence": "index.ts exportiert vier Zaehler und zwei Lifecycle-Hooks, keine Graph-Introspektion"
+    },
+    {
+      "id": "DX-003",
+      "category": "Developer Experience",
+      "severity": "low",
+      "status": "carried-over",
+      "title": "Node >= 24.13 ist eine hohe Adoptionsschwelle",
+      "location": "package.json engines",
+      "effort": "M",
+      "description": "Die Bibliothek verlangt Node 24.13 oder neuer und zielt auf ES2023. Nichts im Quelltext braucht offensichtlich so viel: die genutzten Sprachmittel, darunter private Felder, <code>WeakRef</code> und <code>FinalizationRegistry</code>, sind seit Node 18 verfuegbar. Die Schwelle schliesst damit Konsumenten aus, ohne dass ein Gegenwert erkennbar waere.",
+      "recommendation": "Pruefen, welches Sprachmittel die Untergrenze tatsaechlich setzt, und sie so weit senken, wie es ohne Aufwand geht. Falls die Grenze aus dem Buildwerkzeug stammt und nicht aus dem Laufzeitcode, gehoert das in die engines-Begruendung.",
+      "evidence": "package.json engines.node '>=24.13'; verwendete Sprachmittel sind seit Node 18 verfuegbar"
+    },
+    {
+      "id": "DX-004",
+      "category": "Developer Experience",
+      "severity": "low",
+      "status": "carried-over",
+      "title": "ESM-only schliesst CJS-Konsumenten aus",
+      "location": "package.json type · package.json exports",
+      "effort": "L",
+      "description": "<code>\"type\": \"module\"</code> und ausschliesslich <code>import</code>-Bedingungen in <code>exports</code> schliessen jeden <code>require()</code>-Konsumenten aus. Das ist eine legitime und in der Sache gut begruendete Entscheidung, sie kostet aber Reichweite und ist an keiner Stelle als bewusste Wahl dokumentiert.",
+      "recommendation": "Als Entscheidung im README oder in <code>docs/architecture.md</code> festhalten, damit die Frage nicht wiederkehrt. Ein CJS-Build kaeme nur infrage, wenn die Nachfrage das rechtfertigt, und traegt eigene Kosten.",
+      "evidence": "package.json exports mit ausschliesslich types- und import-Bedingungen"
+    },
+    {
+      "id": "INF-001",
+      "category": "Architektur & Struktur",
+      "severity": "info",
+      "status": "unchanged",
+      "title": "Modul-Singletons als bewusste Architektur",
+      "location": "src/global-queues.ts · src/link.ts · src/object-signals.ts · src/globalEffectStack.ts",
+      "effort": "L",
+      "description": "Der globale Zustand ist kein Versehen, sondern die tragende Idee: dass zwei beliebige Module dasselbe Signal sehen, ohne einen gemeinsamen Kontext durchreichen zu muessen, ist genau das, was diese Bibliothek von einer Store-Loesung unterscheidet. Die Kosten stehen als ARCH-001 im Backlog und als Scope-Vorschlag im Optimierungspotenzial. Hier steht der Eintrag nur, damit die Entscheidung sichtbar bleibt.",
+      "recommendation": "Nichts zu tun. Wird die Bibliothek in Umgebungen mit mehreren Mandanten pro Prozess eingesetzt, etwa SSR, ist der Scope-Vorschlag der Ansatzpunkt.",
+      "evidence": "vier Modul-Singletons in global-queues.ts, je eines in link.ts, object-signals.ts, globalEffectStack.ts, batch.ts, bequiet.ts"
+    },
+    {
+      "id": "INF-002",
+      "category": "Öffentliche API",
+      "severity": "info",
+      "status": "unchanged",
+      "title": "JSDoc-Vollstaendigkeit",
+      "location": "src/EffectImpl.ts · src/decorators.ts · src/SignalGroup.ts",
+      "effort": "M",
+      "description": "Die oeffentlichen Funktionen in <code>signal-core.ts</code>, <code>link.ts</code>, <code>createMemo.ts</code>, <code>SignalAutoMap.ts</code> und den meisten Teilen von <code>SignalGroup.ts</code> sind durchgehend und gut dokumentiert. Luecken bleiben bei den Methoden von <code>EffectImpl</code>, bei beiden Decorators und bei den beiden veralteten <code>destroy</code>-Varianten (siehe API-003).",
+      "recommendation": "Bei der naechsten Beruehrung dieser Dateien nachziehen. Ein eigener Durchgang lohnt nicht.",
+      "evidence": "EffectImpl-Methoden ohne JSDoc: whenSignalIsRead, cleanupLostSignals, unsubscribeSignal, hasStaticDeps, saveSignalsFromDeps"
+    },
+    {
+      "id": "INF-003",
+      "category": "Implementierungsstand",
+      "severity": "info",
+      "status": "unchanged",
+      "title": "Symbol-ID-Generator waechst unbegrenzt",
+      "location": "src/UniqIdGen.ts:10-12",
+      "effort": "S",
+      "description": "<code>make()</code> zaehlt <code>#nextId</code> hoch und baut daraus die Beschreibung eines neuen Symbols. Der Zaehler wird nie zurueckgesetzt, auch nicht, wenn alle Signale zerstoert sind. Praktisch ist das folgenlos: die Obergrenze liegt bei 2^53, und die Symbole selbst werden mit ihren Signalen eingesammelt. Die Zeichenkette pro ID ist eine kleine Allokation, die ausschliesslich der Lesbarkeit beim Debuggen dient und diesen Preis wert ist.",
+      "recommendation": "Nichts zu tun.",
+      "evidence": "src/UniqIdGen.ts:11 Symbol(`${prefix}${nextId++}`), kein Reset"
+    }
+  ]
+}
+</script>
+
 <script>
 (function () {
-  const AUDIT = {
-    summary: {
-      project: "@spearwolf/signalize",
-      version: "0.30.0",
-      stack: ["TypeScript 6", "Node ≥ 24.13", "ESM", "Jest", "Biome", "Rollup"],
-      date: "2026-05-20",
-      previousDate: "2026-05-20",
-      score: 72,
-      previousScore: 73,
-      theme: "dark",
-      counts: {
-        critical: 0,
-        high: 1,
-        medium: 9,
-        low: 11,
-        info: 3
-      },
-      resolvedCount: 4,
-      improvedCount: 1,
-      newCount: 4,
-      scoreHistory: [
-        { date: "2026-05-14", score: 68 },
-        { date: "2026-05-20", score: 73 },
-        { date: "2026-05-20", score: 72 }
-      ]
-    },
-    findings: [
-      {
-        id: "MEMO-001", category: "Bugs", severity: "high", status: "new",
-        title: "<code>@memo</code> ignoriert Args nach dem ersten Aufruf",
-        location: "src/decorators.ts:67–83",
-        description:
-          "Der Memo-Decorator legt die Memo-Closure nur beim ersten Aufruf an: <code>siGet = createMemo(() =&gt; target.call(this, ...args), …)</code>. <code>args</code> ist in der Closure gefangen. Bei jedem späteren Aufruf der Methode wird <code>siGet()</code> wiederverwendet — egal mit welchen Argumenten. Ergebnis: <em>schweigend falsche Cache-Treffer</em>, sobald die Methode überhaupt Parameter akzeptiert. Der einzige existierende Test (<code>decorators.memo.spec.ts</code>) deckt nur den argumentlosen Fall ab.",
-        recommendation:
-          "Entweder die Args ausdrücklich aus der Closure fernhalten (Memo pro Args-Tupel anlegen, Map keyed by deep-equal/JSON) — oder die API auf <em>argumentlos</em> verengen: Typ zwingt <code>A = []</code>, alles andere wird als Type-Error abgewiesen. Vor dem Fix in den offenen Fragen klären, welche Variante semantisch gewollt ist.",
-        effort: "M"
-      },
-      {
-        id: "LEAK-001", category: "Memory", severity: "medium", status: "new",
-        title: "<code>SignalLink</code>: <code>once()</code>-Listener auf globalen Destroy-Queues nicht entkoppelt",
-        location: "src/SignalLink.ts:39,49 · src/SignalLink.ts:167",
-        description:
-          "Der Konstruktor registriert <code>once(globalDestroySignalQueue, this.source.id, …)</code> (und für <code>SignalLinkToSignal</code> zusätzlich für <code>target.id</code>) — beide ohne den Unsubscribe-Handle aufzuheben. Wird <code>link.destroy()</code> aufgerufen, bevor die Quelle/das Ziel destroyt wird, läuft <code>destroy()</code> sauber durch, aber die <code>once</code>-Listener bleiben auf den globalen Queues stehen, bis das Source-/Target-Signal stirbt. Bei vielen kurzlebigen Links über lang-lebigen Source-Signalen wächst <code>getSubscriptionCount(globalDestroySignalQueue)</code> entsprechend mit.",
-        recommendation:
-          "Die <code>once()</code>-Rückgabewerte in einem <code>#destroySubs: VoidFunc[]</code> ablegen und in <code>destroy()</code> aufrufen (gleicher Pattern wie <code>this.#unsubscribe</code>). Eine Spec mit Subscription-Snapshot vor/nach würde den Leak fest verdrahten.",
-        effort: "S"
-      },
-      {
-        id: "API-007", category: "API", severity: "low", status: "new",
-        title: "<code>createSignal(existing, params)</code> verwirft alle Params außer <code>attach</code> still",
-        location: "src/createSignal.ts:196–217",
-        description:
-          "Bei <code>createSignal(otherSignal, {lazy: true, compare: fn, beforeRead: hook})</code> wird <code>otherSignal</code> einfach zurückgegeben — <code>lazy</code>, <code>compare</code> und <code>beforeRead</code> werden ignoriert. Nur <code>attach</code> wird angewendet (siehe Z. 213). Ein Konsument, der die Funktion idempotent nutzen will (Adapter, Plugin), bekommt keinerlei Hinweis. Der JSDoc beschreibt das passive Pass-Through, dokumentiert aber nicht das Drop der Params.",
-        recommendation:
-          "Entweder das Verhalten in der JSDoc explizit nennen („when called with an existing signal, only <code>attach</code> is applied; <code>lazy</code>/<code>compare</code>/<code>beforeRead</code> are ignored\") oder den restriktiveren Typ <code>createSignal(initial: T | (() =&gt; T), params?)</code> für den Nicht-Signal-Pfad und <code>createSignal(s: SignalLike&lt;T&gt;, params?: Pick&lt;SignalParams&lt;T&gt;, 'attach'&gt;)</code> als zweite Overload.",
-        effort: "S"
-      },
-      {
-        id: "API-001", category: "API", severity: "low", status: "improved",
-        previousSeverity: "medium",
-        title: "Multi-Way Read-API ohne dedizierten Cheat-Block im API-Doc",
-        location: "docs/api.md · Signal.ts · value.ts",
-        description:
-          "Die <code>Signal</code>-Tabelle in <code>docs/api.md</code> nennt jetzt <code>get()</code> (tracked) und <code>value</code> (untracked) <em>als Zeilen direkt nebeneinander</em>, und der <code>readAsValue</code>-Decorator-Knopf ist erläutert. Der Punkt ist damit halb erledigt — ein eigener „Read API at a glance\"-Block ganz oben fehlt aber weiterhin; Anfänger, die <code>beforeRead</code> verstehen müssen, finden den Hinweis nicht zentral.",
-        recommendation:
-          "Einen Vier-Zeilen-Block oberhalb der Sektion „Signals\" einfügen: vier Read-Varianten + drei Spalten (Tracking ja/nein, <code>beforeRead</code> ja/nein, Cleanup-Lifecycle).",
-        effort: "S"
-      },
-      {
-        id: "API-002", category: "API", severity: "medium", status: "carried-over",
-        title: "<code>set(fn)</code>-Updater-Falle bleibt subtil",
-        location: "src/createSignal.ts:123–158 · docs/api.md:49–50",
-        description:
-          "<code>signal.set(fn)</code> speichert die Funktion als Wert (statt sie wie in React mit dem alten Wert aufzurufen). Nur <code>{lazy: true}</code> macht aus <code>fn</code> eine Factory. Im typisierten Pfad fängt TS das ab und die API-Doku warnt jetzt explizit (Z. 49 f.), aber in jedem <code>any</code>-Code (Adapter, Plugin) ist es eine stille Falle.",
-        recommendation:
-          "Entweder explizite <code>signal.update(fn)</code>-API hinzufügen (klare Trennung Wert vs. Updater) oder im Runtime-Pfad einen Dev-Warn bei <code>typeof value === 'function' &amp;&amp; !lazy</code> ausgeben (gated über NODE_ENV).",
-        effort: "M"
-      },
-      {
-        id: "API-003", category: "API", severity: "medium", status: "carried-over",
-        title: "<code>createMemo</code>-Option <code>name</code> ohne <code>attach</code> stillschweigend ignoriert",
-        location: "src/createMemo.ts:38–49",
-        description:
-          "Wer nur <code>name</code> setzt (ohne <code>attach</code>), bekommt keine Fehlermeldung — die Group-Registrierung erfolgt einfach nicht. Die Optionen sind unabhängig typisiert, obwohl sie semantisch gekoppelt sind.",
-        recommendation:
-          "Discriminated Union für <code>CreateMemoOptions</code>: entweder <code>{attach, name?}</code> oder <code>{}</code> — <code>name</code> ohne <code>attach</code> wird vom Typ ausgeschlossen.",
-        effort: "S"
-      },
-      {
-        id: "API-004", category: "API", severity: "medium", status: "carried-over",
-        title: "Static-Deps-Effects laufen <em>nicht</em> automatisch",
-        location: "src/EffectImpl.ts:241–245",
-        description:
-          "<code>createEffect(cb, [a,b])</code> startet nicht von selbst — Konsumenten müssen <code>.run()</code> aufrufen. Default-Doku sagt <code>autorun: true</code>; dieses Verhalten weicht überraschend ab. Dokumentiert, aber bricht die Symmetrie zwischen dynamic-deps und static-deps Effects.",
-        recommendation:
-          "Default angleichen: static-deps Effects laufen ebenfalls einmal bei Konstruktion (außer <code>autorun: false</code>). Falls Breaking-Change zu groß, deutlicher Hinweis direkt am Funktionsnamen im API-Doc + Recipe.",
-        effort: "M"
-      },
-      {
-        id: "IMP-001", category: "Impl", severity: "medium", status: "carried-over",
-        title: "Slot-Recycling in <code>EffectImpl.getCurrentChildEffect()</code> ist toter Pfad",
-        location: "src/EffectImpl.ts:250–256 · 380–385",
-        description:
-          "<code>childEffects</code> wird positionell wiederverwendet, aber <code>destroyChildEffects()</code> läuft am Anfang jedes <code>run()</code> und entleert das Array sofort. Damit ist der Recycling-Pfad effektiv unerreichbar; <code>curChildEffectSlot</code> wird nie auf einen existierenden Eintrag treffen.",
-        recommendation:
-          "Entweder Slot-Recycling entfernen (vereinfacht <code>run()</code>) <em>oder</em> <code>destroyChildEffects()</code> aus <code>run()</code> herausnehmen und durch ein Re-Use-Schema ersetzen (Cleanup nur bei destroy). Aktuell: Code, der lügt.",
-        effort: "M"
-      },
-      {
-        id: "PERF-001", category: "Performance", severity: "medium", status: "carried-over",
-        title: "Keine Microbench-Suite, keine PR-Regression-Detection",
-        location: "package.json scripts · keine bench/",
-        description:
-          "Bibliothek wirbt mit „zero overhead\" und „inline propagation\", liefert aber keinen reproduzierbaren Microbench. Performance-Regressionen sind unsichtbar bis sie ein Konsument findet.",
-        recommendation:
-          "<code>tinybench</code>-basiertes <code>bench/</code> mit 4–6 Szenarien (set+notify Throughput, Memo-Recompute, Batch-Flush, Dependency-Diff). CI-Step vergleicht gegen Baseline aus <code>main</code>; nur Soft-Warn, kein Block.",
-        effort: "M"
-      },
-      {
-        id: "REL-001", category: "Reliability", severity: "medium", status: "carried-over",
-        title: "Kein Multi-Bundle-Sentinel",
-        location: "src/global-queues.ts",
-        description:
-          "Globale Queues sind Modul-Singletons. Werden durch Bundling versehentlich zwei Library-Instanzen ins selbe Realm gezogen (verschiedene Resolutions / nicht-deduplizierte deps), bricht Reaktivität still — Effects der einen Instance sehen Signale der anderen nie.",
-        recommendation:
-          "Sentinel via <code>globalThis.__signalize__</code> setzen; bei Modul-Import in Dev (<code>process.env.NODE_ENV !== 'production'</code>) prüfen und mit <code>console.warn</code> melden, wenn schon belegt.",
-        effort: "S"
-      },
-      {
-        id: "DX-001", category: "DX", severity: "medium", status: "carried-over",
-        title: "Kein <code>examples/</code>-Ordner mit Framework-Adaptern",
-        location: "repo root",
-        description:
-          "Trotz starker Framework-agnostischer Positionierung gibt es keine Mini-Demos (React-Hook-Adapter, Vue-Reactivity-Bridge, Web-Component-Wrapper, Vanilla-DOM). Onboarding-Hürde für die deklarierte Zielgruppe.",
-        recommendation:
-          "<code>examples/</code> mit drei kleinen, lauffähigen Demos. Jeder Adapter &lt; 100 LOC, mit eigenem <code>README.md</code> und <code>pnpm dev</code>-Script. Bonus: in CI gegen den Lib-Build prüfen.",
-        effort: "L"
-      },
-      {
-        id: "REPO-001", category: "Repo", severity: "medium", status: "carried-over",
-        title: "Repo-Wurzel mit ~21 MB Hero-Assets und Scratch-Files",
-        location: "hero.gif (9,6 MB), hero.png (4,8 MB), hero.webp (2,9 MB), hero2.png (2,0 MB), hero2--noir.png (1,1 MB), hero-next.xcf, hero-web.webp · diamond-example.mjs",
-        description:
-          "Sechs Hero-Bilder am Repo-Wurzel summieren sich auf ~21 MB; nur <code>hero2--noir.png</code> wird im aktuellen README referenziert. Zusätzlich liegt <code>diamond-example.mjs</code> (getrackt) wie eine Scratch-Notiz am Wurzel. <code>.npmignore</code> schützt das npm-Paket sauber, aber jeder <code>git clone</code> trägt das Gewicht.",
-        recommendation:
-          "Nicht mehr referenzierte Hero-Assets aus dem aktuellen Branch entfernen (Git-History bleibt unberührt). <code>diamond-example.mjs</code> nach <code>examples/</code> bzw. <code>scratch/</code> ziehen oder löschen.",
-        effort: "S"
-      },
-      {
-        id: "API-005", category: "API", severity: "low", status: "carried-over",
-        title: "Deprecation-Warnung feuert nur einmal pro Prozess",
-        location: "src/createSignal.ts:25–33",
-        description:
-          "<code>signalReader(callback)</code> warnt exakt einmal über <code>console.warn</code>; weitere Call-Sites bleiben stumm. Hält den Output sauber, erschwert aber die Suche nach <em>allen</em> Vorkommen in größeren Codebases.",
-        recommendation:
-          "Pro Call-Site-Key (Stack-Frame-Top oder explizit übergebener Tag) maximal einmal warnen. Alternative: bei <code>NODE_ENV !== 'production'</code> jede Verwendung warnen.",
-        effort: "S"
-      },
-      {
-        id: "API-006", category: "API", severity: "low", status: "carried-over",
-        title: "Destroyed Signal liefert weiter Werte und schluckt Writes still",
-        location: "src/createSignal.ts:225–235 · 105–117",
-        description:
-          "Nach <code>destroySignal(s)</code> gibt <code>s.value</code> weiterhin den letzten Wert zurück, <code>s.set(x)</code> ist no-op, <code>s.get()</code> trackt nichts. In Docs erwähnt, aber ohne Dev-Warn schwer zu debuggen, wenn Code aus Versehen auf einem toten Signal weiterarbeitet.",
-        recommendation:
-          "Im Dev-Modus <code>console.warn</code> beim Lesen/Schreiben destroyed-Signale; gated über <code>process.env.NODE_ENV !== 'production'</code>.",
-        effort: "S"
-      },
-      {
-        id: "TEST-002", category: "Tests", severity: "low", status: "carried-over",
-        title: "Keine Property-Based-Tests für Scheduler-Reihenfolgen",
-        location: "src/**/*.spec.ts",
-        description:
-          "Bei einer Bibliothek mit nested Effects, Priorities und Batch-Dedup wäre ein PBT-Lauf (z. B. <code>fast-check</code>) für zufällige Schedule-Reihenfolgen produktiv. Aktuell wird Verhalten nur durch handgeschriebene Szenarien gesichert.",
-        recommendation:
-          "Eine kleine <code>fast-check</code>-Spec, die Sequenzen von signal-set + batch + nested-effect-creation generiert und Invarianten asserted (Effect läuft ≤ einmal pro Batch, Priority-Order erhalten, Cleanup-Aufrufe = Re-Run-Aufrufe).",
-        effort: "M"
-      },
-      {
-        id: "TEST-003", category: "Tests", severity: "low", status: "carried-over",
-        title: "Kein Browser-Smoke-Test",
-        location: ".github/workflows/*",
-        description:
-          "README behauptet „runs anywhere modern JS runs\", CI läuft aber nur Node. Edge-Cases wie unterschiedliche WeakMap/FinalizationRegistry-Semantik in Browser-Engines sind ungetestet.",
-        recommendation:
-          "Playwright + Vite-Mini-Demo (HTML + ein <code>main.ts</code> mit Signal/Effect-Hot-Path). Ein einziger CI-Step, ~30 s.",
-        effort: "M"
-      },
-      {
-        id: "DX-002", category: "DX", severity: "low", status: "carried-over",
-        title: "Kein DevTools-Inspector",
-        location: "—",
-        description:
-          "Effect-Graph, Subscription-Heatmap, Live-Counter-Dashboard fehlen. Für ein Library mit explizitem „Debug-Friendly\"-Anspruch (sichtbare <code>getSignalsCount</code> etc.) eine Lücke.",
-        recommendation:
-          "Separater Subpath <code>./devtools</code> (kein Default-Bundle-Aufschlag). Browser-Extension oder Embed-Snippet. Größere Investition — frühestens v1.x.",
-        effort: "L"
-      },
-      {
-        id: "DX-003", category: "DX", severity: "low", status: "carried-over",
-        title: "Node ≥ 24.13 ist eine hohe Adoptions-Schwelle",
-        location: "package.json engines",
-        description:
-          "Node 24 ist erst ab Q4 2025 LTS; Bestandsprojekte auf 20/22 sind weiter Mainstream in 2026. Hohe Schwelle für „nur eine Reactivity-Lib\".",
-        recommendation:
-          "Prüfen, ob 20.x oder 22.x reichen — wenn ja, Engines lockern. Wenn nicht, im README einen kurzen „Why ≥ 24.13\"-Block einbauen, damit der Trade-off sichtbar ist.",
-        effort: "S"
-      },
-      {
-        id: "DX-004", category: "DX", severity: "low", status: "carried-over",
-        title: "ESM-only schließt CJS-Konsumenten aus",
-        location: "package.json type/exports",
-        description:
-          "Für die deklarierte Zielgruppe (3D, PWAs) ist ESM-only vertretbar, aber Tooling- und Build-Setups in Legacy-Stacks stolpern. Keine Doku-Notiz vorhanden.",
-        recommendation:
-          "Im README einen Halbsatz: „ESM-only — kein CJS-Build\". Bei <code>require('@spearwolf/signalize')</code> wirft Node deutlich, aber eine explizite Notiz beugt Issues vor.",
-        effort: "S"
-      },
-      {
-        id: "IMP-002", category: "Impl", severity: "low", status: "carried-over",
-        title: "<code>private constructor() return obj</code>-Trick in <code>SignalGroup</code>",
-        location: "src/SignalGroup.ts:126–144",
-        description:
-          "<code>SignalGroup.findOrCreate</code> nutzt <code>new SignalGroup(object)</code>; der Konstruktor liefert via <code>return store.get(object)</code> einen bereits existierenden Eintrag zurück — JS-Semantik erlaubt das, ist aber unkonventionell und durch Biome-Regel <code>noConstructorReturn: off</code> erst möglich.",
-        recommendation:
-          "Vor jedem Refactoring im Hinterkopf behalten — alternativ in einen reinen Factory-Pfad ohne <code>new</code>-Aufruf umbauen.",
-        effort: "M"
-      },
-      {
-        id: "INF-001", category: "Impl", severity: "info", status: "unchanged",
-        title: "Modul-Singletons als bewusste Architektur",
-        location: "src/global-queues.ts · src/object-signals.ts · src/link.ts",
-        description:
-          "<code>globalSignalQueue</code> &amp; Co., <code>g_objectStores</code>, <code>gLinks</code>, <code>allGroups</code>, der <code>idCreator</code> sind Modul-globale Singletons. Bewusste Architektur — sollte aber in <code>docs/architecture.md</code> als Non-Goal für „mehrere parallele Reaktivitäts-Welten\" expliziert werden.",
-        recommendation: "Halbsatz in der Architektur-Doku ergänzen.",
-        effort: "S"
-      },
-      {
-        id: "INF-002", category: "API", severity: "info", status: "unchanged",
-        title: "JSDoc-Vollständigkeit",
-        location: "diverse src/*.ts",
-        description:
-          "Die meisten Public-Exports haben JSDoc, einige interne Helper bewusst nicht. An den Lifecycle-Eckpunkten (<code>destroySignal</code>-Reihenfolge, Effect-mit-tot-Signal) wäre eine kurze JSDoc-Notiz wertvoll.",
-        recommendation:
-          "Pro Lifecycle-API einen Satz „what happens to dangling effects/links\" ergänzen.",
-        effort: "S"
-      },
-      {
-        id: "INF-003", category: "Impl", severity: "info", status: "unchanged",
-        title: "Symbol-ID-Generator wächst unbegrenzt",
-        location: "src/UniqIdGen.ts",
-        description:
-          "<code>Symbol(`si${n}`)</code>-Labels werden für lange Prozesse mit hohem Signal-Churn lang („si1234567\"). Kein Leak (Symbols sind GC-tauglich), nur kosmetisch.",
-        recommendation:
-          "Falls Debug-Labels langfristig stören: ID-Pool je Klasse mit Recycling, sonst belassen — aktuell unkritisch.",
-        effort: "S"
-      }
-    ]
+  const DATA = JSON.parse(document.getElementById('audit-data').textContent);
+  const SEV = ['critical', 'high', 'medium', 'low', 'info'];
+  const SEV_LABEL = {critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Info'};
+  const SEV_COLOR = {critical: '#f87171', high: '#fb923c', medium: '#fbbf24', low: '#60a5fa', info: '#94a3b8'};
+  const ST_LABEL = {new: 'neu', unchanged: 'unveraendert', improved: 'verbessert', 'carried-over': 'fortgeschrieben'};
+
+  const counts = DATA.summary.counts;
+  const max = Math.max.apply(null, SEV.map(function (s) { return counts[s] || 0; }).concat([1]));
+  document.getElementById('sevbars').innerHTML = SEV.map(function (s) {
+    const n = counts[s] || 0;
+    return '<div class="bar"><span>' + SEV_LABEL[s] + '</span>' +
+      '<span class="track"><span class="fill" style="width:' + (n / max * 100) + '%;background:' + SEV_COLOR[s] + '"></span></span>' +
+      '<span class="n">' + n + '</span></div>';
+  }).join('');
+
+  const byCat = {};
+  DATA.findings.forEach(function (f) { byCat[f.category] = (byCat[f.category] || 0) + 1; });
+  document.getElementById('catgrid').innerHTML = Object.entries(byCat)
+    .sort(function (a, b) { return b[1] - a[1] || a[0].localeCompare(b[0]); })
+    .map(function (e) { return '<div class="cat"><span>' + e[0] + '</span><span class="n">' + e[1] + '</span></div>'; })
+    .join('');
+
+  const fSev = document.getElementById('f-sev'), fCat = document.getElementById('f-cat'), fSt = document.getElementById('f-st');
+  SEV.forEach(function (s) { if (counts[s]) fSev.add(new Option(SEV_LABEL[s] + ' (' + counts[s] + ')', s)); });
+  Object.keys(byCat).sort().forEach(function (c) { fCat.add(new Option(c + ' (' + byCat[c] + ')', c)); });
+  const byStatus = {};
+  DATA.findings.forEach(function (f) { byStatus[f.status] = (byStatus[f.status] || 0) + 1; });
+  Object.keys(byStatus).sort().forEach(function (st) { fSt.add(new Option((ST_LABEL[st] || st) + ' (' + byStatus[st] + ')', st)); });
+
+  const order = {critical: 0, high: 1, medium: 2, low: 3, info: 4};
+  const rows = DATA.findings.slice().sort(function (a, b) {
+    return order[a.severity] - order[b.severity] || a.id.localeCompare(b.id);
+  });
+  const tbody = document.getElementById('tbody');
+  const esc = function (s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   };
 
-  const sevClass  = { critical: "critical", high: "high", medium: "medium", low: "low", info: "info" };
-  const sevLabel  = { critical: "Critical", high: "High", medium: "Medium", low: "Low", info: "Info" };
-  const sevOrder  = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
-  const statusLabel = { "new": "Neu", "unchanged": "Unverändert", "improved": "Verbessert", "carried-over": "Fortgeschrieben" };
-  const statusClass = { "new": "s-new", "unchanged": "s-unchanged", "improved": "s-improved", "carried-over": "s-carried" };
+  tbody.innerHTML = rows.map(function (f, i) {
+    const stCls = f.status === 'new' ? 'st st-new' : f.status === 'improved' ? 'st st-improved' : 'st';
+    const stTitle = f.previousSeverity ? ' title="' + f.previousSeverity + ' → ' + f.severity + '"' : '';
+    return '<tr class="row" data-i="' + i + '" data-sev="' + f.severity + '" data-cat="' + f.category + '" data-st="' + f.status + '">' +
+        '<td class="id">' + f.id + '</td>' +
+        '<td><span class="sev sev-' + f.severity + '">' + SEV_LABEL[f.severity] + '</span></td>' +
+        '<td><span class="' + stCls + '"' + stTitle + '>' + (ST_LABEL[f.status] || f.status) + '</span></td>' +
+        '<td>' + f.title + '</td>' +
+        '<td class="small muted">' + f.category + '</td>' +
+        '<td class="loc">' + f.location + '</td>' +
+        '<td class="eff">' + f.effort + '</td>' +
+      '</tr>' +
+      '<tr class="detail" data-i="' + i + '"><td colspan="7"><div class="det">' +
+        '<div class="lbl">Problem</div><p>' + f.description + '</p>' +
+        '<div class="lbl">Beleg</div><div class="evi">' + esc(f.evidence) + '</div>' +
+        '<div class="lbl">Empfehlung</div><p>' + f.recommendation + '</p>' +
+      '</div></td></tr>';
+  }).join('');
 
-  // Severity overview
-  const sevOv = document.getElementById("sev-overview");
-  const total = Object.values(AUDIT.summary.counts).reduce((a, b) => a + b, 0);
-  ["critical", "high", "medium", "low", "info"].forEach(sev => {
-    const n = AUDIT.summary.counts[sev] || 0;
-    const pct = total ? (n / total * 100) : 0;
-    const row = document.createElement("div");
-    row.className = "sev-row";
-    row.innerHTML = `
-      <div class="lbl">${sevLabel[sev]}</div>
-      <div class="sev-bar ${sev}"><div style="width:${pct}%"></div></div>
-      <div class="num">${n}</div>
-    `;
-    sevOv.appendChild(row);
+  tbody.addEventListener('click', function (e) {
+    const tr = e.target.closest('tr.row');
+    if (!tr) return;
+    tbody.querySelector('tr.detail[data-i="' + tr.dataset.i + '"]').classList.toggle('open');
   });
 
-  // Category overview
-  const catOv = document.getElementById("cat-overview");
-  const catCounts = {};
-  AUDIT.findings.forEach(f => { catCounts[f.category] = (catCounts[f.category] || 0) + 1; });
-  Object.entries(catCounts).sort((a, b) => b[1] - a[1]).forEach(([cat, n]) => {
-    const row = document.createElement("div");
-    row.className = "row";
-    row.innerHTML = `<span>${cat}</span><span class="n">${n}</span>`;
-    catOv.appendChild(row);
-  });
-
-  // Backlog table
-  const tbody = document.querySelector("#backlog tbody");
-  const findings = AUDIT.findings.slice().sort((a, b) => {
-    if (sevOrder[a.severity] !== sevOrder[b.severity]) return sevOrder[a.severity] - sevOrder[b.severity];
-    return a.id.localeCompare(b.id);
-  });
-
-  findings.forEach((f) => {
-    const row = document.createElement("tr");
-    row.className = "row open";
-    row.dataset.sev    = f.severity;
-    row.dataset.status = f.status;
-    row.dataset.cat    = f.category;
-    row.innerHTML = `
-      <td><span class="id">${f.id}</span></td>
-      <td><span class="pill ${sevClass[f.severity]}">${sevLabel[f.severity]}</span></td>
-      <td>${f.title}<div class="loc">${f.location}</div></td>
-      <td>${f.category}</td>
-      <td><span class="pill ${statusClass[f.status]}">${statusLabel[f.status]}${f.status === "improved" && f.previousSeverity ? " (" + sevLabel[f.previousSeverity] + " → " + sevLabel[f.severity] + ")" : ""}</span></td>
-      <td>${f.effort}</td>
-    `;
-    const detail = document.createElement("tr");
-    detail.className = "detail hidden";
-    detail.dataset.sev    = f.severity;
-    detail.dataset.status = f.status;
-    detail.dataset.cat    = f.category;
-    detail.innerHTML = `
-      <td colspan="6">
-        <div><strong>Beschreibung.</strong> ${f.description}</div>
-        <div class="why"><strong>Empfehlung.</strong> ${f.recommendation}</div>
-      </td>
-    `;
-    row.addEventListener("click", () => detail.classList.toggle("hidden"));
-    tbody.appendChild(row);
-    tbody.appendChild(detail);
-  });
-
-  // Filters
-  const filters = { sev: "all", status: "all", cat: "all" };
-  document.querySelectorAll("button.f").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const filter = btn.dataset.filter;
-      const value  = btn.dataset.value;
-      document.querySelectorAll(`button.f[data-filter="${filter}"]`).forEach(b => b.classList.remove("on"));
-      btn.classList.add("on");
-      filters[filter] = value;
-      applyFilters();
+  function apply() {
+    let n = 0;
+    tbody.querySelectorAll('tr.row').forEach(function (tr) {
+      const ok = (!fSev.value || tr.dataset.sev === fSev.value) &&
+                 (!fCat.value || tr.dataset.cat === fCat.value) &&
+                 (!fSt.value || tr.dataset.st === fSt.value);
+      tr.style.display = ok ? '' : 'none';
+      const d = tbody.querySelector('tr.detail[data-i="' + tr.dataset.i + '"]');
+      if (!ok) { d.classList.remove('open'); d.style.display = 'none'; } else { d.style.display = ''; }
+      if (ok) n++;
     });
-  });
-
-  function applyFilters() {
-    document.querySelectorAll("#backlog tr.row, #backlog tr.detail").forEach(tr => {
-      const okSev = filters.sev === "all" || tr.dataset.sev === filters.sev;
-      const okSt  = filters.status === "all" || tr.dataset.status === filters.status;
-      const okCat = filters.cat === "all" || tr.dataset.cat === filters.cat;
-      const visible = okSev && okSt && okCat;
-      if (tr.classList.contains("detail")) {
-        if (!visible) tr.classList.add("hidden");
-      } else {
-        tr.style.display = visible ? "" : "none";
-      }
-    });
+    document.getElementById('f-count').textContent = n + ' von ' + rows.length + ' Findings';
   }
+  [fSev, fCat, fSt].forEach(function (el) { el.addEventListener('change', apply); });
+  document.getElementById('f-reset').addEventListener('click', function () {
+    fSev.value = fCat.value = fSt.value = ''; apply();
+  });
+  document.getElementById('f-expand').addEventListener('click', function () {
+    const open = tbody.querySelectorAll('tr.detail.open').length > 0;
+    const btn = this;
+    tbody.querySelectorAll('tr.row').forEach(function (tr) {
+      if (tr.style.display === 'none') return;
+      tbody.querySelector('tr.detail[data-i="' + tr.dataset.i + '"]').classList.toggle('open', !open);
+    });
+    btn.textContent = open ? 'Alle aufklappen' : 'Alle zuklappen';
+  });
+  apply();
 
-  window.__AUDIT__ = AUDIT;
+  const H = DATA.summary.scoreHistory;
+  if (H.length >= 3) {
+    const W = 640, HH = 210, PL = 44, PR = 20, PT = 26, PB = 40;
+    const iw = W - PL - PR, ih = HH - PT - PB;
+    const x = function (i) { return PL + (H.length === 1 ? iw / 2 : i * iw / (H.length - 1)); };
+    const y = function (s) { return PT + ih - (s / 100) * ih; };
+    let g = '';
+    [0, 50, 100].forEach(function (v) {
+      g += '<line x1="' + PL + '" y1="' + y(v) + '" x2="' + (W - PR) + '" y2="' + y(v) + '" stroke="#26334f" stroke-width="1"/>' +
+           '<text x="' + (PL - 9) + '" y="' + (y(v) + 4) + '" fill="#7c8aa3" font-size="10" text-anchor="end">' + v + '</text>';
+    });
+    const pts = H.map(function (h, i) { return x(i) + ',' + y(h.score); }).join(' ');
+    let dots = '';
+    H.forEach(function (h, i) {
+      const last = i === H.length - 1;
+      dots += '<circle cx="' + x(i) + '" cy="' + y(h.score) + '" r="' + (last ? 5 : 3.5) + '" fill="' + (last ? '#818cf8' : '#151f38') + '" stroke="#818cf8" stroke-width="1.6"/>' +
+        '<text x="' + x(i) + '" y="' + (y(h.score) - 12) + '" fill="' + (last ? '#a5b4fc' : '#7c8aa3') + '" font-size="11" text-anchor="middle">' + String(h.score).replace('.', ',') + '</text>' +
+        '<text x="' + x(i) + '" y="' + (HH - 12) + '" fill="#7c8aa3" font-size="10" text-anchor="middle">' + h.date.slice(5) + '</text>';
+    });
+    document.getElementById('chartfig').innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + HH + '" role="img" aria-label="Verlauf der Health-Scores">' + g +
+      '<polyline points="' + pts + '" fill="none" stroke="#818cf8" stroke-width="2" stroke-linejoin="round"/>' + dots + '</svg>' +
+      '<figcaption>Verlauf der Health-Scores seit ' + H[0].date + ' (' + H.length + ' Audits). ' +
+      'Der Einbruch im letzten Punkt stammt aus der groesseren Prueftiefe dieses Laufs, nicht aus einer Verschlechterung des Codes: ' +
+      'siehe die Einordnung in der Methodik-Sektion.</figcaption>';
+  }
 })();
 </script>
 </body>
