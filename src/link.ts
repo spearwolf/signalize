@@ -1,5 +1,5 @@
 import {once} from '@spearwolf/eventize';
-import {DESTROY} from './constants.js';
+import {$queueUnsubscribes, DESTROY} from './constants.js';
 import {Signal} from './Signal.js';
 import {
   SignalLink,
@@ -32,8 +32,9 @@ import {ISignalImpl, SignalLike, SignalReader} from './types.js';
 // If a link and its source become unreachable *together* instead (the
 // source was never `destroySignal()`d, just dropped along with every link
 // on it), `gLinkFinalizer` below does eventually correct `getLinksCount()`
-// to match — see that finalizer's comment for what that path does and does
-// not clean up; it is not equivalent to the three explicit ways above.
+// to match, and releases the link's subscriptions on the two global queues
+// along with it (MEM-001) — see that finalizer's comment for what that path
+// still does not do; it is not equivalent to the three explicit ways above.
 //
 // Against a long-lived, still-reachable source, a hot path that keeps
 // calling `link(src, freshCallback)` without ever tearing the old ones down
@@ -55,29 +56,71 @@ let gLinksCount = 0;
 // A link that is only dropped and garbage-collected — never explicitly
 // destroy()ed — fires no DESTROY event, so the increment/decrement pair
 // below can't see it. This registry catches that case: it fires once the
-// link itself becomes unreachable and corrects the counter. The `once(link,
+// link itself becomes unreachable, releases the link's subscriptions on the
+// two module-level global queues, and corrects the counter. The `once(link,
 // DESTROY, ...)` hook unregisters first on the explicit path, so a link that
-// *is* destroyed is never double-counted here.
+// *is* destroyed is never double-counted (nor double-released) here.
 //
-// This is bookkeeping for `getLinksCount()`, not a cleanup path (MEM-007):
-// reaching this callback already required the link (and the strong entry in
-// the inner `Map` above) to become unreachable, which — per that comment —
-// only happens once its source signal is gone too. It corrects the *count*;
-// it does not release anything. All of the link's subscriptions on
-// `globalSignalQueue`/`globalDestroySignalQueue` (see `SignalLink`'s
-// constructor) are still registered when this fires, and stay registered
-// for good — their closures go through a `WeakRef` (MEM-002), so once it
-// derefs to `undefined` they are permanent no-ops, not gone. Measured with
-// callback targets: after 200 links are collected this way,
-// `getSubscriptionCount(globalSignalQueue)` and
-// `getSubscriptionCount(globalDestroySignalQueue)` both still read 200,
-// unchanged from immediately before the collection — for signal targets the
-// second number would be 400.
-const gLinkFinalizer = new FinalizationRegistry<void>(() => {
-  if (gLinksCount > 0) {
-    gLinksCount -= 1;
-  }
-});
+// The held value is the link's own `[$queueUnsubscribes]` array — two
+// handles for a callback target, three for a signal target. MEM-001: a
+// dropped link never runs `destroy()`, so these handles are the *only* thing
+// left that can take its subscriptions off two queues that live as long as
+// the process does. The array is safe to hold: the handles reach only the
+// constructor closures, and those know the link exclusively through a
+// `WeakRef` (see `SignalLink`'s constructor), so there is no strong path
+// from the held value back to the registered object — which there must not
+// be, or this callback would never fire at all.
+//
+// Releasing before decrementing the counter reads well — `getLinksCount()
+// === 0` then also means "every release has run" — but claim no more for it
+// than that: this callback runs to completion synchronously either way, so
+// a GC test that waits for the counter is just as settled with the two
+// halves swapped. Nothing depends on the order, and no test guards it.
+//
+// What this still is *not* (MEM-007): a fourth-and-a-half teardown route. It
+// emits no DESTROY, does not call `destroy()`, detaches nothing from a group
+// (a group-attached link is held strongly by `SignalGroup#links` and is
+// never collectible in the first place) and does not touch the target. It is
+// neither schedulable nor observable — only the backlog it used to leave on
+// the global queues is gone.
+const gLinkFinalizer = new FinalizationRegistry<(() => void)[]>(
+  (queueUnsubscribes) => {
+    for (const unsubscribe of queueUnsubscribes) {
+      try {
+        unsubscribe();
+      } catch (err) {
+        // A throw out of a FinalizationRegistry callback has no caller to
+        // reach — it would take the process down. Same channel and same
+        // reason as `SignalGroup`'s finalizer.
+        console.error(
+          '[signalize] link: releasing the queue subscriptions of a collected link failed',
+          err,
+        );
+      }
+    }
+    queueUnsubscribes.length = 0;
+    if (gLinksCount > 0) {
+      gLinksCount -= 1;
+    }
+  },
+);
+
+// MEM-005: `gLinks` is weak on the source but strong on the inner Map, so
+// every link ever created against a still-reachable source stays alive — and
+// every write to that source pays for the backlog (measured: 1000 writes
+// cost 0.60 ms with no links, 58 ms with 1000). Dropping the `SignalLink`
+// and waiting for GC does not help; only the four explicit teardown routes
+// do. There is no dev-mode flag to hang this off and no runtime switch to
+// add (that would be public API), so it fires at most once per source
+// signal, for good.
+//
+// A `WeakSet` rather than an equality test on the threshold: an application
+// that builds up and tears down links around the mark would get a fresh
+// warning on every rebuild — a warning about correct behaviour. The set
+// holds nothing (weak on the source, like `gLinks` itself) and makes the
+// stronger promise: once per source, for the life of the process.
+const LINK_COUNT_WARN_THRESHOLD = 1000;
+const gWarnedSources = new WeakSet<ISignalImpl<any>>();
 
 type LinkableSource<ValueType> = SignalReader<ValueType> | Signal<ValueType>;
 type LinkableTarget<ValueType> =
@@ -124,7 +167,17 @@ export interface LinkOptions {
  * cleared, or `source`/a signal `target` being destroyed. Discarding the
  * return value is fine and does not shorten this: it only makes the link
  * unreachable to the caller, not to the registry. There is no fifth way —
- * garbage collection alone does not reclaim a link on a live source.
+ * garbage collection alone does not reclaim a link on a live source. (Once a
+ * link becomes unreachable *together with* its source, the finalizer does
+ * release its global-queue subscriptions as well as correcting the count —
+ * but that is a backstop for a link nobody can reach any more, not a
+ * teardown you can schedule.)
+ *
+ * Warns once per source signal, via `console.warn`, as soon as 1000 links
+ * hang off it — the point where the linear cost of a write to that source
+ * has grown two orders of magnitude (measured) and an unbounded register is
+ * the likelier explanation than intent. Diagnostic only: nothing is thrown
+ * and nothing is refused.
  */
 export function link<ValueType>(
   source: LinkableSource<ValueType>,
@@ -174,7 +227,17 @@ export function link<ValueType>(
 
   links.set(targetKey, newLink);
   gLinksCount += 1;
-  gLinkFinalizer.register(newLink, undefined, newLink);
+  gLinkFinalizer.register(newLink, newLink[$queueUnsubscribes], newLink);
+
+  if (
+    links.size >= LINK_COUNT_WARN_THRESHOLD &&
+    !gWarnedSources.has(sourceSignal)
+  ) {
+    gWarnedSources.add(sourceSignal);
+    console.warn(
+      `[signalize] link(): ${links.size} links on a single source signal. A link is held until destroy(), unlink(), a cleared {attach} group, or the destruction of source/target — garbage collection alone does not reclaim one on a live source. If this is a hot path creating fresh callbacks, tear the old links down; getLinksCount(source) is the number to watch.`,
+    );
+  }
 
   once(newLink, DESTROY, () => {
     links.delete(targetKey);
@@ -241,10 +304,11 @@ export function unlink<ValueType>(
  * source/signal target does that, and each of those also releases the
  * link's subscriptions on the global queues. If a link becomes unreachable
  * *together with* its source instead (dropped, never explicitly destroyed),
- * this count is eventually corrected too, but nondeterministically and
- * without releasing those subscriptions — see the `gLinkFinalizer` comment
- * above `link()`. That path is bookkeeping, not a fifth teardown route on
- * par with the four explicit ones.
+ * this count is eventually corrected too — nondeterministically, but these
+ * days including those subscriptions (MEM-001); see the `gLinkFinalizer`
+ * comment above `link()`. That path is still a backstop, not a fifth
+ * teardown route on par with the four explicit ones: it emits no DESTROY,
+ * detaches from no group and cannot be scheduled or observed.
  */
 export function getLinksCount(source?: SignalLike<any>): number {
   if (source == null) {

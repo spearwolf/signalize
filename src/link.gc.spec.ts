@@ -1,5 +1,8 @@
+import {getSubscriptionCount} from '@spearwolf/eventize';
 import {assertLinksCount} from './assert-helpers.js';
+import {$queueUnsubscribes} from './constants.js';
 import {createSignal} from './createSignal.js';
+import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {getLinksCount, link, unlink} from './link.js';
 import {destroySignal} from './signal-core.js';
 
@@ -37,18 +40,21 @@ gcDescribe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
   // (gLinks/the link's own subscriptions pinning it in memory) and out of
   // scope here.
   //
-  // MEM-007: `getLinksCount()` falling to 0 below is not proof that a
+  // MEM-007: `getLinksCount()` falling to 0 on its own is not proof that a
   // link's *subscriptions* were reclaimed too — only that its entry in the
   // strong inner `Map` in `src/link.ts` became unreachable, which happens
   // here only because the source signal is dropped in the same sweep (see
-  // the two tests below). Measured for this exact scenario: after the
-  // source falls away, `getLinksCount()` is 0, but both of a link's
-  // `globalSignalQueue`/`globalDestroySignalQueue` subscription counts are
-  // unchanged from before the GC pass. That is why this suite has no
-  // `getSubscriptionCount()` assertion either — it would not move, and
-  // absence-of-proof is not what MEM-007 documents. See the new
-  // "held until unlink()" test below for the case where the source
-  // survives.
+  // the first two tests below). The two claims used to come apart: measured
+  // for this exact scenario, `getLinksCount()` read 0 while both queue
+  // subscription counts sat unchanged from before the GC pass.
+  //
+  // MEM-001 closed that gap, and the last four tests hold it closed —
+  // `getSubscriptionCount(queue)` snapshotted around the scenario, per the
+  // pattern in CLAUDE.md → "Verifying subscription leaks". `getLinksCount()
+  // === 0` now genuinely implies "the handles have run", because the
+  // finalizer releases them before it touches the counter. What GC still is
+  // not is a teardown route you can schedule — see the "held until unlink()"
+  // test for the case where the source survives.
   beforeEach(() => {
     assertLinksCount(0, 'beforeEach');
   });
@@ -140,5 +146,136 @@ gcDescribe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     expect(getLinksCount(source)).toBe(0);
 
     destroySignal(source);
+  });
+
+  // MEM-001. Why none of these needs a settle step of its own: the finalizer
+  // callback runs to completion synchronously, so by the time
+  // `waitUntilLinksCollected()` sees `getLinksCount() === 0` the releases in
+  // that same callback have already happened. The budget loop is what makes
+  // this deterministic — not the order of the two halves inside the callback,
+  // which nothing here depends on.
+  it('a collected callback-target link releases both of its queue subscriptions (MEM-001)', async () => {
+    const sigBefore = getSubscriptionCount(globalSignalQueue);
+    const destBefore = getSubscriptionCount(globalDestroySignalQueue);
+
+    const LINK_COUNT = 100;
+
+    (() => {
+      for (let i = 0; i < LINK_COUNT; i += 1) {
+        const source = createSignal(i);
+        link(source, () => {});
+      }
+    })();
+
+    // Two per callback-target link: `on(globalSignalQueue, source.id)` and
+    // `once(globalDestroySignalQueue, source.id)`.
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(
+      sigBefore + LINK_COUNT,
+    );
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+      destBefore + LINK_COUNT,
+    );
+
+    await waitUntilLinksCollected();
+
+    expect(getLinksCount()).toBe(0);
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigBefore);
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
+  });
+
+  it('a collected signal-target link releases all three of its queue subscriptions (MEM-001)', async () => {
+    const sigBefore = getSubscriptionCount(globalSignalQueue);
+    const destBefore = getSubscriptionCount(globalDestroySignalQueue);
+
+    const LINK_COUNT = 100;
+
+    (() => {
+      for (let i = 0; i < LINK_COUNT; i += 1) {
+        const source = createSignal(i);
+        const target = createSignal(-1);
+        link(source, target);
+      }
+    })();
+
+    // Three per signal-target link: the two above plus
+    // `once(globalDestroySignalQueue, target.id)` from
+    // `SignalLinkToSignal`'s constructor — hence 2 × LINK_COUNT on the
+    // destroy queue.
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(
+      sigBefore + LINK_COUNT,
+    );
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+      destBefore + 2 * LINK_COUNT,
+    );
+
+    await waitUntilLinksCollected();
+
+    expect(getLinksCount()).toBe(0);
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigBefore);
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
+  });
+
+  it('a collected link releases the destroy hook on a target signal that is still alive (MEM-001)', async () => {
+    // The counter-proof to the discarded `off(queue, eventName)` variant:
+    // `off(globalDestroySignalQueue, target.id)` would also tear the destroy
+    // hooks of effects, groups and memos off a *living* target signal. Here
+    // only the sources and the links fall; the targets are held in an array
+    // and must come out of the sweep intact.
+    const sigBefore = getSubscriptionCount(globalSignalQueue);
+    const destBefore = getSubscriptionCount(globalDestroySignalQueue);
+
+    const LINK_COUNT = 100;
+    const targets = Array.from({length: LINK_COUNT}, () => createSignal(-1));
+
+    (() => {
+      for (let i = 0; i < LINK_COUNT; i += 1) {
+        const source = createSignal(i);
+        link(source, targets[i]);
+      }
+    })();
+
+    await waitUntilLinksCollected();
+
+    expect(getLinksCount()).toBe(0);
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigBefore);
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
+
+    // The targets are untouched: still writable, still readable.
+    for (let i = 0; i < LINK_COUNT; i += 1) {
+      targets[i].set(i);
+    }
+    expect(targets[7].value).toBe(7);
+
+    for (const target of targets) {
+      destroySignal(target);
+    }
+  });
+
+  it('a throwing release handle is reported and does not stop the rest (MEM-001)', async () => {
+    const sigBefore = getSubscriptionCount(globalSignalQueue);
+    const destBefore = getSubscriptionCount(globalDestroySignalQueue);
+
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      (() => {
+        const source = createSignal(1);
+        const l = link(source, () => {});
+        // In *front* of the two real handles — a thrower at the end would
+        // prove nothing about the ones behind it.
+        l[$queueUnsubscribes].unshift(() => {
+          throw new Error('release-boom');
+        });
+      })();
+
+      await waitUntilLinksCollected();
+
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(getLinksCount()).toBe(0);
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(sigBefore);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
+    } finally {
+      error.mockRestore();
+    }
   });
 });

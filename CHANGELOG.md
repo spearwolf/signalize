@@ -7,6 +7,7 @@
 - New `onEffectError(cb, priority?)` export: subscribes to rejections of `async` effect and cleanup callbacks, which cannot be thrown at a caller. The handler receives `{error, effect, effectId, phase}` (ASYNC-001)
 - `createMemo(fn, {batchWrites})`: new option (default `false`) to wrap the memo's recompute write in `batch()`. Only needed when `fn` itself writes to other signals as a side effect — the default trades that grouping away for read consistency on composed memos, see the Breaking Changes entry below (PERF-001)
 - `SignalAutoMap#delete(key)` destroys the signal for that key and removes the entry, returning `true` if the key was in the map — previously only `clear()` could tear anything down, and a `destroySignal()` from the outside left the dead entry cached
+- `link()` warns once per source signal, via `console.warn`, as soon as 1000 links hang off that one source — the point where the register is more likely unbounded than intended, and where a write to that source already costs two orders of magnitude more than it did empty. The warning names the four teardown routes (`destroy()`, `unlink()`, a cleared `{attach}` group, destroying source or target) and `getLinksCount(source)`; nothing is thrown and no link is refused (MEM-005)
 
 ### Bug Fixes
 
@@ -79,6 +80,9 @@
 - `beQuiet(action)` now returns what `action` returns (previously `void`) — the documented untracked peek was always `undefined`, without a type error; the change is runtime-only and unchanged for every caller that ignores the value (BUG-010)
 - The signature also — like `batch()` — rejects an `async`/thenable-returning `action` at compile time: the quiet frame ends at the first `await`, and every read and write after that point is tracked and loud again. No runtime check, unlike `batch()` (BUG-010)
 - The static `SignalGroup.clear()` no longer throws a group created *during* the sweep — e.g. from a `DESTROY` listener — out of the registry. It stayed in `store` and was still handed out by `findOrCreate()`, but no longer counted by `getSignalGroupsCount()`, was unreachable by any further sweep, and its `FinalizationRegistry` backstop could never fire again (BUG-009)
+- A link that becomes unreachable together with its source signal now releases its subscriptions on `globalSignalQueue`/`globalDestroySignalQueue` as well — two for a callback target, three for a signal target — instead of only correcting `getLinksCount()`. Measured before the fix: 10 000 dropped pairs left 10 000 entries on each queue and ~2.2 KB of heap per pair behind while `getLinksCount()` reported 0 (MEM-001)
+- A release handle that throws while a collected link is being cleaned up is reported through `console.error` instead of taking the process down out of the `FinalizationRegistry` callback, and the remaining handles are released regardless (MEM-001)
+- The error of a failed `SignalLink` teardown now reads `[signalize] N errors while tearing down a SignalLink` (previously "… while releasing SignalLink destroy-queue subscriptions") — the collection covers `DESTROY` listeners and the `globalSignalQueue` release too, not just the destroy-queue handles (MEM-001)
 
 ### Documentation
 

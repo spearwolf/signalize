@@ -11,6 +11,7 @@ import {
   getLinksCount,
   link,
   SignalGroup,
+  unlink,
 } from './index.js';
 
 describe('link() comprehensive tests', () => {
@@ -631,6 +632,65 @@ describe('link() comprehensive tests', () => {
         /source must be a signal/,
       );
       expect(getLinksCount()).toBe(0);
+    });
+  });
+
+  describe('MEM-005: an unbounded link register on one source is reported once', () => {
+    it('stays silent below the threshold and warns once when a source reaches it', () => {
+      const src = createSignal(0);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        for (let i = 0; i < 999; i += 1) {
+          link(src, () => {});
+        }
+        expect(getLinksCount(src)).toBe(999);
+        expect(warn).not.toHaveBeenCalled();
+
+        link(src, () => {});
+        expect(getLinksCount(src)).toBe(1000);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn.mock.calls[0][0]).toMatch(
+          /links on a single source signal/,
+        );
+
+        // Once per source, for good — not once per link past the mark.
+        link(src, () => {});
+        link(src, () => {});
+        expect(getLinksCount(src)).toBe(1002);
+        expect(warn).toHaveBeenCalledTimes(1);
+      } finally {
+        // Teardown belongs in here, not after the block: a failing
+        // assertion would otherwise leave 1002 links and a live signal
+        // standing, the afterEach guards would fire, and the *next* test
+        // would go red as collateral for a failure that isn't its own.
+        warn.mockRestore();
+        unlink(src);
+        destroySignal(src);
+      }
+    });
+
+    it('counts per source, not globally', () => {
+      const a = createSignal(0);
+      const b = createSignal(0);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        for (let i = 0; i < 600; i += 1) {
+          link(a, () => {});
+          link(b, () => {});
+        }
+
+        expect(getLinksCount()).toBe(1200);
+        expect(getLinksCount(a)).toBe(600);
+        expect(getLinksCount(b)).toBe(600);
+        expect(warn).not.toHaveBeenCalled();
+      } finally {
+        warn.mockRestore();
+        unlink(a);
+        unlink(b);
+        destroySignal(a, b);
+      }
     });
   });
 });

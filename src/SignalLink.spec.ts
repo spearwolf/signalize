@@ -458,7 +458,7 @@ describe('SignalLink', () => {
     });
   });
 
-  describe('S6: destroy() reports every failing destroy-queue release, not just the last one', () => {
+  describe('S6: destroy() reports every failing teardown step, not just the last one', () => {
     // `releaseOnDestroy()` is `protected`, so a throwing handle can only be
     // installed from a subclass — these exist solely to give the spec that
     // hook. Two variants, one per error-count path: `destroy()` rethrows a
@@ -526,7 +526,7 @@ describe('SignalLink', () => {
         'release-b',
       ]);
       expect(agg.message).toBe(
-        '[signalize] 2 errors while releasing SignalLink destroy-queue subscriptions',
+        '[signalize] 2 errors while tearing down a SignalLink',
       );
 
       destroySignal(sigA);

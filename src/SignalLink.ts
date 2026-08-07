@@ -9,7 +9,7 @@ import {
   retainClear,
 } from '@spearwolf/eventize';
 import {throwCollectedErrors} from './collect-errors.js';
-import {DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
+import {$queueUnsubscribes, DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
 import {signalImpl} from './signal-core.js';
@@ -24,27 +24,41 @@ export interface SignalLink<ValueType = any> extends EventizedObject {}
 
 export abstract class SignalLink<ValueType = any> {
   #muted = false;
-  #unsubscribe?: () => void;
   #attachedGroups?: Set<SignalGroup>;
 
-  // MEM-004: every `once(globalDestroySignalQueue, ...)` subscription this
-  // link registers — one from this constructor, plus one more from
-  // `SignalLinkToSignal`'s own constructor — needs its unsubscribe handle
-  // released in `destroy()`. Without it, the closure (routed through
-  // `selfRef`, so it no longer pins the link *from the queues* — see
-  // MEM-002 above; `src/link.ts`'s MEM-007 comment covers what still does)
-  // stays subscribed on a permanent module-level queue until the *other*
-  // side's signal is destroyed too, which for a link torn down well before its
-  // signals is never. `destroy()` must run these before `Object.freeze(this)`
-  // (S7: not *because of* the freeze — `Object.freeze(this)` reaches
-  // neither private fields, which live outside the object's own-property
-  // list entirely, nor the array object this field points to, which is a
-  // separate, unfrozen object one hop away; nothing here would stop a push
-  // after the fact). It runs before the freeze because that's simply where
-  // `destroy()`'s one-shot teardown sequence puts it — the guard at the top
-  // of this method (`if (this.isDestroyed) return`) is what actually rules
-  // out a second run pushing anything new.
-  #releaseOnDestroy: (() => void)[] = [];
+  // Every subscription this link holds on one of the two permanent,
+  // module-level global queues, as its unsubscribe handle: the
+  // `on(globalSignalQueue, source.id, ...)` and the
+  // `once(globalDestroySignalQueue, source.id, ...)` from this constructor,
+  // plus — for `SignalLinkToSignal` — the
+  // `once(globalDestroySignalQueue, target.id, ...)` its constructor adds
+  // through `releaseOnDestroy()`. Two handles for a callback target, three
+  // for a signal target.
+  //
+  // MEM-004: `destroy()` runs all of them. Without it, the closures (routed
+  // through `selfRef`, so they no longer pin the link *from the queues* —
+  // see MEM-002 below; `src/link.ts`'s comments cover what still does) stay
+  // subscribed on a queue that lives as long as the process, until the
+  // *other* side's signal is destroyed too — which for a link torn down well
+  // before its signals is never.
+  //
+  // MEM-001: `destroy()` is not the only reader. `src/link.ts` registers
+  // this very array as the held value of its `FinalizationRegistry`, so a
+  // link that is merely dropped — never destroyed, so no DESTROY, no
+  // teardown — still gets these handles run once it is collected. That is
+  // why this is a symbol-keyed field and not a `#private` one: a private
+  // field is unreachable from `link.ts`. The held value stays safe because
+  // nothing in it points back at the link strongly — the handles reach the
+  // constructor closures, and those know the link only through a `WeakRef`.
+  //
+  // S7: `destroy()` runs the handles before `Object.freeze(this)`, but not
+  // *because of* it — the freeze reaches neither the array object this field
+  // points to (a separate, unfrozen object one hop away) nor anything that
+  // would stop a push after the fact. It runs there because that is simply
+  // where `destroy()`'s one-shot teardown sequence puts it; the guard at the
+  // top of that method (`if (this.isDestroyed) return`) is what actually
+  // rules out a second run pushing anything new.
+  readonly [$queueUnsubscribes]: (() => void)[] = [];
 
   // ASYNC-005: how many `asyncValues()` generators are currently iterating
   // this link. `retainClear(this, VALUE)` in that generator's `finally`
@@ -91,20 +105,31 @@ export abstract class SignalLink<ValueType = any> {
     // signal in an ordinary, strongly-referencing `Map`, for as long as that
     // source lives — see the comment there. This WeakRef only rules out the
     // queues as an *additional* permanent root; the registry is still one.
+    //
+    // MEM-001 leans on it a second time, so it is load-bearing twice over:
+    // the unsubscribe handles collected below are handed to `link.ts`'s
+    // `FinalizationRegistry` as its held value, and a held value that could
+    // reach its own registered object keeps that object alive forever — the
+    // finalizer would never fire. The only path from a handle back to this
+    // link runs through the arrow functions here, and they go through
+    // `selfRef`. Anyone replacing these closures with a plain `this` breaks
+    // the finalizer silently: no test in the standard run would say so.
     const selfRef = new WeakRef(this);
 
-    this.#unsubscribe = on(globalSignalQueue, this.source.id, (_, params) => {
-      const self = selfRef.deref();
-      if (self != null && !self.#muted && !self.isDestroyed) {
-        if (params?.touch === true) {
-          self.touch();
-        } else {
-          self.write();
+    this[$queueUnsubscribes].push(
+      on(globalSignalQueue, this.source.id, (_, params) => {
+        const self = selfRef.deref();
+        if (self != null && !self.#muted && !self.isDestroyed) {
+          if (params?.touch === true) {
+            self.touch();
+          } else {
+            self.write();
+          }
         }
-      }
-    });
+      }),
+    );
 
-    this.#releaseOnDestroy.push(
+    this[$queueUnsubscribes].push(
       once(globalDestroySignalQueue, this.source.id, () =>
         selfRef.deref()?.destroy(),
       ),
@@ -113,15 +138,19 @@ export abstract class SignalLink<ValueType = any> {
 
   /**
    * Register an unsubscribe handle (from a `once(globalDestroySignalQueue,
-   * ...)` subscription or similar) to be released in `destroy()`, before
-   * `Object.freeze(this)`. Subclasses that add their own subscriptions on a
-   * permanent global queue (see `SignalLinkToSignal`) go through this
-   * instead of touching the private field directly — private class fields
-   * aren't reachable from a subclass body, only from methods of the class
-   * that declares them.
+   * ...)` subscription or similar) for release. Subclasses that add their own
+   * subscriptions on a permanent global queue (see `SignalLinkToSignal`) go
+   * through this instead of touching the field directly.
+   *
+   * Anything registered here is released by **both** teardown routes:
+   * `destroy()` runs it (before `Object.freeze(this)`), and so does
+   * `src/link.ts`'s `FinalizationRegistry` if the link is merely collected
+   * instead (MEM-001). Which means the handle must survive being called on a
+   * link that no longer exists — eventize's handles do, and a subclass
+   * handing over anything else has to.
    */
   protected releaseOnDestroy(unsubscribe: () => void) {
-    this.#releaseOnDestroy.push(unsubscribe);
+    this[$queueUnsubscribes].push(unsubscribe);
   }
 
   attach(to: object) {
@@ -347,14 +376,13 @@ export abstract class SignalLink<ValueType = any> {
     // relies on when the callback destroys the link.
     this.isDestroyed = true;
 
-    this.#unsubscribe?.();
-    this.#unsubscribe = undefined;
-
-    // MEM-004: release every globalDestroySignalQueue subscription this
-    // link (and its subclass, if any) registered. Safe to call even for an
-    // obligation that already fired and self-removed (e.g. this destroy()
-    // run *is* the callback from one of them) — eventize's once() handles
-    // are inert once their obligation is settled.
+    // MEM-004: release every global-queue subscription this link (and its
+    // subclass, if any) registered — the `globalSignalQueue` one included
+    // (MEM-001), which used to be unsubscribed one line above this loop,
+    // outside the collecting pattern. Safe to call even for an obligation
+    // that already fired and self-removed (e.g. this destroy() run *is* the
+    // callback from one of them) — eventize's once() handles are inert once
+    // their obligation is settled.
     //
     // S6: one throwing handle must not skip releasing the rest, nor skip
     // the teardown steps below — a half-destroyed link (still subscribed on
@@ -364,14 +392,19 @@ export abstract class SignalLink<ValueType = any> {
     // same shape: gather, keep going, report at the end via
     // `throwCollectedErrors()`.
     const releaseErrors: unknown[] = [];
-    for (const unsubscribe of this.#releaseOnDestroy) {
+    for (const unsubscribe of this[$queueUnsubscribes]) {
       try {
         unsubscribe();
       } catch (err) {
         releaseErrors.push(err);
       }
     }
-    this.#releaseOnDestroy.length = 0;
+    // Emptying the array also disarms `link.ts`'s finalizer for this link:
+    // it holds *this* array, so a later collection finds nothing left to
+    // release. (The `once(link, DESTROY, ...)` hook in `link()` unregisters
+    // the link from the registry outright, so this is the second of two
+    // independent guards against a double release.)
+    this[$queueUnsubscribes].length = 0;
 
     // S6, second half: `emit()` reaches application code too, and a throwing
     // DESTROY listener used to be survivable — the error escaped before the
@@ -394,10 +427,7 @@ export abstract class SignalLink<ValueType = any> {
 
     Object.freeze(this);
 
-    throwCollectedErrors(
-      releaseErrors,
-      'releasing SignalLink destroy-queue subscriptions',
-    );
+    throwCollectedErrors(releaseErrors, 'tearing down a SignalLink');
   }
 
   get isMuted(): boolean {

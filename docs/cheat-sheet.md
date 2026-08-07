@@ -101,7 +101,7 @@ con.touch(); con.destroy(); con.attach(obj);
 await con.nextValue({signal});                                    // rejects with an Error on destroy, with signal.reason on abort
 for await (const v of con.asyncValues((v, i) => i >= 5, {signal})) {/* … */} // last-value-only, shared retain across parallel iterators; abort THROWS, destroy ends quietly
 
-getLinksCount(); getLinksCount(src);
+getLinksCount(); getLinksCount(src);                              // link() warns once per source at 1000 links
 ```
 
 ## Context modes

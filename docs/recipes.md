@@ -570,7 +570,9 @@ log.unmute();
   back from `link()` does not shorten that. Calling `link(src, freshCallback)`
   in a loop without ever `unlink()`ing the old ones accumulates every one of
   them for as long as `src` lives; `getLinksCount(src)` is the number to
-  watch.
+  watch. Once 1000 links hang off one source, `link()` reads this paragraph
+  back to you at runtime — one `console.warn` per source signal, then never
+  again for that source.
 - Repeated `link()` calls with different `attach` groups don't replace or drop
   the extra attach — the existing link is attached to *every* group it was
   ever `link()`'d or `.attach()`'d with, and dies with whichever one clears
@@ -659,6 +661,22 @@ In tests, this is the cheapest sanity check that a feature doesn't leak.
 Links need their own explicit `unlink(source)` (or `link.destroy()`) before
 that final `getLinksCount()` — a link on a still-live source is not reclaimed
 by dropping references alone.
+
+Wrapping the same scenario in a `getSubscriptionCount(queue)` snapshot — one
+argument, imported straight from `@spearwolf/eventize`, taken before and
+compared after — extends the check to the *explicit* teardown paths on the
+two global queues: `globalSignalQueue` and `globalDestroySignalQueue` come
+back to where they started, not just the count.
+
+The GC case needs more than that, and copying the snippet above into it is
+how you write a flaky test. A link dropped together with its source does
+release those subscriptions, but only once a finalizer has run — which
+requires the run to be under `--expose-gc` and the assertion to sit behind a
+retry loop that forces collection until the count actually reaches 0, rather
+than after a single `gc()` or a bare `await`. `src/link.gc.spec.ts` is the
+worked example: it skips itself when `globalThis.gc` is missing, drives
+`gc()` plus `setImmediate` in a bounded budget loop, and only then compares
+the two subscription counts.
 
 ## Migrating off `signalReader(callback)`
 

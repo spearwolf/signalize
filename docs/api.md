@@ -322,9 +322,15 @@ signal until one of four things happens: `link.destroy()`, `unlink(source,
 target?)`, a `{attach}` group being cleared, or the source or a signal target
 being destroyed. Garbage collection alone is not a fifth way — a link on a
 still-live source is not reclaimed, no matter how thoroughly its return value
-is dropped. A long-lived source that keeps accumulating fresh links without
+is dropped. A link that becomes unreachable *together with* its source does
+get its subscriptions on the two global queues released by an internal
+finalizer these days, not just its entry in the count — but that is a
+backstop for links nobody can reach any more, and it can be neither scheduled
+nor observed. A long-lived source that keeps accumulating fresh links without
 ever tearing the old ones down grows this registry without bound, and every
-write to that source gets linearly slower as it grows.
+write to that source gets linearly slower as it grows. At 1000 links on one
+source, `link()` says so once, via `console.warn` — a diagnostic, not a
+limit: nothing is thrown and nothing is refused.
 
 ### `unlink(source, target?)`
 
@@ -339,8 +345,8 @@ drops out of this count through garbage collection alone — only `destroy()`,
 `unlink()`, a cleared `{attach}` group, or destroying the source/target does
 that, and each of those also releases the link's own subscriptions. If a
 link becomes unreachable *together with* its source instead, the count is
-eventually corrected too, but nondeterministically and without releasing
-those subscriptions — see `link.ts`'s `gLinkFinalizer`.
+eventually corrected too — nondeterministically, but subscriptions included
+— see `link.ts`'s `gLinkFinalizer`.
 
 ### `SignalLink<T>` instance
 
