@@ -393,6 +393,10 @@ set, as above; wrapping a **whole run** changes no dependency set at all — an
 that: a callback wrapping its own whole body is a tracked run that reads
 nothing and loses every dependency.
 
+The frame hands back whatever the callback returns, same as `hibernate()` —
+that's what makes `peek` above usable. An `async` callback is rejected by the
+type, because the quiet zone closes at the first `await`.
+
 ## Hibernate
 
 ```ts

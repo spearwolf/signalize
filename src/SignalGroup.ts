@@ -219,7 +219,19 @@ export class SignalGroup {
    */
   static clear() {
     const errors: unknown[] = [];
-    // Snapshot — each group.clear() mutates `allGroups`.
+    // Snapshot — each group.clear() mutates `allGroups`, and it also takes
+    // itself out of the set (before its own throw, so a failing teardown
+    // deregisters just like a clean one). Nothing sweeps up afterwards: an
+    // `allGroups.clear()` here would only ever hit groups created *during*
+    // the sweep — by a DESTROY listener — and those are live groups, still
+    // in `store` and still handed out by `findOrCreate()`. Wiping them out
+    // of the set alone would leave them uncounted by
+    // `getSignalGroupsCount()`, out of reach of the next sweep, and with a
+    // FinalizationRegistry callback that can never fire again, because it
+    // starts with `allGroups.has(group)` (BUG-009). They survive the sweep
+    // instead, fully registered. Deliberately no loop-until-empty: a
+    // listener that recreates a group on every teardown would turn that
+    // into a hang.
     for (const group of [...allGroups]) {
       try {
         group.clear();
@@ -227,7 +239,6 @@ export class SignalGroup {
         errors.push(err);
       }
     }
-    allGroups.clear();
     throwCollectedErrors(errors, 'clearing all signal groups');
   }
 

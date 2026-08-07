@@ -427,10 +427,14 @@ An effect that throws during the flush no longer holds up the remaining
 delayed effects; its failure reaches the `batch()` caller after the flush is
 complete, several failures as an `AggregateError`.
 
-### `beQuiet(callback)`
+### `beQuiet(callback): T`
 
 Inside `callback`, signal **reads do not subscribe** the surrounding effect,
 and signal **writes do not emit**. Calls nest via an internal counter.
+
+`beQuiet()` returns whatever `callback` returns, and — like `batch()` —
+rejects an `async`/thenable-returning `callback` at compile time, because the
+quiet frame closes at the first `await`.
 
 Wrapping a **whole effect run** in a quiet frame does not change that effect's
 dependency set — unlike the ordinary case above, where a `beQuiet()` around a
@@ -474,7 +478,7 @@ does not pin user objects.
 | `SignalGroup.findOrCreate(obj)`     | Get or create the group attached to `obj`. Passing a group returns it as-is. Throws on `null`. |
 | `SignalGroup.get(obj)`              | Existing group, or `undefined`.                                                |
 | `SignalGroup.delete(obj)`           | Clear and remove the group.                                                    |
-| `SignalGroup.clear()`               | Clear all groups globally. Sweeps to the end even if a group's teardown throws. |
+| `SignalGroup.clear()`               | Clear all groups globally. Sweeps to the end even if a group's teardown throws; a group created *during* the sweep (typically from a `DESTROY` listener) survives it and stays registered — still counted by `getSignalGroupsCount()`, still reachable by the next `clear()`. |
 | `SignalGroup.destroy(obj)`          | **Deprecated.** Use `delete()`.                                                |
 | `getSignalGroupsCount()`            | Count of live `SignalGroup` instances (debugging / leak checks).               |
 

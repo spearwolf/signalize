@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  beQuiet,
   createEffect,
   createSignal,
   type Effect,
@@ -115,4 +116,21 @@ test('both entry points share one module instance', () => {
   eff.destroy();
   group.clear();
   SignalGroup.delete(obj);
+});
+
+test("the shipped declarations hand back beQuiet()'s result", () => {
+  const sig = createSignal(21);
+
+  // Pins the return type on the shipped `.d.ts`: if `beQuiet()` ever
+  // degrades to `void` again, this assignment stops compiling and the
+  // smoke suite never runs (BUG-010).
+  const peek: number = beQuiet(() => sig.get() * 2);
+  assert.equal(peek, 42);
+
+  // @ts-expect-error an async action is rejected by the declarations —
+  // the quiet frame closes at the first `await`. If that narrowing is
+  // ever lost, tsc fails on the unused directive (TS2578).
+  beQuiet(async () => sig.get());
+
+  sig.destroy();
 });

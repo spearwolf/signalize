@@ -1,3 +1,5 @@
+import type {NonThenable} from './types.js';
+
 let g_numberOfBeQuietRequests = 0;
 
 /**
@@ -9,12 +11,26 @@ let g_numberOfBeQuietRequests = 0;
  *
  * Calls can be nested - quiet mode remains active until all nested calls complete.
  *
- * @param action - Function to execute in quiet mode
+ * Returns whatever `action` returns — the untracked read is the point of
+ * the frame, and throwing its result away made the documented recipe
+ * (`const peek = beQuiet(() => b.get())`) silently evaluate to
+ * `undefined` (BUG-010). Same shape as `hibernate()`.
+ *
+ * `action` must be synchronous, and its signature rejects anything typed
+ * to return a `Promise`/`PromiseLike` at `tsc` time: the quiet frame is
+ * closed by the `finally` below the moment an `async` action returns its
+ * pending promise at the first `await`, so every read and write after
+ * that point is tracked and loud again — and the promise handed back
+ * would resolve outside the frame that appeared to produce it. Unlike
+ * `batch()`, there is no runtime check for a duck-typed thenable.
+ *
+ * @param action - Synchronous function to execute in quiet mode
+ * @returns The action's return value
  */
-export function beQuiet(action: () => any): void {
+export function beQuiet<T>(action: () => NonThenable<T>): T {
   g_numberOfBeQuietRequests++;
   try {
-    action();
+    return action();
   } finally {
     g_numberOfBeQuietRequests--;
   }

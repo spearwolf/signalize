@@ -111,7 +111,7 @@ import {batch, beQuiet, isQuiet, hibernate} from '@spearwolf/signalize';
 
 batch(() => { a.set(1); b.set(2); });   // dedup + priority flush
                                          // callback must be sync — async throws TypeError (tsc rejects it too)
-beQuiet(() => a.get());                 // no track, no notify
+const v = beQuiet(() => a.get());       // no track, no notify; returns the callback's result
 hibernate(() => { /* outer ctx suspended; new ctx allowed */ });
 isQuiet();
 ```

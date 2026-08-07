@@ -418,6 +418,72 @@ describe('SignalGroup teardown robustness', () => {
     expect(getLinksCount()).toBe(0);
   });
 
+  it('static SignalGroup.clear() keeps a group created during the sweep registered (BUG-009)', () => {
+    const signalsBefore = getSignalsCount();
+    const groupsBefore = getSignalGroupsCount();
+
+    const hostA = {};
+    const hostB = {};
+
+    const groupA = SignalGroup.findOrCreate(hostA);
+    createSignal(0, {attach: hostA});
+
+    let groupB!: SignalGroup;
+
+    on(groupA, DESTROY, () => {
+      groupB = SignalGroup.findOrCreate(hostB);
+      createSignal(0, {attach: hostB});
+    });
+
+    SignalGroup.clear();
+
+    expect(
+      getSignalGroupsCount(),
+      'the group born during the sweep is still counted',
+    ).toBe(groupsBefore + 1);
+    expect(
+      SignalGroup.findOrCreate(hostB),
+      'store still hands out the same instance',
+    ).toBe(groupB);
+    expect(getGroupMemberCounts(groupB)).toEqual({
+      ...NO_GROUP_MEMBERS,
+      signals: 1,
+    });
+
+    // The second sweep is the cleanup: it must reach the group this time.
+    SignalGroup.clear();
+
+    expect(getSignalsCount()).toBe(signalsBefore);
+    expect(getSignalGroupsCount()).toBe(groupsBefore);
+  });
+
+  it('the FinalizationRegistry backstop still works for a group created during the sweep (BUG-009)', () => {
+    const signalsBefore = getSignalsCount();
+
+    const hostA = {};
+    const hostB = {};
+
+    const groupA = SignalGroup.findOrCreate(hostA);
+    createSignal(0, {attach: hostA});
+
+    let groupB!: SignalGroup;
+
+    on(groupA, DESTROY, () => {
+      groupB = SignalGroup.findOrCreate(hostB);
+      createSignal(0, {attach: hostB});
+    });
+
+    SignalGroup.clear();
+
+    clearGroupFromFinalizer(groupB);
+
+    expect(
+      getGroupMemberCounts(groupB),
+      'the backstop must still find the group registered',
+    ).toEqual(NO_GROUP_MEMBERS);
+    expect(getSignalsCount()).toBe(signalsBefore);
+  });
+
   it('clearGroupFromFinalizer() reports a throwing teardown instead of letting it escape', () => {
     const signalsBefore = getSignalsCount();
     const effectsBefore = getEffectsCount();

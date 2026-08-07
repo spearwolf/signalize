@@ -76,6 +76,9 @@
 - An effect with static `dependencies` that survives a `SignalGroup.off()` hears its detached group signal again from its next run onwards. It re-declares its dependency set at the start of every run instead of only at construction time; it used to stay deaf to that signal for the rest of its life, because its callback runs without auto-tracking and nothing re-subscribed afterwards (BUG-003)
 - `off()` remains a pause: until that next run the effect misses every write to the detached signal, and an effect whose only dependency was a group signal is still destroyed by `off()` (BUG-003)
 - A destroyed dependency is skipped whenever the declared set is subscribed — at construction time as well as on every run. `createEffect(cb, [alreadyDestroyed, live])` used to subscribe to both, and the effect then survived the destruction of `live` as a deaf shell holding two unremovable subscriptions; a signal destroyed after a `SignalGroup.off()` detach is not subscribed again either (BUG-003)
+- `beQuiet(action)` now returns what `action` returns (previously `void`) — the documented untracked peek was always `undefined`, without a type error; the change is runtime-only and unchanged for every caller that ignores the value (BUG-010)
+- The signature also — like `batch()` — rejects an `async`/thenable-returning `action` at compile time: the quiet frame ends at the first `await`, and every read and write after that point is tracked and loud again. No runtime check, unlike `batch()` (BUG-010)
+- The static `SignalGroup.clear()` no longer throws a group created *during* the sweep — e.g. from a `DESTROY` listener — out of the registry. It stayed in `store` and was still handed out by `findOrCreate()`, but no longer counted by `getSignalGroupsCount()`, was unreachable by any further sweep, and its `FinalizationRegistry` backstop could never fire again (BUG-009)
 
 ### Documentation
 

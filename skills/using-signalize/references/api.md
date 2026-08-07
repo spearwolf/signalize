@@ -180,7 +180,7 @@ stops, so one finishing early doesn't cut off a still-running sibling.
 
 ```ts
 batch(() => { a.set(1); b.set(2); });   // dedup + flush in priority order — a HINT, not a guarantee
-beQuiet(() => a.get());                 // reads untracked, writes silent; counter-based, nests
+const v = beQuiet(() => a.get());       // reads untracked, writes silent; counter-based, nests; returns the callback's result
 hibernate(() => { /* outer reactive context suspended */ });
 isQuiet();
 ```

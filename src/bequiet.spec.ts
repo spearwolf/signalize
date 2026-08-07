@@ -1,5 +1,5 @@
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
-import {beQuiet} from './bequiet.js';
+import {beQuiet, isQuiet} from './bequiet.js';
 import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {destroySignal} from './signal-core.js';
@@ -49,5 +49,32 @@ describe('beQuiet', () => {
 
     effect.destroy();
     destroySignal(a, b, c, d);
+  });
+
+  it('returns what the action returns, so an untracked peek is usable (BUG-010)', () => {
+    const {get: a, set: setA} = createSignal(0);
+    const {get: b, set: setB} = createSignal(23);
+
+    let runs = 0;
+
+    const effect = createEffect(() => {
+      a();
+      runs++;
+    });
+
+    const peek = beQuiet(() => b());
+
+    expect(peek).toBe(23);
+    expect(isQuiet()).toBe(false);
+
+    runs = 0;
+    setB(42);
+    expect(runs, 'the quiet read stayed untracked').toBe(0);
+
+    setA(1);
+    expect(runs).toBe(1);
+
+    effect.destroy();
+    destroySignal(a, b);
   });
 });
