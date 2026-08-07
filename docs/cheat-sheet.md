@@ -91,7 +91,7 @@ const con = link(src, target, {attach: obj});  // target: signal | callback
 unlink(src, target);  unlink(src);
 // held until destroy()/unlink()/{attach} clears/source|target dies — a link on a still-live source is never reclaimed by GC alone
 
-con.lastValue; con.isMuted; con.isDestroyed;
+con.lastValue; con.isMuted; con.isDestroyed;  // lastValue = last announced value; a frame superseded by a re-entrant write, or one whose callback destroyed the link, does not set it
 con.mute(); con.unmute(); con.toggleMute();
 con.touch(); con.destroy(); con.attach(obj);
 

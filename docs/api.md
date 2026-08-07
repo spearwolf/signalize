@@ -316,7 +316,7 @@ those subscriptions — see `link.ts`'s `gLinkFinalizer`.
 
 | Member                  | Description                                                              |
 | ----------------------- | ------------------------------------------------------------------------ |
-| `lastValue`             | Last value propagated.                                                   |
+| `lastValue`             | Last value announced — see the note below on re-entrant propagation.     |
 | `source`                | Underlying source signal impl.                                           |
 | `isMuted` / `isDestroyed` | State flags.                                                           |
 | `mute()` / `unmute()`   | Pause / resume propagation.                                              |
@@ -353,8 +353,19 @@ is only released once the *last* of them stops (finishes, breaks, or is
 `.return()`ed) — an earlier one finishing does not cut a still-running
 sibling off from the next value.
 
+**Re-entrant propagation.** If `action()` — the link callback, or an effect
+on the target signal — writes the source again, the nested propagation runs
+to completion first. The outer one then gives up silently: it emits no
+`'value'` and leaves `lastValue` alone, because its value no longer exists
+on either signal. A consumer therefore sees values monotonically in write
+order and never a regression to an older one. The same holds if `action()`
+destroys the link: the link no longer throws out of the `signal.set()` that
+started the propagation, and `lastValue` stays `undefined`.
+
 **Events** (eventize) emitted on the link object: `'value'`, `'mute'`,
-`'unmute'`, `'destroy'`.
+`'unmute'`, `'destroy'`. A `'destroy'` listener already sees the link with
+`isDestroyed === true`, so an `on()` listener that calls `destroy()` again
+hits the method's guard and does nothing, instead of recursing.
 
 ---
 

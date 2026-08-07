@@ -51,8 +51,23 @@ export abstract class SignalLink<ValueType = any> {
   // block only runs once this drops back to 0.
   #activeAsyncValuesCount = 0;
 
+  // BUG-008: bumped once per `updateValue()` frame, before control goes
+  // to `action()`. Only ever compared for equality — the absolute value
+  // carries no meaning, and no path reads it from outside this class.
+  #propagationGeneration = 0;
+
   readonly source: ISignalImpl<ValueType>;
 
+  /**
+   * The last value this link actually announced — i.e. the value of the
+   * most recent `updateValue()` frame that ran to completion.
+   *
+   * Two frames deliberately leave it alone: one whose `action()`
+   * destroyed this link (`destroy()` sets it to `undefined` and that
+   * stands, BUG-001), and one that a nested, re-entrant frame superseded
+   * while `action()` was running — the nested frame's newer value is the
+   * one that stays (BUG-008).
+   */
   lastValue?: ValueType;
 
   isDestroyed = false;
@@ -320,6 +335,18 @@ export abstract class SignalLink<ValueType = any> {
   destroy() {
     if (this.isDestroyed) return;
 
+    // BUG-002: flag first, teardown second — same rule and the same
+    // reason as `EffectImpl.destroy()` (`src/EffectImpl.ts:804-807`).
+    // Everything below reaches application code: `emit(this, DESTROY,
+    // this)` serves every listener, and an `on()` listener — unlike a
+    // `once()` one — is still subscribed while it runs. One that calls
+    // `destroy()` again used to walk into an unguarded teardown and
+    // recurse until the stack blew; the guard above now catches it. It
+    // also makes `isDestroyed` tell the truth *inside* a DESTROY
+    // listener, which is what `updateValue()`'s post-`action()` check
+    // relies on when the callback destroys the link.
+    this.isDestroyed = true;
+
     this.#unsubscribe?.();
     this.#unsubscribe = undefined;
 
@@ -346,13 +373,24 @@ export abstract class SignalLink<ValueType = any> {
     }
     this.#releaseOnDestroy.length = 0;
 
-    emit(this, DESTROY, this);
+    // S6, second half: `emit()` reaches application code too, and a throwing
+    // DESTROY listener used to be survivable — the error escaped before the
+    // old `this.isDestroyed = true` at the tail, so a later `destroy()` got
+    // past the guard and finished the job. With the flag set up front
+    // (BUG-002) that second chance is gone: an escaping error would leave a
+    // link that reports `isDestroyed === true` while still being subscribed,
+    // unfrozen and holding its last value, permanently. So the emit joins the
+    // same collect-and-carry-on pattern as the release loop above.
+    try {
+      emit(this, DESTROY, this);
+    } catch (err) {
+      releaseErrors.push(err);
+    }
+
     retainClear(this, VALUE);
     off(this);
 
     this.lastValue = undefined;
-
-    this.isDestroyed = true;
 
     Object.freeze(this);
 
@@ -395,8 +433,36 @@ export abstract class SignalLink<ValueType = any> {
 
   protected updateValue(action: (value: ValueType) => void) {
     if (!this.#muted && !this.isDestroyed) {
+      // BUG-008: claim a generation *before* handing control over. Every
+      // line below the `action()` call can have been re-entered by then;
+      // this counter is how the outer frame finds out that it was.
+      const generation = ++this.#propagationGeneration;
+
       const {value} = this.source;
+
       action(value);
+
+      // BUG-001: `action()` is application code — the link callback, or
+      // the target signal's write plus every effect it triggers. Tearing
+      // this link down from in there is the normal case ("take the first
+      // value, then unsubscribe"), and `destroy()` ends with
+      // `Object.freeze(this)`, so the assignment below would raise a
+      // TypeError in strict mode — out of a plain `signal.set()`,
+      // aborting the rest of that write's delivery. Nothing is lost by
+      // leaving now: `destroy()` has already emitted DESTROY and run
+      // `off(this)`, so there is no VALUE listener left to serve, and it
+      // set `lastValue` to `undefined` on purpose.
+      if (this.isDestroyed) return;
+
+      // BUG-008: a nested `updateValue()` ran to completion while
+      // `action()` was on the stack — a feedback loop wrote the source
+      // again. That frame read a newer value, emitted it and stored it.
+      // `value` is stale on both signals by now; emitting it here would
+      // announce a state that exists nowhere, and announce it *after*
+      // the newer one. Dropping the superseded frame is the only order
+      // that keeps VALUE monotonic without emitting before `action()`.
+      if (this.#propagationGeneration !== generation) return;
+
       emit(this, VALUE, value);
       this.lastValue = value;
     }

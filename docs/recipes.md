@@ -537,6 +537,13 @@ log.unmute();
   iterators over the same link is fine — they share that one retained slot,
   and it's cleared only once the last iterator stops, so an early-finishing
   one doesn't starve the others.
+- "Take the first value, then `destroy()`" is a supported move from inside the
+  link callback: the `set()` that started the delivery returns normally, the
+  other links on the same source are still served, and `lastValue` stays
+  `undefined`. A feedback write is handled the same way round — if the callback
+  (or an effect on the target signal) writes the source again, the nested
+  propagation wins and the outer one drops its now-stale value instead of
+  announcing it after the newer one.
 
 ## SignalAutoMap with destroyed entries
 

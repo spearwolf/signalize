@@ -1,13 +1,14 @@
 import {getEventListeners} from 'node:events';
-import {getSubscriptionCount, once} from '@spearwolf/eventize';
+import {getSubscriptionCount, on, once} from '@spearwolf/eventize';
 import {
   assertEffectsCount,
   assertLinksCount,
   assertSignalsCount,
 } from './assert-helpers.js';
+import {DESTROY, VALUE} from './constants.js';
 import {globalDestroySignalQueue} from './global-queues.js';
-import {createSignal, destroySignal, link} from './index.js';
-import {SignalLinkToCallback} from './SignalLink.js';
+import {createEffect, createSignal, destroySignal, link} from './index.js';
+import {type SignalLink, SignalLinkToCallback} from './SignalLink.js';
 import type {SignalLike} from './types.js';
 
 describe('SignalLink', () => {
@@ -529,6 +530,165 @@ describe('SignalLink', () => {
       );
 
       destroySignal(sigA);
+    });
+  });
+
+  describe('BUG-001/002/008: destroy and re-entrancy during propagation', () => {
+    it('a callback destroying its own link mid-propagation lets the rest of the delivery finish', () => {
+      const sigA = createSignal(1);
+
+      const received: number[] = [];
+      const con: SignalLink<number> = link(sigA, (value: number) => {
+        received.push(value);
+        if (value === 2) {
+          con.destroy();
+        }
+      });
+
+      const sibling: number[] = [];
+      const witness = link(sigA, (value: number) => {
+        sibling.push(value);
+      });
+
+      expect(
+        received,
+        'the constructor touch delivered the first value',
+      ).toEqual([1]);
+      expect(sibling).toEqual([1]);
+
+      expect(() => {
+        sigA.set(2);
+      }).not.toThrow();
+
+      expect(received, 'the callback saw the value it destroyed on').toEqual([
+        1, 2,
+      ]);
+      expect(con.isDestroyed).toBe(true);
+      expect(
+        con.lastValue,
+        'destroy() cleared it and nothing wrote it back',
+      ).toBeUndefined();
+      expect(
+        sibling,
+        'the second link on the same source was still served',
+      ).toEqual([1, 2]);
+
+      witness.destroy();
+      destroySignal(sigA);
+    });
+
+    it('a link-to-signal whose target effect destroys the source mid-propagation does not throw', () => {
+      const src = createSignal(0);
+      const dst = createSignal(0);
+      const con = link(src, dst);
+
+      const {destroy: destroyEffect} = createEffect(() => {
+        if (dst.get() === 42) {
+          destroySignal(src);
+        }
+      });
+
+      expect(() => {
+        src.set(42);
+      }).not.toThrow();
+
+      expect(con.isDestroyed).toBe(true);
+      expect(con.lastValue).toBeUndefined();
+      expect(dst.value, 'the target did receive the value').toBe(42);
+
+      destroyEffect();
+      destroySignal(dst);
+    });
+
+    it('an on() DESTROY listener calling destroy() again is a no-op instead of a stack overflow', () => {
+      const sigA = createSignal(1);
+      const con = link(sigA, () => {});
+
+      let destroyEvents = 0;
+      let flagSeenByListener: boolean | undefined;
+      on(con, DESTROY, () => {
+        destroyEvents += 1;
+        flagSeenByListener = con.isDestroyed;
+        con.destroy();
+      });
+
+      expect(() => {
+        con.destroy();
+      }).not.toThrow();
+
+      expect(destroyEvents, 'DESTROY is emitted exactly once').toBe(1);
+      expect(
+        flagSeenByListener,
+        'the flag is already set when the listener runs',
+      ).toBe(true);
+      expect(con.isDestroyed).toBe(true);
+      expect(Object.isFrozen(con)).toBe(true);
+
+      destroySignal(sigA);
+    });
+
+    it('a throwing DESTROY listener does not leave the link half torn down', () => {
+      const sigA = createSignal(1);
+      const con = link(sigA, () => {});
+
+      // A second listener so the subscription balance below says something:
+      // `off(this)` is what has to clear it, and that step sits *after* the
+      // emit that throws.
+      on(con, VALUE, () => {});
+      on(con, DESTROY, () => {
+        throw new Error('destroy-listener-boom');
+      });
+
+      expect(() => {
+        con.destroy();
+      }, 'the listener error still reaches the caller').toThrow(
+        'destroy-listener-boom',
+      );
+
+      expect(con.isDestroyed).toBe(true);
+      expect(
+        Object.isFrozen(con),
+        'the teardown ran to the end despite the throw',
+      ).toBe(true);
+      expect(
+        getSubscriptionCount(con),
+        'off(this) released the remaining listeners',
+      ).toBe(0);
+      expect(con.lastValue).toBeUndefined();
+
+      destroySignal(sigA);
+    });
+
+    it('a feedback write during propagation does not emit the superseded value afterwards', () => {
+      const src = createSignal(0);
+      const dst = createSignal(0);
+      const con = link(src, dst);
+
+      const emitted: number[] = [];
+      on(con, VALUE, (value: number) => {
+        emitted.push(value);
+      });
+
+      let bounced = false;
+      const {destroy: destroyEffect} = createEffect(() => {
+        const v = dst.get();
+        if (v === 1 && !bounced) {
+          bounced = true;
+          src.set(2);
+        }
+      });
+
+      src.set(1);
+
+      expect(emitted, 'only the value that survived is announced').toEqual([2]);
+      expect(con.lastValue).toBe(2);
+      expect(src.value).toBe(2);
+      expect(dst.value).toBe(2);
+
+      destroyEffect();
+      con.destroy();
+      destroySignal(src);
+      destroySignal(dst);
     });
   });
 });

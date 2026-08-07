@@ -164,6 +164,10 @@ for await (const v of con.asyncValues((v, i) => i >= 5, {signal})) { /* … */ }
 ```
 
 A link is an eventize object and emits `'value'`, `'mute'`, `'unmute'`, `'destroy'` on itself.
+A `'destroy'` listener already sees `isDestroyed === true`, so calling `destroy()` again from
+one is a no-op. If a propagation is re-entered — the callback or a target effect writes the
+source again — the nested run wins: the outer one emits no `'value'` and leaves `lastValue`
+alone, as does one whose callback destroyed the link.
 
 `asyncValues()` retains only the last propagated value — intermediate values
 between two reads are lost. Several `asyncValues()` iterators over the same
