@@ -338,9 +338,32 @@ export class EffectImpl {
     return this.#dependencies != null && this.#dependencies.length > 0;
   }
 
+  /**
+   * (Re-)declare the static dependency set.
+   *
+   * Called once at construction and again at the top of every run. The
+   * second call is what makes `SignalGroup.off()` a pause rather than a
+   * one-way door for a static-deps effect: the soft-detach drops the
+   * subscription, and the effect's next run puts it back — the same moment
+   * a dynamic effect re-subscribes, and by the same trigger, except that
+   * this one re-declares where the other re-reads (BUG-003).
+   *
+   * A destroyed dependency is skipped. `whenSignalIsRead()` cannot tell the
+   * difference, but the dynamic path can and does — `signalReader` reports
+   * a read only while the signal is alive (`createSignal.ts`). Without the
+   * same guard here, a dependency that was soft-detached and *then*
+   * destroyed would be re-subscribed on the next run: the effect stopped
+   * listening for that signal's destruction when it detached, so it never
+   * heard it die. That subscription is unremovable short of `destroy()` —
+   * `globalDestroySignalQueue` fires once per signal and already has — and
+   * it keeps `hasNoLiveSignals()` false forever, so the effect no longer
+   * notices when its last *live* dependency goes.
+   */
   private saveSignalsFromDeps() {
     for (const sig of this.#dependencies!) {
-      this.whenSignalIsRead(signalImpl(sig).id);
+      const signal = signalImpl(sig);
+      if (signal.destroyed) continue;
+      this.whenSignalIsRead(signal.id);
     }
   }
 
@@ -453,6 +476,17 @@ export class EffectImpl {
       const generation = ++this.#generation;
 
       if (this.hasStaticDeps()) {
+        // Re-declare before the callback, not after: a callback that throws
+        // must not cost the effect its subscriptions — the same reason the
+        // dynamic branch prunes in a `finally` (BUG-006). Idempotent, because
+        // `whenSignalIsRead()` subscribes only to ids it does not already
+        // hold, so an ordinary rerun changes nothing — it pays two property
+        // reads, a `#lostSignals.delete()`, a `#signals.has()` and a counter
+        // bump per declared dependency, which is measurable only against an
+        // empty callback. A run re-entered from inside this effect's own
+        // callback finds `#suppressAutoTracking` set and re-declares nothing
+        // — harmless, the outer run did it already.
+        this.saveSignalsFromDeps();
         this.storeCleanupCallback(this.runWithoutAutoTracking(), generation);
       } else {
         // BUG-005: `readSignal()` reports a read only while no quiet frame is

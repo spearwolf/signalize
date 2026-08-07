@@ -470,9 +470,12 @@ Semantics:
   An external effect is destroyed automatically (cleanup runs) as soon as no
   live dependency is left — regardless of whether some of its other
   dependencies were hard-destroyed (via `signal.destroy()`) before this
-  `off()` call. One with a live dependency outside the group survives and
-  re-subscribes to the group signal the next time it reads it (dynamic-deps
-  self-healing).
+  `off()` call. One with a live dependency outside the group survives, and its
+  **next run** re-subscribes to the group signal — a dynamic effect by reading
+  it again, a static-deps effect by re-declaring its `dependencies`. Until that
+  run it stays deaf to the detached signal; that is what makes `off()` a pause
+  rather than a cut. A dependency that was destroyed in the meantime (not just
+  detached) does not come back in either case.
 - Signals stay alive, retain their values, and remain reachable by name —
   except a memo signal created with `{attach}` inside an effect body: it
   belongs to that effect, not to the group, and is destroyed along with it

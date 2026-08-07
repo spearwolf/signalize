@@ -73,6 +73,9 @@
 - The same holds for the flush of a `batch()`: a throwing effect no longer holds up the remaining delayed effects, and its failure arrives at the `batch()` caller once the flush is complete (BUG-004)
 - A synchronous effect-callback failure still does **not** go through `onEffectError()` — that channel stays reserved for failures with no caller left to throw at (BUG-004)
 - **Changed shape of what a write throws** when a signal has both a failing effect and a throwing `link()` callback: the write now raises an `AggregateError` over both, where it used to raise the effect's error alone — the link callback never ran, because the effect's throw had already ended the delivery. A link callback is still not isolated and still ends the delivery; it just no longer takes the failures collected before it with it (BUG-004)
+- An effect with static `dependencies` that survives a `SignalGroup.off()` hears its detached group signal again from its next run onwards. It re-declares its dependency set at the start of every run instead of only at construction time; it used to stay deaf to that signal for the rest of its life, because its callback runs without auto-tracking and nothing re-subscribed afterwards (BUG-003)
+- `off()` remains a pause: until that next run the effect misses every write to the detached signal, and an effect whose only dependency was a group signal is still destroyed by `off()` (BUG-003)
+- A destroyed dependency is skipped whenever the declared set is subscribed — at construction time as well as on every run. `createEffect(cb, [alreadyDestroyed, live])` used to subscribe to both, and the effect then survived the destruction of `live` as a deaf shell holding two unremovable subscriptions; a signal destroyed after a `SignalGroup.off()` detach is not subscribed again either (BUG-003)
 
 ### Documentation
 

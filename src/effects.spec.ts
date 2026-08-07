@@ -1,3 +1,4 @@
+import {getSubscriptionCount} from '@spearwolf/eventize';
 import {assertEffectsCount} from './assert-helpers.js';
 import {createSignal} from './createSignal.js';
 import {EffectImpl, type EffectOptions} from './EffectImpl.js';
@@ -7,6 +8,7 @@ import {
   onCreateEffect,
   onDestroyEffect,
 } from './effects.js';
+import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
 import {destroySignal} from './signal-core.js';
 
@@ -233,6 +235,42 @@ describe('createEffect', () => {
     expect(effectCallCount).toBe(3);
 
     effect.destroy();
+  });
+
+  it('skips a static dependency that is already destroyed at construction time (BUG-003)', () => {
+    const sigQueueBaseline = getSubscriptionCount(globalSignalQueue);
+    const destroyQueueBaseline = getSubscriptionCount(globalDestroySignalQueue);
+
+    const dead = createSignal(0);
+    const alive = createSignal(0);
+    dead.destroy();
+
+    let runs = 0;
+    let cleanupCalls = 0;
+    createEffect(() => {
+      runs += 1;
+      return () => {
+        cleanupCalls += 1;
+      };
+    }, [dead, alive]);
+
+    // Only the live dependency is subscribed — a destroyed signal never
+    // emits again, and its destroy event has already been and gone, so the
+    // subscription would be unremovable short of destroy().
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 1);
+
+    alive.set(1);
+    expect(runs).toBe(1);
+
+    // ... which is why losing the last live dependency still ends the
+    // effect instead of leaving a deaf shell behind.
+    alive.destroy();
+    expect(cleanupCalls).toBe(1);
+    assertEffectsCount(0, 'only dead deps left => effect destroyed');
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+      destroyQueueBaseline,
+    );
   });
 
   it('calling a setter from within an affect callback', () => {

@@ -117,7 +117,12 @@ change.
 The shorthand `createEffect(cb, [sigA, sigB])` is equivalent to
 `createEffect(cb, {dependencies: [sigA, sigB]})`. With static dependencies the
 effect does **not** auto-run on creation — call `.run()` once manually if you
-need an initial pass.
+need an initial pass. The declared set is re-subscribed at the start of *every*
+run, so a subscription taken away by `SignalGroup.off()` comes back with the
+effect's next run — the same moment a dynamic effect gets it back by reading the
+signal again. A destroyed dependency is skipped, whether it was already
+destroyed when the effect was created or died later: a destroyed signal wakes
+nobody, so subscribing to it would only keep the effect alive as a deaf shell.
 
 A string/symbol dependency that cannot be resolved to a signal throws
 synchronously, before the effect is created — either because no group is
@@ -500,7 +505,7 @@ and never re-raised: a registry callback has no caller left to receive it.
 | `attachEffect(eff)` / `runEffects()`    | Track an effect / run all attached and child effects.                  |
 | `attachLink(link)` / `detachLink(link)` | Track / untrack a link.                                                |
 | `attachGroup(child)` / `detachGroup(child)` | Nest groups. `attachGroup()` throws when the edge would create a cycle — attaching a group to itself, or to one of its own descendants. |
-| `off()`                                 | Destroy attached effects/links and drop all external subscriptions on group signals; signals stay alive, the group remains reusable — except a memo signal `{attach}`ed inside an effect body, which belongs to that effect and dies with it. Child groups are `off()`'d recursively. Emits an `OFF` event. |
+| `off()`                                 | Destroy attached effects/links and drop all external subscriptions on group signals — an external effect that survives the detach re-subscribes on its next run, static deps as well as dynamic ones; signals stay alive, the group remains reusable — except a memo signal `{attach}`ed inside an effect body, which belongs to that effect and dies with it. Child groups are `off()`'d recursively. Emits an `OFF` event. |
 | `clear()`                               | Destroy all attached signals / effects / links and child groups, detach from parent, remove from registry. |
 | `destroy()`                             | **Deprecated.** Use `clear()`.                                         |
 

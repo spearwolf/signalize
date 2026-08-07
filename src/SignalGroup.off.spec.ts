@@ -4,6 +4,7 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './assert-helpers.js';
+import {beQuiet} from './bequiet.js';
 import {OFF} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
@@ -260,6 +261,203 @@ describe('SignalGroup#off()', () => {
     // external effect now has no remaining live deps (groupSig destroyed,
     // otherSig still alive); destroy explicitly via otherSig to clean up.
     otherSig.destroy();
+  });
+
+  it('static-deps effect with mixed deps survives off() and re-declares its deps on the next run (BUG-003)', () => {
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+
+    const sigQueueBaseline = getSubscriptionCount(globalSignalQueue);
+
+    const groupSig = createSignal(0, {attach: host});
+    const otherSig = createSignal(0); // NOT attached
+
+    let runs = 0;
+    let lastSeen = 0;
+    // Static deps: the reads inside the callback subscribe to nothing —
+    // only the two declared signals can ever trigger this effect.
+    createEffect(() => {
+      runs += 1;
+      lastSeen = groupSig.get() + otherSig.get();
+    }, [groupSig, otherSig]);
+
+    // Static deps do not auto-run on creation, but they do subscribe.
+    expect(runs).toBe(0);
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 2);
+
+    groupSig.set(1);
+    expect(runs).toBe(1);
+
+    group.off();
+
+    assertEffectsCount(1, 'static-deps effect survives off()');
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 1);
+
+    // The pause holds: the detached signal no longer reaches the effect.
+    groupSig.set(10);
+    expect(runs).toBe(1);
+
+    // The surviving dependency still does — and that run re-declares the
+    // static set, which re-subscribes to the group signal.
+    otherSig.set(5);
+    expect(runs).toBe(2);
+    expect(lastSeen).toBe(15);
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 2);
+
+    // ... so the group signal triggers it again.
+    groupSig.set(20);
+    expect(runs).toBe(3);
+    expect(lastSeen).toBe(25);
+
+    group.clear();
+    otherSig.destroy();
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+  });
+
+  it('static-deps effect whose only dep is a group signal is still destroyed by off() (BUG-003)', () => {
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+    const sig = createSignal(0, {attach: host});
+
+    let runs = 0;
+    let cleanupCalls = 0;
+    createEffect(() => {
+      runs += 1;
+      return () => {
+        cleanupCalls += 1;
+      };
+    }, [sig]);
+
+    sig.set(1);
+    expect(runs).toBe(1);
+
+    group.off();
+
+    expect(cleanupCalls).toBe(1);
+    assertEffectsCount(0, 'sole static dep detached => effect destroyed');
+
+    // and it stays gone — the detached signal cannot wake it
+    sig.set(2);
+    expect(runs).toBe(1);
+
+    group.clear();
+  });
+
+  it('a static dep destroyed while detached is not re-subscribed on the next run (BUG-003)', () => {
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+
+    const sigQueueBaseline = getSubscriptionCount(globalSignalQueue);
+    const destroyQueueBaseline = getSubscriptionCount(globalDestroySignalQueue);
+
+    const groupSig = createSignal(0, {attach: host});
+    const otherSig = createSignal(0);
+
+    let runs = 0;
+    createEffect(() => {
+      runs += 1;
+    }, [groupSig, otherSig]);
+
+    group.off();
+
+    // The effect dropped its `once` on the destroy queue when it
+    // detached, so it never hears this one.
+    groupSig.destroy();
+
+    otherSig.set(1);
+    expect(runs).toBe(1);
+
+    // The destroyed dependency was skipped — only otherSig is subscribed.
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 1);
+
+    // ... so losing the last live dependency still ends the effect.
+    otherSig.destroy();
+    assertEffectsCount(0, 'last live dep destroyed => effect destroyed');
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+      destroyQueueBaseline,
+    );
+
+    group.clear();
+  });
+
+  it('the re-declaration works inside a beQuiet() frame (BUG-003)', () => {
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+    const groupSig = createSignal(0, {attach: host});
+    const otherSig = createSignal(0);
+
+    let runs = 0;
+    const eff = createEffect(
+      () => {
+        runs += 1;
+      },
+      [groupSig, otherSig],
+      {autorun: false},
+    );
+
+    group.off();
+
+    groupSig.set(1);
+    expect(runs).toBe(0);
+
+    // Flags shouldRun without running (autorun: false), then run the
+    // whole thing inside a quiet frame. `whenSignalIsRead()` is not
+    // quiet-gated, so the declared set is re-declared here.
+    otherSig.set(1);
+    beQuiet(() => {
+      eff.run();
+    });
+    expect(runs).toBe(1);
+
+    // The group signal reaches the effect again.
+    groupSig.set(2);
+    eff.run();
+    expect(runs).toBe(2);
+
+    eff.destroy();
+    group.clear();
+    otherSig.destroy();
+  });
+
+  it('re-declares the static deps before the callback, so a throwing rerun still re-subscribes (BUG-003)', () => {
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+
+    const sigQueueBaseline = getSubscriptionCount(globalSignalQueue);
+
+    const groupSig = createSignal(0, {attach: host});
+    const otherSig = createSignal(0);
+
+    let runs = 0;
+    const eff = createEffect(() => {
+      runs += 1;
+      throw new Error('boom');
+    }, [groupSig, otherSig]);
+
+    expect(() => groupSig.set(1)).toThrow('boom');
+    expect(runs).toBe(1);
+
+    group.off();
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 1);
+
+    // The rerun fails again — and a deterministically failing callback never
+    // has a successful run to heal on. The re-declaration therefore has to
+    // happen *before* the callback: moving it behind the call re-opens
+    // BUG-003 for every effect in this shape, with all other tests still
+    // green.
+    expect(() => otherSig.set(1)).toThrow('boom');
+    expect(runs).toBe(2);
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 2);
+
+    // ... so the detached signal reaches the effect again.
+    expect(() => groupSig.set(2)).toThrow('boom');
+    expect(runs).toBe(3);
+
+    eff.destroy();
+    group.clear();
+    otherSig.destroy();
+    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
   });
 
   it('external link sourced from a group signal is destroyed by off()', () => {
