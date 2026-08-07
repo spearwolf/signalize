@@ -75,6 +75,7 @@
 ### Tests
 
 - New microbenchmark suite under `bench/` (Vitest Bench, `pnpm bench`) covering signal writes (with/without subscribers), memo recompute, effect create/destroy, `SignalGroup.findOrCreate`, and `batch()` overhead. CI runs it informatively — no regression gate yet (PERF-003)
+- `assertEffectSubscriptionsCountChange()` double-counted the baseline against a non-zero starting subscription count, an error masked only because its one caller always started from zero (TEST-007). `unsubscribeEffect.spec.ts` — cited by `CLAUDE.md` and `AGENTS.md` as the reference for verifying subscription leaks — now actually carries a subscription-count balance (TEST-010)
 
 ### Breaking Changes
 

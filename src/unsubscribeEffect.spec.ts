@@ -1,5 +1,10 @@
+import {getSubscriptionCount} from '@spearwolf/eventize';
 import {createSignal} from './createSignal.js';
-import {createEffect} from './effects.js';
+import type {Effect} from './Effect.js';
+import {createEffect, getEffectsCount} from './effects.js';
+import {globalDestroySignalQueue, globalEffectQueue} from './global-queues.js';
+import {getLinksCount} from './link.js';
+import {destroySignal, getSignalsCount} from './signal-core.js';
 
 describe('unsubscribe as return function from effect callback', () => {
   it('should be called before recalling the effect callback', () => {
@@ -88,5 +93,62 @@ describe('unsubscribe as return function from effect callback', () => {
 
     // Cleanup order: parent cleanup first, then child cleanup (child is destroyed before parent callback runs)
     expect(subscriptionOrder).toEqual([123, 'foo']);
+  });
+
+  it('leaves no trace: subscriptions and counters return to their snapshot after teardown (TEST-010)', () => {
+    const effectSubscriptionsBefore = getSubscriptionCount(globalEffectQueue);
+    const destroySubscriptionsBefore = getSubscriptionCount(
+      globalDestroySignalQueue,
+    );
+    const effectsCountBefore = getEffectsCount();
+    const signalsCountBefore = getSignalsCount();
+    const linksCountBefore = getLinksCount();
+
+    const {get: a, set: setA} = createSignal(123);
+    const {get: b, set: setB} = createSignal('abc');
+
+    let outerRunCount = 0;
+    let innerRunCount = 0;
+
+    const outerEffect: Effect = createEffect(() => {
+      ++outerRunCount;
+      a();
+
+      createEffect(() => {
+        ++innerRunCount;
+        b();
+      });
+    });
+
+    // The scenario is up and running: both counters and both queues grew
+    // relative to the snapshot. A balance without a swing proves nothing.
+    expect(getEffectsCount()).toBe(effectsCountBefore + 2);
+    expect(getSubscriptionCount(globalEffectQueue)).toBeGreaterThan(
+      effectSubscriptionsBefore,
+    );
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBeGreaterThan(
+      destroySubscriptionsBefore,
+    );
+
+    setB('foo');
+    expect(innerRunCount).toBe(2);
+
+    setA(456);
+    expect(outerRunCount).toBe(2);
+    // The inner effect is recreated on every outer rerun.
+    expect(innerRunCount).toBe(3);
+
+    outerEffect.destroy();
+    destroySignal(a, b);
+
+    expect(getEffectsCount()).toBe(effectsCountBefore);
+    expect(getSignalsCount()).toBe(signalsCountBefore);
+    expect(getLinksCount()).toBe(linksCountBefore);
+    expect(getSubscriptionCount(globalEffectQueue)).toBe(
+      effectSubscriptionsBefore,
+    );
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+      destroySubscriptionsBefore,
+    );
   });
 });

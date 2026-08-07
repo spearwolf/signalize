@@ -86,10 +86,8 @@ export function assertEffectSubscriptionsCountChange(
     count,
     `${namespacePrefix(
       namespace,
-    )}Effect subscriptions count change delta should be ${deltaCount} but is ${
-      count - beforeCount
-    }`,
-  ).toBe(beforeCount + g_initialEffectCount + deltaCount);
+    )}Effect subscriptions count should be ${beforeCount + deltaCount} but is ${count}`,
+  ).toBe(beforeCount + deltaCount);
 }
 
 export function assertEffectSubscriptionsCount(
