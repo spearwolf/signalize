@@ -29,6 +29,19 @@ jobs:
       - run: pnpm check
         name: Run biome checks (lint + format)
 
+      # Both checks below need the artifact they check, and `pnpm dist` is
+      # `clean + compile + bundle` — `clean` deletes `coverage/`. All three
+      # steps therefore run *before* `pnpm test`; behind it, the final
+      # "Publish coverage summary" step would find nothing left to publish.
+      - run: pnpm dist
+        name: Build the shipped artifact (lib/ + dist/)
+
+      - run: pnpm test:smoke
+        name: Smoke-test dist/ on plain Node (tsc-lowered decorator)
+
+      - run: pnpm checkPkgTypes
+        name: Check the exports map and the shipped types (attw, esm-only)
+
       - run: pnpm test
         name: Run tests (with coverage gate)
 

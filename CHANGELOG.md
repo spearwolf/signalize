@@ -80,10 +80,13 @@
 - `Signal#muted`, `findObjectSignals()` and the other `object-signals.ts` lookups on a store-less object, the `@signal({readAsValue: true})` decorator option, the `[obj, name]` tuple overload of `touch()` (including its no-op guards), and the priority splice inside `batch()` now have tests — the new `src/object-signals.spec.ts` is this module's first spec file (TEST-002, TEST-003)
 - The one assertion in the project that hung on a wall-clock threshold — the `Promise.race` in the ASYNC-005 `SignalLink.spec.ts` test — now races against a macrotask sentinel (`setImmediate`) instead of a 200 ms `setTimeout`, so the outcome is decided by event-loop ordering rather than a shared CI runner's timing. The two remaining `rejects.toBeDefined()` calls in `SignalLink.spec.ts` now pin down the concrete rejection reason (`controller.signal.reason`), matching the other eight rejection assertions in the file (TEST-011, TEST-015)
 - Coverage thresholds are now per file instead of one global average, staggered across three tiers (a floor under every file, 100% for every file outside the current audit worklist, and a 100%-with-slack tier for the files still on it) (TEST-006)
+- A new smoke test (`smoke/dist-smoke.test.ts`, `pnpm test:smoke`) loads the built `dist/` through the package's own `exports` map on plain Node, instead of anything in `src/`. It is the first test where a `@signal() accessor` application is lowered by **tsc**, the way a consumer's own compiler would, rather than by SWC's `decoratorVersion: '2022-03'`, which every other decorator test runs through (TEST-008)
 
 ### Build System
 
 - `pnpm test` now runs the GC suites (`SignalGroup.gc.spec.ts`, `link.gc.spec.ts`) itself, via a dedicated `gc` project in `vitest.config.ts` (`--expose-gc`, Vitest's default `forks` pool), so they are measured in the same coverage run as everything else instead of only under `pnpm test:gc`. `pnpm world` now includes the `test:gc` step (TEST-005, TEST-014)
+- `pnpm world` and CI now also run `checkPkgTypes` and `test:smoke`, both against a freshly built `lib/`/`dist/` (`pnpm dist`, which runs before either); `pnpm smoke` runs the smoke test's build-and-run pair on its own, and `pnpm clean` removes `smoke/build` along with the other generated directories (TEST-008, BUILD-008)
+- `pnpm checkPkgTypes` now runs `attw --pack --profile esm-only` instead of the unprofiled `attw --pack`, and is bestable for the first time: the unprofiled check always failed, because `node10` and `node16 (from CJS)` cannot pass for a package that is ESM-only and uses a subpath export — the profile excludes exactly those two modes and leaves `node16 (from ESM)` and `bundler` checked in full (BUILD-008)
 
 ### Breaking Changes
 

@@ -29,10 +29,13 @@ pnpm install
 | Command        | Description                                  |
 | -------------- | -------------------------------------------- |
 | `pnpm cbt`     | **Primary command** - clean + compile + bundle + test |
-| `pnpm world`   | `clean + check + compile + bundle + test + test:gc` — the full blocking CI scope |
+| `pnpm world`   | `clean + check + compile + bundle + test:smoke + checkPkgTypes + test + test:gc` — the full blocking CI scope |
 | `pnpm test`    | Run tests only (Vitest, with coverage gate). Runs the `unit` and `gc` projects together — `SignalGroup.gc.spec.ts` and `link.gc.spec.ts` run here too, not just under `test:gc` |
 | `pnpm test:watch` | Vitest in watch mode                      |
 | `pnpm test:gc` | Runs every file serially (no file parallelism) with `--expose-gc` applied to the whole suite, not just the two GC spec files — not what makes those nine tests run, `pnpm test` already does that via the `gc` project |
+| `pnpm test:smoke` | Runs `smoke/dist-smoke.test.ts` on plain Node (`node --test`) against the already-built `dist/`/`lib/` — not Vitest, not `src/`. Requires `pnpm dist` (or `pnpm smoke`, which builds first) to have run |
+| `pnpm smoke`   | `pnpm dist` + `pnpm test:smoke` — builds and then smoke-tests in one command |
+| `pnpm checkPkgTypes` | `attw --pack --profile esm-only` — checks the `exports` map and shipped `.d.ts` across the resolution modes that apply to an ESM-only package (`node16 (from ESM)`, `bundler`); `node10` and `node16 (from CJS)` are excluded by the profile because they cannot pass here by design |
 | `pnpm check`   | Run Biome (lint + format check)              |
 | `pnpm fix`     | Run Biome with auto-fix                      |
 | `pnpm compile` | TypeScript compilation only                  |
@@ -40,7 +43,7 @@ pnpm install
 
 Running only part of the suite (`pnpm test <file>`, `pnpm test -t "<name>"`) always ends with exit 1: the per-file coverage gate fails for every file that did not run. That is the gate reporting, not a failing test.
 
-**Always run `pnpm cbt` after making changes** to ensure build and tests pass. Use `pnpm world` (or `pnpm check && pnpm cbt`) to also run Biome and `test:gc` — CI runs `check`, `test`, `test:gc` and `bench` (the last one informative, non-blocking), and `pnpm world` covers the three blocking steps.
+**Always run `pnpm cbt` after making changes** to ensure build and tests pass. Use `pnpm world` (or `pnpm check && pnpm cbt`) to also run Biome, the dist smoke test, the package types check and `test:gc` — CI runs `check`, `dist`, `test:smoke`, `checkPkgTypes`, `test`, `test:gc` and `bench` (the last one informative, non-blocking), and `pnpm world` covers the blocking steps.
 
 ### Project Structure
 

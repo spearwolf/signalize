@@ -324,13 +324,16 @@ pnpm install
 | `pnpm test -t "<name>"` | Only tests whose name matches |
 | `pnpm test:watch` | Vitest in watch mode |
 | `pnpm test:gc` | Runs every file serially with `--expose-gc` applied to the whole suite, not just the two GC spec files — not what makes the GC suite run, `pnpm test` already does that |
+| `pnpm test:smoke` | Runs `smoke/dist-smoke.test.ts` on plain Node (`node --test`) against the already-built `dist/`/`lib/` — no Vitest, no `src/`. It's the only test where **tsc**, not SWC, lowers a `@signal() accessor` application |
+| `pnpm smoke` | Builds (`pnpm dist`) and then runs `test:smoke` — one command, no stale artifact |
+| `pnpm checkPkgTypes` | `attw --pack --profile esm-only` — checks the `exports` map and shipped `.d.ts` across the resolution modes that apply to an ESM-only package |
 | `pnpm bench` | Runs the microbenchmark suite in `bench/` |
 | `pnpm check` / `pnpm fix` | Biome lint + format — check only / auto-fix |
 | `pnpm compile` | `tsc` → `lib/` (types + sourcemaps) |
 | `pnpm bundle` | rollup → `dist/` |
 | `pnpm clean` | Remove build artifacts |
 | `pnpm cbt` | clean + compile + bundle + test |
-| `pnpm world` | clean + **check** + compile + bundle + test + test:gc — the full blocking CI scope |
+| `pnpm world` | clean + **check** + compile + bundle + test:smoke + checkPkgTypes + test + test:gc — the full blocking CI scope |
 
 A filtered run (`pnpm test <file>` or `pnpm test -t "<name>"`) always exits 1 —
 the per-file coverage gate fails for every file that did not run. That is the
@@ -338,8 +341,9 @@ gate, not a failing test; read the test result above it.
 
 **Which one to use:** `pnpm test` while iterating, and `pnpm world` before
 pushing — it is the only task that also runs Biome, and it covers the full
-blocking CI scope: `.github/workflows/ci.yml` runs `check`, `test`, `test:gc`
-and `bench` (the last one informative, non-blocking).
+blocking CI scope: `.github/workflows/ci.yml` runs `check`, `dist`,
+`test:smoke`, `checkPkgTypes`, `test`, `test:gc` and `bench` (the last one
+informative, non-blocking).
 
 Tests are `*.spec.ts` files sitting next to the implementation in `src/`; only
 `src/` is edited by hand, `lib/` and `dist/` are generated. Details and code

@@ -17,9 +17,11 @@ Everything below is the short list that is expensive to discover by reading code
 Package manager is **pnpm** (`pnpm@11.17.0`) — never `npm install`.
 
 - `pnpm cbt` — clean + compile + bundle + test. The local "done" gate.
-- `pnpm world` — the full blocking CI scope: `check`, `compile`, `bundle`, `test` and `test:gc`. `.github/workflows/ci.yml` additionally runs `bench`, informative and `continue-on-error`.
+- `pnpm world` — the full blocking CI scope: `check`, `compile`, `bundle`, `test:smoke`, `checkPkgTypes`, `test` and `test:gc`. `.github/workflows/ci.yml` additionally runs `bench`, informative and `continue-on-error`.
 - `pnpm test <file>` / `pnpm test -t "<name>"` — single spec / by test name. Such a filtered run always exits 1 because the per-file coverage gate fails for every file that did not run; that is not a test failure.
 - `pnpm test:gc` — `pnpm test` already runs the `SignalGroup.gc.spec.ts` and `link.gc.spec.ts` suites (nine tests) via a dedicated `gc` project in `vitest.config.ts`, on the same default `forks` pool every project uses — there's no cross-file state that project alone would expose. `test:gc` instead runs every file serially (`fileParallelism: false`) with `--expose-gc` applied to the whole suite, not just those two files.
+- `pnpm test:smoke` — runs `smoke/dist-smoke.test.ts` on plain Node (`node --test`) against the already-built `dist/`/`lib/`, not `src/` and not Vitest. It's the only test where **tsc**, not SWC, lowers a `@signal() accessor` application — the one decorator lowering this library ships but never otherwise exercises. `pnpm smoke` builds first (`pnpm dist`) and then runs it.
+- `pnpm checkPkgTypes` — `attw --pack --profile esm-only`, checks the `exports` map and shipped `.d.ts` statically across resolution modes. The profile ignores `node10` and `node16 (from CJS)`, which cannot pass for this ESM-only package by design; `node16 (from ESM)` and `bundler` still run in full and block.
 - `pnpm fix` — Biome lint+format auto-fix.
 
 Full command table in `AGENTS.md`.

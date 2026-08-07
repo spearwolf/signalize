@@ -23,10 +23,10 @@
   "scripts": {
     "update": "npx npm-check-updates -u",
     "publish:pkg": "node scripts/publishPackage.cjs",
-    "checkPkgTypes": "attw --pack",
+    "checkPkgTypes": "attw --pack --profile esm-only",
     "compile": "tsc --project tsconfig.lib.json",
     "bundle": "rollup -c rollup.config.mjs",
-    "clean": "rimraf build types tests dist lib coverage",
+    "clean": "rimraf build types tests dist lib coverage smoke/build",
     "lint": "biome lint",
     "format": "biome format",
     "format:write": "biome format --write",
@@ -36,10 +36,12 @@
     "test:watch": "vitest",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:gc": "vitest run --config vitest.gc.config.ts",
+    "test:smoke": "rimraf smoke/build && tsc --project smoke/tsconfig.json && node -e \"const g=require('node:fs').globSync('smoke/build/*.test.js');if(g.length===0){console.error('[test:smoke] no files matched smoke/build/*.test.js after compiling smoke/ - a smoke test file was likely renamed off the *.test.ts convention (tsc alone cannot catch this, and a stale smoke/build/ would have masked it too)');process.exit(1)}\" && node --test \"smoke/build/*.test.js\"",
     "bench": "vitest bench --run --config vitest.bench.config.ts",
     "cbt": "run-s -sn clean compile bundle test",
     "dist": "run-s -sn clean compile bundle",
-    "world": "run-s -sn clean check compile bundle test test:gc"
+    "smoke": "run-s -sn dist test:smoke",
+    "world": "run-s -sn clean check compile bundle test:smoke checkPkgTypes test test:gc"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

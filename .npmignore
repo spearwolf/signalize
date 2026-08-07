@@ -14,6 +14,7 @@ tsconfig.*.json
 *.spec.d.ts
 signaler-effectus-hero.png
 scripts
+smoke
 rollup.config.*
 vitest.config.ts
 vitest.gc.config.ts

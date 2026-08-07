@@ -161,26 +161,28 @@ Also avoid reading an imported binding at module-eval time across module boundar
 | Command | Runs |
 | --- | --- |
 | `pnpm cbt` | `clean + compile + bundle + test` — local "done" gate |
-| `pnpm world` | `clean + check + compile + bundle + test + test:gc` — the full blocking CI scope |
+| `pnpm world` | `clean + check + compile + bundle + test:smoke + checkPkgTypes + test + test:gc` — the full blocking CI scope |
 | `pnpm test` | Vitest (SWC transform, v8 coverage); roots = `src/`. Runs two projects — `unit` and `gc` (`--expose-gc`, `fileParallelism: false`) — as a single run with one combined coverage map; per-file thresholds in `vitest.config.ts` |
 | `pnpm test <pattern>` | single spec, e.g. `pnpm test createSignal.spec.ts` |
 | `pnpm test -t "<name>"` | filter by test name |
 | `pnpm test:watch` | Vitest in watch mode, no coverage gate |
 | `pnpm test:gc` | runs every file serially (`fileParallelism: false`, `vitest.gc.config.ts`) with `--expose-gc` applied to the whole suite; not what makes `SignalGroup.gc.spec.ts`/`link.gc.spec.ts` execute — `pnpm test` already does that, via the `gc` project, on the same default `forks` pool |
 | `pnpm test:debug` | Vitest under `--inspect-brk`, one file at a time |
+| `pnpm test:smoke` | Clears `smoke/build`, compiles `smoke/*.ts` (`tsc --project smoke/tsconfig.json`), then hard-fails if no `smoke/build/*.test.js` matched — a renamed test file or a stale leftover masking that — before `node --test` runs it; exact command in `package.json`. Runs (does not build the shipped artifact) against an already-built `dist/`/`lib/`; plain Node, no Vitest |
+| `pnpm smoke` | `pnpm dist` + `pnpm test:smoke` — builds first, then smoke-tests; the single-command entry point for a human or for iterating on `smoke/dist-smoke.test.ts` |
 | `pnpm bench` | Vitest Bench over `bench/*.bench.ts`; informative in CI, no regression gate |
 | `pnpm compile` | `tsc --project tsconfig.lib.json` → `lib/` (types + sourcemaps) |
 | `pnpm bundle` | rollup → `dist/index.js`, `dist/decorators.js` |
-| `pnpm clean` | `rimraf build types tests dist lib coverage` |
+| `pnpm clean` | `rimraf build types tests dist lib coverage smoke/build` |
 | `pnpm check` / `pnpm fix` | Biome lint+format check / Biome auto-fix |
 | `pnpm lint` | Biome lint only |
 | `pnpm format` / `pnpm format:write` | Biome format check / auto-fix |
-| `pnpm checkPkgTypes` | `attw --pack` package types audit |
+| `pnpm checkPkgTypes` | `attw --pack --profile esm-only` — package types audit. The profile ignores `node10` and `node16 (from CJS)`, which cannot pass for an ESM-only package with a subpath export (no `exports`-map support / ESM served to a CJS resolver, respectively); `node16 (from ESM)` and `bundler` are still checked in full. Blocks in CI (`pnpm world`, `ci.yml`), not just documented |
 | `pnpm dist` | clean + compile + bundle (no test) |
 
 Any filtered run (`pnpm test <pattern>`, `pnpm test -t "<name>"`) ends with exit 1: the per-file coverage thresholds are evaluated against the files that did *not* run, so the gate always fails. Read the test result, not the exit code — it is not a test failure.
 
-`.github/workflows/ci.yml` runs `pnpm check`, `pnpm test`, `pnpm test:gc` and `pnpm bench` (the last one informative, non-blocking). `pnpm world` covers exactly the three blocking steps (`check`, `test`, `test:gc`); `pnpm bench` is CI's informative step and has no local gate of its own. `pnpm cbt` additionally skips `check` and `test:gc`. Tooling is **Biome 2.x** (replaced ESLint + Prettier in v0.28) and **Vitest 4** (replaced Jest + ts-jest in v0.31).
+`.github/workflows/ci.yml` runs `pnpm check`, `pnpm dist`, `pnpm test:smoke`, `pnpm checkPkgTypes`, `pnpm test`, `pnpm test:gc` and `pnpm bench` (the last one informative, non-blocking) — in that order, because `pnpm dist` starts with `clean`, which deletes `coverage/`, so every build step must run before `pnpm test` or the final coverage-summary step finds nothing to publish. `pnpm world` covers exactly the blocking steps (`check`, `test:smoke`, `checkPkgTypes`, `test`, `test:gc`); `pnpm bench` is CI's informative step and has no local gate of its own. `pnpm cbt` additionally skips `check`, `test:smoke`, `checkPkgTypes` and `test:gc`. Tooling is **Biome 2.x** (replaced ESLint + Prettier in v0.28) and **Vitest 4** (replaced Jest + ts-jest in v0.31).
 
 The test transform runs through **SWC**, not Vite's built-in oxc pass: `vitest.config.ts` sets `oxc: false` and registers `unplugin-swc` with `decoratorVersion: '2022-03'`. oxc emits TC39 decorators verbatim, which Node cannot parse — without the plugin every decorator spec dies with `SyntaxError: Invalid or unexpected token`. Note also that TypeScript 7 ships no JS compiler API (`transpileModule` is gone), so ts-jest-style transformers are not an option.
 
@@ -189,6 +191,7 @@ The test transform runs through **SWC**, not Vite's built-in oxc pass: `vitest.c
 - **Edit only `src/`.** `lib/` (tsc) and `dist/` (rollup) are generated artifacts.
 - **Imports use `.js` extension** within `src/` (NodeNext resolution): `import {x} from './foo.js'` even when source is `foo.ts`. Required.
 - **Test files**: `*.spec.ts` adjacent to implementation. Vitest matches `src/**/*.{spec,test}.ts`. Globals (`describe`, `it`, `expect`, `vi`) are enabled — no imports needed, except `import type {MockInstance} from 'vitest'` when you type a spy.
+- **`smoke/`** is the one exception: `smoke/dist-smoke.test.ts` runs on plain Node (`node --test`, via `pnpm test:smoke`), not Vitest, against the built `dist/`/`lib/`, not `src/`. It exists because every other spec is transformed by `unplugin-swc`, and SWC's `decoratorVersion: '2022-03'` is the one decorator lowering this library never ships — this is the only test where **tsc** lowers a `@signal() accessor` application, the way a consumer's own compiler would. It never runs under Vitest and never moves into `src/`.
 - **No top-level side effects** — `sideEffects: false` enables tree-shaking; respect it.
 - **Public API surface** must be wired through `src/index.ts` (default) or `src/decorators.ts` (subpath). Adding a file in `src/` does nothing for consumers without that wiring.
 - **Subscription-leak verification**: tests touching subscribe/unsubscribe paths should snapshot `getSubscriptionCount()` and counters (`getSignalsCount/getEffectsCount/getLinksCount`) → run scenario → assert restored. See `unsubscribeEffect.spec.ts`.
