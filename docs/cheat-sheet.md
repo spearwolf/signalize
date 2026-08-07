@@ -99,7 +99,7 @@ con.mute(); con.unmute(); con.toggleMute();
 con.touch(); con.destroy(); con.attach(obj);
 
 await con.nextValue({signal});                                    // rejects with an Error on destroy, with signal.reason on abort
-for await (const v of con.asyncValues((v, i) => i >= 5, {signal})) {/* … */} // last-value-only, shared retain across parallel iterators; abort THROWS, destroy ends quietly
+for await (const v of con.asyncValues((v, i) => i >= 5, {signal})) {/* … */} // last-value-only, shared retain across parallel iterators, dropped after the last iterator; abort THROWS, destroy ends quietly
 
 getLinksCount(); getLinksCount(src);                              // link() warns once per source at 1000 links
 ```
@@ -132,7 +132,7 @@ g.attachSignalByName('n', s2);  // rebind: destroys s unless attachSignal'd/othe
 g.attachSignalByName('n');      // releases the name the same way
 g.detachSignal(s); g.signal('n'); g.hasSignal('n');
 g.attachEffect(e); g.runEffects();
-g.attachLink(l);   g.detachLink(l);
+g.attachLink(l);   g.detachLink(l);  // a destroyed link takes itself out of the group
 g.attachGroup(c);  // throws on self or on a descendant
 g.detachGroup(c);
 g.off();    // destroy attached effects/links, drop external subs, keep signals — not an in-effect {attach} memo's

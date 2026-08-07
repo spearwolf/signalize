@@ -5,6 +5,7 @@ import {
   off,
   on,
   once,
+  Priority,
 } from '@spearwolf/eventize';
 import {throwCollectedErrors} from './collect-errors.js';
 import {DESTROY, OFF} from './constants.js';
@@ -145,6 +146,14 @@ export class SignalGroup {
   readonly #signalDestroySubscriptions = new Map<ISignalImpl, () => void>();
 
   readonly #links = new Set<SignalLink<any>>();
+
+  // MEM-002: which links this group has already registered its DESTROY
+  // counter-edge for. Not `#links.has(link)` as the guard: `detachLink()` is
+  // public API and takes a *live* link back out, so every detach/attach
+  // cycle would append another listener. And not a second `Set` either: that
+  // would be a new strong holder for exactly the links `detachLink()` just
+  // released.
+  readonly #linksWithDestroyHook = new WeakSet<SignalLink<any>>();
 
   #parentGroup?: SignalGroup;
 
@@ -634,6 +643,11 @@ export class SignalGroup {
 
   /**
    * Attach a link to this group. The link will be destroyed when the group is cleared.
+   *
+   * A destroyed link takes itself out of the group again (MEM-002),
+   * whichever route attached it — `link(…, {attach})`, `link.attach(obj)`
+   * or a direct `attachLink()` call.
+   *
    * @param link - The link to attach
    * @returns The attached link
    */
@@ -644,6 +658,37 @@ export class SignalGroup {
 
     if (link) {
       this.#links.add(link);
+      // Guarded because eventize's own dedup can't help: `isSimilar()` only
+      // covers `LISTENER_IS_OBJ` and `LISTENER_IS_NAMED_FUNC` listeners. A
+      // plain function is neither, so even the same function reference
+      // registered twice yields two subscriptions.
+      if (!this.#linksWithDestroyHook.has(link)) {
+        this.#linksWithDestroyHook.add(link);
+        // MEM-002: the counter-edge to `attachEffect()`'s hook. It lives
+        // here rather than in `SignalLink.attach()` because `attachLink()`
+        // is the common passage of both routes — `link({attach})` and
+        // `link.attach(obj)` come through here, a direct
+        // `group.attachLink(link)` likewise. Without it, a link attached
+        // that way stayed in `#links` after `destroy()` and kept its source
+        // SignalImpl and its callback closure alive for the lifetime of the
+        // group.
+        //
+        // Priority.Max: eventize aborts delivery at a throwing listener. At
+        // normal priority the registration order decided whether this line
+        // ever ran — an application listener registered before the attach
+        // and throwing would swallow it. The group's bookkeeping comes
+        // before application code.
+        //
+        // The guarantee reaches exactly as far as the priority does:
+        // `Priority.Max` is `+Infinity`, not an exclusive slot. A listener
+        // registered at `Priority.Max` *before* this one still runs first
+        // — ties fall back to registration order — and if it throws, the
+        // group keeps its dead link after all (measured). Every listener
+        // below `Priority.Max`, which is every ordinary one, is covered.
+        once(link, DESTROY, Priority.Max, () => {
+          this.#links.delete(link);
+        });
+      }
     }
 
     return link;

@@ -6,7 +6,7 @@ import {
   on,
   once,
   retain,
-  retainClear,
+  unretain,
 } from '@spearwolf/eventize';
 import {throwCollectedErrors} from './collect-errors.js';
 import {$queueUnsubscribes, DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
@@ -24,7 +24,6 @@ export interface SignalLink<ValueType = any> extends EventizedObject {}
 
 export abstract class SignalLink<ValueType = any> {
   #muted = false;
-  #attachedGroups?: Set<SignalGroup>;
 
   // Every subscription this link holds on one of the two permanent,
   // module-level global queues, as its unsubscribe handle: the
@@ -61,8 +60,8 @@ export abstract class SignalLink<ValueType = any> {
   readonly [$queueUnsubscribes]: (() => void)[] = [];
 
   // ASYNC-005: how many `asyncValues()` generators are currently iterating
-  // this link. `retainClear(this, VALUE)` in that generator's `finally`
-  // block only runs once this drops back to 0.
+  // this link. `unretain(this, VALUE)` in that generator's `finally` block
+  // only runs once this drops back to 0.
   #activeAsyncValuesCount = 0;
 
   // BUG-008: bumped once per `updateValue()` frame, before control goes
@@ -155,35 +154,7 @@ export abstract class SignalLink<ValueType = any> {
 
   attach(to: object) {
     const group = SignalGroup.findOrCreate(to);
-
-    // `group.attachLink()` runs on every call, unconditionally — it's an
-    // idempotent `Set.add`, it's what actually (re-)establishes membership,
-    // and it must run (and throw, for a destroyed link) before anything
-    // touches `#attachedGroups` below. Skipping it on a re-attach is exactly
-    // the bug this used to have: `SignalGroup.detachLink()` (public API) can
-    // remove the link from the group without destroying it or clearing the
-    // guard, so a later `attach(sameGroup)` needs to actually re-add it, not
-    // just see "already known" and return early.
     group.attachLink(this);
-
-    // The `once(this, DESTROY, ...)` subscription below, unlike
-    // `attachLink()`, is *not* deduplicated by eventize (a plain function
-    // listener isn't recognized as "similar" to a previous one — eventize's
-    // `isSimilar()` dedup only covers listeners of type `LISTENER_IS_OBJ`
-    // and `LISTENER_IS_NAMED_FUNC`; a plain function is excluded by type, so
-    // even the *same* function reference registered twice yields two
-    // subscriptions) — so it still needs its own guard, or re-attaching the
-    // same group (e.g. on every `link()` cache hit that passes `{attach}`)
-    // would grow the link's DESTROY listener list without bound.
-    this.#attachedGroups ??= new Set();
-    if (this.#attachedGroups.has(group)) {
-      return group;
-    }
-    this.#attachedGroups.add(group);
-
-    once(this, DESTROY, () => {
-      group.detachLink(this);
-    });
     return group;
   }
 
@@ -305,7 +276,13 @@ export abstract class SignalLink<ValueType = any> {
    * `asyncValues()` iterators may run over the same link concurrently; they
    * share that one retained slot, released only once the *last* active
    * iterator stops (ASYNC-005) — an iterator finishing early must not cut a
-   * still-running sibling off from the next value.
+   * still-running sibling off from the next value. "Released" is literal
+   * (MEM-004 — the retain policy, not the queue handles at the top of this
+   * file): the last iterator switches retaining off entirely, so a later
+   * `nextValue()` waits for the next value instead of resolving
+   * synchronously with a stale one. The flip side: `asyncValues()` claims
+   * the `'value'` event's retain policy for itself and hands it back at the
+   * end, so a `retain(link, VALUE)` set by the caller does not survive it.
    *
    * Caveat shared with every JS async generator, not specific to this one:
    * the `finally` block below — where the iterator count is decremented —
@@ -314,7 +291,8 @@ export abstract class SignalLink<ValueType = any> {
    * loop issues on `break`/an exception). A caller that calls `.next()` a
    * few times and then simply drops the generator without closing it takes
    * this link's retained-value bookkeeping down with it: the count never
-   * comes back to 0, so `retainClear()` never runs again for this link.
+   * comes back to 0, so `unretain()` never runs again for this link and
+   * VALUE stays retained until the link is destroyed.
    * There is no fix within the iterator protocol itself; the caller closing
    * what it opens is the contract, same as any other manually-driven
    * iterator.
@@ -356,7 +334,18 @@ export abstract class SignalLink<ValueType = any> {
     } finally {
       this.#activeAsyncValuesCount -= 1;
       if (this.#activeAsyncValuesCount === 0) {
-        retainClear(this, VALUE);
+        // MEM-004 (the retain policy, not the queue handles at the top of
+        // this file): `unretain`, not `retainClear`. The one clears the
+        // slot, the other takes the policy with it — and only the policy is
+        // the problem here. After a `retainClear()` VALUE stays retained:
+        // every further propagated value lands in the slot with nobody
+        // listening, and the next `once(this, VALUE, …)` — from
+        // `nextValue()`, i.e. from this class's own contract — gets it
+        // replayed synchronously inside the registration call instead of
+        // waiting for the next one. `unretain` deletes the stored value
+        // along the way (eventize: `keeper.remove()` calls `clear()`), so
+        // this is one call instead of two.
+        unretain(this, VALUE);
       }
     }
   }
@@ -420,7 +409,11 @@ export abstract class SignalLink<ValueType = any> {
       releaseErrors.push(err);
     }
 
-    retainClear(this, VALUE);
+    // No `unretain(this, VALUE)` (and no `retainClear()`, which used to
+    // stand here) — `off(obj)` without a listener argument runs
+    // `keeper.removeAll()`, dropping every retain policy and every stored
+    // value in one go. The line that was here cleared a slot that the next
+    // line was about to remove outright.
     off(this);
 
     this.lastValue = undefined;

@@ -1,5 +1,11 @@
 import {getEventListeners} from 'node:events';
-import {getSubscriptionCount, on, once} from '@spearwolf/eventize';
+import {
+  getRetainedCount,
+  getRetainedEventNames,
+  getSubscriptionCount,
+  on,
+  once,
+} from '@spearwolf/eventize';
 import {
   assertEffectsCount,
   assertLinksCount,
@@ -443,16 +449,99 @@ describe('SignalLink', () => {
         // Not a wall-clock threshold: a macrotask only runs once the
         // microtask queue drains, so this sentinel wins only if iter2's
         // read never settles in microtasks — the outcome is decided by
-        // event-loop ordering, not runner speed. This does not prove
-        // iter1's cleanup left the shared retained slot alone: `sigA.set(3)`
-        // above repopulates that slot regardless, so a wrongly-early
-        // `retainClear()` would be masked here, not caught.
+        // event-loop ordering, not runner speed.
+        //
+        // Against a release *one iterator too early* — the failure mode
+        // this test is named for — the assertion bites only since the
+        // MEM-004 fix. Back when iter1's cleanup called `retainClear()`,
+        // an early release was invisible here: the policy survived it, so
+        // `sigA.set(3)` refilled the slot either way and iter2's read was
+        // replayed regardless. Now the cleanup calls `unretain()` and takes
+        // the policy with it — an early release leaves `sigA.set(3)`
+        // nowhere to land, iter2 hangs, and the sentinel wins. Measured
+        // against exactly that mutant (`#activeAsyncValuesCount === 0` →
+        // `>= 0`): green before the fix, `expected 'TIMEOUT' to deeply
+        // equal {value: 3, done: false}` after it. Other damage to the
+        // retain machinery — dropping the `retain(this, VALUE)` on entry,
+        // say — this test caught before the fix too.
         new Promise((resolve) => setImmediate(() => resolve('TIMEOUT'))),
       ]);
 
       expect(raced).toEqual({value: 3, done: false});
 
       await iter2.return(undefined as any);
+      con.destroy();
+      destroySignal(sigA);
+    });
+  });
+
+  // Deliberately not built like the ASYNC-005 test above. That one is
+  // sensitive to a release one iterator too early (see its comment), but not
+  // to what MEM-004 is actually about: whether the release after the *last*
+  // iterator drops the retain policy or only the stored value. It never
+  // looks at the link again once its last iterator is gone — every read it
+  // makes happens while iter2 is still alive and VALUE is still retained
+  // under either implementation. Measured: swap `unretain()` back for
+  // `retainClear()` at the correct moment and ASYNC-005 stays green, while
+  // both tests below fail. They see it because they do the opposite: they
+  // write *after* the last iterator and claim that nothing sticks.
+  describe('MEM-004: the last asyncValues() iterator switches VALUE retaining off', () => {
+    it('drops the retain policy, not just the stored value', {
+      timeout: 1000,
+    }, async () => {
+      const sigA = createSignal(1);
+      const con = link(sigA, () => {});
+
+      const iter = con.asyncValues();
+      const p = iter.next();
+      sigA.set(2);
+      await expect(p).resolves.toEqual({value: 2, done: false});
+
+      await iter.return(undefined as any);
+
+      expect(getRetainedEventNames(con)).toEqual([]);
+
+      // With the policy gone, an unobserved write has nowhere to land.
+      sigA.set(3);
+      expect(getRetainedCount(con)).toBe(0);
+
+      con.destroy();
+      destroySignal(sigA);
+    });
+
+    it('so a later nextValue() waits for the next value instead of resolving with an old one', {
+      timeout: 1000,
+    }, async () => {
+      const sigA = createSignal(1);
+      const con = link(sigA, () => {});
+
+      const iter = con.asyncValues();
+      const p = iter.next();
+      sigA.set(2);
+      await expect(p).resolves.toEqual({value: 2, done: false});
+
+      await iter.return(undefined as any);
+
+      // Nobody is listening for this one.
+      sigA.set(3);
+
+      let settled: unknown = 'PENDING';
+      const pending = con.nextValue();
+      pending.then((value) => {
+        settled = value;
+      });
+
+      // A retained replay runs *synchronously inside* the `once()` call
+      // that `nextValue()` makes, so it would have landed long before this
+      // macrotask — which only runs once the microtask queue has drained.
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
+      expect(settled).toBe('PENDING');
+
+      sigA.set(4);
+      await expect(pending).resolves.toBe(4);
+
       con.destroy();
       destroySignal(sigA);
     });

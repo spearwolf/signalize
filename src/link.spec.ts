@@ -588,16 +588,59 @@ describe('link() comprehensive tests', () => {
       destroySignal(sigA, sigB);
     });
 
+    it("no combination of the two attach routes grows the link's DESTROY listener list (MEM-002)", () => {
+      // Not a regression test for MEM-002 itself — this one is green before
+      // the fix too. It is the guard against the two mistakes the naive fix
+      // makes once the counter-edge moves into `SignalGroup.attachLink()`:
+      // deduping on `#links.has(link)` (reopened by every public
+      // `detachLink()`, so each detach/attach cycle would add another
+      // listener), and leaving `SignalLink.attach()` its own hook on top of
+      // the new one (two listeners per (link, group) pair doing the same
+      // `Set.delete`).
+      const sigA = createSignal(1);
+      const sigB = createSignal(-1);
+      const groupObject = {};
+
+      const con = link(sigA, sigB);
+      con.attach(groupObject);
+      const group = SignalGroup.get(groupObject)!;
+      const baseline = getSubscriptionCount(con);
+
+      for (let i = 0; i < 5; i++) {
+        con.attach(groupObject);
+        group.attachLink(con);
+        group.detachLink(con);
+        con.attach(groupObject);
+      }
+
+      expect(getSubscriptionCount(con)).toBe(baseline);
+
+      // A *second* group is a different pair, so it costs exactly one more
+      // listener — not two, and not one per attach route.
+      const otherObject = {};
+      con.attach(otherObject);
+      const otherGroup = SignalGroup.get(otherObject)!;
+      expect(getSubscriptionCount(con)).toBe(baseline + 1);
+
+      group.clear();
+      otherGroup.clear();
+      expect(con.isDestroyed).toBe(true);
+
+      destroySignal(sigA, sigB);
+    });
+
     it('re-attach after an explicit detachLink() actually re-attaches, not just returns the group', () => {
       // Regression for a narrower BUG-004 symptom introduced by the
-      // idempotency guard: `#attachedGroups` records "this link has been
-      // attached to `g` at some point" but never forgets it, even after
-      // `SignalGroup.detachLink()` — the documented, public way to remove a
-      // link from a group without destroying it. Calling `link.attach(g)`
-      // again after such a detach returned early (guard already has `g`),
+      // idempotency guard `SignalLink.attach()` used to carry: it recorded
+      // "this link has been attached to `g` at some point" and never forgot
+      // it, not even after `SignalGroup.detachLink()` — the documented,
+      // public way to remove a link from a group without destroying it.
+      // Calling `link.attach(g)` again after such a detach returned early,
       // so `group.attachLink(this)` never ran a second time: `attach()`
       // reported success (returned the group) but `g.clear()` no longer
-      // destroyed the link.
+      // destroyed the link. Since MEM-002 the guard sits in `attachLink()`
+      // and covers only the DESTROY hook, so membership is re-established
+      // unconditionally — this test's claim is unchanged either way.
       const sigA = createSignal(1);
       const sigB = createSignal(-1);
       const groupObject = {};

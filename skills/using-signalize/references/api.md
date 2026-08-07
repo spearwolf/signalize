@@ -175,7 +175,11 @@ alone, as does one whose callback destroyed the link.
 `asyncValues()` retains only the last propagated value — intermediate values
 between two reads are lost. Several `asyncValues()` iterators over the same
 link share that one retained slot; it's released only once the last of them
-stops, so one finishing early doesn't cut off a still-running sibling.
+stops, so one finishing early doesn't cut off a still-running sibling. That
+release switches retaining off, so a `nextValue()` after the last iterator
+waits for the next value instead of resolving with a stale one — and a
+`retain(link, 'value')` you set yourself does not survive an `asyncValues()`
+run.
 
 ## Context modes
 
@@ -201,7 +205,7 @@ g.attachSignal(s);  g.attachSignalByName('n', s);  g.detachSignal(s);
 g.signal('n');      // walks the parent chain
 g.hasSignal('n');
 g.attachEffect(e);  g.runEffects();
-g.attachLink(l);    g.detachLink(l);
+g.attachLink(l);    g.detachLink(l);  // a destroyed link takes itself out of the group
 g.attachGroup(child);  g.detachGroup(child);
 g.off();            // destroy attached effects/links, drop external subs, KEEP signals — not an in-effect {attach} memo's
 g.clear();          // full teardown

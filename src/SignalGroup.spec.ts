@@ -1,4 +1,4 @@
-import {getSubscriptionCount, on} from '@spearwolf/eventize';
+import {getSubscriptionCount, on, once, Priority} from '@spearwolf/eventize';
 import {
   assertEffectsCount,
   assertLinksCount,
@@ -17,6 +17,7 @@ import {
 } from './global-queues.js';
 import {link} from './link.js';
 import {$setParentGroup, SignalGroup} from './SignalGroup.js';
+import {SignalLinkToCallback} from './SignalLink.js';
 
 // Nothing attached to a group may survive its teardown on the global queues.
 const subscriptionSnapshot = () => ({
@@ -571,6 +572,84 @@ describe('SignalGroup', () => {
       source.destroy();
       target.destroy();
       group.clear();
+    });
+
+    describe('MEM-002: a destroyed link takes itself out of the group', () => {
+      it('attachLink() alone is enough — the counter-edge does not depend on attach()', () => {
+        const group = SignalGroup.findOrCreate({});
+        const source = createSignal(1);
+        const target = createSignal(0);
+
+        const signalLink = link(source, target);
+        group.attachLink(signalLink);
+
+        expect(getGroupMemberCounts(group).links).toBe(1);
+
+        signalLink.destroy();
+
+        expect(getGroupMemberCounts(group).links).toBe(0);
+
+        source.destroy();
+        target.destroy();
+        group.clear();
+      });
+
+      it('a throwing DESTROY listener registered before the attach cannot stop it', () => {
+        const group = SignalGroup.findOrCreate({});
+        const source = createSignal(1);
+        const target = createSignal(0);
+
+        const signalLink = link(source, target);
+
+        // eventize aborts delivery at a throwing listener, so at normal
+        // priority the registration order decided whether the group ever
+        // heard about the destroy. The counter-edge runs at Priority.Max.
+        once(signalLink, DESTROY, () => {
+          throw new Error('boom');
+        });
+
+        group.attachLink(signalLink);
+
+        expect(() => signalLink.destroy()).toThrow('boom');
+        expect(getGroupMemberCounts(group).links).toBe(0);
+
+        source.destroy();
+        target.destroy();
+        group.clear();
+      });
+
+      it('a throwing DESTROY listener below Priority.Max cannot swallow it either, however late it registers', () => {
+        const group = SignalGroup.findOrCreate({});
+        const source = createSignal(1);
+
+        // Built directly instead of through `link()`: that function adds a
+        // bookkeeping DESTROY listener of its own at normal priority, and
+        // the high-priority thrower below would abort delivery before it,
+        // leaving `getLinksCount()` stuck at 1. Pre-existing, unrelated to
+        // what this test is about, and it would only mask it.
+        const signalLink = new SignalLinkToCallback(source, () => {});
+        group.attachLink(signalLink);
+
+        // This pins the documented boundary. The counter-edge runs at
+        // `Priority.Max` (`+Infinity`), so it outranks every finite
+        // priority no matter when it was registered — registering the
+        // thrower *after* the attach takes registration order out of the
+        // picture and leaves the priority as the only thing deciding.
+        // `MAX_SAFE_INTEGER` rather than `Priority.Critical`: any merely
+        // large constant put in place of `Priority.Max` would still beat
+        // `Critical`, so the test has to reach for the largest finite
+        // priority there is to say "below Max" and mean it.
+        expect(Number.MAX_SAFE_INTEGER).toBeLessThan(Priority.Max);
+        once(signalLink, DESTROY, Number.MAX_SAFE_INTEGER, () => {
+          throw new Error('boom');
+        });
+
+        expect(() => signalLink.destroy()).toThrow('boom');
+        expect(getGroupMemberCounts(group).links).toBe(0);
+
+        source.destroy();
+        group.clear();
+      });
     });
 
     it('detachLink() removes a link from the group but does not destroy it', () => {

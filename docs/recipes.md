@@ -600,7 +600,9 @@ log.unmute();
   whatever arrived between two of its reads. Running several `asyncValues()`
   iterators over the same link is fine — they share that one retained slot,
   and it's cleared only once the last iterator stops, so an early-finishing
-  one doesn't starve the others.
+  one doesn't starve the others. That last stop switches retaining off
+  entirely, so a `nextValue()` afterwards waits for the next value instead of
+  resolving with one that arrived while nobody was iterating.
 - "Take the first value, then `destroy()`" is a supported move from inside the
   link callback: the `set()` that started the delivery returns normally, the
   other links on the same source are still served, and `lastValue` stays

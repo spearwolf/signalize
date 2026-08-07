@@ -8,7 +8,9 @@ import {
 import {DESTROY} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
+import {link} from './link.js';
 import {getSignalGroupsCount, SignalGroup} from './SignalGroup.js';
+import type {SignalLink} from './SignalLink.js';
 
 // `globalThis.gc` is only available when Node is launched with --expose-gc
 // (e.g. via the `gc` project in vitest.config.ts, which `pnpm test` also
@@ -177,5 +179,35 @@ gcDescribe('SignalGroup GC behavior (requires --expose-gc)', () => {
     } finally {
       errorSpy.mockRestore();
     }
+  });
+
+  it('the DESTROY-hook guard does not pin a link the group has let go of (MEM-002)', async () => {
+    // The guard that keeps `attachLink()` from registering a second
+    // counter-edge per (link, group) pair is a `WeakSet`, and a plain `Set`
+    // in its place is functionally indistinguishable — every unit test
+    // stays green. The difference is only visible here: a `Set` would hold
+    // every link the group has ever seen for the group's whole lifetime,
+    // past `detachLink()` and past `destroy()`, which is MEM-002 again in
+    // another pocket.
+    const host = {marker: 'link-destroy-hook-guard'};
+    const group = SignalGroup.findOrCreate(host);
+    const source = createSignal(1);
+
+    let signalLink: SignalLink<number> | null = link(source, () => {});
+    const linkRef = new WeakRef(signalLink);
+
+    group.attachLink(signalLink);
+
+    // Both routes out of the group are exercised: the counter-edge takes
+    // the link out of `#links`, and nothing else may keep holding it.
+    signalLink.destroy();
+    signalLink = null;
+
+    await forceGc();
+
+    expect(linkRef.deref()).toBeUndefined();
+
+    source.destroy();
+    group.clear();
   });
 });

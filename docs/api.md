@@ -358,7 +358,7 @@ eventually corrected too — nondeterministically, but subscriptions included
 | `mute()` / `unmute()`   | Pause / resume propagation.                                              |
 | `toggleMute()`          | Flip mute state; returns the new state.                                  |
 | `touch()`               | Force one propagation of the current value.                              |
-| `attach(obj)`           | Attach to the group of `obj` for cleanup. Idempotent — attaching the same group again is a no-op, it does not register a second cleanup listener. |
+| `attach(obj)`           | Attach to the group of `obj` for cleanup. Safe to repeat: it re-establishes membership every call (so it undoes an intervening `detachLink()`), and never registers a second cleanup listener for the same group — which holds for a direct `group.attachLink(link)` too. |
 | `destroy()`             | Drop the link and free subscriptions.                                    |
 | `nextValue(options?)`   | `Promise<T>` that resolves on the next propagation, rejects with an `Error` if the link is destroyed first. |
 | `asyncValues(stop?, options?)` | `AsyncIterable<T>` of propagated values; stops on `stop(value, i) → true` or destroy. |
@@ -387,7 +387,13 @@ sampler, not a lossless stream. Several `asyncValues()` iterators can run
 over the same link concurrently; they share that one retained slot, and it
 is only released once the *last* of them stops (finishes, breaks, or is
 `.return()`ed) — an earlier one finishing does not cut a still-running
-sibling off from the next value.
+sibling off from the next value. Released means switched off, not just
+emptied: once the last iterator is gone, `'value'` is no longer retained at
+all, so a later `nextValue()` waits for the next value instead of resolving
+with one that arrived while nobody was iterating. The other side of that
+coin — `asyncValues()` claims the retain policy of the `'value'` event for
+itself and gives it up at the end, so a `retain(link, 'value')` you set
+yourself does not survive an `asyncValues()` run.
 
 **Re-entrant propagation.** If `action()` — the link callback, or an effect
 on the target signal — writes the source again, the nested propagation runs
@@ -513,7 +519,7 @@ and never re-raised: a registry callback has no caller left to receive it.
 | `hasSignal(name)`                       | Lookup walks parent chain.                                             |
 | `signal<T>(name)`                       | Returns the named `Signal<T>` (parent fallback) or `undefined`.        |
 | `attachEffect(eff)` / `runEffects()`    | Track an effect / run all attached and child effects.                  |
-| `attachLink(link)` / `detachLink(link)` | Track / untrack a link.                                                |
+| `attachLink(link)` / `detachLink(link)` | Track / untrack a link. A destroyed link takes itself out of the group, whichever route attached it. |
 | `attachGroup(child)` / `detachGroup(child)` | Nest groups. `attachGroup()` throws when the edge would create a cycle — attaching a group to itself, or to one of its own descendants. |
 | `off()`                                 | Destroy attached effects/links and drop all external subscriptions on group signals — an external effect that survives the detach re-subscribes on its next run, static deps as well as dynamic ones; signals stay alive, the group remains reusable — except a memo signal `{attach}`ed inside an effect body, which belongs to that effect and dies with it. Child groups are `off()`'d recursively. Emits an `OFF` event. |
 | `clear()`                               | Destroy all attached signals / effects / links and child groups, detach from parent, remove from registry. |
