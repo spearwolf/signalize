@@ -1,4 +1,5 @@
 import {on} from '@spearwolf/eventize';
+import type {MockInstance} from 'vitest';
 import {
   assertEffectsCount,
   assertLinksCount,
@@ -139,5 +140,41 @@ gcDescribe('SignalGroup GC behavior (requires --expose-gc)', () => {
     // again on the already-cleared group.
     expect(getSignalGroupsCount()).toBe(baselineGroups);
     assertSignalsCount(0, 'after GC of cleared group');
+  });
+
+  it('a throwing teardown in an FR-collected group is reported, not thrown', async () => {
+    const baselineGroups = getSignalGroupsCount();
+    const errorSpy: MockInstance = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    try {
+      let host: object | null = {marker: 'fr-throwing-cleanup'};
+      SignalGroup.findOrCreate(host);
+      createEffect(
+        () => () => {
+          throw new Error('cleanup boom from FR');
+        },
+        {attach: host},
+      );
+
+      host = null;
+
+      for (
+        let i = 0;
+        i < 20 && getSignalGroupsCount() > baselineGroups;
+        i += 1
+      ) {
+        await forceGc();
+      }
+
+      expect(getSignalGroupsCount()).toBe(baselineGroups);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect((errorSpy.mock.calls[0][1] as Error).message).toBe(
+        'cleanup boom from FR',
+      );
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });

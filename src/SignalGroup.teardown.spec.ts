@@ -1,4 +1,5 @@
 import {getSubscriptionCount, on} from '@spearwolf/eventize';
+import type {MockInstance} from 'vitest';
 import {
   assertEffectsCount,
   assertLinksCount,
@@ -13,7 +14,11 @@ import {createEffect, getEffectsCount} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {getLinksCount, link} from './link.js';
 import {findObjectSignalByName} from './object-signals.js';
-import {getSignalGroupsCount, SignalGroup} from './SignalGroup.js';
+import {
+  clearGroupFromFinalizer,
+  getSignalGroupsCount,
+  SignalGroup,
+} from './SignalGroup.js';
 import {destroySignal, getSignalsCount} from './signal-core.js';
 
 describe('SignalGroup teardown robustness', () => {
@@ -413,5 +418,67 @@ describe('SignalGroup teardown robustness', () => {
     expect(getEffectsCount()).toBe(0);
     expect(getSignalsCount()).toBe(0);
     expect(getLinksCount()).toBe(0);
+  });
+
+  it('clearGroupFromFinalizer() reports a throwing teardown instead of letting it escape', () => {
+    const signalsBefore = getSignalsCount();
+    const effectsBefore = getEffectsCount();
+    const linksBefore = getLinksCount();
+    const groupsBefore = getSignalGroupsCount();
+
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+
+    const sig = createSignal(0, {attach: host});
+
+    let siblingCleanupCalls = 0;
+
+    createEffect(
+      () => {
+        sig.get();
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      },
+      {attach: host},
+    );
+
+    createEffect(
+      () => {
+        sig.get();
+        return () => {
+          siblingCleanupCalls += 1;
+        };
+      },
+      {attach: host},
+    );
+
+    link(sig, () => {}, {attach: host});
+
+    const errorSpy: MockInstance = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    try {
+      expect(() => {
+        clearGroupFromFinalizer(group);
+      }, 'the finalizer must never let a teardown error escape').not.toThrow();
+
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][0]).toContain('FinalizationRegistry');
+      expect(errorSpy.mock.calls[0][1]).toBeInstanceOf(Error);
+      expect((errorSpy.mock.calls[0][1] as Error).message).toBe('cleanup boom');
+    } finally {
+      errorSpy.mockRestore();
+    }
+
+    expect(siblingCleanupCalls, 'sibling cleanup must still run').toBe(1);
+    expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+    expect(getSignalGroupsCount(), 'groups after the finalizer').toBe(
+      groupsBefore,
+    );
+    expect(getEffectsCount()).toBe(effectsBefore);
+    expect(getSignalsCount()).toBe(signalsBefore);
+    expect(getLinksCount()).toBe(linksBefore);
   });
 });

@@ -59,6 +59,7 @@
 - `createMemo(fn, {attach})` **without** `name`, called inside an effect body, no longer leaves a new signal in the group on every parent rerun — the signal now dies with the effect that created it, the same way the named case already did through its rebind
 - `createMemo(fn, {attach, name})` called inside an effect body no longer outlives the effect that created it: destroying the parent, or a `group.off()` on the attached group, used to leave such a signal live and still resolvable by name — both now destroy it along with the effect, the same as the unnamed case
 - The static `SignalGroup.clear()` now sweeps every registered group even when one of them throws during teardown, instead of aborting at the first failure and leaving the remaining groups fully built up and registered — the caller used to have to call it in a loop to be sure the registry was empty. Errors are collected and rethrown afterward — a single one unchanged, several as an `AggregateError`
+- A `SignalGroup` teardown that throws from the `FinalizationRegistry` callback no longer takes the process down: the error is now reported via `console.error` instead, since a registry callback has no caller left to hand it to
 
 ### Documentation
 

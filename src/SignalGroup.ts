@@ -31,10 +31,32 @@ const allGroups = new Set<SignalGroup>();
 // callback runs `group.clear()` so attached signals/effects/links are
 // reclaimed. FR firing is non-deterministic — explicit cleanup remains
 // preferred — but this prevents the worst-case leak.
+//
+// Since Package 1, `clear()` finishes the whole teardown before it throws,
+// and it throws into a FinalizationRegistry job — a context with no caller.
+// An `uncaughtException` there takes the whole process down. Re-throwing
+// here would just be that crash again, and swallowing silently would be
+// worse still: a throwing cleanup would stay invisible forever. So it gets
+// reported instead, never re-thrown. This is the one path in the package
+// where `clear()` runs without a caller at all — everywhere else the caller
+// gets its error unchanged.
+/**
+ * @internal Exported for the regression test in `SignalGroup.teardown.spec.ts`.
+ */
+export const clearGroupFromFinalizer = (group: SignalGroup): void => {
+  if (!allGroups.has(group)) return;
+  try {
+    group.clear();
+  } catch (err) {
+    console.error(
+      '[signalize] a SignalGroup teardown threw in the FinalizationRegistry callback, where no caller can catch it:',
+      err,
+    );
+  }
+};
+
 const groupFinalizationRegistry = new FinalizationRegistry<SignalGroup>(
-  (group) => {
-    if (allGroups.has(group)) group.clear();
-  },
+  clearGroupFromFinalizer,
 );
 
 /**
@@ -748,7 +770,8 @@ export class SignalGroup {
    * and deregistered, and the errors are re-raised afterwards — a lone one
    * unchanged, several as an `AggregateError` holding them in teardown order.
    * This matters most where nobody is listening: `clear()` also runs from the
-   * FinalizationRegistry callback, out of reach of any application try/catch.
+   * FinalizationRegistry callback, out of reach of any application try/catch —
+   * there, the error is reported via `console.error` instead of escaping.
    */
   clear() {
     if (this.#busy & BUSY_CLEAR) return;
