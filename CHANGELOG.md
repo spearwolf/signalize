@@ -58,6 +58,7 @@
 - A memo's internal effect now unsubscribes from the global destroy queue when it dies before its signal does — e.g. its last live dependency was destroyed. That subscription used to stay behind indefinitely, holding the dead effect and its callback closure alive for as long as the memo signal itself lived, which for a memo whose inputs are gone is the remaining process lifetime
 - `createMemo(fn, {attach})` **without** `name`, called inside an effect body, no longer leaves a new signal in the group on every parent rerun — the signal now dies with the effect that created it, the same way the named case already did through its rebind
 - `createMemo(fn, {attach, name})` called inside an effect body no longer outlives the effect that created it: destroying the parent, or a `group.off()` on the attached group, used to leave such a signal live and still resolvable by name — both now destroy it along with the effect, the same as the unnamed case
+- The static `SignalGroup.clear()` now sweeps every registered group even when one of them throws during teardown, instead of aborting at the first failure and leaving the remaining groups fully built up and registered — the caller used to have to call it in a loop to be sure the registry was empty. Errors are collected and rethrown afterward — a single one unchanged, several as an `AggregateError`
 
 ### Documentation
 

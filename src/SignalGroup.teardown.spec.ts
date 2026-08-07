@@ -327,4 +327,91 @@ describe('SignalGroup teardown robustness', () => {
 
     expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
   });
+
+  it('static SignalGroup.clear() sweeps every group even when one of them throws', () => {
+    let siblingCleanupCalls = 0;
+
+    const groups = [0, 1, 2].map((i) => {
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+      const sig = createSignal(0, {attach: host});
+
+      createEffect(
+        () => {
+          sig.get();
+          return () => {
+            if (i === 0) {
+              throw new Error('cleanup boom');
+            }
+            siblingCleanupCalls += 1;
+          };
+        },
+        {attach: host},
+      );
+
+      link(sig, () => {}, {attach: host});
+
+      return group;
+    });
+
+    expect(() => {
+      SignalGroup.clear();
+    }).toThrow('cleanup boom');
+
+    expect(
+      siblingCleanupCalls,
+      'the groups after the throwing one must still be torn down',
+    ).toBe(2);
+    expect(
+      getSignalGroupsCount(),
+      'the registry is empty after one sweep',
+    ).toBe(0);
+    expect(getEffectsCount()).toBe(0);
+    expect(getSignalsCount()).toBe(0);
+    expect(getLinksCount()).toBe(0);
+    for (const group of groups) {
+      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+    }
+  });
+
+  it('static SignalGroup.clear() reports every failing group, AggregateError for several', () => {
+    [0, 1, 2].map((i) => {
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+      const sig = createSignal(0, {attach: host});
+
+      createEffect(
+        () => {
+          sig.get();
+          return () => {
+            if (i === 0 || i === 2) {
+              throw new Error(`cleanup boom ${i}`);
+            }
+          };
+        },
+        {attach: host},
+      );
+
+      link(sig, () => {}, {attach: host});
+
+      return group;
+    });
+
+    let caught: unknown;
+    try {
+      SignalGroup.clear();
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(AggregateError);
+    expect(
+      (caught as AggregateError).errors.map((e: Error) => e.message),
+    ).toEqual(['cleanup boom 0', 'cleanup boom 2']);
+
+    expect(getSignalGroupsCount()).toBe(0);
+    expect(getEffectsCount()).toBe(0);
+    expect(getSignalsCount()).toBe(0);
+    expect(getLinksCount()).toBe(0);
+  });
 });

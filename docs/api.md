@@ -415,9 +415,12 @@ does not pin user objects.
 | `SignalGroup.findOrCreate(obj)`     | Get or create the group attached to `obj`. Passing a group returns it as-is. Throws on `null`. |
 | `SignalGroup.get(obj)`              | Existing group, or `undefined`.                                                |
 | `SignalGroup.delete(obj)`           | Clear and remove the group.                                                    |
-| `SignalGroup.clear()`               | Clear all groups globally.                                                     |
+| `SignalGroup.clear()`               | Clear all groups globally. Sweeps to the end even if a group's teardown throws. |
 | `SignalGroup.destroy(obj)`          | **Deprecated.** Use `delete()`.                                                |
 | `getSignalGroupsCount()`            | Count of live `SignalGroup` instances (debugging / leak checks).               |
+
+Errors from individual groups are collected and reported after the full sweep —
+a single one unchanged, several as an `AggregateError` in sweep order.
 
 When a user object becomes unreachable without an explicit `clear()` / `delete()`,
 a `FinalizationRegistry` callback runs `clear()` on the orphaned group. This

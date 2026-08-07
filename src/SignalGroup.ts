@@ -177,13 +177,24 @@ export class SignalGroup {
 
   /**
    * Clear and delete all SignalGroups in the global store.
+   *
+   * A group whose teardown throws does not stop the sweep: every failure is
+   * collected, the remaining groups are torn down regardless, and the
+   * errors are re-raised afterwards — a lone one unchanged, several as an
+   * `AggregateError` holding them in sweep order.
    */
   static clear() {
+    const errors: unknown[] = [];
     // Snapshot — each group.clear() mutates `allGroups`.
     for (const group of [...allGroups]) {
-      group.clear();
+      try {
+        group.clear();
+      } catch (err) {
+        errors.push(err);
+      }
     }
     allGroups.clear();
+    throwCollectedErrors(errors, 'clearing all signal groups');
   }
 
   private constructor(object?: object) {
@@ -539,11 +550,11 @@ export class SignalGroup {
    * @returns The attached effect
    */
   attachEffect(effect: EffectImpl) {
-    // Guarded because eventize's own deduplication cannot help here: `add()`
-    // compares listeners via `isSimilar()`, and every `once()` call below
-    // builds a fresh arrow function, which is similar to nothing. Unguarded,
-    // a repeated `attachEffect(sameEffect)` would grow the effect's DESTROY
-    // listener list without bound.
+    // Guarded because eventize's own dedup can't help: `add()` only dedupes
+    // `LISTENER_IS_OBJ` and `LISTENER_IS_NAMED_FUNC` (method-name) listeners.
+    // A function is neither, so `once()` re-adds it every call — held
+    // reference or fresh arrow, same result. Unguarded, a repeated
+    // `attachEffect(sameEffect)` would grow the DESTROY list without bound.
     if (!this.#effects.has(effect)) {
       this.#effects.add(effect);
       once(effect, DESTROY, () => {
