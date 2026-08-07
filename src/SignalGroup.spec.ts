@@ -3,6 +3,8 @@ import {
   assertEffectsCount,
   assertLinksCount,
   assertSignalsCount,
+  getGroupMemberCounts,
+  NO_GROUP_MEMBERS,
 } from './assert-helpers.js';
 import {$effect, DESTROY, OFF} from './constants.js';
 import {createMemo} from './createMemo.js';
@@ -14,7 +16,7 @@ import {
   globalSignalQueue,
 } from './global-queues.js';
 import {link} from './link.js';
-import {SignalGroup} from './SignalGroup.js';
+import {$setParentGroup, SignalGroup} from './SignalGroup.js';
 
 // Nothing attached to a group may survive its teardown on the global queues.
 const subscriptionSnapshot = () => ({
@@ -325,14 +327,23 @@ describe('SignalGroup', () => {
       const child = SignalGroup.findOrCreate({});
 
       parent.attachGroup(child);
-      parent.detachGroup(child);
+      expect(getGroupMemberCounts(parent).groups, 'child is attached').toBe(1);
 
-      // After detach, child can be attached elsewhere
-      const newParent = SignalGroup.findOrCreate({});
-      newParent.attachGroup(child);
+      parent.detachGroup(child);
+      expect(getGroupMemberCounts(parent).groups, 'child is detached').toBe(0);
+
+      // The parent has no hold left, so clearing it must not reach the child.
+      const signal = createSignal(42);
+      child.attachSignal(signal);
 
       parent.clear();
-      newParent.clear();
+      assertSignalsCount(
+        1,
+        'the detached child was not cleared with its parent',
+      );
+
+      child.clear();
+      assertSignalsCount(0, 'clearing the detached child destroys its signal');
     });
 
     it('detachGroup() does nothing when detaching self', () => {
@@ -618,14 +629,17 @@ describe('SignalGroup', () => {
       const child = SignalGroup.findOrCreate({});
 
       parent.attachGroup(child);
+      expect(getGroupMemberCounts(parent).groups, 'child is attached').toBe(1);
+
       child.clear();
 
-      // After clearing, we can attach the child elsewhere
-      const newParent = SignalGroup.findOrCreate({});
-      newParent.attachGroup(child);
+      expect(
+        getGroupMemberCounts(parent).groups,
+        'clear() must take the child out of its parent',
+      ).toBe(0);
+      expect(getGroupMemberCounts(child)).toEqual(NO_GROUP_MEMBERS);
 
       parent.clear();
-      newParent.clear();
     });
 
     it('destroy() is deprecated but works', () => {
@@ -1100,6 +1114,64 @@ describe('SignalGroup', () => {
       expect(() => c.attachGroup(a)).toThrow(/cycle/i);
 
       expect(() => a.clear()).not.toThrow();
+    });
+
+    it('attachGroup() walks a parent chain deeper than two links', () => {
+      const root = SignalGroup.findOrCreate({});
+      const a = SignalGroup.findOrCreate({});
+      const b = SignalGroup.findOrCreate({});
+      const c = SignalGroup.findOrCreate({});
+      const unrelated = SignalGroup.findOrCreate({});
+
+      root.attachGroup(a);
+      a.attachGroup(b);
+      b.attachGroup(c);
+
+      // c → b → a → root: only from the third level up does the guard take its
+      // second Floyd step at all.
+      expect(() => c.attachGroup(root)).toThrow(
+        'Cannot attach a group to one of its own descendants',
+      );
+      expect(
+        getGroupMemberCounts(c).groups,
+        'the rejected edge was not added',
+      ).toBe(0);
+
+      // Same depth, legal edge — the walk must run out at the root and let it through.
+      expect(() => c.attachGroup(unrelated)).not.toThrow();
+      expect(getGroupMemberCounts(c).groups).toBe(1);
+
+      root.clear();
+    });
+
+    it('attachGroup() rejects an already cyclic parent chain instead of hanging', () => {
+      const a = SignalGroup.findOrCreate({});
+      const b = SignalGroup.findOrCreate({});
+      const x = SignalGroup.findOrCreate({});
+      const z = SignalGroup.findOrCreate({});
+
+      a.attachGroup(x); // x → a
+      b.attachGroup(a); // a → b
+
+      // Break the forest invariant on purpose: the public API cannot produce
+      // this state, attachGroup() rejects every edge that would close a cycle.
+      // The Floyd guard exists for the case where it happens anyway.
+      b[$setParentGroup](a); // a ↔ b
+
+      try {
+        expect(() => x.attachGroup(z)).toThrow(
+          'Cannot attach a group: the parent chain of this group is already cyclic',
+        );
+        expect(
+          getGroupMemberCounts(x).groups,
+          'the rejected edge was not added',
+        ).toBe(0);
+      } finally {
+        b[$setParentGroup](undefined);
+      }
+
+      b.clear();
+      z.clear();
     });
 
     it('attachGroup() still allows re-parenting a group below a former sibling', () => {

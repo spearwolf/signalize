@@ -7,7 +7,7 @@ import {
   getGroupMemberCounts,
   NO_GROUP_MEMBERS,
 } from './assert-helpers.js';
-import {OFF} from './constants.js';
+import {DESTROY, OFF} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {signal} from './decorators.js';
 import {createEffect, getEffectsCount} from './effects.js';
@@ -19,7 +19,7 @@ import {
   getSignalGroupsCount,
   SignalGroup,
 } from './SignalGroup.js';
-import {destroySignal, getSignalsCount} from './signal-core.js';
+import {destroySignal, getSignalsCount, signalImpl} from './signal-core.js';
 
 describe('SignalGroup teardown robustness', () => {
   beforeEach(() => {
@@ -478,5 +478,280 @@ describe('SignalGroup teardown robustness', () => {
     expect(getEffectsCount()).toBe(effectsBefore);
     expect(getSignalsCount()).toBe(signalsBefore);
     expect(getLinksCount()).toBe(linksBefore);
+  });
+
+  describe('every teardown step collects instead of aborting', () => {
+    it('off() collects a throwing child group and still tears down its own members', () => {
+      const parentHost = {};
+      const childHost = {};
+      const parent = SignalGroup.findOrCreate(parentHost);
+      const child = SignalGroup.findOrCreate(childHost);
+
+      parent.attachGroup(child);
+
+      on(child, OFF, () => {
+        throw new Error('child off boom');
+      });
+
+      const sig = createSignal(0, {attach: parentHost});
+      let cleanupCalls = 0;
+
+      createEffect(
+        () => {
+          sig.get();
+          return () => {
+            cleanupCalls += 1;
+          };
+        },
+        {attach: parentHost},
+      );
+
+      expect(() => parent.off()).toThrow('child off boom');
+
+      expect(cleanupCalls).toBe(1);
+      expect(getEffectsCount()).toBe(0);
+
+      parent.clear();
+    });
+
+    it('off() collects a throwing link teardown and still destroys the sibling link', () => {
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+      const sig = createSignal(0, {attach: host});
+
+      const boomLink = link(sig, () => {}, {attach: host});
+      on(boomLink, DESTROY, () => {
+        throw new Error('link teardown boom');
+      });
+
+      let siblingDestroyed = 0;
+      const sibling = link(sig, (v) => v, {attach: host});
+      on(sibling, DESTROY, () => {
+        siblingDestroyed += 1;
+      });
+
+      expect(() => group.off()).toThrow('link teardown boom');
+
+      expect(siblingDestroyed).toBe(1);
+      expect(sibling.isDestroyed).toBe(true);
+      expect(getLinksCount()).toBe(0);
+
+      group.clear();
+    });
+
+    it('off() collects a throwing detach listener and still notifies the remaining signals', () => {
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+
+      const first = createSignal(0, {attach: host});
+      const second = createSignal(0, {attach: host});
+
+      const unsubscribeFirst = on(
+        globalDestroySignalQueue,
+        signalImpl(first).id,
+        (_id: symbol, params?: {detach?: boolean}) => {
+          if (params?.detach) {
+            throw new Error('detach boom');
+          }
+        },
+      );
+
+      let secondDetachEvents = 0;
+      const unsubscribeSecond = on(
+        globalDestroySignalQueue,
+        signalImpl(second).id,
+        (_id: symbol, params?: {detach?: boolean}) => {
+          if (params?.detach) {
+            secondDetachEvents += 1;
+          }
+        },
+      );
+
+      try {
+        expect(() => group.off()).toThrow('detach boom');
+        expect(secondDetachEvents).toBe(1);
+        expect(first.value).toBe(0);
+      } finally {
+        unsubscribeFirst();
+        unsubscribeSecond();
+      }
+
+      group.clear();
+    });
+
+    it('off() collects a throwing OFF listener after the teardown is complete', () => {
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+      const sig = createSignal(0, {attach: host});
+
+      let cleanupCalls = 0;
+      createEffect(
+        () => {
+          sig.get();
+          return () => {
+            cleanupCalls += 1;
+          };
+        },
+        {attach: host},
+      );
+
+      link(sig, () => {}, {attach: host});
+
+      on(group, OFF, () => {
+        throw new Error('off listener boom');
+      });
+
+      expect(() => group.off()).toThrow('off listener boom');
+
+      expect(cleanupCalls).toBe(1);
+      expect(getEffectsCount()).toBe(0);
+      expect(getLinksCount()).toBe(0);
+      expect(sig.value).toBe(0);
+
+      group.clear();
+    });
+
+    it('clear() collects a throwing DESTROY listener and still dismantles the group', () => {
+      const groupsBefore = getSignalGroupsCount();
+
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+      const sig = createSignal(0, {attach: host});
+
+      let cleanupCalls = 0;
+      createEffect(
+        () => {
+          sig.get();
+          return () => {
+            cleanupCalls += 1;
+          };
+        },
+        {attach: host},
+      );
+
+      link(sig, () => {}, {attach: host});
+
+      on(group, DESTROY, () => {
+        throw new Error('destroy listener boom');
+      });
+
+      expect(() => group.clear()).toThrow('destroy listener boom');
+
+      expect(cleanupCalls).toBe(1);
+      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+      expect(getEffectsCount()).toBe(0);
+      expect(getSignalsCount()).toBe(0);
+      expect(getLinksCount()).toBe(0);
+      expect(getSignalGroupsCount()).toBe(groupsBefore);
+    });
+
+    it('clear() collects a throwing child group and still clears its own members', () => {
+      const groupsBefore = getSignalGroupsCount();
+
+      const parentHost = {};
+      const childHost = {};
+      const parent = SignalGroup.findOrCreate(parentHost);
+      const child = SignalGroup.findOrCreate(childHost);
+
+      parent.attachGroup(child);
+
+      on(child, DESTROY, () => {
+        throw new Error('child destroy boom');
+      });
+
+      const sig = createSignal(0, {attach: parentHost});
+      let cleanupCalls = 0;
+
+      createEffect(
+        () => {
+          sig.get();
+          return () => {
+            cleanupCalls += 1;
+          };
+        },
+        {attach: parentHost},
+      );
+
+      expect(() => parent.clear()).toThrow('child destroy boom');
+
+      expect(cleanupCalls).toBe(1);
+      expect(getGroupMemberCounts(parent)).toEqual(NO_GROUP_MEMBERS);
+      expect(getGroupMemberCounts(child)).toEqual(NO_GROUP_MEMBERS);
+      expect(getSignalsCount()).toBe(0);
+      expect(getSignalGroupsCount()).toBe(groupsBefore);
+    });
+
+    it('clear() collects a throwing destroy-queue listener and still releases its subscriptions', () => {
+      const destroyQueueBaseline = getSubscriptionCount(
+        globalDestroySignalQueue,
+      );
+
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+
+      const first = createSignal(0);
+      const second = createSignal(0);
+
+      const unsubscribeBoom = on(
+        globalDestroySignalQueue,
+        signalImpl(first).id,
+        () => {
+          throw new Error('destroy queue boom');
+        },
+      );
+
+      group.attachSignal(first);
+      group.attachSignal(second);
+
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroyQueueBaseline + 3,
+      );
+
+      try {
+        expect(() => group.clear()).toThrow('destroy queue boom');
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+          destroyQueueBaseline + 1,
+        );
+      } finally {
+        unsubscribeBoom();
+      }
+
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroyQueueBaseline,
+      );
+      expect(getSignalsCount()).toBe(0);
+      expect(signalImpl(second).destroyed).toBe(true);
+      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+    });
+
+    it('clear() collects a throwing link teardown on a foreign source', () => {
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+
+      const external = createSignal(0);
+
+      const boomLink = link(external, () => {}, {attach: host});
+      on(boomLink, DESTROY, () => {
+        throw new Error('link clear boom');
+      });
+
+      let siblingDestroyed = 0;
+      const sibling = link(external, (v) => v, {attach: host});
+      on(sibling, DESTROY, () => {
+        siblingDestroyed += 1;
+      });
+
+      // A group signal too, so the signal loop runs before the link loop.
+      createSignal(0, {attach: host});
+
+      expect(() => group.clear()).toThrow('link clear boom');
+
+      expect(siblingDestroyed).toBe(1);
+      expect(getLinksCount()).toBe(0);
+      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+
+      destroySignal(external);
+      expect(getSignalsCount()).toBe(0);
+    });
   });
 });

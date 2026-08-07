@@ -65,6 +65,18 @@ const groupFinalizationRegistry = new FinalizationRegistry<SignalGroup>(
  */
 export const getSignalGroupsCount = (): number => allGroups.size;
 
+/**
+ * @internal Test seam for the cycle guard in `attachGroup()`.
+ *
+ * The guard rejects every edge that would close a cycle, so a cyclic parent
+ * chain cannot be built through the public API — and the Floyd branch that
+ * catches one anyway would stay forever untested. This is the only way in.
+ * Never call it from production code.
+ */
+export const $setParentGroup = Symbol.for(
+  '@spearwolf/signalize/setParentGroup',
+);
+
 type SignalNameType = string | symbol;
 
 // Cycle / re-entrancy guard for the five recursive walks.
@@ -299,6 +311,11 @@ export class SignalGroup {
       group.#parentGroup = undefined;
     }
     return group;
+  }
+
+  /** @internal See {@link $setParentGroup}. */
+  [$setParentGroup](parent: SignalGroup | undefined): void {
+    this.#parentGroup = parent;
   }
 
   /**

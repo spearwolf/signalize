@@ -76,6 +76,7 @@
 
 - New microbenchmark suite under `bench/` (Vitest Bench, `pnpm bench`) covering signal writes (with/without subscribers), memo recompute, effect create/destroy, `SignalGroup.findOrCreate`, and `batch()` overhead. CI runs it informatively — no regression gate yet (PERF-003)
 - `assertEffectSubscriptionsCountChange()` double-counted the baseline against a non-zero starting subscription count, an error masked only because its one caller always started from zero (TEST-007). `unsubscribeEffect.spec.ts` — cited by `CLAUDE.md` and `AGENTS.md` as the reference for verifying subscription leaks — now actually carries a subscription-count balance (TEST-010)
+- `SignalGroup.spec.ts`'s `detachGroup() removes child group` and `clear() detaches from parent group` now assert `getGroupMemberCounts()` after the detach instead of arguing through a re-attach that proved nothing. Every collection point in `SignalGroup.off()`/`clear()` that catches a throwing teardown step (a child group, a link, a detach listener, an `OFF`/`DESTROY` listener, a destroy-queue subscription) now has its own test proving the rest of the teardown still runs to completion. The second branch of the parent-chain cycle guard in `attachGroup()` — reachable only through a cyclic parent chain that the public API itself refuses to construct — is now exercised via the new `@internal` test seam `$setParentGroup` (TEST-001, TEST-004, TEST-009)
 
 ### Breaking Changes
 
