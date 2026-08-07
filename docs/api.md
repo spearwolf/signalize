@@ -54,6 +54,16 @@ existing signal-like (then this very signal is returned, no new one created).
 > and subsequent reads return it — only the notification (including
 > `{touch: true}`) is suppressed. See `recipes.md` → *Writes that don't notify*.
 
+> **A failing effect no longer costs its siblings their notification.**
+> `set()` runs *every* subscribed effect before it returns — including the
+> ones with a lower priority than the one that threw — and only then
+> re-raises what failed: a single failure unchanged, several as an
+> `AggregateError` in delivery order. Wrap the write in `try`/`catch` if
+> effect failures are expected; the value is written and delivered either
+> way. The exception is a throwing `link()` callback, which is not an
+> effect and does end the delivery — the failures collected before it are
+> still re-raised together with it.
+
 ### Top-level helpers
 
 | Function                       | Purpose                                                                |
@@ -88,6 +98,12 @@ The synchronous case knows the same rule: a run that a re-entrant self-write
 overtook executes its cleanup at once instead of putting it in the slot, so an
 effect writing a signal it depends on gets the cleanup of **every** nested run,
 not only the oldest.
+A synchronous throw out of the callback arrives at whoever triggered the run —
+`set()`, `touch()`, `batch()`, `effect.run()` — but it no longer holds up the
+other effects of that same write; they all run first, and the failure (or an
+`AggregateError` over several of them) is re-raised afterwards. The effect
+itself stays usable: it keeps its dependencies and runs again on the next
+change.
 
 **`options`** *(`EffectOptions`)*:
 
@@ -193,6 +209,10 @@ synchronously, by a re-entrant self-write) or whose effect is already
 destroyed by the time it runs, sync or not, has no such
 caller left to throw at even with a full stack still present, so it lands here
 too, with `phase: 'cleanup'`.
+A **synchronous** throw out of an effect *callback* explicitly does **not**
+land here: it is collected until the delivery is complete and then thrown at
+whoever wrote the signal. If you want every failure in one place, catch at the
+write.
 
 > ⚠️ **The library will not turn these into unhandled rejections — but your
 > handler can.** Node terminates the process on an unhandled rejection by
@@ -397,6 +417,10 @@ callback returns is left unbatched.
 This is a synchronous throw at the `batch()` call site, unlike an async
 *effect* callback's rejection, which cannot be thrown at any caller and goes
 to `onEffectError()` instead (see `createEffect`).
+
+An effect that throws during the flush no longer holds up the remaining
+delayed effects; its failure reaches the `batch()` caller after the flush is
+complete, several failures as an `AggregateError`.
 
 ### `beQuiet(callback)`
 

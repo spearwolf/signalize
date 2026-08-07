@@ -59,6 +59,8 @@ EffectImpl.maxDepth = 256;
 
 // self-write: each nested run's cleanup runs at once when superseded — none is dropped
 // async: cleanup of a superseded run runs LATE (on settle), rejections are reported
+// a throwing callback no longer stops the other effects of that write
+// set() re-raises after the delivery — several failures as an AggregateError
 onEffectError(({error, effectId, phase}) => {});  // → unsubscribe
 // no handler → console.error instead of an unhandled rejection
 // handler MUST be sync or catch itself — nothing awaits it

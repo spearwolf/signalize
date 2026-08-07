@@ -9,7 +9,7 @@ import {
 } from '@spearwolf/eventize';
 import {getCurrentBatch} from './batch.js';
 import {isQuiet} from './bequiet.js';
-import {throwCollectedErrors} from './collect-errors.js';
+import {collectDeliveryError, throwCollectedErrors} from './collect-errors.js';
 import {
   $createEffect,
   $destroyEffect,
@@ -562,11 +562,25 @@ export class EffectImpl {
    * The necessity is given if
    * - the effect has been initialized but has not yet run
    * - a signal used in the effect has changed
+   *
+   * A callback that throws no longer ends the delivery it was part of: the
+   * failure is collected and re-raised once every other subscriber of that
+   * write has run. A `run()` outside a delivery — `effect.run()`, a
+   * hand-emitted RECALL — still throws immediately, at its caller.
    */
   [RECALL]() {
     this.shouldRun = true;
-    if (this.autorun) {
+    if (!this.autorun) return;
+    try {
       this.run();
+    } catch (err) {
+      // BUG-004: this is the listener eventize calls, and the only place
+      // where swallowing helps — one frame further out, around `emit()`,
+      // the dispatch loop has already given up on the siblings. Isolation
+      // is a property of the *delivery*, not of `run()`: without an open
+      // frame (a direct `effect.run()`, a hand-emitted RECALL) the error
+      // belongs to whoever asked for the run and is rethrown here.
+      if (!collectDeliveryError(err)) throw err;
     }
   }
 

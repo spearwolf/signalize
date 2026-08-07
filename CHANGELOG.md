@@ -69,6 +69,10 @@
 - An effect that writes a signal it depends on now runs the cleanup of **every** nested run instead of storing only the oldest. A superseded or displaced cleanup runs right away, the same way a superseded `async` run's cleanup does (BUG-007)
 - A superseded cleanup that throws synchronously now reports to `onEffectError()` with `phase: 'cleanup'` instead of surfacing at whoever wrote the signal — for the `destroy()` path that throw used to escape the teardown entirely (BUG-007)
 - A cleanup that writes a signal can now trigger further effect runs, because it actually runs at the point it is superseded rather than being dropped (BUG-007)
+- An effect callback that throws no longer ends the delivery of a signal write: every subscribed effect runs, in priority order, and the failures reach whoever wrote afterwards — a single one unchanged, several as an `AggregateError` in delivery order. Lower-priority effects used to be skipped and never learned that the value had changed (BUG-004)
+- The same holds for the flush of a `batch()`: a throwing effect no longer holds up the remaining delayed effects, and its failure arrives at the `batch()` caller once the flush is complete (BUG-004)
+- A synchronous effect-callback failure still does **not** go through `onEffectError()` — that channel stays reserved for failures with no caller left to throw at (BUG-004)
+- **Changed shape of what a write throws** when a signal has both a failing effect and a throwing `link()` callback: the write now raises an `AggregateError` over both, where it used to raise the effect's error alone — the link callback never ran, because the effect's throw had already ended the delivery. A link callback is still not isolated and still ends the delivery; it just no longer takes the failures collected before it with it (BUG-004)
 
 ### Documentation
 

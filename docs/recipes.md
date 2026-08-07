@@ -216,6 +216,48 @@ createEffect(logA, {priority: 100});   // first
 createEffect(logB, {priority: 0});     // second
 ```
 
+## When an effect callback throws
+
+A synchronous throw out of an effect callback used to end the whole fan-out:
+every effect behind the failing one was skipped and never learned that the
+value had changed. It is isolated now — all of them run, and the write throws
+afterwards.
+
+```ts
+const sig = createSignal(0);
+
+createEffect(() => {
+  sig.get();
+  throw new Error('a failed');
+}, {priority: 10});
+
+createEffect(() => console.log('b sees', sig.get()), {priority: 5});
+createEffect(() => console.log('c sees', sig.get()), {priority: 1});
+
+try {
+  sig.set(1);          // logs "b sees 1", "c sees 1"
+} catch (err) {
+  err.message;         // 'a failed' — a single failure arrives unchanged
+}
+```
+
+- Several failures of the same write come as an `AggregateError`. `err.errors`
+  holds one entry per failing effect of *that* delivery, in delivery order —
+  it is not flattened: an effect that let a nested write's `AggregateError`
+  through contributes that whole object as its single entry. Recurse if you
+  want to count leaves.
+- The failing effect stays usable — it keeps its dependencies and runs again
+  on the next change.
+- A **nested** write has its own pot: if an effect callback writes another
+  signal, the failures of *that* delivery are thrown at the inner `set()`,
+  inside the callback. Let them through and they come back as that effect's
+  own failure, once.
+- A throwing `link()` callback is **not** an effect and does end the delivery.
+  The failures collected before it are re-raised together with it.
+- This does **not** go through `onEffectError()`. That channel is for
+  failures with no caller left to throw at — async rejections and stale
+  cleanups. Here the write is the caller, so catch at the write.
+
 ## Recursion guard
 
 If an effect callback writes to a signal it depends on, `run()` re-enters
@@ -309,6 +351,9 @@ batch(() => {
 
 - Batches nest. Only the outermost flush runs.
 - `effect.run()` inside a batch queues the run.
+- An effect that throws during the flush does not end it — the remaining
+  delayed effects still run, and the failure reaches the `batch()` caller
+  afterwards.
 - `batch()` is a hint, not a guarantee — internal consistency may still
   cause partial propagation.
 - `batch()`'s callback must be synchronous. An `async` callback stops being

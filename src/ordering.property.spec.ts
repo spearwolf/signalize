@@ -434,4 +434,78 @@ describe('ordering invariants (property based)', () => {
       FC,
     );
   });
+
+  it('P8 — a throwing effect changes nothing about who runs, or in which order', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.record({priority: priorityArb, throws: fc.boolean()}), {
+          minLength: 1,
+          maxLength: 8,
+        }),
+        (specs) => {
+          const sig = createSignal(0);
+          const calls: Array<[number, number]> = [];
+          const seen: number[] = [];
+          const errors = specs.map((_, i) => new Error(`boom in effect ${i}`));
+
+          let armed = false;
+          const effects = specs.map(({priority, throws}, creationOrder) =>
+            createEffect(
+              () => {
+                seen.push(sig.get());
+                calls.push([priority, creationOrder]);
+                if (armed && throws) throw errors[creationOrder];
+              },
+              {priority},
+            ),
+          );
+
+          try {
+            calls.length = 0;
+            seen.length = 0;
+            armed = true;
+
+            let thrown: any;
+            try {
+              sig.set(1);
+            } catch (err) {
+              thrown = err;
+            }
+
+            // Same three assertions as P1 — they must hold with a throwing
+            // effect in the fan-out exactly as they do without one.
+            const ranIndices = calls.map(([, creationOrder]) => creationOrder);
+            const expectedRan = specs.map((_, i) => i);
+            expect(new Set(ranIndices)).toEqual(new Set(expectedRan));
+            expect(ranIndices).toHaveLength(new Set(ranIndices).size);
+
+            const expected = [...calls].sort(byPriorityThenCreation);
+            expect(calls).toEqual(expected);
+
+            // Every effect, the failing ones included, saw the written value.
+            expect(seen).toEqual(specs.map(() => 1));
+
+            // The failures reach the caller of set(), in delivery order.
+            const expectedErrors = expected
+              .map(([, creationOrder]) => creationOrder)
+              .filter((i) => specs[i]!.throws)
+              .map((i) => errors[i]);
+
+            if (expectedErrors.length === 0) {
+              expect(thrown).toBeUndefined();
+            } else if (expectedErrors.length === 1) {
+              expect(thrown).toBe(expectedErrors[0]);
+            } else {
+              expect(thrown).toBeInstanceOf(AggregateError);
+              expect(thrown.errors).toEqual(expectedErrors);
+            }
+          } finally {
+            for (const effect of effects) effect.destroy();
+            sig.destroy();
+          }
+        },
+      ),
+      FC,
+    );
+  });
 });

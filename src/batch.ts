@@ -1,4 +1,9 @@
 import {emit, on} from '@spearwolf/eventize';
+import {
+  beginIsolatedDelivery,
+  collectDeliveryError,
+  endIsolatedDelivery,
+} from './collect-errors.js';
 import {RECALL} from './constants.js';
 import {globalEffectCalledQueue, globalEffectQueue} from './global-queues.js';
 import type {NonThenable, VoidFunc} from './types.js';
@@ -34,6 +39,7 @@ class Batch {
     const alreadyBeenCalled = new Set<symbol>();
 
     const unsubscribe: VoidFunc[] = [];
+    const outerErrors = beginIsolatedDelivery();
     try {
       unsubscribe.push(
         on(globalEffectQueue, (effectId, actionType) => {
@@ -51,12 +57,27 @@ class Batch {
           if (alreadyBeenCalled.has(effectId)) {
             continue;
           }
-          emit(globalEffectQueue, effectId, effectId, RECALL);
+          try {
+            emit(globalEffectQueue, effectId, effectId, RECALL);
+          } catch (err) {
+            // The effect's own failure never gets this far — `[RECALL]`
+            // parked it in the frame opened above. This catches whatever
+            // else sits on the queue under that id, so one foreign listener
+            // cannot cost the rest of the batch its flush.
+            collectDeliveryError(err);
+          }
         }
       }
     } finally {
-      for (const unsub of unsubscribe) {
-        unsub();
+      try {
+        for (const unsub of unsubscribe) {
+          unsub();
+        }
+      } finally {
+        // Nested, because closing the frame is not optional: an `unsub()`
+        // that threw would otherwise leave the module state one level deep
+        // for the rest of the process.
+        endIsolatedDelivery(outerErrors, 'flushing a batch of signal writes');
       }
     }
   }
@@ -99,6 +120,10 @@ const isThenable = (value: unknown): value is PromiseLike<unknown> =>
  * rejection cannot be thrown at any caller and goes to `onEffectError()`
  * instead) — `batch()`'s caller is still on the stack and can catch it
  * directly.
+ *
+ * An effect that throws during the flush no longer holds up the other
+ * delayed effects; its error — or an `AggregateError`, if several of them
+ * failed — arrives at the `batch()` caller once the flush is complete.
  *
  * @param callback - Synchronous function containing signal updates to batch
  * @throws {TypeError} if `callback` returns a thenable

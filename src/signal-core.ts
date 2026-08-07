@@ -1,5 +1,10 @@
 import {emit} from '@spearwolf/eventize';
 import {isQuiet} from './bequiet.js';
+import {
+  beginIsolatedDelivery,
+  collectDeliveryError,
+  endIsolatedDelivery,
+} from './collect-errors.js';
 import {$signal} from './constants.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {getCurrentEffect} from './globalEffectStack.js';
@@ -38,6 +43,12 @@ export function readSignal(signalId: symbol): void {
 
 /**
  * Announce a new signal value to the global signal queue.
+ *
+ * Every subscriber is served before this function returns or throws. Errors
+ * thrown by effect callbacks are collected until the delivery is complete
+ * instead of ending it, so a failing effect never costs its lower-priority
+ * siblings their notification. A single failure is then re-raised unchanged,
+ * several as an `AggregateError` in delivery order.
  * @internal
  */
 export function writeSignal(
@@ -46,7 +57,23 @@ export function writeSignal(
   params?: SignalValueParams,
 ) {
   if (!isQuiet()) {
-    emit(globalSignalQueue, signalId, value, params);
+    const outerErrors = beginIsolatedDelivery();
+    try {
+      emit(globalSignalQueue, signalId, value, params);
+    } catch (err) {
+      // Not everything on this queue is an effect: a link callback
+      // (`SignalLink`, one `on(globalSignalQueue, source.id, …)` per link)
+      // is application code that is *not* isolated, and its throw does end
+      // the delivery. What must not happen is that it also swallows the
+      // failures the effects before it already handed in — so it joins
+      // them, in the order everything ran.
+      collectDeliveryError(err);
+    } finally {
+      endIsolatedDelivery(
+        outerErrors,
+        'notifying the effects of a signal write',
+      );
+    }
   }
 }
 

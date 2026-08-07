@@ -51,6 +51,8 @@ createEffect(() => {
 
 **11c — An `async` `onEffectError` handler re-opens the hole it was meant to close.** Nothing awaits the handler, so a rejected promise coming out of it is an unhandled rejection like any other — and reporting to a remote service is the handler everyone writes first. Keep the handler synchronous and `.catch()` the send yourself. A handler that throws *synchronously* is caught, but eventize then aborts the dispatch: handlers with a lower priority never see that event.
 
+**11d — A throwing callback no longer silences the other effects of that write.** It used to: the first synchronous throw ended the whole fan-out, every effect with a lower priority was skipped, and none of them ever learned that the value had changed — the write was lost for them for good. Callbacks are isolated now, so all of them run and the failure is re-raised at the end of the delivery. Two things to know about the new shape: `set()` (and `touch()`, and `batch()`) can now throw an `AggregateError` when several effects of one write fail, `errors` in delivery order — a single failure still arrives unchanged. And a `link()` callback is not an effect: it is not isolated and does end the delivery, though the failures collected before it are re-raised with it. None of this goes through `onEffectError()`; the write is the caller, so catch at the write.
+
 ## Memos
 
 **12 — Eager vs lazy changes downstream behaviour.** Default `lazy: false` makes the memo a computed signal: dependent effects re-run when its deps change. With `lazy: true` dependents are **not** notified — the memo is only recomputed when read.
