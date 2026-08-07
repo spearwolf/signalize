@@ -186,6 +186,18 @@ Any filtered run (`pnpm test <pattern>`, `pnpm test -t "<name>"`) ends with exit
 
 The test transform runs through **SWC**, not Vite's built-in oxc pass: `vitest.config.ts` sets `oxc: false` and registers `unplugin-swc` with `decoratorVersion: '2022-03'`. oxc emits TC39 decorators verbatim, which Node cannot parse — without the plugin every decorator spec dies with `SyntaxError: Invalid or unexpected token`. Note also that TypeScript 7 ships no JS compiler API (`transpileModule` is gone), so ts-jest-style transformers are not an option.
 
+### Deliberately not tested
+
+No browser test run — no Playwright, no `@vitest/browser`, no jsdom/happy-dom, no second CI job. Both workflows run one job on `ubuntu-latest` (`ci.yml:9-12`, `main.yml:11-14`), and `vitest.config.ts:30` sets `environment: 'node'`. This is a decision, not a gap:
+
+- **Why it holds:** `src/` uses no platform-dependent API. A `grep` across `src/*.ts` (specs excluded) for `node:`, `process.`, `Buffer`, `setTimeout`, `setInterval`, `queueMicrotask`, `structuredClone`, `globalThis` and `require(` turns up nothing but three comment lines, none of them code: `effects.ts:66` and `EffectImpl.ts:84` mention Node's unhandled-rejection behaviour in prose while explaining why an async effect's rejection is routed to `onEffectError()` instead of thrown; `SignalLink.ts:66` mentions "the whole process" while explaining why a link's self-reference goes through a `WeakRef` — a lifetime argument, not a rejection one. The only non-trivial runtime objects in use are `WeakRef` (`SignalLink.ts:79,417`, `SignalGroup.ts:156,242`) and `FinalizationRegistry` (`link.ts:76`, `SignalGroup.ts:58`), plus `console.error` — all plain ECMAScript, identical across engines.
+- **Where the environment risk actually sits, and what already covers it:** in *resolution*, not *execution*. `attw --pack --profile esm-only` checks the `exports` map and shipped `.d.ts` in `bundler` mode — the resolution path a browser consumer actually takes — and `smoke/dist-smoke.test.ts` runs the built `dist/` for real. The TC39 decorator lowering that a browser's own bundler would perform is exercised by the smoke test's `tsc` pass, not by an engine.
+- **Why a browser run wouldn't add coverage anyway:** the one thing that could behave differently across engines is GC timing around `WeakRef`/`FinalizationRegistry`, and the nine tests that exercise it depend on `--expose-gc` (`vitest.config.ts:59`), a flag no portable browser harness provides. A browser smoke test would skip exactly the tests whose answer it could change.
+
+What would overturn this: the first line in `src/` that touches a DOM or Node-only API, or a dedicated browser entry point in the `exports` map.
+
+`docs/quickstart.md:10` and `skills/using-signalize/SKILL.md:8` both say the package runs in "a modern browser". That claim stands on the same argument as above and is unaffected by it — it asserts support, not a test run, and the two documents make no testing claim to begin with.
+
 ## Repo conventions
 
 - **Edit only `src/`.** `lib/` (tsc) and `dist/` (rollup) are generated artifacts.

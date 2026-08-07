@@ -71,6 +71,7 @@
 - Removed the child-effect slot-recycling machinery from `EffectImpl` (`curChildEffectSlot`, `getCurrentChildEffect()`). It was unreachable — `run()` clears the child list before every callback — and suggested an optimization that never existed. `childEffects` is a plain list now; behaviour is unchanged (IMP-001)
 - `SignalGroup.findOrCreate()` checks `store.get(object)` before constructing, instead of unconditionally building a full `SignalGroup` (four `Set`s, two `Map`s, a `WeakMap`, `WeakRef`, `FinalizationRegistry.register`, `eventize(this)`) and discarding it on every cache hit. The private constructor's own `store.has()` check stays in place as a safety net for direct/re-entrant construction, it just no longer carries the common case (PERF-002)
 - `SignalAutoMap.updateFromProps()` now computes its entries and returns before opening a `batch()` when there are none, matching the guard `update()` already had for an empty `Map` (PERF-004)
+- Added `fast-check` as a devDependency for the new ordering property suite
 
 ### Tests
 
@@ -81,6 +82,7 @@
 - The one assertion in the project that hung on a wall-clock threshold — the `Promise.race` in the ASYNC-005 `SignalLink.spec.ts` test — now races against a macrotask sentinel (`setImmediate`) instead of a 200 ms `setTimeout`, so the outcome is decided by event-loop ordering rather than a shared CI runner's timing. The two remaining `rejects.toBeDefined()` calls in `SignalLink.spec.ts` now pin down the concrete rejection reason (`controller.signal.reason`), matching the other eight rejection assertions in the file (TEST-011, TEST-015)
 - Coverage thresholds are now per file instead of one global average, staggered across three tiers (a floor under every file, 100% for every file outside the current audit worklist, and a 100%-with-slack tier for the files still on it) (TEST-006)
 - A new smoke test (`smoke/dist-smoke.test.ts`, `pnpm test:smoke`) loads the built `dist/` through the package's own `exports` map on plain Node, instead of anything in `src/`. It is the first test where a `@signal() accessor` application is lowered by **tsc**, the way a consumer's own compiler would, rather than by SWC's `decoratorVersion: '2022-03'`, which every other decorator test runs through (TEST-008)
+- A new fast-check property suite (`src/ordering.property.spec.ts`) pins the ordering invariants that only ever had one or two handwritten examples: priority order with and without a batch, dedup and final-value visibility in a batch flush, nested batches behaving like one flat batch, nested effects rebuilding in pre-order on every rerun, and a memo read during a flush never seeing a stale value. All five `it()` blocks run against a fixed seed for reproducible failures (TEST-012)
 
 ### Build System
 
