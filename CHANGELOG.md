@@ -63,6 +63,12 @@
 - A link callback that destroys its own link mid-propagation no longer throws `TypeError: Cannot assign to read only property 'lastValue'` out of the `signal.set()` that started the delivery, and the remaining links on that source are served to the end. `updateValue()` re-checks `isDestroyed` after handing control to application code (BUG-001)
 - `SignalLink.destroy()` sets `isDestroyed` before it emits `DESTROY`, so an `on()` listener that calls `destroy()` again hits the guard instead of recursing into an unprotected teardown until the stack overflows (BUG-002)
 - A propagation overtaken by a feedback write no longer appends its stale value afterwards: `'value'` and `lastValue` carry the value that survived, so a `nextValue()`/`asyncValues()` consumer never sees a regression to an older value (BUG-008)
+- An effect run inside `beQuiet()` keeps its dependencies instead of unsubscribing them. This hit the `{autorun: false}` pattern, where the owner wraps its own `run()` in a quiet frame: the effect went permanently deaf afterwards — no write reached it, `run()` was a no-op — and kept counting in `getEffectsCount()` (BUG-005)
+- An effect callback that throws *after* reading still unsubscribes the signals it stopped reading — the pruning now sits in a `finally`. A deterministically failing effect used to keep a live RECALL subscription on a signal it no longer read, running into the same error on every write to it (BUG-006)
+- A callback that throws *before* its first read keeps every dependency instead of committing the empty set it never got to build, so a single transient failure no longer leaves the effect permanently deaf (BUG-006)
+- An effect that writes a signal it depends on now runs the cleanup of **every** nested run instead of storing only the oldest. A superseded or displaced cleanup runs right away, the same way a superseded `async` run's cleanup does (BUG-007)
+- A superseded cleanup that throws synchronously now reports to `onEffectError()` with `phase: 'cleanup'` instead of surfacing at whoever wrote the signal — for the `destroy()` path that throw used to escape the teardown entirely (BUG-007)
+- A cleanup that writes a signal can now trigger further effect runs, because it actually runs at the point it is superseded rather than being dropped (BUG-007)
 
 ### Documentation
 

@@ -126,6 +126,8 @@ Two constraints on the handler: it must be **synchronous or catch its own errors
 
 The cleanup an `async` callback resolves to runs **late** — right when the promise settles — when the effect has re-run or been destroyed in the meantime (pitfall 11a). Nothing is awaited before the next run.
 
+The synchronous case knows the same rule: a run overtaken by a re-entrant self-write hands its cleanup over at once instead of losing it (pitfall 9).
+
 ## Memos
 
 ```ts

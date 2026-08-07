@@ -8,6 +8,7 @@ import {
   once,
 } from '@spearwolf/eventize';
 import {getCurrentBatch} from './batch.js';
+import {isQuiet} from './bequiet.js';
 import {throwCollectedErrors} from './collect-errors.js';
 import {
   $createEffect,
@@ -164,6 +165,15 @@ export class EffectImpl {
 
   #lostSignals: Set<symbol> = new Set();
   readonly #signalSubscriptions: Map<symbol, Array<() => void>> = new Map();
+
+  /**
+   * Monotonic count of tracked reads this effect has seen, over its whole
+   * lifetime. Only ever compared against a value a single `run()` frame took
+   * before invoking the callback — "did anything get read since?" — never
+   * read for its absolute value. A counter rather than a flag because a
+   * frame's baseline has to survive a nested run bumping it.
+   */
+  #trackedReads = 0;
 
   readonly #destroyedSignals: Set<symbol> = new Set();
 
@@ -445,16 +455,61 @@ export class EffectImpl {
       if (this.hasStaticDeps()) {
         this.storeCleanupCallback(this.runWithoutAutoTracking(), generation);
       } else {
-        this.#lostSignals.clear();
-        for (const id of this.#signals) {
-          this.#lostSignals.add(id);
+        // BUG-005: `readSignal()` reports a read only while no quiet frame is
+        // open (`src/signal-core.ts:34`), so a run inside `beQuiet()` re-reads
+        // nothing this instance can hear. Filling `#lostSignals` anyway and
+        // pruning afterwards would therefore unsubscribe *every* dependency
+        // the effect had — permanently: nothing wakes it again, `run()` finds
+        // `shouldRun === false`, and it sits in `getEffectsCount()` as a deaf
+        // shell. Snapshot and prune are a matched pair; a run that could not
+        // record what it might lose must not throw anything away either.
+        // Taken once, up front, so both halves below decide by the same
+        // value.
+        const isTracking = !isQuiet();
+
+        if (isTracking) {
+          this.#lostSignals.clear();
+          for (const id of this.#signals) {
+            this.#lostSignals.add(id);
+          }
         }
-        this.storeCleanupCallback(
-          runWithinEffect(this, this.callback),
-          generation,
-        );
-        this.cleanupLostSignals();
-        this.#destroyedSignals.clear();
+
+        const readsBefore = this.#trackedReads;
+        let completed = false;
+
+        try {
+          this.storeCleanupCallback(
+            runWithinEffect(this, this.callback),
+            generation,
+          );
+          completed = true;
+        } finally {
+          // BUG-006: the callback is application code and may throw. Without
+          // this `finally` the prune was skipped while `shouldRun` was already
+          // `false` and the cleanup already consumed — the effect kept a live
+          // RECALL subscription on a signal it no longer reads, every write to
+          // which re-triggered it into (typically) the same throw. It also
+          // left `hasNoLiveSignals()` — and therefore the deferred
+          // self-destruction below — reading a dependency set that no run
+          // built. It healed on the next successful run, which a
+          // deterministically failing callback never has.
+          //
+          // A throw is only allowed to commit what the run actually got to
+          // see, though. `#lostSignals` starts out as *every* dependency and
+          // is emptied read by read, so a callback that throws before its
+          // first read leaves it complete — pruning there would read "not
+          // read anymore" off a run that never got as far as reading, and
+          // unsubscribe the lot. That is the deaf shell of BUG-005 again,
+          // reached from the other side: one transient failure and the effect
+          // never wakes again. A run that did read commits its partial set as
+          // before (that is BUG-006, and it heals on the next run because
+          // something is still subscribed); a completed run always commits,
+          // including the one that legitimately read nothing at all.
+          if (isTracking && (completed || this.#trackedReads > readsBefore)) {
+            this.cleanupLostSignals();
+            this.#destroyedSignals.clear();
+          }
+        }
       }
     } finally {
       this.#runDepth--;
@@ -521,6 +576,7 @@ export class EffectImpl {
     if (this.#destroyed) return;
     if (this.#suppressAutoTracking) return;
 
+    this.#trackedReads++;
     this.#lostSignals.delete(signalId);
 
     if (!this.#signals.has(signalId)) {
@@ -696,27 +752,13 @@ export class EffectImpl {
    *
    * A rejection of the *callback* promise is reported through
    * {@link emitEffectError} with phase `callback`, current run or not.
-   *
-   * **The synchronous branch still ignores `generation`.** There, stale
-   * means re-entrancy: a callback writes a signal it depends on, the inner
-   * run completes first, and the outer run then overwrites the inner
-   * cleanup with its own, older one. That is how this library has always
-   * behaved, and the `#runDepth` guard exists precisely because such
-   * recursion is a legitimate (if bounded) fixpoint pattern here. Changing
-   * it would change synchronous semantics for every self-writing effect —
-   * a decision of its own, and not the resource leak this method was
-   * fixed for.
    */
   private storeCleanupCallback(result: unknown, generation: number): void {
     if (!isThenable(result)) {
       // Same tolerance as the async branch below: a callback returning
       // something that is not a function has simply returned no cleanup.
       if (typeof result === 'function') {
-        if (this.#destroyed) {
-          this.runOrphanedCleanupCallback(result as VoidFunc);
-        } else {
-          this.#nextCleanupCallback = result as VoidFunc;
-        }
+        this.acceptCleanupCallback(result as VoidFunc, generation);
       }
       return;
     }
@@ -724,16 +766,62 @@ export class EffectImpl {
     Promise.resolve(result).then(
       (cleanup) => {
         if (typeof cleanup !== 'function') return;
-        if (this.#destroyed || generation !== this.#generation) {
-          this.runOrphanedCleanupCallback(cleanup as VoidFunc);
-          return;
-        }
-        this.#nextCleanupCallback = cleanup as VoidFunc;
+        this.acceptCleanupCallback(cleanup as VoidFunc, generation);
       },
       (error) => {
         emitEffectError(this, error, 'callback');
       },
     );
+  }
+
+  /**
+   * Take a cleanup the effect callback produced and decide where it goes:
+   * into the single `#nextCleanupCallback` slot, or straight to
+   * {@link runOrphanedCleanupCallback} because nobody will ever call it
+   * from that slot.
+   *
+   * Two ways to be too late, and both used to end in a silently dropped
+   * cleanup on the synchronous path (BUG-007):
+   *
+   * - **Superseded.** An effect that writes a signal it depends on
+   *   re-enters `run()`; the `#runDepth` guard exists precisely because
+   *   that is a legitimate, bounded fixpoint pattern here. Every nested
+   *   run acquires its own resources and returns its own cleanup, but the
+   *   *outermost* run returns last — so the oldest cleanup used to win the
+   *   slot and every inner one was thrown away unrun. `destroy()` then
+   *   released the resources of a long-superseded state and leaked the
+   *   current one. The generation comparison the async branch already made
+   *   answers this for both branches: a run whose number is no longer the
+   *   current one hands its cleanup over instead of overwriting a newer.
+   *
+   * - **Displaced.** The slot is normally empty here, because `run()`
+   *   consumes it through {@link runCleanupCallback} before the callback is
+   *   invoked. It is not empty when a *cleanup* re-entered `run()`: that
+   *   nested run stored its cleanup after the outer one had already
+   *   emptied the slot, and the outer run — the current generation, so the
+   *   check above lets it through — then overwrote it. Running the
+   *   displaced one is the same rule as above, applied to the other end of
+   *   the collision.
+   *
+   * Both cases run the cleanup at the earliest moment it is known to be
+   * stale, which is the best available: nobody else holds that run's
+   * resource, so this is not a double release, and it is the only thing
+   * that will ever release it.
+   */
+  private acceptCleanupCallback(cleanup: VoidFunc, generation: number): void {
+    if (this.#destroyed || generation !== this.#generation) {
+      this.runOrphanedCleanupCallback(cleanup);
+      return;
+    }
+
+    // Assign before running the displaced one: a displaced cleanup may write
+    // signals and re-enter run(), which would otherwise find the stale slot
+    // and run the very same cleanup a second time.
+    const displaced = this.#nextCleanupCallback;
+    this.#nextCleanupCallback = cleanup;
+    if (displaced != null) {
+      this.runOrphanedCleanupCallback(displaced);
+    }
   }
 
   private runCleanupCallback(): void {

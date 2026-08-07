@@ -135,6 +135,11 @@ createEffect(() => {
 - On `destroy()` the effect is already marked destroyed and unsubscribed when
   the cleanup runs. A cleanup that resets a signal the effect depends on
   therefore triggers no final run — and no cleanup gets stranded.
+- An effect that writes a signal it depends on re-enters `run()`, and every
+  nested run gets its own cleanup. Such a cleanup does not run as the *next*
+  one: it runs the moment the next run overtakes it. Same rule as the `async`
+  case two sections down, minus the timing blur — here the moment is exact and
+  synchronous.
 
 ### `async` callbacks: the cleanup runs late
 
@@ -336,7 +341,12 @@ createEffect(() => {
 ```
 
 Inside `beQuiet()`, all reads are untracked **and** all writes are silent.
-Counter-based, so it nests.
+Counter-based, so it nests. Wrapping a single read drops that signal from the
+set, as above; wrapping a **whole run** changes no dependency set at all — an
+`eff.run()` executed inside the frame keeps its dependencies, while an effect
+*created* inside it never gets any. The frame has to sit around `run()` for
+that: a callback wrapping its own whole body is a tracked run that reads
+nothing and loses every dependency.
 
 ## Hibernate
 

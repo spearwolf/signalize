@@ -84,6 +84,10 @@ settles, and a rejection goes to `onEffectError(cb)` instead of becoming an
 unhandled rejection. Details under
 [`onEffectError`](#oneffecterrorcb-priority---void) and in
 [recipes.md](./recipes.md#async-callbacks-the-cleanup-runs-late).
+The synchronous case knows the same rule: a run that a re-entrant self-write
+overtook executes its cleanup at once instead of putting it in the slot, so an
+effect writing a signal it depends on gets the cleanup of **every** nested run,
+not only the oldest.
 
 **`options`** *(`EffectOptions`)*:
 
@@ -184,8 +188,9 @@ often because the call stack that triggered them is long gone: the promise of
 an `async` effect callback rejected, or the promise of an `async` cleanup
 callback did. A synchronous `throw` from a cleanup that is still running as
 part of `run()` or `destroy()` normally keeps propagating to whoever triggered
-it instead — except a stale cleanup: one whose run was superseded or whose
-effect is already destroyed by the time it runs, sync or not, has no such
+it instead — except a stale cleanup: one whose run was superseded (also
+synchronously, by a re-entrant self-write) or whose effect is already
+destroyed by the time it runs, sync or not, has no such
 caller left to throw at even with a full stack still present, so it lands here
 too, with `phase: 'cleanup'`.
 
@@ -397,6 +402,19 @@ to `onEffectError()` instead (see `createEffect`).
 
 Inside `callback`, signal **reads do not subscribe** the surrounding effect,
 and signal **writes do not emit**. Calls nest via an internal counter.
+
+Wrapping a **whole effect run** in a quiet frame does not change that effect's
+dependency set — unlike the ordinary case above, where a `beQuiet()` around a
+single read inside a tracked run is exactly what drops that one signal from the
+set. An effect you run inside the frame — the `{autorun: false}` case —
+executes its callback and keeps the dependencies it had; its reads in that run
+count as little as any other read in the frame, and the set realigns on the
+next tracked run. »Whole run« means the frame is opened around `run()` from
+outside: a callback that wraps its own entire body instead starts as a tracked
+run, records nothing, and therefore drops **all** its dependencies at the end
+of that run. An
+effect **created** inside a quiet frame subscribes to nothing and never runs
+again: use `hibernate()` to step out of the frame when a run is meant to track.
 
 ### `isQuiet(): boolean`
 
