@@ -118,9 +118,9 @@ describe('SignalLink', () => {
       const controller = new AbortController();
       controller.abort();
 
-      await expect(
-        con.nextValue({signal: controller.signal}),
-      ).rejects.toBeDefined();
+      await expect(con.nextValue({signal: controller.signal})).rejects.toBe(
+        controller.signal.reason,
+      );
 
       con.destroy();
       destroySignal(sigA);
@@ -139,7 +139,7 @@ describe('SignalLink', () => {
 
       controller.abort();
 
-      await expect(pending).rejects.toBeDefined();
+      await expect(pending).rejects.toBe(controller.signal.reason);
       expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
 
       con.destroy();
@@ -439,7 +439,14 @@ describe('SignalLink', () => {
 
       const raced = await Promise.race([
         iter2.next(),
-        new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 200)),
+        // Not a wall-clock threshold: a macrotask only runs once the
+        // microtask queue drains, so this sentinel wins only if iter2's
+        // read never settles in microtasks — the outcome is decided by
+        // event-loop ordering, not runner speed. This does not prove
+        // iter1's cleanup left the shared retained slot alone: `sigA.set(3)`
+        // above repopulates that slot regardless, so a wrongly-early
+        // `retainClear()` would be masked here, not caught.
+        new Promise((resolve) => setImmediate(() => resolve('TIMEOUT'))),
       ]);
 
       expect(raced).toEqual({value: 3, done: false});
