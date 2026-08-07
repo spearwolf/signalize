@@ -380,9 +380,9 @@ describe('SignalGroup teardown robustness', () => {
   });
 
   it('static SignalGroup.clear() reports every failing group, AggregateError for several', () => {
-    [0, 1, 2].map((i) => {
+    for (const i of [0, 1, 2]) {
       const host = {};
-      const group = SignalGroup.findOrCreate(host);
+      SignalGroup.findOrCreate(host);
       const sig = createSignal(0, {attach: host});
 
       createEffect(
@@ -398,9 +398,7 @@ describe('SignalGroup teardown robustness', () => {
       );
 
       link(sig, () => {}, {attach: host});
-
-      return group;
-    });
+    }
 
     let caught: unknown;
     try {

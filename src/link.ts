@@ -18,13 +18,16 @@ import {ISignalImpl, SignalLike, SignalReader} from './types.js';
 // That WeakMap outer layer does not make an individual link collectible
 // while its source is still reachable, though (MEM-007). The inner `Map` is
 // a strong map: as long as the source signal is reachable, every link ever
-// created on it — its callback closure, its target reference, both of its
-// subscriptions on the global queues — stays reachable too, and letting go
-// of the returned `SignalLink` and waiting for GC does not change that. The
-// only ways out *while the source lives* are `destroy()`, `unlink()`, or a
-// cleared `{attach}` group. Explicitly destroying the source (or a signal
-// target) tears every link on it down the same way, fully — including their
-// global-queue subscriptions.
+// created on it — its callback closure, its target reference, all of its
+// subscriptions on the global queues (two for a callback target, three for
+// a signal target) — stays reachable too, and letting go of the returned
+// `SignalLink` and waiting for GC does not change that. The only ways out
+// *while the source lives* are `destroy()`, `unlink()`, or a cleared
+// `{attach}` group. Explicitly destroying the source tears down every link
+// on it the same way, fully — including their global-queue subscriptions.
+// Destroying a signal *target* takes down the links that point at it, not
+// the other links on the same source: with three links on one source,
+// `destroySignal(t1)` leaves two.
 //
 // If a link and its source become unreachable *together* instead (the
 // source was never `destroySignal()`d, just dropped along with every link
@@ -60,14 +63,16 @@ let gLinksCount = 0;
 // reaching this callback already required the link (and the strong entry in
 // the inner `Map` above) to become unreachable, which — per that comment —
 // only happens once its source signal is gone too. It corrects the *count*;
-// it does not release anything. Both of the link's subscriptions on
+// it does not release anything. All of the link's subscriptions on
 // `globalSignalQueue`/`globalDestroySignalQueue` (see `SignalLink`'s
 // constructor) are still registered when this fires, and stay registered
 // for good — their closures go through a `WeakRef` (MEM-002), so once it
-// derefs to `undefined` they are permanent no-ops, not gone. Measured: after
-// 200 links are collected this way, `getSubscriptionCount(globalSignalQueue)`
-// and `getSubscriptionCount(globalDestroySignalQueue)` both still read 200,
-// unchanged from immediately before the collection.
+// derefs to `undefined` they are permanent no-ops, not gone. Measured with
+// callback targets: after 200 links are collected this way,
+// `getSubscriptionCount(globalSignalQueue)` and
+// `getSubscriptionCount(globalDestroySignalQueue)` both still read 200,
+// unchanged from immediately before the collection — for signal targets the
+// second number would be 400.
 const gLinkFinalizer = new FinalizationRegistry<void>(() => {
   if (gLinksCount > 0) {
     gLinksCount -= 1;

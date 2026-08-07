@@ -47,7 +47,7 @@ signal
 // types: SignalDecoratorOptions, SignalReaderDecoratorOptions
 ```
 
-There is no memo decorator — bind a memo to the instance group with `createMemo(..., {attach: this})`.
+There is no memo decorator — bind a memo to the instance group with `createMemo(..., {attach: this})`, which dies with the surrounding effect if the instance is constructed inside one (`pitfalls.md`, 7a).
 
 ## Signals
 
@@ -113,14 +113,14 @@ onDestroyEffect((eff) => {});  // → unsubscribe
 EffectImpl.maxDepth = 256;     // synchronous self-write recursion guard
 ```
 
-### Async callbacks
+### Effect errors and async callbacks
 
 ```ts
 onEffectError(({error, effect, effectId, phase}) => {}, priority?);  // → unsubscribe
 // phase: 'callback' | 'cleanup';  effect: FailingEffect = {id, destroy()}
 ```
 
-Reports rejections of `async` effect callbacks and `async` cleanups — the only failures that cannot be thrown at a caller. Without a handler they go to `console.error` with the effect id instead of becoming unhandled rejections. Synchronous throws are unaffected and propagate normally.
+Reports failures that have no caller left to throw at: rejections of `async` effect callbacks and `async` cleanups are the common case, plus a cleanup that throws synchronously when its throw can no longer reach a legitimate caller — a superseded run, an effect already destroyed, or one destroying itself as its own run winds down (pitfall 11b): it throws with a full stack present and still lands here. Without a handler they go to `console.error` with the effect id instead of becoming unhandled rejections. Every other synchronous throw normally propagates to whoever triggered the run, unaffected.
 
 Two constraints on the handler: it must be **synchronous or catch its own errors** (nothing awaits it, so `onEffectError(async p => { await report(p) })` with a failing `report` crashes the process exactly as before), and a synchronous throw out of it **stops the dispatch**, so lower-priority handlers miss that event.
 
@@ -259,6 +259,7 @@ class Foo {
 
   // derived values are plain memos attached to the instance group
   doubled = createMemo(() => this.count * 2, {attach: this});
+  // dies with the parent effect if the instance is built inside an effect body
 }
 ```
 

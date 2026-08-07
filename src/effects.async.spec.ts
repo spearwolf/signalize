@@ -371,10 +371,11 @@ describe('async effect callbacks', () => {
 
         effect.destroy();
 
-        // The generation must follow the order in which the callbacks ran,
-        // not the order in which the runs were entered — otherwise the outer
-        // run, whose promise is the newest, its cleanup would be stored last
-        // and the inner run's stale one would be the one that survives.
+        // The generation must follow the order in which the callbacks *ran*,
+        // not the order in which the runs were entered. Otherwise the outer
+        // run — whose promise is the newer one — would have its cleanup
+        // stored first and the inner run's stale cleanup would be the one
+        // left standing at `destroy()`.
         expect(log.at(-1)).toBe('cleanup:3');
       } finally {
         effect.destroy();

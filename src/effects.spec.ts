@@ -67,8 +67,9 @@ describe('createEffect', () => {
     expect(a()).toBe(123);
     expect(cleanupValues).toHaveLength(0);
 
-    // The cleanup of an async run only becomes eligible once its promise has
-    // settled — and only as long as that run is still the current one.
+    // The cleanup of an async run becomes eligible once its promise has
+    // settled. Whether that run is still the current one decides *when* it
+    // runs, not *whether*: see the superseded case twelve lines down.
     await settled();
 
     setA(666);

@@ -17,9 +17,9 @@ Everything below is the short list that is expensive to discover by reading code
 Package manager is **pnpm** (`pnpm@11.17.0`) — never `npm install`.
 
 - `pnpm cbt` — clean + compile + bundle + test. The local "done" gate.
-- `pnpm world` — adds `check`; **this is what matches CI** (`.github/workflows/ci.yml` runs `check + test`, not `cbt`).
+- `pnpm world` — adds `check`; the closest single command to CI, but **not** the whole of it: `.github/workflows/ci.yml` runs `check`, `test`, `test:gc` and `bench` (the last one informative, `continue-on-error`). A change touching GC or teardown paths needs `pnpm world` **and** `pnpm test:gc` before it is done.
 - `pnpm test -- <file>` / `pnpm test -- -t "<name>"` — single spec / by test name.
-- `pnpm test:gc` — the only way the `SignalGroup.gc.spec.ts` suite actually runs; plain `pnpm test` skips it.
+- `pnpm test:gc` — the only way the `SignalGroup.gc.spec.ts` and `link.gc.spec.ts` suites actually run; plain `pnpm test` skips all nine of their tests.
 - `pnpm fix` — Biome lint+format auto-fix.
 
 Full command table in `AGENTS.md`.
@@ -42,7 +42,7 @@ Full command table in `AGENTS.md`.
 
 ## Verifying subscription leaks
 
-For changes touching subscribe/unsubscribe paths, assert that nothing leaks: snapshot `getSubscriptionCount(queue, event?)` (from the test-only `src/assert-helpers.ts`) together with `getSignalsCount` / `getEffectsCount` / `getLinksCount` → run the scenario → destroy → assert restored. `unsubscribeEffect.spec.ts` is the reference.
+For changes touching subscribe/unsubscribe paths, assert that nothing leaks: snapshot `getSubscriptionCount(queue)` (one argument, imported straight from `@spearwolf/eventize` — `src/assert-helpers.ts` uses it but does not re-export it) together with `getSignalsCount` / `getEffectsCount` / `getLinksCount` → run the scenario → destroy → assert restored. For the per-event view there is `getSubscribedEventNames(queue)`. `unsubscribeEffect.spec.ts` is the reference.
 
 ## When the public API changes
 

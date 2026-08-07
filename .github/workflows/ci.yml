@@ -32,9 +32,9 @@ jobs:
       - run: pnpm test
         name: Run tests (with coverage gate)
 
-      # `pnpm test` skips SignalGroup.gc.spec.ts because `globalThis.gc` is
-      # absent without --expose-gc. Without this step those four tests never
-      # run on CI at all.
+      # `pnpm test` skips SignalGroup.gc.spec.ts and link.gc.spec.ts because
+      # `globalThis.gc` is absent without --expose-gc. Without this step those
+      # nine tests never run on CI at all.
       - run: pnpm test:gc
         name: Run GC suite (--expose-gc)
 

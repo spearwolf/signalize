@@ -110,12 +110,17 @@ groups. Clearing a group destroys everything in it.
 - **Automatic cleanup via `FinalizationRegistry`:** When the user object
   becomes unreachable, a registry callback invokes `group.clear()`. This
   requires that no strong reference path from the group back to the object
-  exists. However, an attached signal whose value holds a reference to the
-  object creates exactly such a path — the group holds the signal, the signal
-  holds the value. In this case, the object is never reclaimed and the callback
-  never fires. For `@signal accessor` fields storing a reference to `this`,
-  this is the normal pattern. Explicit `SignalGroup.delete(obj)` or
-  `group.clear()` in cleanup remains the reliable path.
+  exists — and any such path is enough to stop it. Two are ordinary: an
+  attached signal whose value holds a reference to the object (the group
+  holds the signal, the signal holds the value), and an attached effect
+  whose callback closure captures the object (the group holds the effect,
+  the effect holds the closure). Either way the object is never reclaimed
+  and the callback never fires. For `@signal accessor` fields storing a
+  reference to `this`, the first is the normal pattern. Explicit
+  `SignalGroup.delete(obj)` or `group.clear()` in cleanup remains the
+  reliable path. A teardown that throws inside the registry callback is
+  reported via `console.error` rather than re-raised — there is no caller
+  in that job to throw at.
 
 ## Decorators
 
@@ -130,7 +135,8 @@ TC39 standard form (`accessor` keyword, stage-3 semantics).
   cannot fire (see "Automatic cleanup" above). Explicit cleanup in a destructor
   or dispose method is required.
 - There is no memo decorator; a class-bound derived value is a
-  `createMemo(..., {attach: this})` in the class body.
+  `createMemo(..., {attach: this})` in the class body — which dies with the
+  surrounding effect if the instance is constructed inside one.
 
 ## Source layout
 

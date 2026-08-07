@@ -184,6 +184,7 @@ class Foo {
 
   // no memo decorator — bind a memo to the instance group instead
   doubled = createMemo(() => this.count * 2, {attach: this});
+  // dies with the parent effect if the instance is built inside an effect body
 }
 ```
 

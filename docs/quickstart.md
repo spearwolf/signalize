@@ -67,6 +67,8 @@ createEffect(() => console.log(c.value, c.doubled()));
 c.inc();
 ```
 
+A memo declared as a class field is created while the constructor runs — so if the instance is constructed inside an effect body, that constructor run *is* an effect body, and the memo dies with the parent effect's next rerun. `{attach}` gives it a group and a name, not a lifetime of its own (see [Recipes](./recipes.md)).
+
 Standards-track decorators only — set `experimentalDecorators: false` (or omit
 it). Use the `accessor` keyword on signal fields.
 

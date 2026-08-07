@@ -15,12 +15,16 @@ export type ValueChangedCallback<T> = (value: T) => VoidFunc | void;
 export type NonThenable<T> = T extends PromiseLike<unknown> ? never : T;
 
 /**
- * Where an asynchronously reported effect error came from:
- * - `callback` — the promise returned by the effect callback rejected
- * - `cleanup` — the promise returned by a cleanup callback rejected
+ * Where an effect error with no caller left to throw at came from:
+ * - `callback` — the promise returned by an `async` effect callback rejected
+ * - `cleanup` — the promise returned by an `async` cleanup rejected, or a
+ *   stale cleanup threw synchronously: one whose run was superseded, or
+ *   whose effect was already destroyed by the time it ran
  *
- * Synchronous throws are *not* reported here: they propagate to whoever
- * triggered the run.
+ * A synchronous throw from a cleanup that is still part of a live `run()` or
+ * `destroy()` normally keeps propagating to whoever triggered it instead of
+ * being reported here — a stale cleanup has no such caller left, full stack
+ * still present or not.
  */
 export type EffectErrorPhase = 'callback' | 'cleanup';
 
@@ -49,7 +53,10 @@ export interface EffectErrorPayload {
   readonly effect: FailingEffect;
   /** Unique id of that effect, handy for log lines. */
   readonly effectId: symbol;
-  /** Which of the two async callbacks rejected. */
+  /**
+   * Which callback failed — `cleanup` also covers a stale synchronous throw
+   * with no legitimate owner to catch it.
+   */
   readonly phase: EffectErrorPhase;
 }
 

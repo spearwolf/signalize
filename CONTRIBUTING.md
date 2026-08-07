@@ -29,16 +29,16 @@ pnpm install
 | Command        | Description                                  |
 | -------------- | -------------------------------------------- |
 | `pnpm cbt`     | **Primary command** - clean + compile + bundle + test |
-| `pnpm world`   | `clean + check + compile + bundle + test` — matches CI |
+| `pnpm world`   | `clean + check + compile + bundle + test` — CI scope minus `test:gc` |
 | `pnpm test`    | Run tests only (Vitest, with coverage gate)  |
 | `pnpm test:watch` | Vitest in watch mode                      |
-| `pnpm test:gc` | Adds `--expose-gc` so the GC suite runs      |
+| `pnpm test:gc` | Adds `--expose-gc` so `SignalGroup.gc.spec.ts` and `link.gc.spec.ts` run (nine tests otherwise skipped) |
 | `pnpm check`   | Run Biome (lint + format check)              |
 | `pnpm fix`     | Run Biome with auto-fix                      |
 | `pnpm compile` | TypeScript compilation only                  |
 | `pnpm clean`   | Remove build artifacts                       |
 
-**Always run `pnpm cbt` after making changes** to ensure build and tests pass. Use `pnpm world` (or `pnpm check && pnpm cbt`) to also run Biome — this matches what CI runs.
+**Always run `pnpm cbt` after making changes** to ensure build and tests pass. Use `pnpm world` (or `pnpm check && pnpm cbt`) to also run Biome, and add `pnpm test:gc` alongside it for anything touching GC or teardown paths — CI runs `check`, `test`, `test:gc` and `bench` (the last one informative, non-blocking), and `pnpm world` alone does not cover the GC suite.
 
 ### Project Structure
 
@@ -118,7 +118,7 @@ pnpm test:watch
 # Run specific test file
 pnpm test -- createSignal.spec.ts
 
-# Run the SignalGroup GC suite, which plain `pnpm test` skips
+# Run the GC suites (SignalGroup and link), which plain `pnpm test` skips
 pnpm test:gc
 ```
 

@@ -49,7 +49,7 @@ eff.run();   // ✓ call once if an initial pass is wanted
 Tracking is off, the effect context is not: effects created inside the callback
 are still child effects and die with the parent.
 
-**4 — Lazy memos do not push.** Default `lazy: false` behaves like a computed signal: dependent effects re-run when deps change. With `lazy: true` the memo only recomputes on read and dependents are *not* notified. There is no memo decorator — a class-bound memo is `createMemo(..., {attach: this})`.
+**4 — Lazy memos do not push.** Default `lazy: false` behaves like a computed signal: dependent effects re-run when deps change. With `lazy: true` the memo only recomputes on read and dependents are *not* notified. There is no memo decorator — a class-bound memo is `createMemo(..., {attach: this})`, which dies with the surrounding effect if the instance is constructed inside one (`references/pitfalls.md`, 7a).
 
 **5 — Cleanup is explicit.** Effects and links outlive the scope that created them, and an unattached one stays reachable from the global registries indefinitely. Pass `{attach: obj}` at creation and tear down with `SignalGroup.delete(obj)`.
 

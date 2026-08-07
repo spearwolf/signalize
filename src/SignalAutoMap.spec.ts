@@ -429,6 +429,9 @@ describe('SignalAutoMap', () => {
         'the effect died with its only, now-deleted dependency',
       );
 
+      // Not a liveness check — a destroyed signal stores writes and reads them
+      // back just the same (pitfall 6). This only shows the fresh entry is
+      // usable; that it is alive was settled by assertSignalsCount(1) above.
       reentrant!.value = 42;
       expect(reentrant!.value).toBe(42);
 

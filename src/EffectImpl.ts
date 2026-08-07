@@ -674,12 +674,13 @@ export class EffectImpl {
    *
    * **A stale cleanup is executed, not discarded.** It belongs to the run
    * that produced it, and it is the only thing that will ever release what
-   * that run acquired: run N+1 cleans up after run N+1, `destroy()` cleans
-   * up after the last stored cleanup. Dropping it — as this method used to
-   * — turned every `createEffect(async () => { const c = await open();
-   * return () => c.close(); })` into a leak on the ordinary unmount path,
-   * where `destroy()` overtakes the first `await`. Running it late is not
-   * a double-acquire: nobody else holds this run's resource.
+   * that run acquired. Nobody else will: the next run's cleanup releases
+   * the next run's resources, and `destroy()` runs the one cleanup it has
+   * stored — neither of them knows about this one. Dropping it — as this
+   * method used to — turned every `createEffect(async () => { const c =
+   * await open(); return () => c.close(); })` into a leak on the ordinary
+   * unmount path, where `destroy()` overtakes the first `await`. Running it
+   * late is not a double-acquire: nobody else holds this run's resource.
    *
    * The same applies to the synchronous branch when the effect destroyed
    * itself in the middle of its own callback. `run()` carries on to the

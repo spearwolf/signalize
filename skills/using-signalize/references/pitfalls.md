@@ -45,7 +45,7 @@ createEffect(() => {
 });
 ```
 
-**11b — A rejecting `async` callback is reported, not thrown.** It cannot reach the caller — the stack is long gone — so it goes to `onEffectError(cb)`, and to `console.error` with the effect id while no handler is registered, instead of becoming an unhandled rejection (which would terminate Node). Same for a rejecting `async` cleanup, reported with `phase: 'cleanup'`. A *synchronous* throw still propagates to whoever triggered the run.
+**11b — A rejecting `async` callback is reported, not thrown.** It cannot reach the caller — the stack is long gone — so it goes to `onEffectError(cb)`, and to `console.error` with the effect id while no handler is registered, instead of becoming an unhandled rejection (which would terminate Node). Same for a rejecting `async` cleanup, reported with `phase: 'cleanup'`. A *synchronous* throw normally propagates to whoever triggered the run — except a cleanup whose throw can no longer reach a legitimate caller: a superseded run, an effect already destroyed, or one destroying itself as its own run winds down. Those have none, full stack or not, and land here too with `phase: 'cleanup'`.
 
 **11c — An `async` `onEffectError` handler re-opens the hole it was meant to close.** Nothing awaits the handler, so a rejected promise coming out of it is an unhandled rejection like any other — and reporting to a remote service is the handler everyone writes first. Keep the handler synchronous and `.catch()` the send yourself. A handler that throws *synchronously* is caught, but eventize then aborts the dispatch: handlers with a lower priority never see that event.
 
@@ -63,12 +63,13 @@ createEffect(() => {
 
 **14 — `SignalGroup.findOrCreate(group)` returns the group itself.** Passing an existing `SignalGroup` is an identity no-op. `findOrCreate(null)` throws.
 
-**15 — `SignalGroup.delete(obj)` ≠ `g.clear()`.** Both clear; the static form additionally looks the group up by the host object. `g.off()` is the softer variant — it destroys attached effects and links and drops external subscriptions but keeps the signals alive. The instance method `destroy()` is deprecated and warns; use `clear()`.
+**15 — `SignalGroup.delete(obj)` ≠ `g.clear()`.** Both clear; the static form additionally looks the group up by the host object. `g.off()` is the softer variant — it destroys attached effects and links and drops external subscriptions but keeps the signals alive — except a memo signal `{attach}`ed inside an effect body, which belongs to that effect and dies with it, name and all (7a). The instance method `destroy()` is deprecated and warns; use `clear()`.
 
 **16 — Attaching a group does not keep the host object alive.** The registry is a `WeakMap` and the back-pointer a `WeakRef`, by design.
 
-**16a — There *is* a GC backstop, but do not rely on it.** `SignalGroup` registers its host object with a `FinalizationRegistry`; when that object becomes unreachable without an explicit `SignalGroup.delete(obj)` or `group.clear()`, the callback runs `clear()` and the attached signals, effects and links are reclaimed. Three limits make it insurance rather than a lifecycle:
+**16a — There *is* a GC backstop, but do not rely on it.** `SignalGroup` registers its host object with a `FinalizationRegistry`; when that object becomes unreachable without an explicit `SignalGroup.delete(obj)` or `group.clear()`, the callback runs `clear()` and the attached signals, effects and links are reclaimed; if that teardown throws, the error goes to `console.error`, because a registry callback has no caller to hand it to. **Four** limits make it insurance rather than a lifecycle:
 
+- Any strong reference path from the group back to its host object stops the object from ever becoming unreachable, so the callback never fires at all. An attached signal whose *value* holds the object and an attached effect whose *closure* captures it both do this, and measurement puts them on a par — 200 groups, 200 still alive after `gc()` either way. `@signal() accessor self = this` is the everyday version. The backstop covers exactly the case where nothing points back.
 - FR callbacks fire non-deterministically and may never run before the process exits, so nothing observable is guaranteed at any point in time.
 - It only covers resources reachable through a group with a *host object*. A self-keyed group (`findOrCreate()` with no argument, where `object === this`) is deliberately not registered, and anything created without `attach` is owned by nobody — it stays subscribed to the global queues until destroyed by hand.
 - Because timing is unobservable, leak assertions in tests must still use explicit teardown plus the counters; a passing `getSignalsCount()` check cannot be attributed to the registry.

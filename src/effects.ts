@@ -51,10 +51,15 @@ export const onDestroyEffect = (...args: unknown[]) =>
 /**
  * Subscribe to errors that an effect could not throw at anyone.
  *
- * Only *asynchronous* failures arrive here: the promise returned by an
- * `async` effect callback rejected, or the promise returned by an `async`
- * cleanup callback did. A synchronous throw keeps propagating to whoever
- * triggered the run and never reaches this channel.
+ * Failures arrive here when there is no legitimate caller left to throw at —
+ * most often because the call stack that triggered them is long gone: the
+ * promise returned by an `async` effect callback rejected, or the promise
+ * returned by an `async` cleanup callback did. A synchronous throw normally
+ * keeps propagating to whoever triggered the run instead — except a stale
+ * cleanup (one whose run was superseded, or whose effect is already
+ * destroyed by the time it runs): that has no such caller left to throw at
+ * even with a full stack still present, so it lands here too, with
+ * `phase: 'cleanup'`.
  *
  * As long as no handler is registered, such an error is written to
  * `console.error` with the effect id — it never becomes an unhandled

@@ -54,7 +54,8 @@ createEffect(() => render(count()));                                      // re-
 class Cart {
   @signal() accessor items: Item[] = [];
 
-  // Eager by default — attached to the instance group
+  // Eager by default — attached to the instance group.
+  // Built inside an effect body? Then the memo dies with that effect (pitfalls 7a).
   total = createMemo(() => this.items.reduce((s, x) => s + x.price, 0), {attach: this});
 
   destroy() { SignalGroup.delete(this); }
@@ -82,7 +83,7 @@ const baseline = [getSignalsCount(), getEffectsCount(), getLinksCount()];
 expect([getSignalsCount(), getEffectsCount(), getLinksCount()]).toEqual(baseline);
 ```
 
-Inside the signalize repo itself, `src/assert-helpers.ts` adds `getSubscriptionCount(queue, event?)` for per-queue subscription assertions.
+Inside the signalize repo itself, `src/assert-helpers.ts` uses `@spearwolf/eventize`'s `getSubscriptionCount(queue)` (one argument) for per-queue subscription assertions; `getSubscribedEventNames(queue)` gives the per-event view.
 
 ## Common rewrites
 

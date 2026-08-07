@@ -680,7 +680,9 @@ export class SignalGroup {
    *   their subscription; if a group signal was an external effect's only
    *   dependency, that effect is destroyed too.
    * - Attached signals stay alive and reachable (incl. by name); the group
-   *   remains in the registry and accepts new attachments.
+   *   remains in the registry and accepts new attachments — except a memo
+   *   signal `{attach}`ed inside an effect body, which belongs to that
+   *   effect and dies with it, name included.
    * - Child groups are recursively `off()`'d (not cleared).
    *
    * Use this when a component-style group should be paused/swapped without

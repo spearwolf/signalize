@@ -160,7 +160,7 @@ the parent's rerun.
 | `getEffectsCount()`       | Live effect count.                                                                 |
 | `onCreateEffect(cb)`      | Subscribe to effect-create events; returns an unsubscribe function.                |
 | `onDestroyEffect(cb)`     | Subscribe to effect-destroy events; returns an unsubscribe function. The effect passed to `cb` is already destroyed — `run()` on it does nothing. |
-| `onEffectError(cb, priority?)` | Subscribe to *asynchronous* effect failures; returns an unsubscribe function. |
+| `onEffectError(cb, priority?)` | Subscribe to effect failures with no caller left to throw at (async rejections, plus stale synchronous cleanups); returns an unsubscribe function. |
 
 ### `onEffectError(cb, priority?): () => void`
 
@@ -177,16 +177,17 @@ const unsubscribe = onEffectError(({error, effect, effectId, phase}) => {
 | `error`    | `unknown`                   | The rejection reason.                                        |
 | `effect`   | `FailingEffect`             | The failing effect — the real instance `onCreateEffect()` hands out, typed down to `{id, destroy()}`. Not the `Effect` returned by `createEffect()`: that is a wrapper, so `payload.effect === myEffect` is `false`. Compare `payload.effectId` instead. |
 | `effectId` | `symbol`                    | `effect.id`, handy for log lines.                            |
-| `phase`    | `'callback' \| 'cleanup'`   | Which of the two async callbacks rejected.                   |
+| `phase`    | `'callback' \| 'cleanup'`   | Which callback failed — `cleanup` also covers a stale synchronous throw with no legitimate owner to catch it. |
 
-Only failures that surface *after* the synchronous call stack is gone arrive
-here: the promise of an `async` effect callback rejected, or the promise of an
-`async` cleanup callback did. A synchronous `throw` from a cleanup that is
-still running as part of `run()` or `destroy()` keeps propagating to whoever
-triggered it and never reaches this channel — except a stale cleanup: one
-whose run was superseded or whose effect is already destroyed by the time it
-runs, sync or not, has no such caller left to throw at, so it lands here too,
-with `phase: 'cleanup'`.
+Failures land here when there is no legitimate caller left to throw at — most
+often because the call stack that triggered them is long gone: the promise of
+an `async` effect callback rejected, or the promise of an `async` cleanup
+callback did. A synchronous `throw` from a cleanup that is still running as
+part of `run()` or `destroy()` normally keeps propagating to whoever triggered
+it instead — except a stale cleanup: one whose run was superseded or whose
+effect is already destroyed by the time it runs, sync or not, has no such
+caller left to throw at even with a full stack still present, so it lands here
+too, with `phase: 'cleanup'`.
 
 > ⚠️ **The library will not turn these into unhandled rejections — but your
 > handler can.** Node terminates the process on an unhandled rejection by
@@ -425,11 +426,14 @@ a single one unchanged, several as an `AggregateError` in sweep order.
 When a user object becomes unreachable without an explicit `clear()` / `delete()`,
 a `FinalizationRegistry` callback runs `clear()` on the orphaned group. This
 requires that no strong reference path from the group back to the object exists
-— specifically, an attached signal whose value holds a reference to the object
-will keep it alive and prevent the callback from firing. For `@signal accessor`
-fields storing `this`, explicit `delete()` or `group.clear()` in your cleanup
-is the reliable approach. FR firing is non-deterministic — explicit cleanup
-remains preferred.
+— *any* such path keeps the object alive and stops the callback from ever firing.
+Two are ordinary: an attached signal whose value holds a reference to the object,
+and an attached effect whose callback closure captures it. Measured over 200
+groups, either one blocks reclamation completely. For `@signal accessor` fields
+storing `this`, explicit `delete()` or `group.clear()` in your cleanup is the
+reliable approach. FR firing is non-deterministic — explicit cleanup remains
+preferred. If that teardown throws, the error is reported via `console.error`
+and never re-raised: a registry callback has no caller left to receive it.
 
 ### Instance
 
@@ -451,6 +455,28 @@ The five walks over the group graph — `hasSignal()`, `signal()`, `runEffects()
 `off()`, `clear()` — refuse to re-enter a group they are already walking. A
 `DESTROY` listener that calls `clear()` again, or an `OFF` listener calling
 `off()`, gets a no-op instead of a blown stack.
+
+> **Teardown errors.** `clear()` and `off()` finish the entire teardown
+> before they report a failure. A cleanup callback that throws, or a
+> `DESTROY`/`OFF` listener that does, no longer aborts what comes after it.
+> For `clear()`: sibling effects are still destroyed, signals still torn
+> down, links still released, the group is still deregistered. For `off()`:
+> sibling effects are still destroyed, links still released and external
+> subscriptions still dropped — signals stay alive and the group stays
+> registered either way, as usual for `off()` — and it still emits its `OFF`
+> event. Either way the failures are collected and raised afterwards: a lone
+> one unchanged, several as an `AggregateError` whose `errors` array holds
+> them in teardown order. The one place they are not raised is the
+> `FinalizationRegistry` path described above, where they go to
+> `console.error` instead.
+
+Destroying a signal directly — `signal.destroy()` or `destroySignal(sig)` —
+also takes it out of the group that held it, name included: `hasSignal(name)`
+turns `false` and `signal(name)` returns `undefined` rather than the destroyed
+signal. If another signal is still a candidate for that name, it takes the slot
+over by the same rule `detachSignal()` uses. The same applies to attached
+effects: a destroyed effect leaves the group's set by itself instead of sitting
+there until the next `clear()`.
 
 ---
 

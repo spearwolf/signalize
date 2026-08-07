@@ -261,6 +261,8 @@ class Counter {
 }
 ```
 
+Constructing such a class inside an effect body makes the constructor run part of that effect — the memo then dies with the effect's next rerun, `{attach}` or not. See [Recipes & quirks](./docs/recipes.md).
+
 > The decorator API uses TC39 standard decorators (no `experimentalDecorators`).
 
 ## Good to know
@@ -331,9 +333,11 @@ pnpm install
 | `pnpm world` | clean + **check** + compile + bundle + test |
 
 **Which one to use:** `pnpm test` while iterating, and `pnpm world` before
-pushing — it is the only task that also runs Biome, which is what CI checks
-(`pnpm check && pnpm test`). `pnpm cbt` skips the linter, so a green `cbt` can
-still fail CI.
+pushing — it is the only task that also runs Biome, so a green `cbt` can still
+fail on the linter. It is not the whole of CI either:
+`.github/workflows/ci.yml` runs `check`, `test`, `test:gc` and `bench` (the
+last one informative, non-blocking), so anything touching GC or teardown paths
+needs `pnpm test:gc` alongside it.
 
 Tests are `*.spec.ts` files sitting next to the implementation in `src/`; only
 `src/` is edited by hand, `lib/` and `dist/` are generated. Details and code
