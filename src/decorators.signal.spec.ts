@@ -1,7 +1,9 @@
 import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
 import {signal} from './decorators.js';
 import {
+  createEffect,
   createMemo,
+  createSignal,
   destroyObjectSignals,
   destroySignal,
   findObjectSignalByName,
@@ -151,5 +153,61 @@ describe('@signal is a class accessor decorator', () => {
     );
 
     group.clear();
+  });
+
+  it('readAsValue: true makes the property getter an untracked read', () => {
+    class Foo {
+      @signal({readAsValue: true}) accessor foo = 1;
+    }
+
+    const foo = new Foo();
+
+    expect(foo.foo).toBe(1);
+    assertSignalsCount(1, 'after new Foo');
+
+    const tick = createSignal(0);
+    const runs: number[] = [];
+
+    const eff = createEffect(() => {
+      tick.get();
+      runs.push(foo.foo);
+    });
+
+    expect(runs).toEqual([1]);
+
+    // the write notifies the property's own signal, but the effect never
+    // subscribed to it — with the default (tracking) getter it would rerun
+    foo.foo = 2;
+    expect(foo.foo).toBe(2);
+    expect(runs).toEqual([1]);
+
+    // a tracked dependency does rerun it, and the untracked read then shows
+    // the value that was written in between
+    tick.set(1);
+    expect(runs).toEqual([1, 2]);
+
+    eff.destroy();
+    destroyObjectSignals(foo);
+    destroySignal(tick);
+  });
+
+  it('the property getter returns undefined once the object signals are destroyed', () => {
+    class Foo {
+      @signal() accessor foo = 1;
+    }
+
+    const foo = new Foo();
+    expect(foo.foo).toBe(1);
+
+    destroyObjectSignals(foo);
+
+    // the store is empty, so the accessor has nothing left to read from
+    expect(foo.foo).toBeUndefined();
+
+    // and the setter falls through its optional chain instead of throwing
+    expect(() => {
+      foo.foo = 42;
+    }).not.toThrow();
+    expect(foo.foo).toBeUndefined();
   });
 });

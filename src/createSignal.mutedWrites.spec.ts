@@ -135,4 +135,52 @@ describe('writes on muted or destroyed signals', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(sig.value).toBe(100);
   });
+
+  it('Signal#muted reads and writes the same flag as muteSignal()/unmuteSignal()', () => {
+    const sig = createSignal(1);
+    const onChange = vi.fn();
+    const unsubscribe = sig.onChange(onChange);
+
+    expect(sig.muted).toBe(false);
+
+    sig.muted = true;
+    expect(sig.muted).toBe(true);
+
+    sig.set(2);
+    sig.touch(); // touch() is suppressed on a muted signal too
+    expect(onChange).not.toHaveBeenCalled();
+
+    // the free functions and the accessor read and write the same flag
+    unmuteSignal(sig);
+    expect(sig.muted).toBe(false);
+    muteSignal(sig);
+    expect(sig.muted).toBe(true);
+
+    sig.muted = false;
+    expect(sig.muted).toBe(false);
+
+    // now touch() gets through and pushes the value written while muted
+    sig.touch();
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(2);
+
+    unsubscribe();
+    destroySignal(sig);
+  });
+
+  it('touch() on a destroyed signal does not notify', () => {
+    const sig = createSignal(1);
+    const onChange = vi.fn();
+    const unsubscribe = sig.onChange(onChange);
+
+    sig.set(2);
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    destroySignal(sig);
+
+    sig.touch();
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+  });
 });

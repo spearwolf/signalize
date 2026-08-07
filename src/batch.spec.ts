@@ -1,5 +1,6 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
 import {batch, getCurrentBatch} from './batch.js';
+import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {globalEffectCalledQueue, globalEffectQueue} from './global-queues.js';
@@ -285,6 +286,104 @@ describe('batch', () => {
 
       eff.destroy();
       destroySignal(a);
+    });
+  });
+
+  describe('effect priority inside a batch (TEST-002)', () => {
+    it('a higher-priority effect is spliced in front of one already queued', () => {
+      const low = createSignal(0);
+      const high = createSignal(0);
+
+      const callQueue: string[] = [];
+
+      const lowEffect = createEffect(
+        () => {
+          low.get();
+          callQueue.push('low');
+        },
+        {priority: 0},
+      );
+
+      const highEffect = createEffect(
+        () => {
+          high.get();
+          callQueue.push('high');
+        },
+        {priority: 1000},
+      );
+
+      expect(callQueue).toEqual(['low', 'high']);
+      callQueue.length = 0;
+
+      batch(() => {
+        low.set(1); // queued first at priority 0
+        high.set(1); // priority 1000 → must be spliced in front of that bucket
+      });
+
+      expect(callQueue).toEqual(['high', 'low']);
+
+      lowEffect.destroy();
+      highEffect.destroy();
+      destroySignal(low, high);
+    });
+
+    it('a memo queued after a plain effect still recomputes first', () => {
+      const source = createSignal(1);
+      const other = createSignal('a');
+
+      const callQueue: string[] = [];
+
+      const memo = createMemo(() => {
+        callQueue.push('memo');
+        return source.get() * 10;
+      });
+
+      const eff = createEffect(() => {
+        other.get();
+        callQueue.push('effect');
+      });
+
+      expect(callQueue).toEqual(['memo', 'effect']);
+      expect(memo()).toBe(10);
+      callQueue.length = 0;
+
+      batch(() => {
+        other.set('b'); // the plain effect goes into the queue first
+        source.set(2); // the memo has to jump the queue
+      });
+
+      expect(callQueue).toEqual(['memo', 'effect']);
+      expect(memo()).toBe(20);
+
+      eff.destroy();
+      destroySignal(source, other, memo);
+    });
+
+    it('Batch.run() ignores queue events that are not a RECALL', () => {
+      const a = createSignal(0);
+      const inner = createSignal('x');
+      const seen: string[] = [];
+
+      const outer = createEffect(() => {
+        const v = a.get();
+        // born during the flush: createEffect() emits $createEffect on
+        // globalEffectQueue, and the wildcard listener Batch.run() installs
+        // sees it with actionType === undefined
+        createEffect(() => {
+          seen.push(`${v}:${inner.get()}`);
+        });
+      });
+
+      expect(seen).toEqual(['0:x']);
+
+      batch(() => {
+        a.set(1);
+      });
+
+      expect(seen).toEqual(['0:x', '1:x']);
+
+      outer.destroy();
+      destroySignal(a, inner);
     });
   });
 });
