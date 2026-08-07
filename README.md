@@ -319,25 +319,27 @@ pnpm install
 
 | Task | Runs |
 | --- | --- |
-| `pnpm test` | Vitest, with coverage gate |
-| `pnpm test -- <file>` | A single spec, e.g. `pnpm test -- createSignal.spec.ts` |
-| `pnpm test -- -t "<name>"` | Only tests whose name matches |
+| `pnpm test` | Vitest, with coverage gate. Runs the `unit` and `gc` projects together — the GC suite runs here too, not just under `test:gc` |
+| `pnpm test <file>` | A single spec, e.g. `pnpm test createSignal.spec.ts` |
+| `pnpm test -t "<name>"` | Only tests whose name matches |
 | `pnpm test:watch` | Vitest in watch mode |
-| `pnpm test:gc` | Runs the GC suite that `pnpm test` skips |
+| `pnpm test:gc` | Runs every file serially with `--expose-gc` applied to the whole suite, not just the two GC spec files — not what makes the GC suite run, `pnpm test` already does that |
 | `pnpm bench` | Runs the microbenchmark suite in `bench/` |
 | `pnpm check` / `pnpm fix` | Biome lint + format — check only / auto-fix |
 | `pnpm compile` | `tsc` → `lib/` (types + sourcemaps) |
 | `pnpm bundle` | rollup → `dist/` |
 | `pnpm clean` | Remove build artifacts |
 | `pnpm cbt` | clean + compile + bundle + test |
-| `pnpm world` | clean + **check** + compile + bundle + test |
+| `pnpm world` | clean + **check** + compile + bundle + test + test:gc — the full blocking CI scope |
+
+A filtered run (`pnpm test <file>` or `pnpm test -t "<name>"`) always exits 1 —
+the per-file coverage gate fails for every file that did not run. That is the
+gate, not a failing test; read the test result above it.
 
 **Which one to use:** `pnpm test` while iterating, and `pnpm world` before
-pushing — it is the only task that also runs Biome, so a green `cbt` can still
-fail on the linter. It is not the whole of CI either:
-`.github/workflows/ci.yml` runs `check`, `test`, `test:gc` and `bench` (the
-last one informative, non-blocking), so anything touching GC or teardown paths
-needs `pnpm test:gc` alongside it.
+pushing — it is the only task that also runs Biome, and it covers the full
+blocking CI scope: `.github/workflows/ci.yml` runs `check`, `test`, `test:gc`
+and `bench` (the last one informative, non-blocking).
 
 Tests are `*.spec.ts` files sitting next to the implementation in `src/`; only
 `src/` is edited by hand, `lib/` and `dist/` are generated. Details and code

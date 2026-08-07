@@ -32,11 +32,14 @@ jobs:
       - run: pnpm test
         name: Run tests (with coverage gate)
 
-      # `pnpm test` skips SignalGroup.gc.spec.ts and link.gc.spec.ts because
-      # `globalThis.gc` is absent without --expose-gc. Without this step those
-      # nine tests never run on CI at all.
+      # `pnpm test` already covers SignalGroup.gc.spec.ts and link.gc.spec.ts
+      # via the `gc` project in vitest.config.ts, on the same default `forks`
+      # pool every project uses — there is no cross-file state that step
+      # alone would expose. This step instead runs every file serially
+      # (fileParallelism: false) with --expose-gc applied to the whole
+      # suite, not just those two files.
       - run: pnpm test:gc
-        name: Run GC suite (--expose-gc)
+        name: Run full suite serially, one file at a time (--expose-gc)
 
       # Informative only: shared runners make absolute timings too noisy for
       # a hard regression gate (see remediation-plan.md, PERF-003). This just
@@ -63,7 +66,7 @@ jobs:
                 fmt('functions'),
                 fmt('lines'),
                 '',
-                '_Threshold: branches ≥ 85%, functions ≥ 85%, lines ≥ 95%, statements ≥ 95%._',
+                '_Per-file thresholds: statements ≥ 97%, branches ≥ 85%, functions ≥ 96%, lines ≥ 98%; files outside the audit worklist ≥ 100%._',
                 ''
               ].join('\n');
               require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);

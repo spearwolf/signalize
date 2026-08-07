@@ -29,16 +29,18 @@ pnpm install
 | Command        | Description                                  |
 | -------------- | -------------------------------------------- |
 | `pnpm cbt`     | **Primary command** - clean + compile + bundle + test |
-| `pnpm world`   | `clean + check + compile + bundle + test` — CI scope minus `test:gc` |
-| `pnpm test`    | Run tests only (Vitest, with coverage gate)  |
+| `pnpm world`   | `clean + check + compile + bundle + test + test:gc` — the full blocking CI scope |
+| `pnpm test`    | Run tests only (Vitest, with coverage gate). Runs the `unit` and `gc` projects together — `SignalGroup.gc.spec.ts` and `link.gc.spec.ts` run here too, not just under `test:gc` |
 | `pnpm test:watch` | Vitest in watch mode                      |
-| `pnpm test:gc` | Adds `--expose-gc` so `SignalGroup.gc.spec.ts` and `link.gc.spec.ts` run (nine tests otherwise skipped) |
+| `pnpm test:gc` | Runs every file serially (no file parallelism) with `--expose-gc` applied to the whole suite, not just the two GC spec files — not what makes those nine tests run, `pnpm test` already does that via the `gc` project |
 | `pnpm check`   | Run Biome (lint + format check)              |
 | `pnpm fix`     | Run Biome with auto-fix                      |
 | `pnpm compile` | TypeScript compilation only                  |
 | `pnpm clean`   | Remove build artifacts                       |
 
-**Always run `pnpm cbt` after making changes** to ensure build and tests pass. Use `pnpm world` (or `pnpm check && pnpm cbt`) to also run Biome, and add `pnpm test:gc` alongside it for anything touching GC or teardown paths — CI runs `check`, `test`, `test:gc` and `bench` (the last one informative, non-blocking), and `pnpm world` alone does not cover the GC suite.
+Running only part of the suite (`pnpm test <file>`, `pnpm test -t "<name>"`) always ends with exit 1: the per-file coverage gate fails for every file that did not run. That is the gate reporting, not a failing test.
+
+**Always run `pnpm cbt` after making changes** to ensure build and tests pass. Use `pnpm world` (or `pnpm check && pnpm cbt`) to also run Biome and `test:gc` — CI runs `check`, `test`, `test:gc` and `bench` (the last one informative, non-blocking), and `pnpm world` covers the three blocking steps.
 
 ### Project Structure
 
@@ -116,9 +118,11 @@ pnpm test
 pnpm test:watch
 
 # Run specific test file
-pnpm test -- createSignal.spec.ts
+pnpm test createSignal.spec.ts
 
-# Run the GC suites (SignalGroup and link), which plain `pnpm test` skips
+# Run every file serially with --expose-gc applied to the whole suite, not
+# just the two GC spec files (SignalGroup and link suites already run under
+# plain `pnpm test` too, via the `gc` project)
 pnpm test:gc
 ```
 

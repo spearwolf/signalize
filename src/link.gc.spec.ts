@@ -4,8 +4,9 @@ import {getLinksCount, link, unlink} from './link.js';
 import {destroySignal} from './signal-core.js';
 
 // `globalThis.gc` is only available when Node is launched with --expose-gc
-// (e.g. via `pnpm test:gc`). Without it these tests would silently pass even
-// on a leaky implementation, so we skip the suite instead.
+// (e.g. via the `gc` project in vitest.config.ts, which `pnpm test` also
+// runs). Without it these tests would silently pass even on a leaky
+// implementation, so we skip the suite instead.
 const hasGc = typeof (globalThis as {gc?: () => void}).gc === 'function';
 const gcDescribe = hasGc ? describe : describe.skip;
 

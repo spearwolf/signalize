@@ -79,6 +79,11 @@
 - `SignalGroup.spec.ts`'s `detachGroup() removes child group` and `clear() detaches from parent group` now assert `getGroupMemberCounts()` after the detach instead of arguing through a re-attach that proved nothing. Every collection point in `SignalGroup.off()`/`clear()` that catches a throwing teardown step (a child group, a link, a detach listener, an `OFF`/`DESTROY` listener, a destroy-queue subscription) now has its own test proving the rest of the teardown still runs to completion. The second branch of the parent-chain cycle guard in `attachGroup()` — reachable only through a cyclic parent chain that the public API itself refuses to construct — is now exercised via the new `@internal` test seam `$setParentGroup` (TEST-001, TEST-004, TEST-009)
 - `Signal#muted`, `findObjectSignals()` and the other `object-signals.ts` lookups on a store-less object, the `@signal({readAsValue: true})` decorator option, the `[obj, name]` tuple overload of `touch()` (including its no-op guards), and the priority splice inside `batch()` now have tests — the new `src/object-signals.spec.ts` is this module's first spec file (TEST-002, TEST-003)
 - The one assertion in the project that hung on a wall-clock threshold — the `Promise.race` in the ASYNC-005 `SignalLink.spec.ts` test — now races against a macrotask sentinel (`setImmediate`) instead of a 200 ms `setTimeout`, so the outcome is decided by event-loop ordering rather than a shared CI runner's timing. The two remaining `rejects.toBeDefined()` calls in `SignalLink.spec.ts` now pin down the concrete rejection reason (`controller.signal.reason`), matching the other eight rejection assertions in the file (TEST-011, TEST-015)
+- Coverage thresholds are now per file instead of one global average, staggered across three tiers (a floor under every file, 100% for every file outside the current audit worklist, and a 100%-with-slack tier for the files still on it) (TEST-006)
+
+### Build System
+
+- `pnpm test` now runs the GC suites (`SignalGroup.gc.spec.ts`, `link.gc.spec.ts`) itself, via a dedicated `gc` project in `vitest.config.ts` (`--expose-gc`, Vitest's default `forks` pool), so they are measured in the same coverage run as everything else instead of only under `pnpm test:gc`. `pnpm world` now includes the `test:gc` step (TEST-005, TEST-014)
 
 ### Breaking Changes
 

@@ -161,12 +161,12 @@ Also avoid reading an imported binding at module-eval time across module boundar
 | Command | Runs |
 | --- | --- |
 | `pnpm cbt` | `clean + compile + bundle + test` — local "done" gate |
-| `pnpm world` | `clean + check + compile + bundle + test` — pre-release / CI scope minus `test:gc` |
-| `pnpm test` | Vitest (SWC transform, v8 coverage); roots = `src/` |
-| `pnpm test -- <pattern>` | single spec, e.g. `pnpm test -- createSignal.spec.ts` |
-| `pnpm test -- -t "<name>"` | filter by test name |
+| `pnpm world` | `clean + check + compile + bundle + test + test:gc` — the full blocking CI scope |
+| `pnpm test` | Vitest (SWC transform, v8 coverage); roots = `src/`. Runs two projects — `unit` and `gc` (`--expose-gc`, `fileParallelism: false`) — as a single run with one combined coverage map; per-file thresholds in `vitest.config.ts` |
+| `pnpm test <pattern>` | single spec, e.g. `pnpm test createSignal.spec.ts` |
+| `pnpm test -t "<name>"` | filter by test name |
 | `pnpm test:watch` | Vitest in watch mode, no coverage gate |
-| `pnpm test:gc` | adds `--expose-gc` so `SignalGroup.gc.spec.ts` and `link.gc.spec.ts` run instead of skipping (nine tests) |
+| `pnpm test:gc` | runs every file serially (`fileParallelism: false`, `vitest.gc.config.ts`) with `--expose-gc` applied to the whole suite; not what makes `SignalGroup.gc.spec.ts`/`link.gc.spec.ts` execute — `pnpm test` already does that, via the `gc` project, on the same default `forks` pool |
 | `pnpm test:debug` | Vitest under `--inspect-brk`, one file at a time |
 | `pnpm bench` | Vitest Bench over `bench/*.bench.ts`; informative in CI, no regression gate |
 | `pnpm compile` | `tsc --project tsconfig.lib.json` → `lib/` (types + sourcemaps) |
@@ -178,7 +178,9 @@ Also avoid reading an imported binding at module-eval time across module boundar
 | `pnpm checkPkgTypes` | `attw --pack` package types audit |
 | `pnpm dist` | clean + compile + bundle (no test) |
 
-`.github/workflows/ci.yml` runs `pnpm check`, `pnpm test`, `pnpm test:gc` and `pnpm bench` (the last one informative, non-blocking). `pnpm world` covers `check` and `test` only — add `pnpm test:gc` alongside it for the GC suite it skips; `pnpm bench` is CI's informative step and has no local gate of its own. `pnpm cbt` additionally skips `check`. Tooling is **Biome 2.x** (replaced ESLint + Prettier in v0.28) and **Vitest 4** (replaced Jest + ts-jest in v0.31).
+Any filtered run (`pnpm test <pattern>`, `pnpm test -t "<name>"`) ends with exit 1: the per-file coverage thresholds are evaluated against the files that did *not* run, so the gate always fails. Read the test result, not the exit code — it is not a test failure.
+
+`.github/workflows/ci.yml` runs `pnpm check`, `pnpm test`, `pnpm test:gc` and `pnpm bench` (the last one informative, non-blocking). `pnpm world` covers exactly the three blocking steps (`check`, `test`, `test:gc`); `pnpm bench` is CI's informative step and has no local gate of its own. `pnpm cbt` additionally skips `check` and `test:gc`. Tooling is **Biome 2.x** (replaced ESLint + Prettier in v0.28) and **Vitest 4** (replaced Jest + ts-jest in v0.31).
 
 The test transform runs through **SWC**, not Vite's built-in oxc pass: `vitest.config.ts` sets `oxc: false` and registers `unplugin-swc` with `decoratorVersion: '2022-03'`. oxc emits TC39 decorators verbatim, which Node cannot parse — without the plugin every decorator spec dies with `SyntaxError: Invalid or unexpected token`. Note also that TypeScript 7 ships no JS compiler API (`transpileModule` is gone), so ts-jest-style transformers are not an option.
 
