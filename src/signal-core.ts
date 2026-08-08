@@ -16,18 +16,55 @@ import type {ISignalImpl, SignalLike, SignalValueParams} from './types.js';
 
 let g_signalsCount = 0;
 
+// MEM-006: the counter's second half. `destroySignal()` is the only place
+// that decrements, and a signal that is merely dropped never gets there —
+// measured: 2000 signals collected (0 of 2000 WeakRefs survive a gc()) while
+// the counter stayed at 2000, for the life of the process. `getLinksCount()`
+// has had this correction since MEM-001; the signal counter is advertised for
+// exactly the same job and was the one place that quietly misled, in the
+// opposite direction.
+//
+// The held value is `undefined`, and that is the whole design: this callback
+// needs nothing but the module-level counter it closes over. A held value
+// that reaches the SignalImpl would keep it alive, and a SignalImpl holds its
+// value — in the decorator pattern that value *is* the host object. Measured
+// against the group rework of MEM-003: with `{sig: signal}` as the held
+// value, 1000 of 1000 hosts survive and the registry never fires; with
+// `undefined`, 0 of 1000.
+const signalFinalizer = new FinalizationRegistry<undefined>(() => {
+  --g_signalsCount;
+});
+
 /**
- * Register a newly created signal with the global instance counter.
+ * Register a newly created signal with the global instance counter, and with
+ * the finalizer that corrects it if the signal is dropped instead of
+ * destroyed.
  * @internal
  */
-export const incSignalsCount = (): void => {
+export const incSignalsCount = (signal: ISignalImpl<any>): void => {
   ++g_signalsCount;
+  // The unregister token is the signal itself: tokens are held weakly, so
+  // this adds no reachability. `destroySignal()` uses it to take the
+  // registration back out.
+  signalFinalizer.register(signal, undefined, signal);
 };
 
 /**
- * Get the current count of active (non-destroyed) signals.
- * Useful for debugging and testing to detect signal leaks.
- * @returns The number of active signals
+ * Get the current count of live signals — created, not destroyed, and still
+ * reachable. Useful for debugging and testing to detect signal leaks.
+ *
+ * A signal that is explicitly destroyed leaves the count immediately. A
+ * signal that is merely dropped leaves it once the garbage collector gets to
+ * it (MEM-006), which is a moment nobody can name or force: the counter is
+ * eventually consistent, never observably so. Treat a difference as a leak
+ * only after explicit teardown.
+ *
+ * The other direction matters just as much for tests: `0` does not mean
+ * "everything was cleaned up", it means "nothing is reachable any more" —
+ * dropping the last reference to a signal gets the count there without a
+ * single `destroySignal()` ever running.
+ *
+ * @returns The number of live signals
  */
 export const getSignalsCount = (): number => g_signalsCount;
 
@@ -108,6 +145,17 @@ export const destroySignal = (...signalLikes: SignalLike[]): void => {
     if (signal != null && !signal.destroyed) {
       signal.destroyed = true;
       signal.beforeRead = undefined;
+      // Take the registration back out before decrementing: a signal that is
+      // explicitly destroyed and *then* collected must not be counted down
+      // twice. Deliberately not the `if (gLinksCount > 0)` belt-and-braces
+      // that `link.ts` carries next to its own `unregister()` — a second
+      // guard here would be a new branch in the one file that has no branch
+      // headroom left (12 of 14 covered against the 85 % tier), and it would
+      // be a branch no test can drive in both directions. The token is
+      // sufficient: it is checked synchronously, it removes the cell even if
+      // the target has already been collected, and nobody can call this
+      // function on a signal that no longer exists.
+      signalFinalizer.unregister(signal);
       --g_signalsCount;
       emit(globalDestroySignalQueue, signal.id, signal.id);
     }

@@ -16,6 +16,17 @@ export const $queueUnsubscribes = Symbol.for(
   '@spearwolf/signalize/queueUnsubscribes',
 );
 
+// MEM-007: a `SignalAutoMap`'s handles for the per-entry subscriptions it
+// holds on `globalDestroySignalQueue`. Symbol-keyed for the same reason as
+// `$queueUnsubscribes` above — `src/SignalAutoMap.ts` has to hand exactly
+// this object to a `FinalizationRegistry` as its held value, a `#private`
+// field is unreachable from a test, and a public named field would be new
+// API surface. `src/constants.ts` rather than `SignalAutoMap.ts` because
+// `src/index.ts` re-exports the latter with `export *`.
+export const $autoMapResources = Symbol.for(
+  '@spearwolf/signalize/autoMapResources',
+);
+
 export const VALUE = 'value';
 export const MUTE = 'mute';
 export const UNMUTE = 'unmute';

@@ -26,7 +26,7 @@ c.touch(); c.destroy();
 c.muted = true;    c.muted = false;   // muted: set() still stores, nobody is notified
 c.onChange(cb);    // → unsubscribe()
 
-isSignal(x); getSignalsCount();
+isSignal(x); getSignalsCount();   // live = created, not destroyed, still reachable
 value(c); value([obj, 'prop']);  // untracked
 touch(c); touch([obj, 'prop']);  // notify
 ```
@@ -158,6 +158,10 @@ m.delete('k');                   // destroy that signal + drop the entry → boo
 m.clear();
 ```
 
+An entry whose signal is destroyed from the outside leaves the map in the same
+turn — `has(key)` goes `false`, `get(key)` creates a fresh one, `delete(key)`
+reports `false`.
+
 ## Object signals
 
 ```ts
@@ -196,3 +200,7 @@ class Foo {
 ```ts
 getSignalsCount(); getEffectsCount(); getLinksCount();
 ```
+
+`getSignalsCount()` and `getLinksCount()` also come down on their own once a
+dropped signal or link is collected — eventually, never observably. Compare
+them after explicit teardown, not after dropping references.

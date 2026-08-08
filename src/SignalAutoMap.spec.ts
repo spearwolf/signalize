@@ -4,10 +4,13 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './assert-helpers.js';
+import {$autoMapResources} from './constants.js';
+import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import type {Signal} from './Signal.js';
 import {SignalAutoMap} from './SignalAutoMap.js';
+import {SignalGroup} from './SignalGroup.js';
 import {destroySignal, isSignal} from './signal-core.js';
 
 describe('SignalAutoMap', () => {
@@ -295,6 +298,101 @@ describe('SignalAutoMap', () => {
     sm.clear();
   });
 
+  it('churn leaves no dead handles in the held value (MEM-007)', () => {
+    // `#drop()` takes the handle out of `[$autoMapResources].unsubs` as well
+    // as out of `#unsubs`. Only the second one is load-bearing for the map's
+    // own behaviour, which is why the first survives every functional test:
+    // the set is the held value of the resource finalizer, so a handle left
+    // in it is a closure held strongly for as long as the map lives.
+    // Measured without this line: 5000 get/delete cycles leave 5000 dead
+    // handles behind, on both churn routes.
+    const sm = new SignalAutoMap();
+    const resources = sm[$autoMapResources];
+
+    expect(resources.unsubs.size).toBe(0);
+    sm.get('warmup');
+    expect(resources.unsubs.size, 'the set really is in use').toBe(1);
+    sm.delete('warmup');
+
+    // Route 1: the entry is torn down through the map.
+    for (let i = 0; i < 50; i += 1) {
+      sm.get(`k${i}`);
+      expect(sm.delete(`k${i}`)).toBe(true);
+    }
+    expect(resources.unsubs.size, 'after 50 get()/delete() cycles').toBe(0);
+
+    // Route 2: the entry is evicted by a destroy from the outside.
+    for (let i = 0; i < 50; i += 1) {
+      destroySignal(sm.get(`x${i}`));
+    }
+    expect(resources.unsubs.size, 'after 50 external destroys').toBe(0);
+
+    expect([...sm.keys()].length).toBe(0);
+    assertSignalsCount(0, 'no entry survived either route');
+  });
+
+  it('clear() releases the hook of an entry whose signal is already dead (MEM-007)', () => {
+    // Two ways such an entry can exist after MEM-007, and both go through
+    // `fromProps()` with a value that already *is* a signal, because
+    // `createSignal(sig)` hands that back unchanged instead of creating
+    // anything. Either the signal is already a corpse when the map takes it
+    // on — then its `destroy()` is a no-op, emits nothing, and the per-entry
+    // listener never fires (the case set up below) — or it is alive but
+    // carries an older subscriber whose throw aborts the destroy emit before
+    // the map's own listener is reached. Same outcome: a dead entry the
+    // listener never heard about.
+    //
+    // Only `clear()` dropping every key before it destroys anything gets
+    // that subscription off the queue. Destroying first and clearing the map
+    // afterwards leaves it there for the lifetime of the process.
+    const destroySubscriptions = getSubscriptionCount(globalDestroySignalQueue);
+
+    const corpse = createSignal(1);
+    destroySignal(corpse);
+    assertSignalsCount(0, 'the value is a corpse before the map ever sees it');
+
+    const sm = SignalAutoMap.fromProps({a: corpse});
+    expect(sm.has('a')).toBe(true);
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+      destroySubscriptions + 1,
+    );
+
+    sm.clear();
+
+    expect(sm.has('a')).toBe(false);
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+      destroySubscriptions,
+    );
+  });
+
+  it('clear() keeps an entry a re-entrant get() created during the teardown (MEM-007)', () => {
+    // `clear()` drops the keys first and destroys a snapshot afterwards, so
+    // a cleanup that runs inside one of those destroys and calls `get(key)`
+    // gets a fresh, live signal — and it stays. Emptying `#signals` after
+    // the destroys would throw that entry away again.
+    const sm = new SignalAutoMap();
+    sm.get('a').set(1);
+
+    let reentrant: Signal<unknown> | undefined;
+    createEffect(() => {
+      sm.get('a').get();
+      return () => {
+        reentrant = sm.get('a');
+      };
+    });
+    assertEffectsCount(1, 'one effect depending on the entry');
+
+    sm.clear();
+
+    expect(reentrant).not.toBeUndefined();
+    expect(sm.has('a')).toBe(true);
+    expect(sm.get('a')).toBe(reentrant);
+    assertSignalsCount(1, 're-entrant get() left one live signal behind');
+
+    sm.clear();
+    assertSignalsCount(0, 'the second clear() takes the fresh entry too');
+  });
+
   it('clear() properly destroys all signals', () => {
     const sm = SignalAutoMap.fromProps({a: 1, b: 2, c: 3});
     assertSignalsCount(3);
@@ -339,13 +437,12 @@ describe('SignalAutoMap', () => {
     sm.clear();
   });
 
-  // Pins down the current behavior: SignalAutoMap caches signals by key and
-  // does NOT detect external destruction. A signal destroyed via
-  // destroySignal()/Signal#destroy() is still returned by get(), and reads
-  // observe the last cached value while writes become silent no-ops. If this
-  // ever changes (e.g. auto-recreate on destroy), update this test to match.
+  // MEM-007: a SignalAutoMap subscribes to the destruction of every signal
+  // it creates, so an entry whose signal is destroyed from the outside leaves
+  // the map in the same synchronous turn. There is no lingering corpse in the
+  // map any more — only in the hands of whoever kept the `Signal` object.
   describe('externally destroyed signals', () => {
-    it('get() returns the same destroyed signal after destroySignal()', () => {
+    it('an externally destroyed signal drops out of the map (MEM-007)', () => {
       const sm = new SignalAutoMap();
       const sig = sm.get<number>('a');
       sig.value = 1;
@@ -354,8 +451,100 @@ describe('SignalAutoMap', () => {
       destroySignal(sig);
       assertSignalsCount(0, 'destroyed externally');
 
+      expect(sm.has('a')).toBe(false);
+
+      const fresh = sm.get<number>('a');
+      expect(fresh).not.toBe(sig);
+      expect(fresh.value).toBeUndefined();
+      assertSignalsCount(1, 'get() handed out a fresh, live signal');
+
+      sm.clear();
+    });
+
+    it('1000 externally destroyed entries leave no keys behind (MEM-007)', () => {
+      const destroySubscriptions = getSubscriptionCount(
+        globalDestroySignalQueue,
+      );
+
+      const sm = new SignalAutoMap();
+      const signals: Signal<number>[] = [];
+      for (let i = 0; i < 1000; i += 1) {
+        signals.push(sm.get<number>(`k${i}`));
+      }
+      assertSignalsCount(1000, 'one entry per key');
+
+      for (const sig of signals) {
+        destroySignal(sig);
+      }
+
+      expect([...sm.keys()].length).toBe(0);
+      assertSignalsCount(0, 'every entry destroyed from the outside');
+      // The second half is the actual claim: the eviction must not move the
+      // leak from the map onto a process-lifetime queue.
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptions,
+      );
+    });
+
+    it('a soft detach does not evict the entry (MEM-007)', () => {
+      // The reason the per-entry hook is `on` and not `once`:
+      // `SignalGroup#off()` emits on the same queue with `{detach: true}`,
+      // and a `once` would be spent on that — leaving nobody to hear the
+      // real destruction afterwards.
+      const host = {};
+      const sm = new SignalAutoMap();
+      const sig = sm.get<number>('a');
+      sig.value = 3;
+
+      SignalGroup.findOrCreate(host).attachSignal(sig);
+      SignalGroup.get(host)!.off();
+
       expect(sm.has('a')).toBe(true);
       expect(sm.get<number>('a')).toBe(sig);
+      expect(sm.get<number>('a').value).toBe(3);
+
+      // …and the real destruction still lands.
+      destroySignal(sig);
+      expect(sm.has('a')).toBe(false);
+
+      SignalGroup.destroy(host);
+      sm.clear();
+    });
+
+    it('a re-entrant get() during an external destroy keeps the fresh entry (MEM-007)', () => {
+      const sm = new SignalAutoMap();
+      const sig = sm.get('a');
+      sig.set(1);
+
+      let reentrant: Signal<unknown> | undefined;
+      createEffect(() => {
+        sm.get('a').get();
+        return () => {
+          // Runs synchronously inside destroySignal(sig): the destroyed
+          // signal was this effect's only dependency, so the destroy takes
+          // the effect with it and its cleanup fires re-entrantly here.
+          reentrant = sm.get('a');
+        };
+      });
+      assertEffectsCount(1, 'one effect depending on the entry');
+
+      destroySignal(sig);
+
+      // The map's own hook is the first subscriber for this signal id on
+      // every path where the map creates the signal itself — the id is
+      // created in the same statement — so the entry is already gone when
+      // the cleanup runs, and the fresh signal it creates stays. (Not so
+      // for `fromProps()` handed a ready-made signal, which may already
+      // carry older subscribers; see the note in `#create()`.)
+      expect(reentrant).not.toBeUndefined();
+      expect(reentrant).not.toBe(sig);
+      expect(sm.has('a')).toBe(true);
+      expect(sm.get('a')).toBe(reentrant);
+      assertSignalsCount(1, 're-entrant get() left one live signal behind');
+      assertEffectsCount(
+        0,
+        'the effect died with its only, now-destroyed dependency',
+      );
 
       sm.clear();
     });
@@ -373,13 +562,18 @@ describe('SignalAutoMap', () => {
 
       sig.destroy();
 
+      // MEM-007: the entry goes with the signal, so the corpse is only
+      // reachable through the reference the caller kept — asking the map
+      // would hand out a fresh, live signal instead.
+      expect(sm.has('a')).toBe(false);
+
       // Effect does not re-run for a destroyed signal.
-      sm.get<number>('a').set(99);
+      sig.set(99);
       expect(observed).toBe(7);
 
       // The destroyed signal still mutates its internal value bag, but
       // nothing reactive observes it.
-      expect(sm.get<number>('a').value).toBe(99);
+      expect(sig.value).toBe(99);
 
       effect.destroy();
       sm.clear();
@@ -460,15 +654,47 @@ describe('SignalAutoMap', () => {
       sm.clear();
     });
 
-    it('delete() on an entry destroyed from the outside still removes it', () => {
+    it('delete() on an entry destroyed from the outside reports false (MEM-007)', () => {
       const sm = new SignalAutoMap();
       const sig = sm.get('a');
       destroySignal(sig);
       assertSignalsCount(0);
 
-      expect(sm.delete('a')).toBe(true);
+      // The entry left the map with its signal, so there is nothing for
+      // delete() to remove. `Map.prototype.delete` semantics are unchanged —
+      // the precondition is what disappeared.
+      expect(sm.has('a')).toBe(false);
+      expect(sm.delete('a')).toBe(false);
       assertSignalsCount(0);
       expect(sm.has('a')).toBe(false);
+    });
+
+    it('delete() releases the hook of an entry whose signal is already dead (MEM-007)', () => {
+      // Same entry as the `clear()` case above, reachable by the same two
+      // routes (an already-dead signal handed to `fromProps()`, set up here,
+      // or a live one whose destroy emit a throwing earlier subscriber cuts
+      // short), and the order matters for the same reason: nothing emits on
+      // the map's behalf, so `#drop()` is the only thing left that can take
+      // the subscription off the queue.
+      const destroySubscriptions = getSubscriptionCount(
+        globalDestroySignalQueue,
+      );
+
+      const corpse = createSignal(1);
+      destroySignal(corpse);
+      assertSignalsCount(0);
+
+      const sm = SignalAutoMap.fromProps({a: corpse});
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptions + 1,
+      );
+
+      expect(sm.delete('a')).toBe(true);
+
+      expect(sm.has('a')).toBe(false);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptions,
+      );
     });
 
     it('delete() works with symbol keys', () => {

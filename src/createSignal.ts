@@ -138,7 +138,7 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
   constructor(lazy: boolean, initialValue?: Type | (() => Type) | undefined) {
     this.id = idCreator.make();
 
-    incSignalsCount();
+    incSignalsCount(this);
 
     this.lazy = lazy;
 

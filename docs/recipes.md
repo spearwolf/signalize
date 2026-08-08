@@ -619,13 +619,21 @@ const s = map.get('foo');
 s.set(42);
 destroySignal(s);
 
-map.get('foo').value;       // 42 (last value, the destroyed signal stays cached)
-map.get('foo').set(99);     // stores 99, notifies nobody (signal is destroyed)
+map.has('foo');             // false — the entry left with its signal
+map.get('foo') === s;       // false — a fresh, live signal
+map.delete('foo');          // false — nothing left to remove
+
+s.value;                    // 42 — the corpse is yours now, not the map's
+s.set(99);                  // stores 99, notifies nobody (signal is destroyed)
 ```
 
+The map subscribes to the destruction of every signal it hands out, so an
+external `destroySignal()` evicts the entry synchronously. What it does *not*
+react to is a soft detach: `SignalGroup#off()` on a group the signal is
+attached to leaves both the signal and its entry in place.
+
 Individual entries are removed with `map.delete('foo')`: it destroys the
-signal and drops the entry in one step, unlike a `destroySignal()` from the
-outside, which leaves the corpse cached as shown above.
+signal and drops the entry in one step.
 
 ```ts
 map.delete('foo'); // true — signal destroyed, entry gone
@@ -663,6 +671,12 @@ In tests, this is the cheapest sanity check that a feature doesn't leak.
 Links need their own explicit `unlink(source)` (or `link.destroy()`) before
 that final `getLinksCount()` — a link on a still-live source is not reclaimed
 by dropping references alone.
+
+`getSignalsCount()` carries the same caveat the link counter already did:
+both self-correct when their object is merely dropped instead of destroyed,
+so the comparison above still needs explicit teardown to mean anything. A
+green comparison is not evidence that a finalizer ran, and a red one can turn
+green on its own if a garbage collection happens in between.
 
 Wrapping the same scenario in a `getSubscriptionCount(queue)` snapshot — one
 argument, imported straight from `@spearwolf/eventize`, taken before and

@@ -34,11 +34,16 @@ const waitUntilLinksCollected = async () => {
 gcDescribe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
   // NB: this suite intentionally does not assert getSignalsCount() — the
   // whole point of the scenario is source signals that are dropped without
-  // ever calling destroySignal() on them. Standalone signals have no
-  // GC-based count bookkeeping (unlike SignalGroup-attached ones), so their
-  // count would stay elevated; that is orthogonal to what MEM-002 is about
-  // (gLinks/the link's own subscriptions pinning it in memory) and out of
-  // scope here.
+  // ever calling destroySignal() on them. Since MEM-006 that count corrects
+  // itself: `signal-core.ts` registers every signal with a
+  // `FinalizationRegistry`, so a dropped signal leaves the count the same way
+  // a dropped link leaves `getLinksCount()`. (Being attached to a
+  // `SignalGroup` never had anything to do with it — a group has no GC-based
+  // bookkeeping either, it just holds its signals.) The reason this file
+  // still says nothing about the signal count is a different one: it is
+  // orthogonal to what MEM-002 measures (gLinks/the link's own subscriptions
+  // pinning it in memory), and a second stop condition in the budget loop
+  // below would only make these tests slower, not sharper.
   //
   // MEM-007: `getLinksCount()` falling to 0 on its own is not proof that a
   // link's *subscriptions* were reclaimed too — only that its entry in the

@@ -72,7 +72,7 @@ existing signal-like (then this very signal is returned, no new one created).
 | `destroySignal(...sigs)`       | Destroy one or more signals; subscriptions and groups are cleaned up.  |
 | `muteSignal(sig)`              | Suppress notifications without destroying; reads and writes keep working. |
 | `unmuteSignal(sig)`            | Resume notifications. Does not replay writes made while muted.         |
-| `getSignalsCount()`            | Count of live signals (debugging / leak checks).                       |
+| `getSignalsCount()`            | Count of live signals — created, not destroyed, still reachable. Self-corrects once a dropped signal is collected, at a time you cannot observe or force (debugging / leak checks). |
 | `value(sig \| [obj, key])`     | Untracked read (signal or `[host, name]`).                             |
 | `touch(sig \| [obj, key])`     | Force a notify.                                                        |
 
@@ -577,10 +577,14 @@ SignalAutoMap.fromProps<P>(obj: P, keys?: (keyof P)[])
 | `clear()`                               | Destroy all signals and empty the map.                                 |
 | `delete(key): boolean`                  | Destroy `key`'s signal and drop the entry; `true` if present.          |
 
-> If a stored signal is destroyed externally via `destroySignal()`, the map
-> still holds a reference: reads return its last value, and writes still update
-> that value — they just never notify anyone. `delete(key)` is the way to get
-> rid of an entry entirely; it cleans up externally destroyed entries too.
+> If a stored signal is destroyed externally via `destroySignal()`, its entry
+> leaves the map in the same synchronous turn: `has(key)` is `false`
+> immediately afterwards, and `get(key)` creates a fresh, live signal instead
+> of handing back the corpse. Whoever kept the `Signal` object still holds
+> it — reads return the last value and writes update it without notifying
+> anyone — but the map is no longer involved. Consequently `delete(key)` on
+> such a key reports `false`: there is nothing left to remove. A soft detach
+> (`SignalGroup#off()`) is not a destruction and leaves the entry alone.
 >
 > `delete(key)` drops the entry, then destroys the signal — so an effect
 > cleanup that runs as part of that destroy can call `get(key)` again and get

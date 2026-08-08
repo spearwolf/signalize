@@ -78,7 +78,7 @@ touch(c);   touch([obj, 'prop']);   // force-notify
 isSignal(x);
 muteSignal(c);  unmuteSignal(c);
 destroySignal(...signals);
-getSignalsCount();
+getSignalsCount();   // live = created, not destroyed, still reachable
 ```
 
 ## Effects
@@ -245,6 +245,13 @@ m.delete('k');                       // destroy that signal + drop the entry →
 m.clear();
 ```
 
+The map subscribes to the destruction of every signal it creates: an entry
+destroyed from the outside is evicted in the same synchronous turn, so
+`has(key)` is `false`, `get(key)` hands out a fresh signal, and `delete(key)`
+reports `false`. A soft detach (`SignalGroup#off()`) is not a destruction and
+leaves the entry alone. A dropped map releases its per-entry subscriptions
+through a `FinalizationRegistry`; it does not destroy the signals.
+
 ## Object signals
 
 Signals stored on a host object and retrievable by property name — the mechanism behind the decorators.
@@ -281,3 +288,8 @@ Every instance gets its own per-property signal. Cleanup: `SignalGroup.delete(in
 ```ts
 getSignalsCount();  getEffectsCount();  getLinksCount();  getSignalGroupsCount();
 ```
+
+`getSignalsCount()` and `getLinksCount()` self-correct once a dropped signal
+or link is collected — they count what is reachable, not what was created,
+and the moment they drop is neither observable nor forceable. Leak
+assertions still need explicit teardown (pitfall 16a).

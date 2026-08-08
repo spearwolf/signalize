@@ -79,7 +79,9 @@ In complex interactive front-ends—such as **3D configurators, real-time dashbo
   longer read; nested effects tear down before their parent re-runs.
 - **Lifecycle bundles** — `SignalGroup` ties signals, effects, and links to
   a host object and disposes them in one call; counters like
-  `getSignalsCount()` make leaks assertable in tests.
+  `getSignalsCount()` make leaks assertable in tests — they track what is
+  still reachable, correcting themselves when an object is dropped rather
+  than destroyed.
 - **Context modes** — `batch()` to coalesce writes, `beQuiet()` for silent
   mutation, `hibernate()` to pause reactivity, `value()` / `.value` for
   untracked reads.
