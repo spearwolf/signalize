@@ -16,7 +16,7 @@ import {
   globalSignalQueue,
 } from './global-queues.js';
 import {link} from './link.js';
-import {$setParentGroup, SignalGroup} from './SignalGroup.js';
+import {$groupResources, $setParentGroup, SignalGroup} from './SignalGroup.js';
 import {SignalLinkToCallback} from './SignalLink.js';
 
 // Nothing attached to a group may survive its teardown on the global queues.
@@ -1322,6 +1322,53 @@ describe('SignalGroup', () => {
   });
 
   describe('named signal bookkeeping (MEM-003)', () => {
+    it('signal churn leaves no dead handles in the held value (MEM-003)', () => {
+      // `#dropSignalSubscription()` takes the handle out of
+      // `[$groupResources].unsubs` as well as out of
+      // `#signalDestroySubscriptions`. Only the second one is load-bearing
+      // for the group's own behaviour, which is why the first survives every
+      // functional test — measured, the whole suite stays green without it.
+      // The set is the held value of the resource finalizer, so a handle
+      // left in it is a closure held strongly for as long as the group
+      // lives. Measured without the line: 5000 attach/destroy cycles leave
+      // 5000 dead handles behind, and 5000 attach/detach cycles another
+      // 5000 on top.
+      const group = SignalGroup.findOrCreate({});
+      const resources = group[$groupResources];
+
+      expect(resources.unsubs.size).toBe(0);
+      const warmup = createSignal(0);
+      group.attachSignal(warmup);
+      expect(resources.unsubs.size, 'the set really is in use').toBe(1);
+      group.detachSignal(warmup);
+      warmup.destroy();
+
+      // Route 1: the signal is destroyed from the outside and leaves through
+      // the group's own destroy hook.
+      for (let i = 0; i < 50; i += 1) {
+        const signal = createSignal(i);
+        group.attachSignal(signal);
+        signal.destroy();
+      }
+      expect(resources.unsubs.size, 'after 50 attach/destroy cycles').toBe(0);
+
+      // Route 2: the signal is detached while it stays alive.
+      const detached: ReturnType<typeof createSignal<number>>[] = [];
+      for (let i = 0; i < 50; i += 1) {
+        const signal = createSignal(i);
+        group.attachSignal(signal);
+        group.detachSignal(signal);
+        detached.push(signal);
+      }
+      expect(resources.unsubs.size, 'after 50 attach/detach cycles').toBe(0);
+
+      for (const signal of detached) {
+        signal.destroy();
+      }
+      group.clear();
+      assertSignalsCount(0, 'no signal survived either route');
+    });
+
     it('rebinding a name destroys the signal it displaces', () => {
       const subscriptions = subscriptionSnapshot();
 

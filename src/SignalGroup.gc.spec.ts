@@ -1,4 +1,4 @@
-import {on} from '@spearwolf/eventize';
+import {getSubscriptionCount, on} from '@spearwolf/eventize';
 import type {MockInstance} from 'vitest';
 import {
   assertEffectsCount,
@@ -8,9 +8,15 @@ import {
 import {DESTROY} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
+import {globalDestroySignalQueue} from './global-queues.js';
 import {link} from './link.js';
-import {getSignalGroupsCount, SignalGroup} from './SignalGroup.js';
+import {
+  $groupResources,
+  getSignalGroupsCount,
+  SignalGroup,
+} from './SignalGroup.js';
 import type {SignalLink} from './SignalLink.js';
+import {getSignalsCount} from './signal-core.js';
 
 // `globalThis.gc` is only available when Node is launched with --expose-gc
 // (e.g. via the `gc` project in vitest.config.ts, which `pnpm test` also
@@ -209,5 +215,146 @@ gcDescribe('SignalGroup GC behavior (requires --expose-gc)', () => {
 
     source.destroy();
     group.clear();
+  });
+
+  it('a host whose only back-reference is a signal value is reclaimed (MEM-003)', async () => {
+    // The everyday decorator shape, `@signal() accessor self = this`: the
+    // host owns a group, the group owns a signal, and the signal's *value*
+    // is the host. Nothing else points at it. Before MEM-003 all three
+    // module-level roots of `SignalGroup.ts` — the `allGroups` set, the held
+    // value of the FinalizationRegistry, and the per-signal listener on
+    // `globalDestroySignalQueue` — held the group strongly, so the group was
+    // reachable from a GC root and the host through it. Measured on the
+    // fixed build, 1000 of 1000 hosts survived before and 0 of 1000 after.
+    const groupBaseline = getSignalGroupsCount();
+    const signalBaseline = getSignalsCount();
+    const destBaseline = getSubscriptionCount(globalDestroySignalQueue);
+
+    const HOST_COUNT = 50;
+    const hostRefs: WeakRef<object>[] = [];
+
+    (() => {
+      for (let i = 0; i < HOST_COUNT; i += 1) {
+        const host = {marker: `mem003-host-${i}`};
+        // The value points back at the host — the whole point of the case.
+        createSignal(host, {attach: host});
+        hostRefs.push(new WeakRef(host));
+      }
+    })();
+
+    expect(getSignalGroupsCount()).toBe(groupBaseline + HOST_COUNT);
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+      destBaseline + HOST_COUNT,
+    );
+
+    // Two stop conditions. A silently collected group never runs `clear()`,
+    // so its signals are not destroyed but collected with it — the counter
+    // only comes back through MEM-006's finalizer on the SignalImpl, and
+    // that can land a sweep later than the group count.
+    for (
+      let i = 0;
+      i < 20 &&
+      (getSignalGroupsCount() > groupBaseline ||
+        getSignalsCount() > signalBaseline);
+      i += 1
+    ) {
+      await forceGc();
+    }
+
+    expect(
+      hostRefs.filter((ref) => ref.deref() !== undefined).length,
+      'a signal value must not keep its host alive',
+    ).toBe(0);
+    expect(getSignalGroupsCount()).toBe(groupBaseline);
+    // The resource finalizer releases the handles before it drops the husk
+    // out of `allGroups`, so waiting on the group count above is enough —
+    // this needs no settle step of its own.
+    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBaseline);
+  });
+
+  it('a throwing release handle in a collected group is reported, not thrown (MEM-003)', async () => {
+    // The resource finalizer runs without a caller: a throw out of it takes
+    // the process down. Same shape as the link and auto-map finalizers, and
+    // the thrower goes in *front* of the real handles — one at the end would
+    // prove nothing about the ones behind it.
+    const groupBaseline = getSignalGroupsCount();
+    const destBaseline = getSubscriptionCount(globalDestroySignalQueue);
+
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      (() => {
+        const host = {marker: 'mem003-throwing-release'};
+        const group = SignalGroup.findOrCreate(host);
+        group.attachSignal(createSignal(1));
+
+        const resources = group[$groupResources];
+        const real = [...resources.unsubs];
+        resources.unsubs.clear();
+        resources.unsubs.add(() => {
+          throw new Error('release-boom');
+        });
+        for (const unsubscribe of real) {
+          resources.unsubs.add(unsubscribe);
+        }
+      })();
+
+      for (
+        let i = 0;
+        i < 20 && getSubscriptionCount(globalDestroySignalQueue) > destBaseline;
+        i += 1
+      ) {
+        await forceGc();
+      }
+
+      expect(error).toHaveBeenCalledTimes(1);
+      // The husk leaves `allGroups` despite the throw …
+      expect(getSignalGroupsCount()).toBe(groupBaseline);
+      // … and the real handles behind the thrower ran anyway.
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBaseline);
+    } finally {
+      error.mockRestore();
+    }
+  });
+
+  it('a group whose host dies while an effect keeps it alive is still cleared (MEM-003)', async () => {
+    // The counter-direction to the test above, and the one nothing else
+    // asserts: an attached effect is reachable from `globalEffectQueue` for
+    // as long as it lives, and through the `once(effect, DESTROY, …)` hook
+    // in `attachEffect()` it keeps its group alive too. So this group is
+    // *not* collected with its host — the host-side FinalizationRegistry
+    // fires instead and runs the real `clear()`.
+    //
+    // The marker is what makes it a proof: "the counters are back at zero"
+    // alone would also be satisfied by a group that was quietly collected.
+    // A DESTROY emit only happens on the `clear()` path, so if a later
+    // cleanup ever turns the held-value deref into a no-op, this goes red
+    // instead of going quietly green.
+    let cleared = false;
+
+    let host: object | null = {marker: 'mem003-effect-backstop'};
+    const hostRef = new WeakRef(host);
+
+    const group = SignalGroup.findOrCreate(host);
+    const sig = createSignal(1, {attach: host});
+    // No `host` in the closure — that is case B and stays alive by design.
+    createEffect(() => void sig.get(), {attach: host});
+    on(group, DESTROY, () => {
+      cleared = true;
+    });
+
+    host = null;
+
+    for (let i = 0; i < 20 && !cleared; i += 1) {
+      await forceGc();
+    }
+
+    expect(hostRef.deref()).toBeUndefined();
+    expect(
+      cleared,
+      'the FinalizationRegistry backstop must still run clear()',
+    ).toBe(true);
+    assertSignalsCount(0, 'after the effect-held group was cleared');
+    assertEffectsCount(0, 'after the effect-held group was cleared');
   });
 });

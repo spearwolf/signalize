@@ -492,22 +492,37 @@ does not pin user objects.
 | `SignalGroup.delete(obj)`           | Clear and remove the group.                                                    |
 | `SignalGroup.clear()`               | Clear all groups globally. Sweeps to the end even if a group's teardown throws; a group created *during* the sweep (typically from a `DESTROY` listener) survives it and stays registered — still counted by `getSignalGroupsCount()`, still reachable by the next `clear()`. |
 | `SignalGroup.destroy(obj)`          | **Deprecated.** Use `delete()`.                                                |
-| `getSignalGroupsCount()`            | Count of live `SignalGroup` instances (debugging / leak checks).               |
+| `getSignalGroupsCount()`            | Count of live `SignalGroup` instances (debugging / leak checks). A group that has been garbage-collected with its host is not counted. |
 
 Errors from individual groups are collected and reported after the full sweep —
 a single one unchanged, several as an `AggregateError` in sweep order.
 
 When a user object becomes unreachable without an explicit `clear()` / `delete()`,
-a `FinalizationRegistry` callback runs `clear()` on the orphaned group. This
-requires that no strong reference path from the group back to the object exists
-— *any* such path keeps the object alive and stops the callback from ever firing.
-Two are ordinary: an attached signal whose value holds a reference to the object,
-and an attached effect whose callback closure captures it. Measured over 200
-groups, either one blocks reclamation completely. For `@signal accessor` fields
-storing `this`, explicit `delete()` or `group.clear()` in your cleanup is the
-reliable approach. FR firing is non-deterministic — explicit cleanup remains
-preferred. If that teardown throws, the error is reported via `console.error`
-and never re-raised: a registry callback has no caller left to receive it.
+a `FinalizationRegistry` callback runs `clear()` on the orphaned group. Nothing
+in `SignalGroup` itself blocks that any more: the registry of live groups, the
+registry's held value and the per-signal subscription on the global destroy
+queue all know a group through a `WeakRef`. A host whose only back-reference is
+a signal value — the `@signal() accessor self = this` shape — is reclaimed
+together with its group. Measured: 1000 of 1000 such hosts survived a `gc()`
+before, 0 of 1000 after.
+
+What still blocks it is an **attached effect whose callback closure captures the
+object**. An effect is reachable from the global effect queue from the moment it
+is created until it is destroyed — that is how a write reaches it — so whatever
+its closure holds is held for as long as the effect lives. The group has nothing
+to do with it: 200 effects created with no group at all pin their hosts just the
+same, and `effect.destroy()` releases all of them. Measured over 500 groups:
+signal value 500 → 0, effect closure 500 → 500.
+
+A group that is collected together with its host **has not seen `clear()`**. It
+emits no `DESTROY` event, and its signals are not destroyed but collected with
+it. Code that hangs cleanup off a group's `DESTROY` is hanging it off an event
+the GC path does not deliver; `getSignalsCount()` still comes back down, because
+each signal corrects the counter from its own finalizer. FR firing is
+non-deterministic in any case — explicit `delete()` / `group.clear()` remains the
+one path you can schedule. If that teardown throws, the error is reported via
+`console.error` and never re-raised: a registry callback has no caller left to
+receive it.
 
 ### Instance
 

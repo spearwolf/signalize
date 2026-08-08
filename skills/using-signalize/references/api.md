@@ -281,7 +281,7 @@ class Foo {
 }
 ```
 
-Every instance gets its own per-property signal. Cleanup: `SignalGroup.delete(instance)` for everything, or `destroyObjectSignals(instance)` for signals only. If a decorated field holds a reference to the instance (e.g. `@signal() accessor self = this`), automatic cleanup via `FinalizationRegistry` cannot fire — explicit cleanup is required.
+Every instance gets its own per-property signal. Cleanup: `SignalGroup.delete(instance)` for everything, or `destroyObjectSignals(instance)` for signals only. A decorated field holding a reference to the instance (e.g. `@signal() accessor self = this`) no longer blocks the `FinalizationRegistry` backstop — instance and group are collected together. An effect whose callback closure captures the instance still does, with or without a group; see pitfall 16a.
 
 ## Counters
 

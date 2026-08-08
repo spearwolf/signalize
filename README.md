@@ -285,10 +285,10 @@ error — they just quietly do something else, so they are worth reading once.
 - **Cleanup is explicit.** Effects and links outlive the scope that created
   them: pass `{attach: obj}` and dispose with `SignalGroup.delete(obj)`. Groups
   attached to a host object do have a `FinalizationRegistry` backstop that
-  clears them once the object is unreachable — unless a strong reference path
-  (e.g., an attached signal's value or an effect's closure) keeps the object
-  alive. GC timing is unobservable — explicit cleanup is insurance, not a
-  disposal schedule.
+  clears them once the object is unreachable — unless a live effect's callback
+  closure keeps the object alive, which the global effect queue makes possible
+  whether or not a group is involved. GC timing is unobservable — explicit
+  cleanup is insurance, not a disposal schedule.
 
 The full list lives in [Recipes & quirks](./docs/recipes.md).
 

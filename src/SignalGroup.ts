@@ -21,11 +21,62 @@ import {ISignalImpl, SignalLike} from './types.js';
 // can be reclaimed.
 const store = new WeakMap<object, SignalGroup>();
 
-// Iteration set: holds every live SignalGroup so the static `clear()` can
-// walk all groups. The set holds SignalGroups, NOT user objects, so it does
-// not pin user objects in memory. SignalGroups remove themselves from this
-// set in their instance `clear()`.
-const allGroups = new Set<SignalGroup>();
+// Iteration set: holds a WeakRef per live SignalGroup so the static `clear()`
+// can walk all groups. Weak, not strong (MEM-003): a plain `Set` here is a
+// module-level GC root for every group ever created, and a group reaches its
+// host through anything attached to it — an `@signal accessor` whose value is
+// `this` was enough to keep 1000 of 1000 hosts alive. Dead husks are dropped
+// by the group's own resource finalizer below, and skipped by the two readers
+// as a safety net. SignalGroups remove themselves from this set in their
+// instance `clear()`.
+const allGroups = new Set<WeakRef<SignalGroup>>();
+
+type GroupResources = {
+  selfRef?: WeakRef<SignalGroup>;
+  unsubs: Set<() => void>;
+};
+
+/**
+ * @internal Test seam for the resource finalizer in `SignalGroup.gc.spec.ts`.
+ */
+export const $groupResources = Symbol.for(
+  '@spearwolf/signalize/groupResources',
+);
+
+// MEM-003: what has to happen when a group is collected *without* its
+// `clear()` ever running — the price of holding the two roots above weakly.
+// The held value is resources only: the unsubscribe handles of the group's
+// per-signal destroy-queue subscriptions, plus the WeakRef this group is
+// filed under. Neither reaches the group (the listener closures know it
+// through a WeakRef, see `#addSignal`), so this registration does not undo
+// what the WeakRefs achieve. Without it the leak only moves: measured over
+// 1000 collected groups, 2000 listeners stay on `globalDestroySignalQueue`
+// for the lifetime of the process.
+//
+// Order is load-bearing: handles first, husk second. A GC test that waits for
+// `getSignalGroupsCount()` to fall back to its baseline then knows every
+// release has already run and needs no second settle step.
+const groupResourceFinalizer = new FinalizationRegistry<GroupResources>(
+  (resources) => {
+    for (const unsubscribe of resources.unsubs) {
+      try {
+        unsubscribe();
+      } catch (err) {
+        // A throw out of a FinalizationRegistry callback has no caller to
+        // reach — it would take the process down. Same channel and same
+        // reason as `clearGroupFromFinalizer` below.
+        console.error(
+          '[signalize] releasing the destroy-queue subscriptions of a collected SignalGroup failed:',
+          err,
+        );
+      }
+    }
+    resources.unsubs.clear();
+    if (resources.selfRef != null) {
+      allGroups.delete(resources.selfRef);
+    }
+  },
+);
 
 // Auto-cleanup: when the user object becomes unreachable without an explicit
 // `SignalGroup.delete(obj)` / `group.clear()`, the FinalizationRegistry
@@ -45,7 +96,11 @@ const allGroups = new Set<SignalGroup>();
  * @internal Exported for the regression test in `SignalGroup.teardown.spec.ts`.
  */
 export const clearGroupFromFinalizer = (group: SignalGroup): void => {
-  if (!allGroups.has(group)) return;
+  // The group is asked for its own WeakRef rather than scanned for: with a
+  // `Set<WeakRef<SignalGroup>>` a membership test on the group itself would
+  // be a linear walk over every live group.
+  const selfRef = group[$groupResources].selfRef;
+  if (selfRef == null || !allGroups.has(selfRef)) return;
   try {
     group.clear();
   } catch (err) {
@@ -56,15 +111,38 @@ export const clearGroupFromFinalizer = (group: SignalGroup): void => {
   }
 };
 
-const groupFinalizationRegistry = new FinalizationRegistry<SignalGroup>(
-  clearGroupFromFinalizer,
-);
+const groupFinalizationRegistry = new FinalizationRegistry<
+  WeakRef<SignalGroup>
+>((groupRef) => {
+  // MEM-003: the held value is a WeakRef, not the group. As the group
+  // itself, it kept the group alive, the group kept the host alive through
+  // anything attached to it, and this callback never ran. Measured in
+  // isolation: 200 registrations whose held value points at the target
+  // produce 200 survivors and 0 callbacks; through a WeakRef, 0 survivors
+  // and 200 callbacks.
+  const group = groupRef.deref();
+  if (group !== undefined) clearGroupFromFinalizer(group);
+});
 
 /**
  * Get the current count of live SignalGroups.
  * Useful for debugging and detecting leaks (e.g. forgotten `clear()`/`delete()`).
+ *
+ * A group that was collected together with its host is not counted, even
+ * before its resource finalizer has run: the husk is dropped on the way past.
+ * `Set.prototype.delete` during the set's own iteration is specified and safe.
  */
-export const getSignalGroupsCount = (): number => allGroups.size;
+export const getSignalGroupsCount = (): number => {
+  let count = 0;
+  for (const ref of allGroups) {
+    if (ref.deref() === undefined) {
+      allGroups.delete(ref);
+    } else {
+      count += 1;
+    }
+  }
+  return count;
+};
 
 /**
  * @internal Test seam for the cycle guard in `attachGroup()`.
@@ -144,6 +222,13 @@ export class SignalGroup {
   // (MEM-002): the group has to hear about a signal it holds being destroyed,
   // or a long-lived group accumulates dead SignalImpls until `clear()`.
   readonly #signalDestroySubscriptions = new Map<ISignalImpl, () => void>();
+
+  // MEM-003: symbol-keyed rather than `#private` for the same reason as
+  // `$queueUnsubscribes` in `SignalLink` — the module-level finalizer and
+  // guard have to reach it, a `#` field is out of their reach, and a public
+  // named field would be new API surface.
+  /** @internal */
+  readonly [$groupResources]: GroupResources = {unsubs: new Set()};
 
   readonly #links = new Set<SignalLink<any>>();
 
@@ -241,7 +326,12 @@ export class SignalGroup {
     // instead, fully registered. Deliberately no loop-until-empty: a
     // listener that recreates a group on every teardown would turn that
     // into a hang.
-    for (const group of [...allGroups]) {
+    for (const ref of [...allGroups]) {
+      const group = ref.deref();
+      if (group === undefined) {
+        allGroups.delete(ref);
+        continue;
+      }
       try {
         group.clear();
       } catch (err) {
@@ -261,12 +351,24 @@ export class SignalGroup {
     }
     this.#storeKey = new WeakRef(object);
     store.set(object, this);
-    allGroups.add(this);
+
+    // One WeakRef, three uses: the element in `allGroups`, the held value of
+    // the host finalizer, and the way back for `clearGroupFromFinalizer()`.
+    // None of them strong (MEM-003).
+    const selfRef = new WeakRef(this);
+    this[$groupResources].selfRef = selfRef;
+    allGroups.add(selfRef);
+    // Unconditionally, even for a self-keyed group: that one deliberately
+    // gets no host backstop, but it holds handles on
+    // `globalDestroySignalQueue` just the same, and somebody has to release
+    // them now that nothing else keeps the group reachable.
+    groupResourceFinalizer.register(this, this[$groupResources], this);
+
     // Register for auto-cleanup if the user object becomes unreachable
     // without an explicit clear/delete. Skip self-registration (when
     // object === this) — a group used as its own key cannot outlive itself.
     if (object !== this) {
-      groupFinalizationRegistry.register(object, this, this);
+      groupFinalizationRegistry.register(object, selfRef, this);
     }
     eventize(this);
   }
@@ -368,15 +470,45 @@ export class SignalGroup {
         // soft-detach emit from `off()` with `{detach: true}`, and a `once`
         // would be consumed by that one — leaving nobody to hear the real
         // destruction later.
+        //
+        // MEM-003: both captures are WeakRefs. `globalDestroySignalQueue` is
+        // a module-level object and holds this listener for as long as the
+        // subscription lives, so a strong `this` made every group with an
+        // attached signal reachable from a GC root — and through the group,
+        // its host. That is the third of the three roots; without it the
+        // other two are worth nothing (measured: 1000 of 1000 hosts survive
+        // with either one left strong).
+        //
+        // Nothing else in this scope may end up in the closure. V8 allocates
+        // one context per scope, shared by every inner function, so a second
+        // closure referencing `si` or `this` would drag them back in through
+        // the context chain and quietly undo this. There is exactly one
+        // inner function here — keep it that way. The same invariant, and
+        // the same test shape that pins it, as in `SignalAutoMap#create()`.
+        //
+        // The `signal !== undefined` guard is not dead code, and unlike in
+        // `SignalAutoMap` it cannot be argued away: `#addSignal()` takes a
+        // foreign signal that may well have older subscribers on its id.
+        const groupRef = this[$groupResources].selfRef!;
+        const siRef = new WeakRef(si);
         const unsubscribe = on(
           globalDestroySignalQueue,
           si.id,
           (_id: symbol, params?: {detach?: boolean}) => {
             if (params?.detach) return;
-            this.#removeSignal(si);
+            const signal = siRef.deref();
+            const group = groupRef.deref();
+            // Spelled out rather than `groupRef.deref()?.#removeSignal(…)`:
+            // TypeScript rejects a private identifier inside an optional
+            // chain (TS18030), the same reason `SignalAutoMap#create()`
+            // spells its deref out.
+            if (signal !== undefined && group !== undefined) {
+              group.#removeSignal(signal);
+            }
           },
         );
         this.#signalDestroySubscriptions.set(si, unsubscribe);
+        this[$groupResources].unsubs.add(unsubscribe);
       }
     }
 
@@ -395,6 +527,9 @@ export class SignalGroup {
     if (unsubscribe) {
       unsubscribe();
       this.#signalDestroySubscriptions.delete(si);
+      // Out of both registers, or the held value accumulates dead handles
+      // whenever signals come and go on a long-lived group.
+      this[$groupResources].unsubs.delete(unsubscribe);
     }
   }
 
@@ -920,8 +1055,13 @@ export class SignalGroup {
         }
         this.#storeKey = undefined;
       }
-      allGroups.delete(this);
+      allGroups.delete(this[$groupResources].selfRef!);
+      // The handles themselves were released a few loops up; this only drops
+      // the now-empty bookkeeping so a finalizer that still fires finds
+      // nothing left to do.
+      this[$groupResources].unsubs.clear();
       groupFinalizationRegistry.unregister(this);
+      groupResourceFinalizer.unregister(this);
 
       // Last — the group is fully dismantled and deregistered by now, so the
       // throw can no longer leave anything half-torn-down behind.

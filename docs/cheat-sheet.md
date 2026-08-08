@@ -125,7 +125,7 @@ const g = SignalGroup.findOrCreate(obj);   // throws on null
 SignalGroup.get(obj);                       // existing or undefined
 SignalGroup.delete(obj);                    // clear & remove
 SignalGroup.clear();                        // global
-getSignalGroupsCount();                     // live group count
+getSignalGroupsCount();                     // live group count; collected groups are not counted
 
 g.attachSignal(s); g.attachSignalByName('n', s);
 g.attachSignalByName('n', s2);  // rebind: destroys s unless attachSignal'd/other name
