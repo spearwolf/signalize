@@ -84,20 +84,30 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     // "held until unlink()" test below.
     const LINK_COUNT = 100;
 
-    (() => {
-      for (let i = 0; i < LINK_COUNT; i += 1) {
-        const source = createSignal(i);
-        // No `attach`, no explicit `unlink()`/`destroy()` — the link and its
-        // source signal become garbage the moment this IIFE returns.
-        link(source, () => {});
-      }
-    })();
+    try {
+      (() => {
+        for (let i = 0; i < LINK_COUNT; i += 1) {
+          const source = createSignal(i);
+          // No `attach`, no explicit `unlink()`/`destroy()` — the link and its
+          // source signal become garbage the moment this IIFE returns.
+          link(source, () => {});
+        }
+      })();
 
-    expect(getLinksCount()).toBe(LINK_COUNT);
+      expect(getLinksCount()).toBe(LINK_COUNT);
 
-    await waitUntilLinksCollected();
+      await waitUntilLinksCollected();
 
-    expect(getLinksCount()).toBe(0);
+      expect(getLinksCount()).toBe(0);
+    } finally {
+      // Nothing here is reachable to hand to destroySignal() — the whole
+      // point of the scenario is that it isn't. The only synchronous-looking
+      // teardown available for an unreachable object is this: re-run the
+      // same GC-forcing wait the body already does, idempotently, so a
+      // seeded/real failure between creation and that wait doesn't leave
+      // 100 links stuck in the counter for whichever test runs next.
+      await waitUntilLinksCollected();
+    }
   });
 
   it('orphaned signal-target links (SignalLinkToSignal) are reclaimed by GC once their source signal is dropped too', async () => {
@@ -109,19 +119,25 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     // makes this collectible at all — a link on a live source is not.
     const LINK_COUNT = 100;
 
-    (() => {
-      for (let i = 0; i < LINK_COUNT; i += 1) {
-        const source = createSignal(i);
-        const target = createSignal(-1);
-        link(source, target);
-      }
-    })();
+    try {
+      (() => {
+        for (let i = 0; i < LINK_COUNT; i += 1) {
+          const source = createSignal(i);
+          const target = createSignal(-1);
+          link(source, target);
+        }
+      })();
 
-    expect(getLinksCount()).toBe(LINK_COUNT);
+      expect(getLinksCount()).toBe(LINK_COUNT);
 
-    await waitUntilLinksCollected();
+      await waitUntilLinksCollected();
 
-    expect(getLinksCount()).toBe(0);
+      expect(getLinksCount()).toBe(0);
+    } finally {
+      // See the callback-target test above for why this is the only
+      // available teardown here.
+      await waitUntilLinksCollected();
+    }
   });
 
   it('links on a live source signal are held until unlink() — GC does not reclaim them (MEM-007)', async () => {
@@ -139,24 +155,26 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     // stays reserved for the two positive-collection tests above.
     const source = createSignal(0);
 
-    for (let i = 0; i < 100; i += 1) {
-      link(source, () => {});
+    try {
+      for (let i = 0; i < 100; i += 1) {
+        link(source, () => {});
+      }
+
+      expect(getLinksCount()).toBe(100);
+      expect(getLinksCount(source)).toBe(100);
+
+      await forceGc();
+
+      expect(getLinksCount()).toBe(100);
+      expect(getLinksCount(source)).toBe(100);
+
+      unlink(source);
+
+      expect(getLinksCount()).toBe(0);
+      expect(getLinksCount(source)).toBe(0);
+    } finally {
+      destroySignal(source);
     }
-
-    expect(getLinksCount()).toBe(100);
-    expect(getLinksCount(source)).toBe(100);
-
-    await forceGc();
-
-    expect(getLinksCount()).toBe(100);
-    expect(getLinksCount(source)).toBe(100);
-
-    unlink(source);
-
-    expect(getLinksCount()).toBe(0);
-    expect(getLinksCount(source)).toBe(0);
-
-    destroySignal(source);
   });
 
   // MEM-001. Why none of these needs a settle step of its own: the finalizer
@@ -171,27 +189,33 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
 
     const LINK_COUNT = 100;
 
-    (() => {
-      for (let i = 0; i < LINK_COUNT; i += 1) {
-        const source = createSignal(i);
-        link(source, () => {});
-      }
-    })();
+    try {
+      (() => {
+        for (let i = 0; i < LINK_COUNT; i += 1) {
+          const source = createSignal(i);
+          link(source, () => {});
+        }
+      })();
 
-    // Two per callback-target link: `on(globalSignalQueue, source.id)` and
-    // `once(globalDestroySignalQueue, source.id)`.
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(
-      sigBefore + LINK_COUNT,
-    );
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destBefore + LINK_COUNT,
-    );
+      // Two per callback-target link: `on(globalSignalQueue, source.id)` and
+      // `once(globalDestroySignalQueue, source.id)`.
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(
+        sigBefore + LINK_COUNT,
+      );
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destBefore + LINK_COUNT,
+      );
 
-    await waitUntilLinksCollected();
+      await waitUntilLinksCollected();
 
-    expect(getLinksCount()).toBe(0);
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigBefore);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
+      expect(getLinksCount()).toBe(0);
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(sigBefore);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
+    } finally {
+      // See the first callback-target test above for why this is the only
+      // available teardown here.
+      await waitUntilLinksCollected();
+    }
   });
 
   it('a collected signal-target link releases all three of its queue subscriptions (MEM-001)', async () => {
@@ -200,30 +224,36 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
 
     const LINK_COUNT = 100;
 
-    (() => {
-      for (let i = 0; i < LINK_COUNT; i += 1) {
-        const source = createSignal(i);
-        const target = createSignal(-1);
-        link(source, target);
-      }
-    })();
+    try {
+      (() => {
+        for (let i = 0; i < LINK_COUNT; i += 1) {
+          const source = createSignal(i);
+          const target = createSignal(-1);
+          link(source, target);
+        }
+      })();
 
-    // Three per signal-target link: the two above plus
-    // `once(globalDestroySignalQueue, target.id)` from
-    // `SignalLinkToSignal`'s constructor — hence 2 × LINK_COUNT on the
-    // destroy queue.
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(
-      sigBefore + LINK_COUNT,
-    );
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destBefore + 2 * LINK_COUNT,
-    );
+      // Three per signal-target link: the two above plus
+      // `once(globalDestroySignalQueue, target.id)` from
+      // `SignalLinkToSignal`'s constructor — hence 2 × LINK_COUNT on the
+      // destroy queue.
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(
+        sigBefore + LINK_COUNT,
+      );
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destBefore + 2 * LINK_COUNT,
+      );
 
-    await waitUntilLinksCollected();
+      await waitUntilLinksCollected();
 
-    expect(getLinksCount()).toBe(0);
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigBefore);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
+      expect(getLinksCount()).toBe(0);
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(sigBefore);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
+    } finally {
+      // See the first callback-target test above for why this is the only
+      // available teardown here.
+      await waitUntilLinksCollected();
+    }
   });
 
   it('a collected link releases the destroy hook on a target signal that is still alive (MEM-001)', async () => {
@@ -238,27 +268,29 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     const LINK_COUNT = 100;
     const targets = Array.from({length: LINK_COUNT}, () => createSignal(-1));
 
-    (() => {
+    try {
+      (() => {
+        for (let i = 0; i < LINK_COUNT; i += 1) {
+          const source = createSignal(i);
+          link(source, targets[i]);
+        }
+      })();
+
+      await waitUntilLinksCollected();
+
+      expect(getLinksCount()).toBe(0);
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(sigBefore);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
+
+      // The targets are untouched: still writable, still readable.
       for (let i = 0; i < LINK_COUNT; i += 1) {
-        const source = createSignal(i);
-        link(source, targets[i]);
+        targets[i].set(i);
       }
-    })();
-
-    await waitUntilLinksCollected();
-
-    expect(getLinksCount()).toBe(0);
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigBefore);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
-
-    // The targets are untouched: still writable, still readable.
-    for (let i = 0; i < LINK_COUNT; i += 1) {
-      targets[i].set(i);
-    }
-    expect(targets[7].value).toBe(7);
-
-    for (const target of targets) {
-      destroySignal(target);
+      expect(targets[7].value).toBe(7);
+    } finally {
+      for (const target of targets) {
+        destroySignal(target);
+      }
     }
   });
 

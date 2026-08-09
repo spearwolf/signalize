@@ -33,69 +33,80 @@ describe('SignalLink', () => {
   describe('MEM-004: destroy() releases the globalDestroySignalQueue subscriptions', () => {
     it('signal-to-signal link: subscribes twice (source + target), releases both on destroy()', () => {
       const baseline = getSubscriptionCount(globalDestroySignalQueue);
-
       const sigA = createSignal(1);
       const sigB = createSignal(-1);
 
-      const con = link(sigA, sigB);
+      try {
+        const con = link(sigA, sigB);
 
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 2);
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+          baseline + 2,
+        );
 
-      con.destroy();
+        con.destroy();
 
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
-
-      destroySignal(sigA, sigB);
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+      } finally {
+        destroySignal(sigA, sigB);
+      }
     });
 
     it('signal-to-callback link: subscribes once, releases it on destroy()', () => {
       const baseline = getSubscriptionCount(globalDestroySignalQueue);
-
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
 
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
+      try {
+        const con = link(sigA, () => {});
 
-      con.destroy();
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+          baseline + 1,
+        );
 
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+        con.destroy();
 
-      destroySignal(sigA);
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+      } finally {
+        destroySignal(sigA);
+      }
     });
 
     it('destroying the source signal (not the link directly) also releases the target-side subscription', () => {
       const baseline = getSubscriptionCount(globalDestroySignalQueue);
-
       const sigA = createSignal(1);
       const sigB = createSignal(-1);
-      const con = link(sigA, sigB);
 
-      // Destroys sigA first, which drives con.destroy() through the
-      // source-side once() on globalDestroySignalQueue. If the
-      // target-side once() (SignalLinkToSignal's own subscription on
-      // sigB.id) isn't also released here, it dangles until sigB itself
-      // is destroyed.
-      destroySignal(sigA);
+      try {
+        const con = link(sigA, sigB);
 
-      expect(con.isDestroyed).toBe(true);
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+        // Destroys sigA first, which drives con.destroy() through the
+        // source-side once() on globalDestroySignalQueue. If the
+        // target-side once() (SignalLinkToSignal's own subscription on
+        // sigB.id) isn't also released here, it dangles until sigB itself
+        // is destroyed.
+        destroySignal(sigA);
 
-      destroySignal(sigB);
+        expect(con.isDestroyed).toBe(true);
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+      } finally {
+        destroySignal(sigA, sigB);
+      }
     });
 
     it('destroying the target signal first also releases the source-side subscription', () => {
       const baseline = getSubscriptionCount(globalDestroySignalQueue);
-
       const sigA = createSignal(1);
       const sigB = createSignal(-1);
-      const con = link(sigA, sigB);
 
-      destroySignal(sigB);
+      try {
+        const con = link(sigA, sigB);
 
-      expect(con.isDestroyed).toBe(true);
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+        destroySignal(sigB);
 
-      destroySignal(sigA);
+        expect(con.isDestroyed).toBe(true);
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+      } finally {
+        destroySignal(sigA, sigB);
+      }
     });
   });
 
@@ -105,71 +116,89 @@ describe('SignalLink', () => {
     }, async () => {
       const sigA = createSignal(1);
       const sigB = createSignal(-1);
-      const con = link(sigA, sigB);
 
-      const pending = con.nextValue().catch((e) => e);
-      con.destroy();
+      try {
+        const con = link(sigA, sigB);
 
-      const err = await pending;
-      expect(err).toBeInstanceOf(Error);
-      expect((err as Error).message).toMatch(/destroyed/i);
+        const pending = con.nextValue().catch((e) => e);
+        con.destroy();
 
-      destroySignal(sigA, sigB);
+        const err = await pending;
+        expect(err).toBeInstanceOf(Error);
+        expect((err as Error).message).toMatch(/destroyed/i);
+      } finally {
+        destroySignal(sigA, sigB);
+      }
     });
 
     it('nextValue({signal}) rejects immediately when the signal is already aborted', {
       timeout: 500,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
       const controller = new AbortController();
-      controller.abort();
 
-      await expect(con.nextValue({signal: controller.signal})).rejects.toBe(
-        controller.signal.reason,
-      );
+      try {
+        const con = link(sigA, () => {});
+        controller.abort();
 
-      con.destroy();
-      destroySignal(sigA);
+        await expect(con.nextValue({signal: controller.signal})).rejects.toBe(
+          controller.signal.reason,
+        );
+
+        con.destroy();
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
     });
 
     it('nextValue({signal}) rejects once the signal aborts while pending, and removes its abort listener afterwards (no leak)', {
       timeout: 500,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
       const controller = new AbortController();
 
-      const pending = con.nextValue({signal: controller.signal});
+      try {
+        const con = link(sigA, () => {});
 
-      expect(getEventListeners(controller.signal, 'abort').length).toBe(1);
+        const pending = con.nextValue({signal: controller.signal});
 
-      controller.abort();
+        expect(getEventListeners(controller.signal, 'abort').length).toBe(1);
 
-      await expect(pending).rejects.toBe(controller.signal.reason);
-      expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+        controller.abort();
 
-      con.destroy();
-      destroySignal(sigA);
+        await expect(pending).rejects.toBe(controller.signal.reason);
+        expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+
+        con.destroy();
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
     });
 
     it('the abort listener is removed again when nextValue({signal}) settles normally, not via abort', {
       timeout: 500,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
       const controller = new AbortController();
 
-      const pending = con.nextValue({signal: controller.signal});
-      expect(getEventListeners(controller.signal, 'abort').length).toBe(1);
+      try {
+        const con = link(sigA, () => {});
 
-      sigA.set(2);
+        const pending = con.nextValue({signal: controller.signal});
+        expect(getEventListeners(controller.signal, 'abort').length).toBe(1);
 
-      await expect(pending).resolves.toBe(2);
-      expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+        sigA.set(2);
 
-      con.destroy();
-      destroySignal(sigA);
+        await expect(pending).resolves.toBe(2);
+        expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+
+        con.destroy();
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
     });
 
     it('nextValue() on an already-destroyed link rejects immediately instead of hanging forever', {
@@ -183,30 +212,37 @@ describe('SignalLink', () => {
       // subscriptions would sit on the dead link for as long as the
       // Promise itself is referenced.
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
-      con.destroy();
 
-      await expect(con.nextValue()).rejects.toThrow(
-        'SignalLink destroyed before the next value arrived',
-      );
+      try {
+        const con = link(sigA, () => {});
+        con.destroy();
 
-      destroySignal(sigA);
+        await expect(con.nextValue()).rejects.toThrow(
+          'SignalLink destroyed before the next value arrived',
+        );
+      } finally {
+        destroySignal(sigA);
+      }
     });
 
     it('nextValue({signal}) on an already-destroyed link also rejects immediately and leaves no abort listener behind', {
       timeout: 500,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
-      con.destroy();
-
       const controller = new AbortController();
-      await expect(con.nextValue({signal: controller.signal})).rejects.toThrow(
-        'SignalLink destroyed before the next value arrived',
-      );
-      expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
 
-      destroySignal(sigA);
+      try {
+        const con = link(sigA, () => {});
+        con.destroy();
+
+        await expect(
+          con.nextValue({signal: controller.signal}),
+        ).rejects.toThrow('SignalLink destroyed before the next value arrived');
+        expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
     });
   });
 
@@ -226,79 +262,93 @@ describe('SignalLink', () => {
       timeout: 500,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
-
-      // Get VALUE into the retained state, the way asyncValues() does.
-      const iter = con.asyncValues();
-      const p0 = iter.next();
-      sigA.set(2);
-      await expect(p0).resolves.toEqual({value: 2, done: false});
-
-      // From here on VALUE is retained with 2 — this call resolves via the
-      // synchronous replay inside once(this, VALUE, ...).
       const controller = new AbortController();
-      const result = await con.nextValue({signal: controller.signal});
-      expect(result).toBe(2);
-      expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
 
-      await iter.return(undefined as any);
-      con.destroy();
-      destroySignal(sigA);
+      try {
+        const con = link(sigA, () => {});
+
+        // Get VALUE into the retained state, the way asyncValues() does.
+        const iter = con.asyncValues();
+        const p0 = iter.next();
+        sigA.set(2);
+        await expect(p0).resolves.toEqual({value: 2, done: false});
+
+        // From here on VALUE is retained with 2 — this call resolves via the
+        // synchronous replay inside once(this, VALUE, ...).
+        const result = await con.nextValue({signal: controller.signal});
+        expect(result).toBe(2);
+        expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+
+        await iter.return(undefined as any);
+        con.destroy();
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
     });
 
     it('repeated nextValue({signal}) calls while VALUE stays retained do not accumulate abort listeners', {
       timeout: 500,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
 
-      const iter = con.asyncValues();
-      const p0 = iter.next();
-      sigA.set(2);
-      await p0; // VALUE is now retained with 2
+      try {
+        const con = link(sigA, () => {});
 
-      for (let i = 0; i < 5; i++) {
-        const controller = new AbortController();
-        const result = await con.nextValue({signal: controller.signal});
-        expect(result).toBe(2);
-        expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+        const iter = con.asyncValues();
+        const p0 = iter.next();
+        sigA.set(2);
+        await p0; // VALUE is now retained with 2
+
+        for (let i = 0; i < 5; i++) {
+          const controller = new AbortController();
+          const result = await con.nextValue({signal: controller.signal});
+          expect(result).toBe(2);
+          expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+        }
+
+        await iter.return(undefined as any);
+        con.destroy();
+      } finally {
+        destroySignal(sigA);
       }
-
-      await iter.return(undefined as any);
-      con.destroy();
-      destroySignal(sigA);
     });
 
     it('a shared AbortSignal across an asyncValues(stop, {signal}) loop does not accumulate abort listeners once VALUE is retained', {
       timeout: 1000,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
       const controller = new AbortController();
 
-      const iter = con.asyncValues(undefined, {signal: controller.signal});
+      try {
+        const con = link(sigA, () => {});
 
-      // First read: nothing retained yet (this generator's own retain(this,
-      // VALUE) call, at the top of asyncValues(), only starts capturing
-      // *future* emits), so it needs a live emit to resolve.
-      const p0 = iter.next();
-      sigA.set(2);
-      await expect(p0).resolves.toEqual({value: 2, done: false});
-      expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+        const iter = con.asyncValues(undefined, {signal: controller.signal});
 
-      // From here on VALUE is retained. Every further read on this same
-      // shared AbortSignal resolves via the synchronous retained replay —
-      // K1's exact trigger — and each one must still leave the signal
-      // listener-free once it settles, not just the first.
-      for (let i = 0; i < 3; i++) {
-        const {done} = await iter.next();
-        expect(done).toBe(false);
+        // First read: nothing retained yet (this generator's own retain(this,
+        // VALUE) call, at the top of asyncValues(), only starts capturing
+        // *future* emits), so it needs a live emit to resolve.
+        const p0 = iter.next();
+        sigA.set(2);
+        await expect(p0).resolves.toEqual({value: 2, done: false});
         expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
-      }
 
-      await iter.return(undefined as any);
-      con.destroy();
-      destroySignal(sigA);
+        // From here on VALUE is retained. Every further read on this same
+        // shared AbortSignal resolves via the synchronous retained replay —
+        // K1's exact trigger — and each one must still leave the signal
+        // listener-free once it settles, not just the first.
+        for (let i = 0; i < 3; i++) {
+          const {done} = await iter.next();
+          expect(done).toBe(false);
+          expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+        }
+
+        await iter.return(undefined as any);
+        con.destroy();
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
     });
   });
 
@@ -307,51 +357,64 @@ describe('SignalLink', () => {
       timeout: 500,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
       const controller = new AbortController();
-      controller.abort();
 
-      const iter = con.asyncValues(undefined, {signal: controller.signal});
+      try {
+        const con = link(sigA, () => {});
+        controller.abort();
 
-      await expect(iter.next()).rejects.toBe(controller.signal.reason);
+        const iter = con.asyncValues(undefined, {signal: controller.signal});
 
-      con.destroy();
-      destroySignal(sigA);
+        await expect(iter.next()).rejects.toBe(controller.signal.reason);
+
+        con.destroy();
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
     });
 
     it('asyncValues({signal}) throws the abort reason when the signal aborts while a value is pending', {
       timeout: 500,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
       const controller = new AbortController();
 
-      const iter = con.asyncValues(undefined, {signal: controller.signal});
-      const pending = iter.next();
+      try {
+        const con = link(sigA, () => {});
 
-      controller.abort();
+        const iter = con.asyncValues(undefined, {signal: controller.signal});
+        const pending = iter.next();
 
-      await expect(pending).rejects.toBe(controller.signal.reason);
+        controller.abort();
 
-      con.destroy();
-      destroySignal(sigA);
+        await expect(pending).rejects.toBe(controller.signal.reason);
+
+        con.destroy();
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
     });
 
     it('a destroyed link, by contrast, still ends asyncValues() quietly (no signal involved)', {
       timeout: 500,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
 
-      const iter = con.asyncValues();
-      con.destroy();
+      try {
+        const con = link(sigA, () => {});
 
-      await expect(iter.next()).resolves.toEqual({
-        value: undefined,
-        done: true,
-      });
+        const iter = con.asyncValues();
+        con.destroy();
 
-      destroySignal(sigA);
+        await expect(iter.next()).resolves.toEqual({
+          value: undefined,
+          done: true,
+        });
+      } finally {
+        destroySignal(sigA);
+      }
     });
 
     it('a destroy() while an asyncValues({signal}) read is genuinely pending (not yet destroyed at loop start) also ends quietly', {
@@ -365,18 +428,22 @@ describe('SignalLink', () => {
       // not just the loop guard, and confirming it takes the "end quietly"
       // branch rather than S9's "rethrow" branch when no signal aborted.
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
       const controller = new AbortController();
 
-      const iter = con.asyncValues(undefined, {signal: controller.signal});
-      const pending = iter.next();
+      try {
+        const con = link(sigA, () => {});
 
-      con.destroy();
+        const iter = con.asyncValues(undefined, {signal: controller.signal});
+        const pending = iter.next();
 
-      await expect(pending).resolves.toEqual({value: undefined, done: true});
-      expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+        con.destroy();
 
-      destroySignal(sigA);
+        await expect(pending).resolves.toEqual({value: undefined, done: true});
+        expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
     });
 
     it('destroy() immediately followed by abort() in the same synchronous block still ends quietly — the destroy error, not the abort, must not be mistaken for an abort', {
@@ -394,18 +461,22 @@ describe('SignalLink', () => {
       // it, breaking the documented "destroy ends the loop quietly"
       // contract.
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
       const controller = new AbortController();
 
-      const iter = con.asyncValues(undefined, {signal: controller.signal});
-      const pending = iter.next();
+      try {
+        const con = link(sigA, () => {});
 
-      con.destroy();
-      controller.abort();
+        const iter = con.asyncValues(undefined, {signal: controller.signal});
+        const pending = iter.next();
 
-      await expect(pending).resolves.toEqual({value: undefined, done: true});
+        con.destroy();
+        controller.abort();
 
-      destroySignal(sigA);
+        await expect(pending).resolves.toEqual({value: undefined, done: true});
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
     });
   });
 
@@ -414,64 +485,68 @@ describe('SignalLink', () => {
       timeout: 1000,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
 
-      const iter1 = con.asyncValues();
-      const iter2 = con.asyncValues();
+      try {
+        const con = link(sigA, () => {});
 
-      // Both subscribe synchronously (async generators run up to their
-      // first `await` immediately on `.next()`), so this update reaches
-      // both live.
-      const p1 = iter1.next();
-      const p2 = iter2.next();
-      sigA.set(2);
+        const iter1 = con.asyncValues();
+        const iter2 = con.asyncValues();
 
-      await expect(p1).resolves.toEqual({value: 2, done: false});
-      await expect(p2).resolves.toEqual({value: 2, done: false});
+        // Both subscribe synchronously (async generators run up to their
+        // first `await` immediately on `.next()`), so this update reaches
+        // both live.
+        const p1 = iter1.next();
+        const p2 = iter2.next();
+        sigA.set(2);
 
-      // iter1 finishes; iter2 must keep working.
-      await iter1.return(undefined as any);
+        await expect(p1).resolves.toEqual({value: 2, done: false});
+        await expect(p2).resolves.toEqual({value: 2, done: false});
 
-      // A genuinely new value arrives while iter2 is paused between reads
-      // (not currently subscribed — it's sitting at its `yield`, waiting
-      // for this test to pull the next one). This is deliberately *not*
-      // the `2` iter2 already saw (W4): asserting that exact duplicate
-      // would pin down retain()'s synchronous-replay behavior — real, but
-      // not what ASYNC-005 is about, and not documented as a promise. What
-      // ASYNC-005 promises is narrower: iter1 finishing does not cut iter2
-      // off. If iter1's cleanup had wrongly cleared the shared retained
-      // slot, iter2's next read would have nothing to synchronously replay
-      // and would hang until a *further* emission that never comes here.
-      sigA.set(3);
+        // iter1 finishes; iter2 must keep working.
+        await iter1.return(undefined as any);
 
-      const raced = await Promise.race([
-        iter2.next(),
-        // Not a wall-clock threshold: a macrotask only runs once the
-        // microtask queue drains, so this sentinel wins only if iter2's
-        // read never settles in microtasks — the outcome is decided by
-        // event-loop ordering, not runner speed.
-        //
-        // Against a release *one iterator too early* — the failure mode
-        // this test is named for — the assertion bites only since the
-        // MEM-004 fix. Back when iter1's cleanup called `retainClear()`,
-        // an early release was invisible here: the policy survived it, so
-        // `sigA.set(3)` refilled the slot either way and iter2's read was
-        // replayed regardless. Now the cleanup calls `unretain()` and takes
-        // the policy with it — an early release leaves `sigA.set(3)`
-        // nowhere to land, iter2 hangs, and the sentinel wins. Measured
-        // against exactly that mutant (`#activeAsyncValuesCount === 0` →
-        // `>= 0`): green before the fix, `expected 'TIMEOUT' to deeply
-        // equal {value: 3, done: false}` after it. Other damage to the
-        // retain machinery — dropping the `retain(this, VALUE)` on entry,
-        // say — this test caught before the fix too.
-        new Promise((resolve) => setImmediate(() => resolve('TIMEOUT'))),
-      ]);
+        // A genuinely new value arrives while iter2 is paused between reads
+        // (not currently subscribed — it's sitting at its `yield`, waiting
+        // for this test to pull the next one). This is deliberately *not*
+        // the `2` iter2 already saw (W4): asserting that exact duplicate
+        // would pin down retain()'s synchronous-replay behavior — real, but
+        // not what ASYNC-005 is about, and not documented as a promise. What
+        // ASYNC-005 promises is narrower: iter1 finishing does not cut iter2
+        // off. If iter1's cleanup had wrongly cleared the shared retained
+        // slot, iter2's next read would have nothing to synchronously replay
+        // and would hang until a *further* emission that never comes here.
+        sigA.set(3);
 
-      expect(raced).toEqual({value: 3, done: false});
+        const raced = await Promise.race([
+          iter2.next(),
+          // Not a wall-clock threshold: a macrotask only runs once the
+          // microtask queue drains, so this sentinel wins only if iter2's
+          // read never settles in microtasks — the outcome is decided by
+          // event-loop ordering, not runner speed.
+          //
+          // Against a release *one iterator too early* — the failure mode
+          // this test is named for — the assertion bites only since the
+          // MEM-004 fix. Back when iter1's cleanup called `retainClear()`,
+          // an early release was invisible here: the policy survived it, so
+          // `sigA.set(3)` refilled the slot either way and iter2's read was
+          // replayed regardless. Now the cleanup calls `unretain()` and takes
+          // the policy with it — an early release leaves `sigA.set(3)`
+          // nowhere to land, iter2 hangs, and the sentinel wins. Measured
+          // against exactly that mutant (`#activeAsyncValuesCount === 0` →
+          // `>= 0`): green before the fix, `expected 'TIMEOUT' to deeply
+          // equal {value: 3, done: false}` after it. Other damage to the
+          // retain machinery — dropping the `retain(this, VALUE)` on entry,
+          // say — this test caught before the fix too.
+          new Promise((resolve) => setImmediate(() => resolve('TIMEOUT'))),
+        ]);
 
-      await iter2.return(undefined as any);
-      con.destroy();
-      destroySignal(sigA);
+        expect(raced).toEqual({value: 3, done: false});
+
+        await iter2.return(undefined as any);
+        con.destroy();
+      } finally {
+        destroySignal(sigA);
+      }
     });
   });
 
@@ -490,60 +565,68 @@ describe('SignalLink', () => {
       timeout: 1000,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
 
-      const iter = con.asyncValues();
-      const p = iter.next();
-      sigA.set(2);
-      await expect(p).resolves.toEqual({value: 2, done: false});
+      try {
+        const con = link(sigA, () => {});
 
-      await iter.return(undefined as any);
+        const iter = con.asyncValues();
+        const p = iter.next();
+        sigA.set(2);
+        await expect(p).resolves.toEqual({value: 2, done: false});
 
-      expect(getRetainedEventNames(con)).toEqual([]);
+        await iter.return(undefined as any);
 
-      // With the policy gone, an unobserved write has nowhere to land.
-      sigA.set(3);
-      expect(getRetainedCount(con)).toBe(0);
+        expect(getRetainedEventNames(con)).toEqual([]);
 
-      con.destroy();
-      destroySignal(sigA);
+        // With the policy gone, an unobserved write has nowhere to land.
+        sigA.set(3);
+        expect(getRetainedCount(con)).toBe(0);
+
+        con.destroy();
+      } finally {
+        destroySignal(sigA);
+      }
     });
 
     it('so a later nextValue() waits for the next value instead of resolving with an old one', {
       timeout: 1000,
     }, async () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
 
-      const iter = con.asyncValues();
-      const p = iter.next();
-      sigA.set(2);
-      await expect(p).resolves.toEqual({value: 2, done: false});
+      try {
+        const con = link(sigA, () => {});
 
-      await iter.return(undefined as any);
+        const iter = con.asyncValues();
+        const p = iter.next();
+        sigA.set(2);
+        await expect(p).resolves.toEqual({value: 2, done: false});
 
-      // Nobody is listening for this one.
-      sigA.set(3);
+        await iter.return(undefined as any);
 
-      let settled: unknown = 'PENDING';
-      const pending = con.nextValue();
-      pending.then((value) => {
-        settled = value;
-      });
+        // Nobody is listening for this one.
+        sigA.set(3);
 
-      // A retained replay runs *synchronously inside* the `once()` call
-      // that `nextValue()` makes, so it would have landed long before this
-      // macrotask — which only runs once the microtask queue has drained.
-      await new Promise((resolve) => {
-        setImmediate(resolve);
-      });
-      expect(settled).toBe('PENDING');
+        let settled: unknown = 'PENDING';
+        const pending = con.nextValue();
+        pending.then((value) => {
+          settled = value;
+        });
 
-      sigA.set(4);
-      await expect(pending).resolves.toBe(4);
+        // A retained replay runs *synchronously inside* the `once()` call
+        // that `nextValue()` makes, so it would have landed long before this
+        // macrotask — which only runs once the microtask queue has drained.
+        await new Promise((resolve) => {
+          setImmediate(resolve);
+        });
+        expect(settled).toBe('PENDING');
 
-      con.destroy();
-      destroySignal(sigA);
+        sigA.set(4);
+        await expect(pending).resolves.toBe(4);
+
+        con.destroy();
+      } finally {
+        destroySignal(sigA);
+      }
     });
   });
 
@@ -578,47 +661,53 @@ describe('SignalLink', () => {
 
     it('a single throwing handle rethrows that error unchanged, and the teardown still completes', () => {
       const sigA = createSignal(1);
-      const con = new SingleThrowingLink(sigA, () => {});
 
-      let destroyFired = false;
-      once(con, 'destroy', () => {
-        destroyFired = true;
-      });
+      try {
+        const con = new SingleThrowingLink(sigA, () => {});
 
-      // toThrow('release-a') also rules out the AggregateError shape: its
-      // message is `[signalize] N errors while ...`, not the bare original.
-      expect(() => con.destroy()).toThrow('release-a');
+        let destroyFired = false;
+        once(con, 'destroy', () => {
+          destroyFired = true;
+        });
 
-      expect(con.isDestroyed).toBe(true);
-      expect(Object.isFrozen(con)).toBe(true);
-      expect(con.lastValue).toBeUndefined();
-      expect(destroyFired).toBe(true);
+        // toThrow('release-a') also rules out the AggregateError shape: its
+        // message is `[signalize] N errors while ...`, not the bare original.
+        expect(() => con.destroy()).toThrow('release-a');
 
-      destroySignal(sigA);
+        expect(con.isDestroyed).toBe(true);
+        expect(Object.isFrozen(con)).toBe(true);
+        expect(con.lastValue).toBeUndefined();
+        expect(destroyFired).toBe(true);
+      } finally {
+        destroySignal(sigA);
+      }
     });
 
     it('two throwing handles are bundled into an AggregateError, in registration order, with the collect-errors message', () => {
       const sigA = createSignal(1);
-      const con = new DoubleThrowingLink(sigA, () => {});
 
-      let caught: unknown;
       try {
-        con.destroy();
-      } catch (err) {
-        caught = err;
+        const con = new DoubleThrowingLink(sigA, () => {});
+
+        let caught: unknown;
+        try {
+          con.destroy();
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(AggregateError);
+        const agg = caught as AggregateError;
+        expect((agg.errors as Error[]).map((e) => e.message)).toEqual([
+          'release-a',
+          'release-b',
+        ]);
+        expect(agg.message).toBe(
+          '[signalize] 2 errors while tearing down a SignalLink',
+        );
+      } finally {
+        destroySignal(sigA);
       }
-
-      expect(caught).toBeInstanceOf(AggregateError);
-      const agg = caught as AggregateError;
-      expect((agg.errors as Error[]).map((e) => e.message)).toEqual([
-        'release-a',
-        'release-b',
-      ]);
-      expect(agg.message).toBe(
-        '[signalize] 2 errors while tearing down a SignalLink',
-      );
-
-      destroySignal(sigA);
     });
   });
 
@@ -626,158 +715,178 @@ describe('SignalLink', () => {
     it('a callback destroying its own link mid-propagation lets the rest of the delivery finish', () => {
       const sigA = createSignal(1);
 
-      const received: number[] = [];
-      const con: SignalLink<number> = link(sigA, (value: number) => {
-        received.push(value);
-        if (value === 2) {
-          con.destroy();
-        }
-      });
+      try {
+        const received: number[] = [];
+        const con: SignalLink<number> = link(sigA, (value: number) => {
+          received.push(value);
+          if (value === 2) {
+            con.destroy();
+          }
+        });
 
-      const sibling: number[] = [];
-      const witness = link(sigA, (value: number) => {
-        sibling.push(value);
-      });
+        const sibling: number[] = [];
+        const witness = link(sigA, (value: number) => {
+          sibling.push(value);
+        });
 
-      expect(
-        received,
-        'the constructor touch delivered the first value',
-      ).toEqual([1]);
-      expect(sibling).toEqual([1]);
+        expect(
+          received,
+          'the constructor touch delivered the first value',
+        ).toEqual([1]);
+        expect(sibling).toEqual([1]);
 
-      expect(() => {
-        sigA.set(2);
-      }).not.toThrow();
+        expect(() => {
+          sigA.set(2);
+        }).not.toThrow();
 
-      expect(received, 'the callback saw the value it destroyed on').toEqual([
-        1, 2,
-      ]);
-      expect(con.isDestroyed).toBe(true);
-      expect(
-        con.lastValue,
-        'destroy() cleared it and nothing wrote it back',
-      ).toBeUndefined();
-      expect(
-        sibling,
-        'the second link on the same source was still served',
-      ).toEqual([1, 2]);
+        expect(received, 'the callback saw the value it destroyed on').toEqual([
+          1, 2,
+        ]);
+        expect(con.isDestroyed).toBe(true);
+        expect(
+          con.lastValue,
+          'destroy() cleared it and nothing wrote it back',
+        ).toBeUndefined();
+        expect(
+          sibling,
+          'the second link on the same source was still served',
+        ).toEqual([1, 2]);
 
-      witness.destroy();
-      destroySignal(sigA);
+        witness.destroy();
+      } finally {
+        destroySignal(sigA);
+      }
     });
 
     it('a link-to-signal whose target effect destroys the source mid-propagation does not throw', () => {
       const src = createSignal(0);
       const dst = createSignal(0);
-      const con = link(src, dst);
+      let effect: ReturnType<typeof createEffect> | undefined;
 
-      const {destroy: destroyEffect} = createEffect(() => {
-        if (dst.get() === 42) {
-          destroySignal(src);
-        }
-      });
+      try {
+        const con = link(src, dst);
 
-      expect(() => {
-        src.set(42);
-      }).not.toThrow();
+        effect = createEffect(() => {
+          if (dst.get() === 42) {
+            destroySignal(src);
+          }
+        });
 
-      expect(con.isDestroyed).toBe(true);
-      expect(con.lastValue).toBeUndefined();
-      expect(dst.value, 'the target did receive the value').toBe(42);
+        expect(() => {
+          src.set(42);
+        }).not.toThrow();
 
-      destroyEffect();
-      destroySignal(dst);
+        expect(con.isDestroyed).toBe(true);
+        expect(con.lastValue).toBeUndefined();
+        expect(dst.value, 'the target did receive the value').toBe(42);
+      } finally {
+        effect?.destroy();
+        destroySignal(src, dst);
+      }
     });
 
     it('an on() DESTROY listener calling destroy() again is a no-op instead of a stack overflow', () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
 
-      let destroyEvents = 0;
-      let flagSeenByListener: boolean | undefined;
-      on(con, DESTROY, () => {
-        destroyEvents += 1;
-        flagSeenByListener = con.isDestroyed;
-        con.destroy();
-      });
+      try {
+        const con = link(sigA, () => {});
 
-      expect(() => {
-        con.destroy();
-      }).not.toThrow();
+        let destroyEvents = 0;
+        let flagSeenByListener: boolean | undefined;
+        on(con, DESTROY, () => {
+          destroyEvents += 1;
+          flagSeenByListener = con.isDestroyed;
+          con.destroy();
+        });
 
-      expect(destroyEvents, 'DESTROY is emitted exactly once').toBe(1);
-      expect(
-        flagSeenByListener,
-        'the flag is already set when the listener runs',
-      ).toBe(true);
-      expect(con.isDestroyed).toBe(true);
-      expect(Object.isFrozen(con)).toBe(true);
+        expect(() => {
+          con.destroy();
+        }).not.toThrow();
 
-      destroySignal(sigA);
+        expect(destroyEvents, 'DESTROY is emitted exactly once').toBe(1);
+        expect(
+          flagSeenByListener,
+          'the flag is already set when the listener runs',
+        ).toBe(true);
+        expect(con.isDestroyed).toBe(true);
+        expect(Object.isFrozen(con)).toBe(true);
+      } finally {
+        destroySignal(sigA);
+      }
     });
 
     it('a throwing DESTROY listener does not leave the link half torn down', () => {
       const sigA = createSignal(1);
-      const con = link(sigA, () => {});
 
-      // A second listener so the subscription balance below says something:
-      // `off(this)` is what has to clear it, and that step sits *after* the
-      // emit that throws.
-      on(con, VALUE, () => {});
-      on(con, DESTROY, () => {
-        throw new Error('destroy-listener-boom');
-      });
+      try {
+        const con = link(sigA, () => {});
 
-      expect(() => {
-        con.destroy();
-      }, 'the listener error still reaches the caller').toThrow(
-        'destroy-listener-boom',
-      );
+        // A second listener so the subscription balance below says something:
+        // `off(this)` is what has to clear it, and that step sits *after* the
+        // emit that throws.
+        on(con, VALUE, () => {});
+        on(con, DESTROY, () => {
+          throw new Error('destroy-listener-boom');
+        });
 
-      expect(con.isDestroyed).toBe(true);
-      expect(
-        Object.isFrozen(con),
-        'the teardown ran to the end despite the throw',
-      ).toBe(true);
-      expect(
-        getSubscriptionCount(con),
-        'off(this) released the remaining listeners',
-      ).toBe(0);
-      expect(con.lastValue).toBeUndefined();
+        expect(() => {
+          con.destroy();
+        }, 'the listener error still reaches the caller').toThrow(
+          'destroy-listener-boom',
+        );
 
-      destroySignal(sigA);
+        expect(con.isDestroyed).toBe(true);
+        expect(
+          Object.isFrozen(con),
+          'the teardown ran to the end despite the throw',
+        ).toBe(true);
+        expect(
+          getSubscriptionCount(con),
+          'off(this) released the remaining listeners',
+        ).toBe(0);
+        expect(con.lastValue).toBeUndefined();
+      } finally {
+        destroySignal(sigA);
+      }
     });
 
     it('a feedback write during propagation does not emit the superseded value afterwards', () => {
       const src = createSignal(0);
       const dst = createSignal(0);
-      const con = link(src, dst);
+      let effect: ReturnType<typeof createEffect> | undefined;
 
-      const emitted: number[] = [];
-      on(con, VALUE, (value: number) => {
-        emitted.push(value);
-      });
+      try {
+        const con = link(src, dst);
 
-      let bounced = false;
-      const {destroy: destroyEffect} = createEffect(() => {
-        const v = dst.get();
-        if (v === 1 && !bounced) {
-          bounced = true;
-          src.set(2);
-        }
-      });
+        const emitted: number[] = [];
+        on(con, VALUE, (value: number) => {
+          emitted.push(value);
+        });
 
-      src.set(1);
+        let bounced = false;
+        effect = createEffect(() => {
+          const v = dst.get();
+          if (v === 1 && !bounced) {
+            bounced = true;
+            src.set(2);
+          }
+        });
 
-      expect(emitted, 'only the value that survived is announced').toEqual([2]);
-      expect(con.lastValue).toBe(2);
-      expect(src.value).toBe(2);
-      expect(dst.value).toBe(2);
+        src.set(1);
 
-      destroyEffect();
-      con.destroy();
-      destroySignal(src);
-      destroySignal(dst);
+        expect(emitted, 'only the value that survived is announced').toEqual([
+          2,
+        ]);
+        expect(con.lastValue).toBe(2);
+        expect(src.value).toBe(2);
+        expect(dst.value).toBe(2);
+
+        con.destroy();
+      } finally {
+        effect?.destroy();
+        destroySignal(src);
+        destroySignal(dst);
+      }
     });
   });
 });
