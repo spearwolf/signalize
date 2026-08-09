@@ -128,7 +128,7 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | `value.ts` | `value()` (untracked read) |
 | `object-signals.ts` | `destroyObjectSignals`, `findObjectSignalByName`, `findObjectSignals`, `findObjectSignalNames`; internal `storeAsObjectSignal` (used by `@signal` decorator, **not** re-exported through `index.ts`) |
 | `UniqIdGen.ts` | Symbol-based unique ID generator (`Symbol('si1')`, `Symbol('ef1')`) |
-| `assert-helpers.ts` | **Test-only**: uses `getSubscriptionCount(queue)` (imported from `@spearwolf/eventize`, one argument, not re-exported) for leak assertions |
+| `__testing__/assert-helpers.ts` | **Test-only**: uses `getSubscriptionCount(queue)` (imported from `@spearwolf/eventize`, one argument, not re-exported) for leak assertions; `tsconfig.lib.json` excludes `src/__testing__/**`, so it never compiles into `lib/` |
 
 ### Module layering — no import cycles
 
@@ -179,6 +179,8 @@ Also avoid reading an imported binding at module-eval time across module boundar
 | `pnpm format` / `pnpm format:write` | Biome format check / auto-fix |
 | `pnpm checkPkgTypes` | `attw --pack --profile esm-only` — package types audit. The profile ignores `node10` and `node16 (from CJS)`, which cannot pass for an ESM-only package with a subpath export (no `exports`-map support / ESM served to a CJS resolver, respectively); `node16 (from ESM)` and `bundler` are still checked in full. Blocks in CI (`pnpm world`, `ci.yml`), not just documented |
 | `pnpm dist` | clean + compile + bundle (no test) |
+
+`package.json#files` is an allowlist, not a denylist — there is no `.npmignore`. What ships in the npm tarball (2026-08-09): `dist/`, `lib/**/*.d.ts`, `docs/`, `skills/`, plus `README.md`, `CHANGELOG.md`, `LICENSE` and `package.json` — 42 files. `npm pack --dry-run` is the way to check this against the current tree.
 
 Any filtered run (`pnpm test <pattern>`, `pnpm test -t "<name>"`) ends with exit 1: the per-file coverage thresholds are evaluated against the files that did *not* run, so the gate always fails. Read the test result, not the exit code — it is not a test failure.
 

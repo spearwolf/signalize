@@ -7,6 +7,15 @@
   "module": "dist/index.js",
   "types": "lib/index.d.ts",
   "sideEffects": false,
+  "files": [
+    "dist",
+    "lib/**/*.d.ts",
+    "docs",
+    "skills",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "exports": {
     ".": {
       "types": "./lib/index.d.ts",

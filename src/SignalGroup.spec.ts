@@ -5,7 +5,7 @@ import {
   assertSignalsCount,
   getGroupMemberCounts,
   NO_GROUP_MEMBERS,
-} from './assert-helpers.js';
+} from './__testing__/assert-helpers.js';
 import {$effect, DESTROY, OFF} from './constants.js';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';

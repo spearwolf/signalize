@@ -2,7 +2,7 @@ import {
   assertEffectsCount,
   assertLinksCount,
   assertSignalsCount,
-} from './assert-helpers.js';
+} from './__testing__/assert-helpers.js';
 import {createSignal, destroySignal, link} from './index.js';
 
 describe('link.asyncValues', () => {

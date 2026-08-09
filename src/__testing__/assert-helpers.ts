@@ -1,9 +1,9 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
-import {getEffectsCount} from './effects.js';
-import {globalDestroySignalQueue, globalEffectQueue} from './global-queues.js';
-import {getLinksCount} from './link.js';
-import type {SignalGroup} from './SignalGroup.js';
-import {getSignalsCount} from './signal-core.js';
+import {getEffectsCount} from '../effects.js';
+import {globalDestroySignalQueue, globalEffectQueue} from '../global-queues.js';
+import {getLinksCount} from '../link.js';
+import type {SignalGroup} from '../SignalGroup.js';
+import {getSignalsCount} from '../signal-core.js';
 
 /**
  * Sizes of a group's member collections — the signal set, the two name

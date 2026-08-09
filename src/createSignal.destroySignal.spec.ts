@@ -7,7 +7,7 @@ import {
   assertSignalDestroySubscriptionsCountChange,
   saveEffectSubscriptionsCount,
   saveSignalDestroySubscriptionsCount,
-} from './assert-helpers.js';
+} from './__testing__/assert-helpers.js';
 import {batch} from './batch.js';
 import {$effect, DESTROY} from './constants.js';
 import {createMemo} from './createMemo.js';

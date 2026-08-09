@@ -3,7 +3,11 @@ import swc from 'unplugin-swc';
 import {defineConfig} from 'vitest/config';
 
 const coverageInclude = ['src/**/*.ts'];
-const coverageExclude = ['src/**/*.spec.ts', 'src/**/*.test.ts'];
+const coverageExclude = [
+  'src/**/*.spec.ts',
+  'src/**/*.test.ts',
+  'src/__testing__/**',
+];
 
 const coverageThresholds = {
   perFile: true,

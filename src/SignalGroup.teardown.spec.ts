@@ -6,7 +6,7 @@ import {
   assertSignalsCount,
   getGroupMemberCounts,
   NO_GROUP_MEMBERS,
-} from './assert-helpers.js';
+} from './__testing__/assert-helpers.js';
 import {DESTROY, OFF} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {signal} from './decorators.js';

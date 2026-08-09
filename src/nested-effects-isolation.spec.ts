@@ -1,4 +1,4 @@
-import {assertEffectsCount} from './assert-helpers.js';
+import {assertEffectsCount} from './__testing__/assert-helpers.js';
 import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {destroySignal} from './signal-core.js';

@@ -1,5 +1,8 @@
 import type {MockInstance} from 'vitest';
-import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
+import {
+  assertEffectsCount,
+  assertSignalsCount,
+} from './__testing__/assert-helpers.js';
 import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';
 import {

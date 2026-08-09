@@ -83,7 +83,7 @@ const baseline = [getSignalsCount(), getEffectsCount(), getLinksCount()];
 expect([getSignalsCount(), getEffectsCount(), getLinksCount()]).toEqual(baseline);
 ```
 
-Inside the signalize repo itself, `src/assert-helpers.ts` uses `@spearwolf/eventize`'s `getSubscriptionCount(queue)` (one argument) for per-queue subscription assertions; `getSubscribedEventNames(queue)` gives the per-event view.
+Inside the signalize repo itself, `src/__testing__/assert-helpers.ts` uses `@spearwolf/eventize`'s `getSubscriptionCount(queue)` (one argument) for per-queue subscription assertions; `getSubscribedEventNames(queue)` gives the per-event view.
 
 ## Common rewrites
 

@@ -1,6 +1,9 @@
 import {Priority} from '@spearwolf/eventize';
 import fc from 'fast-check';
-import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
+import {
+  assertEffectsCount,
+  assertSignalsCount,
+} from './__testing__/assert-helpers.js';
 import {batch} from './batch.js';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';

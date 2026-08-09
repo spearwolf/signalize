@@ -849,7 +849,7 @@ export class SignalGroup {
    * `getLinksCount()`) cannot answer whether a *group* is still holding a
    * member that is already dead — a destroyed effect is off the global books
    * long before the group lets go of it. This getter is the window for that
-   * question; `getGroupMemberCounts()` in `assert-helpers.ts` is its only
+   * question; `getGroupMemberCounts()` in `__testing__/assert-helpers.ts` is its only
    * consumer, and no production code path reads it.
    *
    * @internal

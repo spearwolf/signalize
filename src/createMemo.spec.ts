@@ -1,5 +1,5 @@
 import {getSubscriptionCount, Priority} from '@spearwolf/eventize';
-import {getGroupMemberCounts} from './assert-helpers.js';
+import {getGroupMemberCounts} from './__testing__/assert-helpers.js';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
 import type {EffectImpl} from './EffectImpl.js';

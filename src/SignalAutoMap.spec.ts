@@ -3,7 +3,7 @@ import {
   assertEffectsCount,
   assertLinksCount,
   assertSignalsCount,
-} from './assert-helpers.js';
+} from './__testing__/assert-helpers.js';
 import {$autoMapResources} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {createEffect} from './effects.js';

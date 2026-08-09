@@ -1,5 +1,5 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
-import {assertLinksCount} from './assert-helpers.js';
+import {assertLinksCount} from './__testing__/assert-helpers.js';
 import {$queueUnsubscribes} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';

@@ -3,7 +3,7 @@ import {
   assertEffectsCount,
   assertLinksCount,
   assertSignalsCount,
-} from './assert-helpers.js';
+} from './__testing__/assert-helpers.js';
 import {DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
 import {createSignal, destroySignal, link, touch, unlink} from './index.js';
 

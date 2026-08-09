@@ -1,5 +1,5 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
-import {assertEffectsCount} from './assert-helpers.js';
+import {assertEffectsCount} from './__testing__/assert-helpers.js';
 import {$effect} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {createEffect, getEffectsCount} from './effects.js';

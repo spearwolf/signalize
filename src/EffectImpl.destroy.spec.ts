@@ -3,7 +3,7 @@ import {
   getSubscriptionCount,
   once,
 } from '@spearwolf/eventize';
-import {assertEffectsCount} from './assert-helpers.js';
+import {assertEffectsCount} from './__testing__/assert-helpers.js';
 import {$effect, DESTROY} from './constants.js';
 import {createSignal} from './createSignal.js';
 import type {Effect} from './Effect.js';

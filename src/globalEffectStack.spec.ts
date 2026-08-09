@@ -1,4 +1,4 @@
-import {assertEffectsCount} from './assert-helpers.js';
+import {assertEffectsCount} from './__testing__/assert-helpers.js';
 import {EffectImpl} from './EffectImpl.js';
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 

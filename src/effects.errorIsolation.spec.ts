@@ -1,5 +1,8 @@
 import {emit, getSubscriptionCount, on} from '@spearwolf/eventize';
-import {assertEffectsCount, assertSignalsCount} from './assert-helpers.js';
+import {
+  assertEffectsCount,
+  assertSignalsCount,
+} from './__testing__/assert-helpers.js';
 import {batch} from './batch.js';
 import {$effect, RECALL} from './constants.js';
 import {createSignal} from './createSignal.js';
