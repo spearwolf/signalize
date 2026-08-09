@@ -118,6 +118,7 @@
 - Coverage thresholds are now per file instead of one global average, staggered across three tiers (a floor under every file, 100% for every file outside the current audit worklist, and a 100%-with-slack tier for the files still on it) (TEST-006)
 - A new smoke test (`smoke/dist-smoke.test.ts`, `pnpm test:smoke`) loads the built `dist/` through the package's own `exports` map on plain Node, instead of anything in `src/`. It is the first test where a `@signal() accessor` application is lowered by **tsc**, the way a consumer's own compiler would, rather than by SWC's `decoratorVersion: '2022-03'`, which every other decorator test runs through (TEST-008)
 - A new fast-check property suite (`src/ordering.property.spec.ts`) pins the ordering invariants that only ever had one or two handwritten examples: priority order with and without a batch, dedup and final-value visibility in a batch flush, nested batches behaving like one flat batch, nested effects rebuilding in pre-order on every rerun, and a memo read during a flush never seeing a stale value. All five `it()` blocks run against a fixed seed for reproducible failures (TEST-012)
+- The four `*.gc.spec.ts` suites fail instead of skipping themselves when the run has no `--expose-gc` (BUILD-016)
 
 ### Build System
 
@@ -128,6 +129,7 @@
 - CI runs on pull requests against `main` now too, so a PR from a fork is actually checked (BUILD-002)
 - A push to `main` runs the same CI workflow as any feature branch, via `workflow_call`, before the deploy job publishes — previously only `pnpm lint` and `pnpm test` (BUILD-002)
 - `scripts/publishPackage.cjs` now exits with code 1 when `npm show` fails, and reports a failed `npm publish` with npm's own error output instead of crashing with `ERR_INVALID_ARG_TYPE` (BUILD-010)
+- `vitest.config.ts` refuses to start when a coverage threshold glob group matches no file — an empty group used to pass silently and enforce nothing (BUILD-015)
 
 ### Breaking Changes
 

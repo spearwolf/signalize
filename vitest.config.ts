@@ -1,5 +1,72 @@
+import {globSync} from 'node:fs';
 import swc from 'unplugin-swc';
 import {defineConfig} from 'vitest/config';
+
+const coverageInclude = ['src/**/*.ts'];
+const coverageExclude = ['src/**/*.spec.ts', 'src/**/*.test.ts'];
+
+const coverageThresholds = {
+  perFile: true,
+  statements: 97,
+  branches: 85,
+  functions: 96,
+  lines: 98,
+  'src/**/!(EffectImpl|SignalGroup|SignalLink|SignalAutoMap|bequiet|collect-errors|createSignal|link|signal-core).ts':
+    {statements: 100, branches: 100, functions: 100, lines: 100},
+  'src/{SignalLink,SignalAutoMap,bequiet,collect-errors}.ts': {
+    statements: 100,
+    branches: 95,
+    functions: 100,
+    lines: 100,
+  },
+};
+
+// Keys of `coverage.thresholds` that configure the run instead of naming a
+// glob group — mirrors the skip list in Vitest's own `resolveThresholds`.
+const NON_GLOB_THRESHOLD_KEYS = new Set([
+  'perFile',
+  'autoUpdate',
+  '100',
+  'statements',
+  'branches',
+  'functions',
+  'lines',
+]);
+
+/*
+ * Vitest builds one coverage map per threshold glob and then iterates over
+ * its summaries; a glob that matches nothing iterates over zero summaries and
+ * the whole group passes. A typo in the path or a glob written against the
+ * wrong root turns a 100 % rule into a decoration, without a word of warning.
+ * So every glob group is matched here against the files coverage will
+ * actually report on, and a group with no match refuses the run (BUILD-015).
+ */
+function assertThresholdGlobsMatch(thresholds: Record<string, unknown>): void {
+  const cwd = import.meta.dirname;
+
+  const covered = new Set(globSync(coverageInclude, {cwd}));
+  for (const file of globSync(coverageExclude, {cwd})) {
+    covered.delete(file);
+  }
+
+  if (covered.size === 0) {
+    throw new Error(
+      `[vitest.config.ts] coverage.include matches no file: ${coverageInclude.join(', ')}`,
+    );
+  }
+
+  const dead = Object.keys(thresholds)
+    .filter((key) => !NON_GLOB_THRESHOLD_KEYS.has(key))
+    .filter((glob) => !globSync(glob, {cwd}).some((file) => covered.has(file)));
+
+  if (dead.length > 0) {
+    throw new Error(
+      `[vitest.config.ts] coverage threshold glob group(s) match none of the ${covered.size} files coverage reports on: ${dead.join(' · ')}. Vitest passes an empty group silently, so the rule would not be enforced. Globs are matched relative to the project root.`,
+    );
+  }
+}
+
+assertThresholdGlobsMatch(coverageThresholds);
 
 /*
  * Vite 8 transpiles TypeScript with oxc, and oxc passes TC39 standard
@@ -64,8 +131,8 @@ export default defineConfig({
 
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.ts'],
-      exclude: ['src/**/*.spec.ts', 'src/**/*.test.ts'],
+      include: coverageInclude,
+      exclude: coverageExclude,
       reporter: ['text', 'text-summary', 'json-summary', 'lcov'],
       /*
        * Three tiers, because a single per-file number would have to clear the
@@ -86,21 +153,7 @@ export default defineConfig({
        * glob membership). So tier 1 cannot be raised above the weakest file —
        * that is signal-core.ts at 12/14 branches.
        */
-      thresholds: {
-        perFile: true,
-        statements: 97,
-        branches: 85,
-        functions: 96,
-        lines: 98,
-        'src/**/!(EffectImpl|SignalGroup|SignalLink|SignalAutoMap|bequiet|collect-errors|createSignal|link|signal-core).ts':
-          {statements: 100, branches: 100, functions: 100, lines: 100},
-        'src/{SignalLink,SignalAutoMap,bequiet,collect-errors}.ts': {
-          statements: 100,
-          branches: 95,
-          functions: 100,
-          lines: 100,
-        },
-      },
+      thresholds: coverageThresholds,
     },
   },
 });

@@ -5,20 +5,26 @@ import {SignalAutoMap} from './SignalAutoMap.js';
 import {destroySignal, getSignalsCount, signalImpl} from './signal-core.js';
 
 // `globalThis.gc` is only available when Node is launched with --expose-gc
-// (e.g. via the `gc` project in vitest.config.ts, which `pnpm test` also
-// runs). Without it these tests would silently pass even on a leaky
-// implementation, so we skip the suite instead.
-const hasGc = typeof (globalThis as {gc?: () => void}).gc === 'function';
-const gcDescribe = hasGc ? describe : describe.skip;
+// (the `gc` project in vitest.config.ts, which `pnpm test` also runs, and
+// `pnpm test:gc` for the whole suite). Skipping the suite when the flag is
+// gone would hide a lost `execArgv` behind a green reporter, so this file
+// refuses to load instead (BUILD-016).
+const gc = (globalThis as {gc?: () => void}).gc;
+
+if (typeof gc !== 'function') {
+  throw new Error(
+    'globalThis.gc is missing: this suite must run under --expose-gc. Check `execArgv` in the `gc` project of vitest.config.ts, or run `pnpm test:gc`.',
+  );
+}
 
 const forceGc = async () => {
   for (let i = 0; i < 5; i += 1) {
-    (globalThis as {gc: () => void}).gc();
+    gc();
     await new Promise((resolve) => setImmediate(resolve));
   }
 };
 
-gcDescribe('SignalAutoMap GC behavior (requires --expose-gc) — MEM-007', () => {
+describe('SignalAutoMap GC behavior (requires --expose-gc) — MEM-007', () => {
   it('a dropped map is collected and releases its destroy-queue subscriptions (MEM-007)', async () => {
     const destBefore = getSubscriptionCount(globalDestroySignalQueue);
     const signalsBefore = getSignalsCount();

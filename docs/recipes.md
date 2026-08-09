@@ -692,7 +692,7 @@ release those subscriptions, but only once a finalizer has run — which
 requires the run to be under `--expose-gc` and the assertion to sit behind a
 retry loop that forces collection until the count actually reaches 0, rather
 than after a single `gc()` or a bare `await`. `src/link.gc.spec.ts` is the
-worked example: it skips itself when `globalThis.gc` is missing, drives
+worked example: it fails loudly when `globalThis.gc` is missing, drives
 `gc()` plus `setImmediate` in a bounded budget loop, and only then compares
 the two subscription counts.
 

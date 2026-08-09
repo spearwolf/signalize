@@ -162,7 +162,7 @@ Also avoid reading an imported binding at module-eval time across module boundar
 | --- | --- |
 | `pnpm cbt` | `clean + compile + bundle + test` — local "done" gate |
 | `pnpm world` | `clean + check + compile + bundle + test:smoke + checkPkgTypes + test + test:gc` — the full blocking CI scope |
-| `pnpm test` | Vitest (SWC transform, v8 coverage); roots = `src/`. Runs two projects — `unit` and `gc` (`--expose-gc`, `fileParallelism: false`) — as a single run with one combined coverage map; per-file thresholds in `vitest.config.ts` |
+| `pnpm test` | Vitest (SWC transform, v8 coverage); roots = `src/`. Runs two projects — `unit` and `gc` (`--expose-gc`, `fileParallelism: false`) — as a single run with one combined coverage map; per-file thresholds in `vitest.config.ts`, which refuses to start if a threshold glob group matches no file |
 | `pnpm test <pattern>` | single spec, e.g. `pnpm test createSignal.spec.ts` |
 | `pnpm test -t "<name>"` | filter by test name |
 | `pnpm test:watch` | Vitest in watch mode, no coverage gate |
@@ -190,11 +190,11 @@ The test transform runs through **SWC**, not Vite's built-in oxc pass: `vitest.c
 
 ### Deliberately not tested
 
-No browser test run — no Playwright, no `@vitest/browser`, no jsdom/happy-dom, no second CI job. Every job runs on `ubuntu-latest` (`ci.yml:13-17`, `main.yml:18-21`), and `main.yml`'s `test` job is the `ci.yml` workflow itself, called via `workflow_call`; `vitest.config.ts:30` sets `environment: 'node'`. This is a decision, not a gap:
+No browser test run — no Playwright, no `@vitest/browser`, no jsdom/happy-dom, no second CI job. Every job runs on `ubuntu-latest` (`ci.yml:13-17`, `main.yml:18-21`), and `main.yml`'s `test` job is the `ci.yml` workflow itself, called via `workflow_call`; `vitest.config.ts:97` sets `environment: 'node'`. This is a decision, not a gap:
 
 - **Why it holds:** `src/` uses no platform-dependent API. A `grep` across `src/*.ts` (specs excluded) for `node:`, `process.`, `Buffer`, `setTimeout`, `setInterval`, `queueMicrotask`, `structuredClone`, `globalThis` and `require(` turns up nothing but three comment lines, none of them code: `effects.ts:66` and `EffectImpl.ts:84` mention Node's unhandled-rejection behaviour in prose while explaining why an async effect's rejection is routed to `onEffectError()` instead of thrown; `SignalLink.ts:95` mentions "the whole process" while explaining why a link's self-reference goes through a `WeakRef` — a lifetime argument, not a rejection one. The only non-trivial runtime objects in use are `WeakRef` (`SignalLink.ts:116,506`, `SignalGroup.ts:165,262`, `SignalAutoMap.ts:82`) and `FinalizationRegistry` (`link.ts:86`, `SignalGroup.ts:59`, `signal-core.ts:34`, `SignalAutoMap.ts:21`), plus `console.error` and `console.warn` (`link.ts:237` warns once per source at 1000 links, MEM-005) — all plain ECMAScript, identical across engines.
 - **Where the environment risk actually sits, and what already covers it:** in *resolution*, not *execution*. `attw --pack --profile esm-only` checks the `exports` map and shipped `.d.ts` in `bundler` mode — the resolution path a browser consumer actually takes — and `smoke/dist-smoke.test.ts` runs the built `dist/` for real. The TC39 decorator lowering that a browser's own bundler would perform is exercised by the smoke test's `tsc` pass, not by an engine.
-- **Why a browser run wouldn't add coverage anyway:** the one thing that could behave differently across engines is GC timing around `WeakRef`/`FinalizationRegistry`, and the 20 tests that exercise it depend on `--expose-gc` (`vitest.config.ts:59`), a flag no portable browser harness provides. A browser smoke test would skip exactly the tests whose answer it could change.
+- **Why a browser run wouldn't add coverage anyway:** the one thing that could behave differently across engines is GC timing around `WeakRef`/`FinalizationRegistry`, and the 20 tests that exercise it depend on `--expose-gc` (`vitest.config.ts:126`), a flag no portable browser harness provides. A browser smoke test would skip exactly the tests whose answer it could change.
 
 What would overturn this: the first line in `src/` that touches a DOM or Node-only API, or a dedicated browser entry point in the `exports` map.
 
