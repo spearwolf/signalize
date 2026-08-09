@@ -57,31 +57,43 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
     let host: object | null = {marker: 'gc-host'};
     const ref = new WeakRef(host);
 
-    SignalGroup.findOrCreate(host);
+    // Held only so the `finally` has a handle — a group does not pin its
+    // host, which is the very thing this test measures.
+    const group = SignalGroup.findOrCreate(host);
 
-    // User drops their last strong reference. The only remaining paths are
-    // the WeakMap (does not pin) and the SignalGroup's WeakRef storeKey
-    // (does not pin). Therefore `host` must become reclaimable.
-    host = null;
+    try {
+      // User drops their last strong reference. The only remaining paths are
+      // the WeakMap (does not pin) and the SignalGroup's WeakRef storeKey
+      // (does not pin). Therefore `host` must become reclaimable.
+      host = null;
 
-    await forceGc();
+      await forceGc();
 
-    expect(ref.deref()).toBeUndefined();
+      expect(ref.deref()).toBeUndefined();
+    } finally {
+      group.clear();
+    }
   });
 
   it('user object is reclaimable even when the SignalGroup is never explicitly cleared', async () => {
     let host: object | null = {marker: 'never-cleared'};
     const hostRef = new WeakRef(host);
 
-    SignalGroup.findOrCreate(host);
+    const group = SignalGroup.findOrCreate(host);
 
-    host = null;
+    try {
+      host = null;
 
-    await forceGc();
+      await forceGc();
 
-    // Eventually the FinalizationRegistry callback clears the group and its
-    // attached resources; the user object itself is reclaimable in either case.
-    expect(hostRef.deref()).toBeUndefined();
+      // Eventually the FinalizationRegistry callback clears the group and its
+      // attached resources; the user object itself is reclaimable in either case.
+      expect(hostRef.deref()).toBeUndefined();
+    } finally {
+      // Nothing was cleared while the assertion above was being made — that
+      // is what the test is about. This only keeps the registry tidy.
+      group.clear();
+    }
   });
 
   it('FinalizationRegistry clears the orphaned group and its attached resources', async () => {
@@ -94,20 +106,28 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
     group.attachSignal(createSignal(1, {attach: host}));
     createEffect(() => {}, {attach: host});
 
-    expect(getSignalGroupsCount()).toBe(baselineGroups + 1);
+    try {
+      expect(getSignalGroupsCount()).toBe(baselineGroups + 1);
 
-    host = null;
+      host = null;
 
-    // GC the user object, then yield enough microtasks for the FR callback
-    // to flush. FR firing is non-deterministic, so retry within a budget.
-    for (let i = 0; i < 20 && getSignalGroupsCount() > baselineGroups; i += 1) {
-      await forceGc();
+      // GC the user object, then yield enough microtasks for the FR callback
+      // to flush. FR firing is non-deterministic, so retry within a budget.
+      for (
+        let i = 0;
+        i < 20 && getSignalGroupsCount() > baselineGroups;
+        i += 1
+      ) {
+        await forceGc();
+      }
+
+      expect(hostRef.deref()).toBeUndefined();
+      expect(getSignalGroupsCount()).toBe(baselineGroups);
+      assertSignalsCount(0, 'after FR cleanup');
+      assertEffectsCount(0, 'after FR cleanup');
+    } finally {
+      group.clear();
     }
-
-    expect(hostRef.deref()).toBeUndefined();
-    expect(getSignalGroupsCount()).toBe(baselineGroups);
-    assertSignalsCount(0, 'after FR cleanup');
-    assertEffectsCount(0, 'after FR cleanup');
   });
 
   it('FinalizationRegistry survives a group whose DESTROY listener re-enters clear()', async () => {
@@ -125,14 +145,22 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
       group.clear();
     });
 
-    host = null;
+    try {
+      host = null;
 
-    for (let i = 0; i < 20 && getSignalGroupsCount() > baselineGroups; i += 1) {
-      await forceGc();
+      for (
+        let i = 0;
+        i < 20 && getSignalGroupsCount() > baselineGroups;
+        i += 1
+      ) {
+        await forceGc();
+      }
+
+      expect(getSignalGroupsCount()).toBe(baselineGroups);
+      assertSignalsCount(0, 'after FR cleanup with re-entrant clear');
+    } finally {
+      group.clear();
     }
-
-    expect(getSignalGroupsCount()).toBe(baselineGroups);
-    assertSignalsCount(0, 'after FR cleanup with re-entrant clear');
   });
 
   it('explicit clear() unregisters from FinalizationRegistry (no double-fire)', async () => {
@@ -142,19 +170,23 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
     const group = SignalGroup.findOrCreate(host);
     group.attachSignal(createSignal(1, {attach: host}));
 
-    // Explicit cleanup BEFORE the user object is GC'd.
-    group.clear();
+    try {
+      // Explicit cleanup BEFORE the user object is GC'd.
+      group.clear();
 
-    expect(getSignalGroupsCount()).toBe(baselineGroups);
-    assertSignalsCount(0, 'after explicit clear');
+      expect(getSignalGroupsCount()).toBe(baselineGroups);
+      assertSignalsCount(0, 'after explicit clear');
 
-    host = null;
-    await forceGc();
+      host = null;
+      await forceGc();
 
-    // Counters must remain at baseline — the FR callback must not fire
-    // again on the already-cleared group.
-    expect(getSignalGroupsCount()).toBe(baselineGroups);
-    assertSignalsCount(0, 'after GC of cleared group');
+      // Counters must remain at baseline — the FR callback must not fire
+      // again on the already-cleared group.
+      expect(getSignalGroupsCount()).toBe(baselineGroups);
+      assertSignalsCount(0, 'after GC of cleared group');
+    } finally {
+      group.clear();
+    }
   });
 
   it('a throwing teardown in an FR-collected group is reported, not thrown', async () => {
@@ -163,16 +195,16 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {});
 
-    try {
-      let host: object | null = {marker: 'fr-throwing-cleanup'};
-      SignalGroup.findOrCreate(host);
-      createEffect(
-        () => () => {
-          throw new Error('cleanup boom from FR');
-        },
-        {attach: host},
-      );
+    let host: object | null = {marker: 'fr-throwing-cleanup'};
+    const group = SignalGroup.findOrCreate(host);
+    createEffect(
+      () => () => {
+        throw new Error('cleanup boom from FR');
+      },
+      {attach: host},
+    );
 
+    try {
       host = null;
 
       for (
@@ -190,6 +222,13 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
       );
     } finally {
       errorSpy.mockRestore();
+      // The finalizer swallows the throwing cleanup; a direct `clear()`
+      // does not, and it is the one that runs if the group is still here.
+      try {
+        group.clear();
+      } catch {
+        /* ignore */
+      }
     }
   });
 
@@ -210,17 +249,22 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
 
     group.attachLink(signalLink);
 
-    // Both routes out of the group are exercised: the counter-edge takes
-    // the link out of `#links`, and nothing else may keep holding it.
-    signalLink.destroy();
-    signalLink = null;
+    try {
+      // Both routes out of the group are exercised: the counter-edge takes
+      // the link out of `#links`, and nothing else may keep holding it.
+      signalLink.destroy();
+      signalLink = null;
 
-    await forceGc();
+      await forceGc();
 
-    expect(linkRef.deref()).toBeUndefined();
-
-    source.destroy();
-    group.clear();
+      expect(linkRef.deref()).toBeUndefined();
+    } finally {
+      // `signalLink` is null by the time the assertion above has run, so
+      // this only catches a failure that landed before the destroy.
+      signalLink?.destroy();
+      source.destroy();
+      group.clear();
+    }
   });
 
   it('a host whose only back-reference is a signal value is reclaimed (MEM-003)', async () => {
@@ -248,34 +292,40 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
       }
     })();
 
-    expect(getSignalGroupsCount()).toBe(groupBaseline + HOST_COUNT);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destBaseline + HOST_COUNT,
-    );
+    try {
+      expect(getSignalGroupsCount()).toBe(groupBaseline + HOST_COUNT);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destBaseline + HOST_COUNT,
+      );
 
-    // Two stop conditions. A silently collected group never runs `clear()`,
-    // so its signals are not destroyed but collected with it — the counter
-    // only comes back through MEM-006's finalizer on the SignalImpl, and
-    // that can land a sweep later than the group count.
-    for (
-      let i = 0;
-      i < 20 &&
-      (getSignalGroupsCount() > groupBaseline ||
-        getSignalsCount() > signalBaseline);
-      i += 1
-    ) {
-      await forceGc();
+      // Two stop conditions. A silently collected group never runs `clear()`,
+      // so its signals are not destroyed but collected with it — the counter
+      // only comes back through MEM-006's finalizer on the SignalImpl, and
+      // that can land a sweep later than the group count.
+      for (
+        let i = 0;
+        i < 20 &&
+        (getSignalGroupsCount() > groupBaseline ||
+          getSignalsCount() > signalBaseline);
+        i += 1
+      ) {
+        await forceGc();
+      }
+
+      expect(
+        hostRefs.filter((ref) => ref.deref() !== undefined).length,
+        'a signal value must not keep its host alive',
+      ).toBe(0);
+      expect(getSignalGroupsCount()).toBe(groupBaseline);
+      // The resource finalizer releases the handles before it drops the husk
+      // out of `allGroups`, so waiting on the group count above is enough —
+      // this needs no settle step of its own.
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBaseline);
+    } finally {
+      // The 50 hosts are unreachable by construction — that is the case
+      // under test — so the static sweep is the only handle there is.
+      SignalGroup.clear();
     }
-
-    expect(
-      hostRefs.filter((ref) => ref.deref() !== undefined).length,
-      'a signal value must not keep its host alive',
-    ).toBe(0);
-    expect(getSignalGroupsCount()).toBe(groupBaseline);
-    // The resource finalizer releases the handles before it drops the husk
-    // out of `allGroups`, so waiting on the group count above is enough —
-    // this needs no settle step of its own.
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBaseline);
   });
 
   it('a throwing release handle in a collected group is reported, not thrown (MEM-003)', async () => {
@@ -288,23 +338,23 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
 
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
+    (() => {
+      const host = {marker: 'mem003-throwing-release'};
+      const group = SignalGroup.findOrCreate(host);
+      group.attachSignal(createSignal(1));
+
+      const resources = group[$groupResources];
+      const real = [...resources.unsubs];
+      resources.unsubs.clear();
+      resources.unsubs.add(() => {
+        throw new Error('release-boom');
+      });
+      for (const unsubscribe of real) {
+        resources.unsubs.add(unsubscribe);
+      }
+    })();
+
     try {
-      (() => {
-        const host = {marker: 'mem003-throwing-release'};
-        const group = SignalGroup.findOrCreate(host);
-        group.attachSignal(createSignal(1));
-
-        const resources = group[$groupResources];
-        const real = [...resources.unsubs];
-        resources.unsubs.clear();
-        resources.unsubs.add(() => {
-          throw new Error('release-boom');
-        });
-        for (const unsubscribe of real) {
-          resources.unsubs.add(unsubscribe);
-        }
-      })();
-
       for (
         let i = 0;
         i < 20 && getSubscriptionCount(globalDestroySignalQueue) > destBaseline;
@@ -320,6 +370,10 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
       expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBaseline);
     } finally {
       error.mockRestore();
+      // Same as above: the host lives and dies inside the IIFE. The rigged
+      // handle only ever runs from the resource finalizer, so the sweep
+      // itself stays silent.
+      SignalGroup.clear();
     }
   });
 
@@ -349,18 +403,22 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
       cleared = true;
     });
 
-    host = null;
+    try {
+      host = null;
 
-    for (let i = 0; i < 20 && !cleared; i += 1) {
-      await forceGc();
+      for (let i = 0; i < 20 && !cleared; i += 1) {
+        await forceGc();
+      }
+
+      expect(hostRef.deref()).toBeUndefined();
+      expect(
+        cleared,
+        'the FinalizationRegistry backstop must still run clear()',
+      ).toBe(true);
+      assertSignalsCount(0, 'after the effect-held group was cleared');
+      assertEffectsCount(0, 'after the effect-held group was cleared');
+    } finally {
+      group.clear();
     }
-
-    expect(hostRef.deref()).toBeUndefined();
-    expect(
-      cleared,
-      'the FinalizationRegistry backstop must still run clear()',
-    ).toBe(true);
-    assertSignalsCount(0, 'after the effect-held group was cleared');
-    assertEffectsCount(0, 'after the effect-held group was cleared');
   });
 });

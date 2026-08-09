@@ -45,20 +45,22 @@ describe('SignalGroup#off()', () => {
       {attach: host},
     );
 
-    expect(runs).toBe(1);
-    expect(cleanupCalls).toBe(0);
+    try {
+      expect(runs).toBe(1);
+      expect(cleanupCalls).toBe(0);
 
-    group.off();
+      group.off();
 
-    expect(cleanupCalls).toBe(1);
-    assertEffectsCount(0, 'after off');
+      expect(cleanupCalls).toBe(1);
+      assertEffectsCount(0, 'after off');
 
-    // Signal still alive
-    sig.set(1);
-    expect(sig.value).toBe(1);
-    expect(runs).toBe(1); // effect did not rerun — it was destroyed
-
-    group.clear();
+      // Signal still alive
+      sig.set(1);
+      expect(sig.value).toBe(1);
+      expect(runs).toBe(1); // effect did not rerun — it was destroyed
+    } finally {
+      group.clear();
+    }
   });
 
   it('destroys attached links', () => {
@@ -75,18 +77,20 @@ describe('SignalGroup#off()', () => {
       {attach: host},
     );
 
-    source.set(2);
-    expect(received).toBe(2);
+    try {
+      source.set(2);
+      expect(received).toBe(2);
 
-    group.off();
+      group.off();
 
-    assertLinksCount(0, 'after off');
+      assertLinksCount(0, 'after off');
 
-    // Link was destroyed: further writes do not propagate.
-    source.set(3);
-    expect(received).toBe(2);
-
-    group.clear();
+      // Link was destroyed: further writes do not propagate.
+      source.set(3);
+      expect(received).toBe(2);
+    } finally {
+      group.clear();
+    }
   });
 
   it('signals stay alive and readable/writable after off()', () => {
@@ -94,15 +98,19 @@ describe('SignalGroup#off()', () => {
     const group = SignalGroup.findOrCreate(host);
     const sig = createSignal(42, {attach: host});
 
-    group.off();
+    try {
+      group.off();
 
-    assertSignalsCount(1, 'signal alive after off');
-    expect(sig.value).toBe(42);
-    sig.set(99);
-    expect(sig.value).toBe(99);
+      assertSignalsCount(1, 'signal alive after off');
+      expect(sig.value).toBe(42);
+      sig.set(99);
+      expect(sig.value).toBe(99);
 
-    group.clear();
-    assertSignalsCount(0, 'after clear');
+      group.clear();
+      assertSignalsCount(0, 'after clear');
+    } finally {
+      group.clear();
+    }
   });
 
   it('named signal lookup keeps working after off()', () => {
@@ -111,13 +119,15 @@ describe('SignalGroup#off()', () => {
     const sig = createSignal(1);
     group.attachSignalByName('foo', sig);
 
-    group.off();
+    try {
+      group.off();
 
-    expect(group.hasSignal('foo')).toBe(true);
-    expect(group.signal('foo')).toBe(sig);
-
-    group.clear();
-    sig.destroy();
+      expect(group.hasSignal('foo')).toBe(true);
+      expect(group.signal('foo')).toBe(sig);
+    } finally {
+      sig.destroy();
+      group.clear();
+    }
   });
 
   it('attaching a new effect after off() works and reruns on signal change', () => {
@@ -131,36 +141,43 @@ describe('SignalGroup#off()', () => {
       },
       {attach: host},
     );
-    group.off();
-    assertEffectsCount(0, 'after off');
 
-    let runs = 0;
-    createEffect(
-      () => {
-        runs += 1;
-        sig.get();
-      },
-      {attach: host},
-    );
-    expect(runs).toBe(1);
+    try {
+      group.off();
+      assertEffectsCount(0, 'after off');
 
-    sig.set(7);
-    expect(runs).toBe(2);
+      let runs = 0;
+      createEffect(
+        () => {
+          runs += 1;
+          sig.get();
+        },
+        {attach: host},
+      );
+      expect(runs).toBe(1);
 
-    group.clear();
+      sig.set(7);
+      expect(runs).toBe(2);
+    } finally {
+      group.clear();
+    }
   });
 
   it('group remains registered in the store after off()', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
 
-    group.off();
+    try {
+      group.off();
 
-    expect(SignalGroup.get(host)).toBe(group);
-    expect(SignalGroup.findOrCreate(host)).toBe(group);
+      expect(SignalGroup.get(host)).toBe(group);
+      expect(SignalGroup.findOrCreate(host)).toBe(group);
 
-    group.clear();
-    expect(SignalGroup.get(host)).toBeUndefined();
+      group.clear();
+      expect(SignalGroup.get(host)).toBeUndefined();
+    } finally {
+      group.clear();
+    }
   });
 
   it('external effect with only group signal as dep is destroyed by off()', () => {
@@ -179,14 +196,18 @@ describe('SignalGroup#off()', () => {
       };
     });
 
-    expect(runs).toBe(1);
+    try {
+      expect(runs).toBe(1);
 
-    group.off();
+      group.off();
 
-    expect(cleanupCalls).toBe(1);
-    assertEffectsCount(0, 'external effect auto-destroyed');
-
-    group.clear();
+      expect(cleanupCalls).toBe(1);
+      assertEffectsCount(0, 'external effect auto-destroyed');
+    } finally {
+      // The external effect has no handle of its own: destroying its only
+      // live dependency — the group signal — is what ends it.
+      group.clear();
+    }
   });
 
   it('external effect is destroyed by off() even after one dep was destroyed first (MEM-006)', () => {
@@ -209,17 +230,21 @@ describe('SignalGroup#off()', () => {
       };
     });
 
-    expect(runs).toBe(1);
+    try {
+      expect(runs).toBe(1);
 
-    // Harte Zerstörung zuerst: der Effect behält `a` in #signals, nur
-    // unsubscribed. Danach der Soft-Detach über off().
-    a.destroy();
-    group.off();
+      // Harte Zerstörung zuerst: der Effect behält `a` in #signals, nur
+      // unsubscribed. Danach der Soft-Detach über off().
+      a.destroy();
+      group.off();
 
-    expect(cleanupCalls).toBe(1);
-    assertEffectsCount(0, 'after hard destroy then off()');
-
-    group.clear();
+      expect(cleanupCalls).toBe(1);
+      assertEffectsCount(0, 'after hard destroy then off()');
+    } finally {
+      // Both deps belong to the group, so clearing it takes the external
+      // effect down with its last live dependency.
+      group.clear();
+    }
   });
 
   it('external effect with mixed deps survives off(); group signal re-subscribes on rerun', () => {
@@ -235,32 +260,35 @@ describe('SignalGroup#off()', () => {
       lastSeen = groupSig.get() + otherSig.get();
     });
 
-    expect(runs).toBe(1);
+    try {
+      expect(runs).toBe(1);
 
-    group.off();
+      group.off();
 
-    // Effect survives — it still has otherSig as a dep
-    assertEffectsCount(1, 'mixed-dep effect survives');
+      // Effect survives — it still has otherSig as a dep
+      assertEffectsCount(1, 'mixed-dep effect survives');
 
-    // group signal no longer triggers
-    groupSig.set(10);
-    expect(runs).toBe(1);
+      // group signal no longer triggers
+      groupSig.set(10);
+      expect(runs).toBe(1);
 
-    // external signal still triggers; during the rerun the effect re-reads
-    // groupSig and re-subscribes to it
-    otherSig.set(5);
-    expect(runs).toBe(2);
-    expect(lastSeen).toBe(15);
+      // external signal still triggers; during the rerun the effect re-reads
+      // groupSig and re-subscribes to it
+      otherSig.set(5);
+      expect(runs).toBe(2);
+      expect(lastSeen).toBe(15);
 
-    // now groupSig changes trigger the effect again (re-subscribed)
-    groupSig.set(20);
-    expect(runs).toBe(3);
-    expect(lastSeen).toBe(25);
-
-    group.clear();
-    // external effect now has no remaining live deps (groupSig destroyed,
-    // otherSig still alive); destroy explicitly via otherSig to clean up.
-    otherSig.destroy();
+      // now groupSig changes trigger the effect again (re-subscribed)
+      groupSig.set(20);
+      expect(runs).toBe(3);
+      expect(lastSeen).toBe(25);
+    } finally {
+      // The external effect has no handle: it dies with its last live dep,
+      // and both of them are named here — the unattached one directly, the
+      // group's one through `clear()`.
+      otherSig.destroy();
+      group.clear();
+    }
   });
 
   it('static-deps effect with mixed deps survives off() and re-declares its deps on the next run (BUG-003)', () => {
@@ -281,37 +309,48 @@ describe('SignalGroup#off()', () => {
       lastSeen = groupSig.get() + otherSig.get();
     }, [groupSig, otherSig]);
 
-    // Static deps do not auto-run on creation, but they do subscribe.
-    expect(runs).toBe(0);
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 2);
+    try {
+      // Static deps do not auto-run on creation, but they do subscribe.
+      expect(runs).toBe(0);
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(
+        sigQueueBaseline + 2,
+      );
 
-    groupSig.set(1);
-    expect(runs).toBe(1);
+      groupSig.set(1);
+      expect(runs).toBe(1);
 
-    group.off();
+      group.off();
 
-    assertEffectsCount(1, 'static-deps effect survives off()');
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 1);
+      assertEffectsCount(1, 'static-deps effect survives off()');
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(
+        sigQueueBaseline + 1,
+      );
 
-    // The pause holds: the detached signal no longer reaches the effect.
-    groupSig.set(10);
-    expect(runs).toBe(1);
+      // The pause holds: the detached signal no longer reaches the effect.
+      groupSig.set(10);
+      expect(runs).toBe(1);
 
-    // The surviving dependency still does — and that run re-declares the
-    // static set, which re-subscribes to the group signal.
-    otherSig.set(5);
-    expect(runs).toBe(2);
-    expect(lastSeen).toBe(15);
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 2);
+      // The surviving dependency still does — and that run re-declares the
+      // static set, which re-subscribes to the group signal.
+      otherSig.set(5);
+      expect(runs).toBe(2);
+      expect(lastSeen).toBe(15);
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(
+        sigQueueBaseline + 2,
+      );
 
-    // ... so the group signal triggers it again.
-    groupSig.set(20);
-    expect(runs).toBe(3);
-    expect(lastSeen).toBe(25);
+      // ... so the group signal triggers it again.
+      groupSig.set(20);
+      expect(runs).toBe(3);
+      expect(lastSeen).toBe(25);
 
-    group.clear();
-    otherSig.destroy();
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+      group.clear();
+      otherSig.destroy();
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+    } finally {
+      otherSig.destroy();
+      group.clear();
+    }
   });
 
   it('static-deps effect whose only dep is a group signal is still destroyed by off() (BUG-003)', () => {
@@ -328,19 +367,21 @@ describe('SignalGroup#off()', () => {
       };
     }, [sig]);
 
-    sig.set(1);
-    expect(runs).toBe(1);
+    try {
+      sig.set(1);
+      expect(runs).toBe(1);
 
-    group.off();
+      group.off();
 
-    expect(cleanupCalls).toBe(1);
-    assertEffectsCount(0, 'sole static dep detached => effect destroyed');
+      expect(cleanupCalls).toBe(1);
+      assertEffectsCount(0, 'sole static dep detached => effect destroyed');
 
-    // and it stays gone — the detached signal cannot wake it
-    sig.set(2);
-    expect(runs).toBe(1);
-
-    group.clear();
+      // and it stays gone — the detached signal cannot wake it
+      sig.set(2);
+      expect(runs).toBe(1);
+    } finally {
+      group.clear();
+    }
   });
 
   it('a static dep destroyed while detached is not re-subscribed on the next run (BUG-003)', () => {
@@ -358,27 +399,32 @@ describe('SignalGroup#off()', () => {
       runs += 1;
     }, [groupSig, otherSig]);
 
-    group.off();
+    try {
+      group.off();
 
-    // The effect dropped its `once` on the destroy queue when it
-    // detached, so it never hears this one.
-    groupSig.destroy();
+      // The effect dropped its `once` on the destroy queue when it
+      // detached, so it never hears this one.
+      groupSig.destroy();
 
-    otherSig.set(1);
-    expect(runs).toBe(1);
+      otherSig.set(1);
+      expect(runs).toBe(1);
 
-    // The destroyed dependency was skipped — only otherSig is subscribed.
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 1);
+      // The destroyed dependency was skipped — only otherSig is subscribed.
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(
+        sigQueueBaseline + 1,
+      );
 
-    // ... so losing the last live dependency still ends the effect.
-    otherSig.destroy();
-    assertEffectsCount(0, 'last live dep destroyed => effect destroyed');
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destroyQueueBaseline,
-    );
-
-    group.clear();
+      // ... so losing the last live dependency still ends the effect.
+      otherSig.destroy();
+      assertEffectsCount(0, 'last live dep destroyed => effect destroyed');
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroyQueueBaseline,
+      );
+    } finally {
+      otherSig.destroy();
+      group.clear();
+    }
   });
 
   it('the re-declaration works inside a beQuiet() frame (BUG-003)', () => {
@@ -396,28 +442,30 @@ describe('SignalGroup#off()', () => {
       {autorun: false},
     );
 
-    group.off();
+    try {
+      group.off();
 
-    groupSig.set(1);
-    expect(runs).toBe(0);
+      groupSig.set(1);
+      expect(runs).toBe(0);
 
-    // Flags shouldRun without running (autorun: false), then run the
-    // whole thing inside a quiet frame. `whenSignalIsRead()` is not
-    // quiet-gated, so the declared set is re-declared here.
-    otherSig.set(1);
-    beQuiet(() => {
+      // Flags shouldRun without running (autorun: false), then run the
+      // whole thing inside a quiet frame. `whenSignalIsRead()` is not
+      // quiet-gated, so the declared set is re-declared here.
+      otherSig.set(1);
+      beQuiet(() => {
+        eff.run();
+      });
+      expect(runs).toBe(1);
+
+      // The group signal reaches the effect again.
+      groupSig.set(2);
       eff.run();
-    });
-    expect(runs).toBe(1);
-
-    // The group signal reaches the effect again.
-    groupSig.set(2);
-    eff.run();
-    expect(runs).toBe(2);
-
-    eff.destroy();
-    group.clear();
-    otherSig.destroy();
+      expect(runs).toBe(2);
+    } finally {
+      eff.destroy();
+      otherSig.destroy();
+      group.clear();
+    }
   });
 
   it('re-declares the static deps before the callback, so a throwing rerun still re-subscribes (BUG-003)', () => {
@@ -435,29 +483,41 @@ describe('SignalGroup#off()', () => {
       throw new Error('boom');
     }, [groupSig, otherSig]);
 
-    expect(() => groupSig.set(1)).toThrow('boom');
-    expect(runs).toBe(1);
+    try {
+      expect(() => groupSig.set(1)).toThrow('boom');
+      expect(runs).toBe(1);
 
-    group.off();
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 1);
+      group.off();
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(
+        sigQueueBaseline + 1,
+      );
 
-    // The rerun fails again — and a deterministically failing callback never
-    // has a successful run to heal on. The re-declaration therefore has to
-    // happen *before* the callback: moving it behind the call re-opens
-    // BUG-003 for every effect in this shape, with all other tests still
-    // green.
-    expect(() => otherSig.set(1)).toThrow('boom');
-    expect(runs).toBe(2);
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 2);
+      // The rerun fails again — and a deterministically failing callback never
+      // has a successful run to heal on. The re-declaration therefore has to
+      // happen *before* the callback: moving it behind the call re-opens
+      // BUG-003 for every effect in this shape, with all other tests still
+      // green.
+      expect(() => otherSig.set(1)).toThrow('boom');
+      expect(runs).toBe(2);
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(
+        sigQueueBaseline + 2,
+      );
 
-    // ... so the detached signal reaches the effect again.
-    expect(() => groupSig.set(2)).toThrow('boom');
-    expect(runs).toBe(3);
+      // ... so the detached signal reaches the effect again.
+      expect(() => groupSig.set(2)).toThrow('boom');
+      expect(runs).toBe(3);
 
-    eff.destroy();
-    group.clear();
-    otherSig.destroy();
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+      eff.destroy();
+      group.clear();
+      otherSig.destroy();
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+    } finally {
+      // The callback throws on every run, but `destroy()` only runs cleanup
+      // callbacks — and this one never got far enough to register any.
+      eff.destroy();
+      otherSig.destroy();
+      group.clear();
+    }
   });
 
   it('external link sourced from a group signal is destroyed by off()', () => {
@@ -470,17 +530,21 @@ describe('SignalGroup#off()', () => {
       received = v;
     });
 
-    source.set(2);
-    expect(received).toBe(2);
+    try {
+      source.set(2);
+      expect(received).toBe(2);
 
-    group.off();
+      group.off();
 
-    assertLinksCount(0, 'external link destroyed');
+      assertLinksCount(0, 'external link destroyed');
 
-    source.set(3);
-    expect(received).toBe(2);
-
-    group.clear();
+      source.set(3);
+      expect(received).toBe(2);
+    } finally {
+      // The link is not the group's, but its source is: destroying the
+      // source destroys the link with it.
+      group.clear();
+    }
   });
 
   it('is idempotent — calling off() twice does not throw', () => {
@@ -494,15 +558,17 @@ describe('SignalGroup#off()', () => {
       {attach: host},
     );
 
-    expect(() => {
-      group.off();
-      group.off();
-    }).not.toThrow();
+    try {
+      expect(() => {
+        group.off();
+        group.off();
+      }).not.toThrow();
 
-    assertEffectsCount(0);
-    assertSignalsCount(1);
-
-    group.clear();
+      assertEffectsCount(0);
+      assertSignalsCount(1);
+    } finally {
+      group.clear();
+    }
   });
 
   it('recurses into child groups', () => {
@@ -532,19 +598,24 @@ describe('SignalGroup#off()', () => {
       {attach: childHost},
     );
 
-    parent.off();
+    try {
+      parent.off();
 
-    assertEffectsCount(0, 'both effects destroyed');
-    expect(parentSig.value).toBe(0);
-    expect(childSig.value).toBe(0);
+      assertEffectsCount(0, 'both effects destroyed');
+      expect(parentSig.value).toBe(0);
+      expect(childSig.value).toBe(0);
 
-    // signals in both groups stay alive
-    parentSig.set(1);
-    childSig.set(1);
-    expect(parentRuns).toBe(1);
-    expect(childRuns).toBe(1);
-
-    parent.clear();
+      // signals in both groups stay alive
+      parentSig.set(1);
+      childSig.set(1);
+      expect(parentRuns).toBe(1);
+      expect(childRuns).toBe(1);
+    } finally {
+      // `parent.clear()` cascades into the child, but a failure may have
+      // landed before `attachGroup()` ever ran — so clear both.
+      parent.clear();
+      child.clear();
+    }
   });
 
   it('emits an OFF event on the group', () => {
@@ -556,13 +627,15 @@ describe('SignalGroup#off()', () => {
       offEmits += 1;
     });
 
-    group.off();
-    expect(offEmits).toBe(1);
+    try {
+      group.off();
+      expect(offEmits).toBe(1);
 
-    group.off();
-    expect(offEmits).toBe(2);
-
-    group.clear();
+      group.off();
+      expect(offEmits).toBe(2);
+    } finally {
+      group.clear();
+    }
   });
 
   it('restores subscription baselines on the global signal queues', () => {
@@ -581,34 +654,38 @@ describe('SignalGroup#off()', () => {
     );
     link(sig, () => {}, {attach: host});
 
-    expect(getSubscriptionCount(globalSignalQueue)).toBeGreaterThan(
-      sigQueueBaseline,
-    );
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBeGreaterThan(
-      destroyQueueBaseline,
-    );
+    try {
+      expect(getSubscriptionCount(globalSignalQueue)).toBeGreaterThan(
+        sigQueueBaseline,
+      );
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBeGreaterThan(
+        destroyQueueBaseline,
+      );
 
-    group.off();
+      group.off();
 
-    // The effect's and the link's subscriptions are gone, and the signal
-    // itself doesn't keep a subscription on its own id.
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+      // The effect's and the link's subscriptions are gone, and the signal
+      // itself doesn't keep a subscription on its own id.
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
 
-    // One subscription survives `off()` by design (MEM-002): the group's own
-    // destroy hook for `sig`. `off()` keeps the signal attached and the group
-    // reusable, so the group must still hear about that signal being
-    // destroyed later — otherwise a dead SignalImpl would sit in `#signals`
-    // until `clear()`. It is released together with the signal.
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destroyQueueBaseline + 1,
-    );
+      // One subscription survives `off()` by design (MEM-002): the group's own
+      // destroy hook for `sig`. `off()` keeps the signal attached and the group
+      // reusable, so the group must still hear about that signal being
+      // destroyed later — otherwise a dead SignalImpl would sit in `#signals`
+      // until `clear()`. It is released together with the signal.
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroyQueueBaseline + 1,
+      );
 
-    group.clear();
+      group.clear();
 
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destroyQueueBaseline,
-    );
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroyQueueBaseline,
+      );
+    } finally {
+      group.clear();
+    }
   });
 
   it('off() then clear() leaves no leaks', () => {
@@ -623,12 +700,16 @@ describe('SignalGroup#off()', () => {
     );
     link(sig, () => {}, {attach: host});
 
-    group.off();
-    assertSignalsCount(1, 'signal alive after off');
-    assertEffectsCount(0);
-    assertLinksCount(0);
+    try {
+      group.off();
+      assertSignalsCount(1, 'signal alive after off');
+      assertEffectsCount(0);
+      assertLinksCount(0);
 
-    group.clear();
-    assertSignalsCount(0, 'signal destroyed after clear');
+      group.clear();
+      assertSignalsCount(0, 'signal destroyed after clear');
+    } finally {
+      group.clear();
+    }
   });
 });

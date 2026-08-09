@@ -119,6 +119,7 @@
 - A new smoke test (`smoke/dist-smoke.test.ts`, `pnpm test:smoke`) loads the built `dist/` through the package's own `exports` map on plain Node, instead of anything in `src/`. It is the first test where a `@signal() accessor` application is lowered by **tsc**, the way a consumer's own compiler would, rather than by SWC's `decoratorVersion: '2022-03'`, which every other decorator test runs through (TEST-008)
 - A new fast-check property suite (`src/ordering.property.spec.ts`) pins the ordering invariants that only ever had one or two handwritten examples: priority order with and without a batch, dedup and final-value visibility in a batch flush, nested batches behaving like one flat batch, nested effects rebuilding in pre-order on every rerun, and a memo read during a flush never seeing a stale value. All five `it()` blocks run against a fixed seed for reproducible failures (TEST-012)
 - The four `*.gc.spec.ts` suites fail instead of skipping themselves when the run has no `--expose-gc` (BUILD-016)
+- Every spec with counter guards now tears its resources down in a `finally`, so a real regression fails one test instead of taking the rest of the file with it — 384 tests converted across 32 files (TEST-017)
 
 ### Build System
 

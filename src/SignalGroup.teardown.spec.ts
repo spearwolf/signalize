@@ -71,17 +71,28 @@ describe('SignalGroup teardown robustness', () => {
 
     link(sig, () => {}, {attach: host});
 
-    expect(getSignalGroupsCount()).toBe(groupsBefore + 1);
+    try {
+      expect(getSignalGroupsCount()).toBe(groupsBefore + 1);
 
-    expect(() => {
-      group.clear();
-    }).toThrow('cleanup boom');
+      expect(() => {
+        group.clear();
+      }).toThrow('cleanup boom');
 
-    expect(siblingCleanupCalls, 'sibling cleanup must still run').toBe(1);
-    expect(getEffectsCount(), 'effects after clear').toBe(effectsBefore);
-    expect(getSignalsCount(), 'signals after clear').toBe(signalsBefore);
-    expect(getLinksCount(), 'links after clear').toBe(linksBefore);
-    expect(getSignalGroupsCount(), 'groups after clear').toBe(groupsBefore);
+      expect(siblingCleanupCalls, 'sibling cleanup must still run').toBe(1);
+      expect(getEffectsCount(), 'effects after clear').toBe(effectsBefore);
+      expect(getSignalsCount(), 'signals after clear').toBe(signalsBefore);
+      expect(getLinksCount(), 'links after clear').toBe(linksBefore);
+      expect(getSignalGroupsCount(), 'groups after clear').toBe(groupsBefore);
+    } finally {
+      // A failure before the `clear()` above leaves the throwing cleanup
+      // armed; an unguarded teardown here would report `cleanup boom`
+      // instead of the assertion that actually failed.
+      try {
+        group.clear();
+      } catch {
+        /* ignore */
+      }
+    }
   });
 
   it('off() finishes the teardown even when an effect cleanup throws', () => {
@@ -117,18 +128,26 @@ describe('SignalGroup teardown robustness', () => {
 
     link(sig, () => {}, {attach: host});
 
-    expect(() => {
-      group.off();
-    }).toThrow('cleanup boom');
+    try {
+      expect(() => {
+        group.off();
+      }).toThrow('cleanup boom');
 
-    expect(getEffectsCount(), 'effects after off').toBe(effectsBefore);
-    expect(getLinksCount(), 'links after off').toBe(linksBefore);
-    expect(offEvents, 'OFF must be emitted exactly once').toBe(1);
+      expect(getEffectsCount(), 'effects after off').toBe(effectsBefore);
+      expect(getLinksCount(), 'links after off').toBe(linksBefore);
+      expect(offEvents, 'OFF must be emitted exactly once').toBe(1);
 
-    // The signal survives `off()` — the group stays reusable.
-    expect(sig.value).toBe(0);
-
-    group.clear();
+      // The signal survives `off()` — the group stays reusable.
+      expect(sig.value).toBe(0);
+    } finally {
+      // Same as above: the cleanup throws on the first teardown that
+      // reaches it, whichever one that turns out to be.
+      try {
+        group.clear();
+      } catch {
+        /* ignore */
+      }
+    }
   });
 
   it('reports every teardown error: AggregateError for several, unchanged for one', () => {
@@ -159,17 +178,8 @@ describe('SignalGroup teardown robustness', () => {
       {attach: hostA},
     );
 
-    let caught: unknown;
-    try {
-      groupA.clear();
-    } catch (err) {
-      caught = err;
-    }
-
-    expect(caught).toBeInstanceOf(AggregateError);
-    expect((caught as AggregateError).errors).toEqual([errA, errB]);
-
-    // A lone failure is rethrown as-is, not wrapped.
+    // The lone-failure half is arranged up front too: a group of its own,
+    // untouched by `groupA.clear()`, and a handle the `finally` can reach.
     const errC = new Error('boom C');
 
     const hostB = {};
@@ -186,34 +196,60 @@ describe('SignalGroup teardown robustness', () => {
       {attach: hostB},
     );
 
-    let caughtSingle: unknown;
     try {
-      groupB.clear();
-    } catch (err) {
-      caughtSingle = err;
-    }
+      let caught: unknown;
+      try {
+        groupA.clear();
+      } catch (err) {
+        caught = err;
+      }
 
-    expect(caughtSingle).toBe(errC);
+      expect(caught).toBeInstanceOf(AggregateError);
+      expect((caught as AggregateError).errors).toEqual([errA, errB]);
+
+      // A lone failure is rethrown as-is, not wrapped.
+      let caughtSingle: unknown;
+      try {
+        groupB.clear();
+      } catch (err) {
+        caughtSingle = err;
+      }
+
+      expect(caughtSingle).toBe(errC);
+    } finally {
+      try {
+        groupA.clear();
+      } catch {
+        /* ignore */
+      }
+      try {
+        groupB.clear();
+      } catch {
+        /* ignore */
+      }
+    }
   });
 
   it('drops destroyed effects and signals from the group by itself', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
 
-    for (let i = 0; i < 50; i += 1) {
-      createEffect(() => {}, {attach: host}).destroy();
+    try {
+      for (let i = 0; i < 50; i += 1) {
+        createEffect(() => {}, {attach: host}).destroy();
+      }
+
+      for (let i = 0; i < 50; i += 1) {
+        destroySignal(createSignal(i, {attach: host}));
+      }
+
+      expect(getEffectsCount(), 'no effect survives').toBe(0);
+      expect(getSignalsCount(), 'no signal survives').toBe(0);
+
+      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+    } finally {
+      group.clear();
     }
-
-    for (let i = 0; i < 50; i += 1) {
-      destroySignal(createSignal(i, {attach: host}));
-    }
-
-    expect(getEffectsCount(), 'no effect survives').toBe(0);
-    expect(getSignalsCount(), 'no signal survives').toBe(0);
-
-    expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
-
-    group.clear();
   });
 
   it('drops a hard-destroyed signal from its name bindings too', () => {
@@ -222,26 +258,30 @@ describe('SignalGroup teardown robustness', () => {
 
     const names: string[] = [];
 
-    for (let i = 0; i < 50; i += 1) {
-      const name = `sig${i}`;
-      names.push(name);
-      const sig = createSignal(i);
-      group.attachSignalByName(name, sig);
-      destroySignal(sig);
+    try {
+      for (let i = 0; i < 50; i += 1) {
+        const name = `sig${i}`;
+        names.push(name);
+        const sig = createSignal(i);
+        group.attachSignalByName(name, sig);
+        destroySignal(sig);
+      }
+
+      expect(getSignalsCount(), 'no signal survives').toBe(0);
+
+      for (const name of names) {
+        expect(group.hasSignal(name), `${name} must be unbound`).toBe(false);
+        expect(group.signal(name), `${name} must resolve to nothing`).toBe(
+          undefined,
+        );
+      }
+
+      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+    } finally {
+      // A name is a hold: whatever the loop got as far as attaching is
+      // destroyed with the group.
+      group.clear();
     }
-
-    expect(getSignalsCount(), 'no signal survives').toBe(0);
-
-    for (const name of names) {
-      expect(group.hasSignal(name), `${name} must be unbound`).toBe(false);
-      expect(group.signal(name), `${name} must resolve to nothing`).toBe(
-        undefined,
-      );
-    }
-
-    expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
-
-    group.clear();
   });
 
   it('promotes the remaining candidate when a destroyed signal vacates a name', () => {
@@ -251,20 +291,25 @@ describe('SignalGroup teardown robustness', () => {
     const first = createSignal(1);
     const second = createSignal(2);
 
-    group.attachSignalByName('slot', first);
-    group.attachSignal(first); // keeps `first` alive across the rebind
-    group.attachSignalByName('slot', second);
+    try {
+      group.attachSignalByName('slot', first);
+      group.attachSignal(first); // keeps `first` alive across the rebind
+      group.attachSignalByName('slot', second);
 
-    expect(group.signal('slot')).toBe(second);
+      expect(group.signal('slot')).toBe(second);
 
-    destroySignal(second);
+      destroySignal(second);
 
-    // `first` is still listed under the name, so it takes the slot back —
-    // the same fallback `detachSignal()` applies.
-    expect(group.hasSignal('slot')).toBe(true);
-    expect(group.signal('slot')).toBe(first);
-
-    group.clear();
+      // `first` is still listed under the name, so it takes the slot back —
+      // the same fallback `detachSignal()` applies.
+      expect(group.hasSignal('slot')).toBe(true);
+      expect(group.signal('slot')).toBe(first);
+    } finally {
+      // Both signals are born unattached: a failure before the first
+      // `attachSignalByName()` leaves the group without a hold on them.
+      destroySignal(first, second);
+      group.clear();
+    }
   });
 
   it('drops a hard-destroyed @signal accessor from its host group', () => {
@@ -275,16 +320,18 @@ describe('SignalGroup teardown robustness', () => {
     const host = new Host();
     const group = SignalGroup.findOrCreate(host);
 
-    expect(group.hasSignal('foo')).toBe(true);
-    expect(host.foo).toBe(23);
+    try {
+      expect(group.hasSignal('foo')).toBe(true);
+      expect(host.foo).toBe(23);
 
-    destroySignal(findObjectSignalByName(host, 'foo'));
+      destroySignal(findObjectSignalByName(host, 'foo'));
 
-    expect(group.hasSignal('foo'), 'the name must be unbound').toBe(false);
-    expect(group.signal('foo')).toBeUndefined();
-    expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
-
-    group.clear();
+      expect(group.hasSignal('foo'), 'the name must be unbound').toBe(false);
+      expect(group.signal('foo')).toBeUndefined();
+      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+    } finally {
+      group.clear();
+    }
   });
 
   it('detachSignal() restores the destroy-queue subscription baseline', () => {
@@ -294,16 +341,23 @@ describe('SignalGroup teardown robustness', () => {
     const group = SignalGroup.findOrCreate(host);
     const sig = createSignal(1, {attach: host});
 
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
+    try {
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
 
-    group.detachSignal(sig);
+      group.detachSignal(sig);
 
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
 
-    destroySignal(sig);
-    group.clear();
+      destroySignal(sig);
+      group.clear();
 
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+    } finally {
+      // `detachSignal()` takes the group's hold away mid-test, so the
+      // signal needs a handle of its own here.
+      destroySignal(sig);
+      group.clear();
+    }
   });
 
   it('releasing a name restores the destroy-queue subscription baseline', () => {
@@ -312,25 +366,31 @@ describe('SignalGroup teardown robustness', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
 
-    // Releasing the name outright: the name was the group's only hold, so
-    // the signal is destroyed and its subscription must go with it.
-    group.attachSignalByName('a', createSignal(1));
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
+    try {
+      // Releasing the name outright: the name was the group's only hold, so
+      // the signal is destroyed and its subscription must go with it.
+      group.attachSignalByName('a', createSignal(1));
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
 
-    group.attachSignalByName('a');
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+      group.attachSignalByName('a');
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
 
-    // Rebinding a name: the displaced signal is released, the new one
-    // subscribes — one in, one out.
-    group.attachSignalByName('b', createSignal(1));
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
+      // Rebinding a name: the displaced signal is released, the new one
+      // subscribes — one in, one out.
+      group.attachSignalByName('b', createSignal(1));
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
 
-    group.attachSignalByName('b', createSignal(2));
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
+      group.attachSignalByName('b', createSignal(2));
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline + 1);
 
-    group.clear();
+      group.clear();
 
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(baseline);
+    } finally {
+      // Every signal here is handed straight to the group, so the group is
+      // the only handle there is — and the only one needed.
+      group.clear();
+    }
   });
 
   it('static SignalGroup.clear() sweeps every group even when one of them throws', () => {
@@ -359,23 +419,31 @@ describe('SignalGroup teardown robustness', () => {
       return group;
     });
 
-    expect(() => {
-      SignalGroup.clear();
-    }).toThrow('cleanup boom');
+    try {
+      expect(() => {
+        SignalGroup.clear();
+      }).toThrow('cleanup boom');
 
-    expect(
-      siblingCleanupCalls,
-      'the groups after the throwing one must still be torn down',
-    ).toBe(2);
-    expect(
-      getSignalGroupsCount(),
-      'the registry is empty after one sweep',
-    ).toBe(0);
-    expect(getEffectsCount()).toBe(0);
-    expect(getSignalsCount()).toBe(0);
-    expect(getLinksCount()).toBe(0);
-    for (const group of groups) {
-      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+      expect(
+        siblingCleanupCalls,
+        'the groups after the throwing one must still be torn down',
+      ).toBe(2);
+      expect(
+        getSignalGroupsCount(),
+        'the registry is empty after one sweep',
+      ).toBe(0);
+      expect(getEffectsCount()).toBe(0);
+      expect(getSignalsCount()).toBe(0);
+      expect(getLinksCount()).toBe(0);
+      for (const group of groups) {
+        expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+      }
+    } finally {
+      try {
+        SignalGroup.clear();
+      } catch {
+        /* ignore */
+      }
     }
   });
 
@@ -400,22 +468,32 @@ describe('SignalGroup teardown robustness', () => {
       link(sig, () => {}, {attach: host});
     }
 
-    let caught: unknown;
     try {
-      SignalGroup.clear();
-    } catch (err) {
-      caught = err;
+      let caught: unknown;
+      try {
+        SignalGroup.clear();
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(AggregateError);
+      expect(
+        (caught as AggregateError).errors.map((e: Error) => e.message),
+      ).toEqual(['cleanup boom 0', 'cleanup boom 2']);
+
+      expect(getSignalGroupsCount()).toBe(0);
+      expect(getEffectsCount()).toBe(0);
+      expect(getSignalsCount()).toBe(0);
+      expect(getLinksCount()).toBe(0);
+    } finally {
+      // The three hosts are locals of the loop above — the static sweep is
+      // the only handle on their groups.
+      try {
+        SignalGroup.clear();
+      } catch {
+        /* ignore */
+      }
     }
-
-    expect(caught).toBeInstanceOf(AggregateError);
-    expect(
-      (caught as AggregateError).errors.map((e: Error) => e.message),
-    ).toEqual(['cleanup boom 0', 'cleanup boom 2']);
-
-    expect(getSignalGroupsCount()).toBe(0);
-    expect(getEffectsCount()).toBe(0);
-    expect(getSignalsCount()).toBe(0);
-    expect(getLinksCount()).toBe(0);
   });
 
   it('static SignalGroup.clear() keeps a group created during the sweep registered (BUG-009)', () => {
@@ -435,26 +513,33 @@ describe('SignalGroup teardown robustness', () => {
       createSignal(0, {attach: hostB});
     });
 
-    SignalGroup.clear();
+    try {
+      SignalGroup.clear();
 
-    expect(
-      getSignalGroupsCount(),
-      'the group born during the sweep is still counted',
-    ).toBe(groupsBefore + 1);
-    expect(
-      SignalGroup.findOrCreate(hostB),
-      'store still hands out the same instance',
-    ).toBe(groupB);
-    expect(getGroupMemberCounts(groupB)).toEqual({
-      ...NO_GROUP_MEMBERS,
-      signals: 1,
-    });
+      expect(
+        getSignalGroupsCount(),
+        'the group born during the sweep is still counted',
+      ).toBe(groupsBefore + 1);
+      expect(
+        SignalGroup.findOrCreate(hostB),
+        'store still hands out the same instance',
+      ).toBe(groupB);
+      expect(getGroupMemberCounts(groupB)).toEqual({
+        ...NO_GROUP_MEMBERS,
+        signals: 1,
+      });
 
-    // The second sweep is the cleanup: it must reach the group this time.
-    SignalGroup.clear();
+      // The second sweep is the cleanup: it must reach the group this time.
+      SignalGroup.clear();
 
-    expect(getSignalsCount()).toBe(signalsBefore);
-    expect(getSignalGroupsCount()).toBe(groupsBefore);
+      expect(getSignalsCount()).toBe(signalsBefore);
+      expect(getSignalGroupsCount()).toBe(groupsBefore);
+    } finally {
+      // Two sweeps, and that is the point of the test: the first one runs
+      // the DESTROY listener that spawns `groupB`, the second collects it.
+      SignalGroup.clear();
+      SignalGroup.clear();
+    }
   });
 
   it('the FinalizationRegistry backstop still works for a group created during the sweep (BUG-009)', () => {
@@ -473,15 +558,21 @@ describe('SignalGroup teardown robustness', () => {
       createSignal(0, {attach: hostB});
     });
 
-    SignalGroup.clear();
+    try {
+      SignalGroup.clear();
 
-    clearGroupFromFinalizer(groupB);
+      clearGroupFromFinalizer(groupB);
 
-    expect(
-      getGroupMemberCounts(groupB),
-      'the backstop must still find the group registered',
-    ).toEqual(NO_GROUP_MEMBERS);
-    expect(getSignalsCount()).toBe(signalsBefore);
+      expect(
+        getGroupMemberCounts(groupB),
+        'the backstop must still find the group registered',
+      ).toEqual(NO_GROUP_MEMBERS);
+      expect(getSignalsCount()).toBe(signalsBefore);
+    } finally {
+      // Same two-pass reason as above.
+      SignalGroup.clear();
+      SignalGroup.clear();
+    }
   });
 
   it('clearGroupFromFinalizer() reports a throwing teardown instead of letting it escape', () => {
@@ -532,18 +623,25 @@ describe('SignalGroup teardown robustness', () => {
       expect(errorSpy.mock.calls[0][0]).toContain('FinalizationRegistry');
       expect(errorSpy.mock.calls[0][1]).toBeInstanceOf(Error);
       expect((errorSpy.mock.calls[0][1] as Error).message).toBe('cleanup boom');
+
+      expect(siblingCleanupCalls, 'sibling cleanup must still run').toBe(1);
+      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+      expect(getSignalGroupsCount(), 'groups after the finalizer').toBe(
+        groupsBefore,
+      );
+      expect(getEffectsCount()).toBe(effectsBefore);
+      expect(getSignalsCount()).toBe(signalsBefore);
+      expect(getLinksCount()).toBe(linksBefore);
     } finally {
       errorSpy.mockRestore();
+      // `clearGroupFromFinalizer()` swallows the throw; a plain `clear()`
+      // here does not, so it needs the guard.
+      try {
+        group.clear();
+      } catch {
+        /* ignore */
+      }
     }
-
-    expect(siblingCleanupCalls, 'sibling cleanup must still run').toBe(1);
-    expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
-    expect(getSignalGroupsCount(), 'groups after the finalizer').toBe(
-      groupsBefore,
-    );
-    expect(getEffectsCount()).toBe(effectsBefore);
-    expect(getSignalsCount()).toBe(signalsBefore);
-    expect(getLinksCount()).toBe(linksBefore);
   });
 
   describe('every teardown step collects instead of aborting', () => {
@@ -572,12 +670,17 @@ describe('SignalGroup teardown robustness', () => {
         {attach: parentHost},
       );
 
-      expect(() => parent.off()).toThrow('child off boom');
+      try {
+        expect(() => parent.off()).toThrow('child off boom');
 
-      expect(cleanupCalls).toBe(1);
-      expect(getEffectsCount()).toBe(0);
-
-      parent.clear();
+        expect(cleanupCalls).toBe(1);
+        expect(getEffectsCount()).toBe(0);
+      } finally {
+        // No guard needed: the thrower sits on OFF, and `clear()` emits
+        // DESTROY. Measured — removing the guard leaves the message intact.
+        parent.clear();
+        child.clear();
+      }
     });
 
     it('off() collects a throwing link teardown and still destroys the sibling link', () => {
@@ -596,13 +699,19 @@ describe('SignalGroup teardown robustness', () => {
         siblingDestroyed += 1;
       });
 
-      expect(() => group.off()).toThrow('link teardown boom');
+      try {
+        expect(() => group.off()).toThrow('link teardown boom');
 
-      expect(siblingDestroyed).toBe(1);
-      expect(sibling.isDestroyed).toBe(true);
-      expect(getLinksCount()).toBe(0);
-
-      group.clear();
+        expect(siblingDestroyed).toBe(1);
+        expect(sibling.isDestroyed).toBe(true);
+        expect(getLinksCount()).toBe(0);
+      } finally {
+        try {
+          group.clear();
+        } catch {
+          /* ignore */
+        }
+      }
     });
 
     it('off() collects a throwing detach listener and still notifies the remaining signals', () => {
@@ -638,11 +747,12 @@ describe('SignalGroup teardown robustness', () => {
         expect(secondDetachEvents).toBe(1);
         expect(first.value).toBe(0);
       } finally {
+        // The thrower only fires on a detach, and it is gone before the
+        // `clear()` below destroys the two signals for good.
         unsubscribeFirst();
         unsubscribeSecond();
+        group.clear();
       }
-
-      group.clear();
     });
 
     it('off() collects a throwing OFF listener after the teardown is complete', () => {
@@ -667,14 +777,18 @@ describe('SignalGroup teardown robustness', () => {
         throw new Error('off listener boom');
       });
 
-      expect(() => group.off()).toThrow('off listener boom');
+      try {
+        expect(() => group.off()).toThrow('off listener boom');
 
-      expect(cleanupCalls).toBe(1);
-      expect(getEffectsCount()).toBe(0);
-      expect(getLinksCount()).toBe(0);
-      expect(sig.value).toBe(0);
-
-      group.clear();
+        expect(cleanupCalls).toBe(1);
+        expect(getEffectsCount()).toBe(0);
+        expect(getLinksCount()).toBe(0);
+        expect(sig.value).toBe(0);
+      } finally {
+        // Same as the child-group case above: OFF is not on the `clear()`
+        // path, so the teardown here stays silent.
+        group.clear();
+      }
     });
 
     it('clear() collects a throwing DESTROY listener and still dismantles the group', () => {
@@ -701,14 +815,22 @@ describe('SignalGroup teardown robustness', () => {
         throw new Error('destroy listener boom');
       });
 
-      expect(() => group.clear()).toThrow('destroy listener boom');
+      try {
+        expect(() => group.clear()).toThrow('destroy listener boom');
 
-      expect(cleanupCalls).toBe(1);
-      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
-      expect(getEffectsCount()).toBe(0);
-      expect(getSignalsCount()).toBe(0);
-      expect(getLinksCount()).toBe(0);
-      expect(getSignalGroupsCount()).toBe(groupsBefore);
+        expect(cleanupCalls).toBe(1);
+        expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+        expect(getEffectsCount()).toBe(0);
+        expect(getSignalsCount()).toBe(0);
+        expect(getLinksCount()).toBe(0);
+        expect(getSignalGroupsCount()).toBe(groupsBefore);
+      } finally {
+        try {
+          group.clear();
+        } catch {
+          /* ignore */
+        }
+      }
     });
 
     it('clear() collects a throwing child group and still clears its own members', () => {
@@ -738,13 +860,26 @@ describe('SignalGroup teardown robustness', () => {
         {attach: parentHost},
       );
 
-      expect(() => parent.clear()).toThrow('child destroy boom');
+      try {
+        expect(() => parent.clear()).toThrow('child destroy boom');
 
-      expect(cleanupCalls).toBe(1);
-      expect(getGroupMemberCounts(parent)).toEqual(NO_GROUP_MEMBERS);
-      expect(getGroupMemberCounts(child)).toEqual(NO_GROUP_MEMBERS);
-      expect(getSignalsCount()).toBe(0);
-      expect(getSignalGroupsCount()).toBe(groupsBefore);
+        expect(cleanupCalls).toBe(1);
+        expect(getGroupMemberCounts(parent)).toEqual(NO_GROUP_MEMBERS);
+        expect(getGroupMemberCounts(child)).toEqual(NO_GROUP_MEMBERS);
+        expect(getSignalsCount()).toBe(0);
+        expect(getSignalGroupsCount()).toBe(groupsBefore);
+      } finally {
+        try {
+          parent.clear();
+        } catch {
+          /* ignore */
+        }
+        try {
+          child.clear();
+        } catch {
+          /* ignore */
+        }
+      }
     });
 
     it('clear() collects a throwing destroy-queue listener and still releases its subscriptions', () => {
@@ -769,25 +904,32 @@ describe('SignalGroup teardown robustness', () => {
       group.attachSignal(first);
       group.attachSignal(second);
 
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-        destroyQueueBaseline + 3,
-      );
-
       try {
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+          destroyQueueBaseline + 3,
+        );
+
         expect(() => group.clear()).toThrow('destroy queue boom');
         expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
           destroyQueueBaseline + 1,
         );
-      } finally {
-        unsubscribeBoom();
-      }
 
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-        destroyQueueBaseline,
-      );
-      expect(getSignalsCount()).toBe(0);
-      expect(signalImpl(second).destroyed).toBe(true);
-      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+        unsubscribeBoom();
+
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+          destroyQueueBaseline,
+        );
+        expect(getSignalsCount()).toBe(0);
+        expect(signalImpl(second).destroyed).toBe(true);
+        expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+      } finally {
+        // Unsubscribing first is what makes the rest of this block silent:
+        // the thrower fires on `first` being destroyed, and destroying it
+        // is exactly what `clear()` does. Calling it twice is a no-op.
+        unsubscribeBoom();
+        destroySignal(first, second);
+        group.clear();
+      }
     });
 
     it('clear() collects a throwing link teardown on a foreign source', () => {
@@ -810,14 +952,25 @@ describe('SignalGroup teardown robustness', () => {
       // A group signal too, so the signal loop runs before the link loop.
       createSignal(0, {attach: host});
 
-      expect(() => group.clear()).toThrow('link clear boom');
+      try {
+        expect(() => group.clear()).toThrow('link clear boom');
 
-      expect(siblingDestroyed).toBe(1);
-      expect(getLinksCount()).toBe(0);
-      expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+        expect(siblingDestroyed).toBe(1);
+        expect(getLinksCount()).toBe(0);
+        expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
 
-      destroySignal(external);
-      expect(getSignalsCount()).toBe(0);
+        destroySignal(external);
+        expect(getSignalsCount()).toBe(0);
+      } finally {
+        // The group owns both links, so it goes first: destroying the
+        // foreign source would tear them down outside of any guard.
+        try {
+          group.clear();
+        } catch {
+          /* ignore */
+        }
+        destroySignal(external);
+      }
     });
   });
 });
