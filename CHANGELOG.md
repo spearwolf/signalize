@@ -125,6 +125,9 @@
 - `pnpm world` and CI now also run `checkPkgTypes` and `test:smoke`, both against a freshly built `lib/`/`dist/` (`pnpm dist`, which runs before either); `pnpm smoke` runs the smoke test's build-and-run pair on its own, and `pnpm clean` removes `smoke/build` along with the other generated directories (TEST-008, BUILD-008)
 - `pnpm checkPkgTypes` now runs `attw --pack --profile esm-only` instead of the unprofiled `attw --pack`, and is bestable for the first time: the unprofiled check always failed, because `node10` and `node16 (from CJS)` cannot pass for a package that is ESM-only and uses a subpath export — the profile excludes exactly those two modes and leaves `node16 (from ESM)` and `bundler` checked in full (BUILD-008)
 - New `pnpm typecheck` script (`tsc --noEmit -p tsconfig.json`) runs a real compiler pass over specs, benchmarks and the Vitest configs — code that was previously only transpiled by SWC and never type-checked. Wired into `pnpm world` (after `check`, before `compile`) and into CI, right after the `pnpm check` step (BUILD-003)
+- CI runs on pull requests against `main` now too, so a PR from a fork is actually checked (BUILD-002)
+- A push to `main` runs the same CI workflow as any feature branch, via `workflow_call`, before the deploy job publishes — previously only `pnpm lint` and `pnpm test` (BUILD-002)
+- `scripts/publishPackage.cjs` now exits with code 1 when `npm show` fails, and reports a failed `npm publish` with npm's own error output instead of crashing with `ERR_INVALID_ARG_TYPE` (BUILD-010)
 
 ### Breaking Changes
 

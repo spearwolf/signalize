@@ -10,7 +10,7 @@ function publishPackage() {
   exec(`npm publish --access public`, (error, stdout, stderr) => {
     console.error(stderr);
     console.log(stdout);
-    process.exit(!error ? 0 : error);
+    process.exitCode = error ? 1 : 0;
   });
 }
 
@@ -37,6 +37,7 @@ if (pkgJson.version.endsWith('-dev')) {
       }
     } else {
       console.error(`exec() panic: ${stderr}`);
+      process.exitCode = 1;
     }
   });
 }

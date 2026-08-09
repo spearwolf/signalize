@@ -10,27 +10,10 @@ permissions:
 
 jobs:
   test:
-    name: Run tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      # No `version:` — the action reads it from `packageManager` in package.json.
-      - uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-        name: Install dependencies
-
-      - run: pnpm lint
-        name: Run lintings
-
-      - run: pnpm test
-        name: Run tests
+    name: Run all checks, linters and tests
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
 
   deploy:
     name: Deploy package
