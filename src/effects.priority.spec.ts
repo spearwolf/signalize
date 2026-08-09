@@ -32,39 +32,42 @@ describe('Effect priority', () => {
       callQueue.push('e');
       c.set(m() + a.get());
     });
-    createEffect(effectCallback);
+    const effect = createEffect(effectCallback);
 
-    expect(c.value).toBe(12);
-    expect(memoCallback).toHaveBeenCalledTimes(1);
-    expect(effectCallback).toHaveBeenCalledTimes(1);
-    expect(callQueue).toEqual(['m', 'e']);
+    try {
+      expect(c.value).toBe(12);
+      expect(memoCallback).toHaveBeenCalledTimes(1);
+      expect(effectCallback).toHaveBeenCalledTimes(1);
+      expect(callQueue).toEqual(['m', 'e']);
 
-    callQueue.length = 0;
-    effectCallback.mockClear();
-    memoCallback.mockClear();
+      callQueue.length = 0;
+      effectCallback.mockClear();
+      memoCallback.mockClear();
 
-    a.set(2);
+      a.set(2);
 
-    expect(c.value).toBe(14);
-    expect(memoCallback).toHaveBeenCalledTimes(1);
-    // called 1x after a.set(2), 1x after m changed
-    expect(effectCallback).toHaveBeenCalledTimes(2);
-    expect(callQueue).toEqual(['m', 'e', 'e']);
+      expect(c.value).toBe(14);
+      expect(memoCallback).toHaveBeenCalledTimes(1);
+      // called 1x after a.set(2), 1x after m changed
+      expect(effectCallback).toHaveBeenCalledTimes(2);
+      expect(callQueue).toEqual(['m', 'e', 'e']);
 
-    callQueue.length = 0;
-    effectCallback.mockClear();
-    memoCallback.mockClear();
+      callQueue.length = 0;
+      effectCallback.mockClear();
+      memoCallback.mockClear();
 
-    batch(() => {
-      a.set(3);
-    });
+      batch(() => {
+        a.set(3);
+      });
 
-    expect(c.value).toBe(16);
-    expect(memoCallback).toHaveBeenCalledTimes(1);
-    expect(effectCallback).toHaveBeenCalledTimes(1);
-    expect(callQueue).toEqual(['m', 'e']);
-
-    destroySignal(a, c, m);
+      expect(c.value).toBe(16);
+      expect(memoCallback).toHaveBeenCalledTimes(1);
+      expect(effectCallback).toHaveBeenCalledTimes(1);
+      expect(callQueue).toEqual(['m', 'e']);
+    } finally {
+      effect.destroy();
+      destroySignal(a, c, m);
+    }
   });
 
   it('prioritized effects should run in order', () => {
@@ -88,21 +91,26 @@ describe('Effect priority', () => {
       c.set(a.get() + 100);
     });
 
-    createEffect(effFn0, {priority: -100});
-    createEffect(effFn1, {priority: 1000});
-    createEffect(effFn2);
+    const eff0 = createEffect(effFn0, {priority: -100});
+    const eff1 = createEffect(effFn1, {priority: 1000});
+    const eff2 = createEffect(effFn2);
 
-    expect(c.value).toBe(101);
+    try {
+      expect(c.value).toBe(101);
 
-    expect(callQueue).toEqual([0, 1, 2]);
+      expect(callQueue).toEqual([0, 1, 2]);
 
-    callQueue.length = 0;
+      callQueue.length = 0;
 
-    a.set(2);
+      a.set(2);
 
-    expect(c.value).toBe(2);
-    expect(callQueue).toEqual([1, 2, 0]);
-
-    destroySignal(a, c);
+      expect(c.value).toBe(2);
+      expect(callQueue).toEqual([1, 2, 0]);
+    } finally {
+      eff0.destroy();
+      eff1.destroy();
+      eff2.destroy();
+      destroySignal(a, c);
+    }
   });
 });

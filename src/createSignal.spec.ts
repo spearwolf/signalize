@@ -42,29 +42,34 @@ describe('createSignal', () => {
     const {get: str, set: setStr} = createSignal('foo');
     const {get: obj, set: setObj} = createSignal<object>();
 
-    expect(num()).toBe(1);
-    expect(str()).toBe('foo');
-    expect(obj()).toBeUndefined();
+    try {
+      expect(num()).toBe(1);
+      expect(str()).toBe('foo');
+      expect(obj()).toBeUndefined();
 
-    setNum(666);
-    setStr('bar');
+      setNum(666);
+      setStr('bar');
 
-    const myObj = {};
-    setObj(myObj);
+      const myObj = {};
+      setObj(myObj);
 
-    expect(num()).toBe(666);
-    expect(str()).toBe('bar');
-    expect(obj()).toBe(myObj);
-
-    destroySignal(num, str, obj);
+      expect(num()).toBe(666);
+      expect(str()).toBe('bar');
+      expect(obj()).toBe(myObj);
+    } finally {
+      destroySignal(num, str, obj);
+    }
   });
 
   it('isSignal', () => {
     const {get: signal, set} = createSignal();
-    expect(isSignal(signal)).toBe(true);
-    expect(isSignal(set)).toBe(false);
-    expect(isSignal(() => {})).toBe(false);
-    destroySignal(signal);
+    try {
+      expect(isSignal(signal)).toBe(true);
+      expect(isSignal(set)).toBe(false);
+      expect(isSignal(() => {})).toBe(false);
+    } finally {
+      destroySignal(signal);
+    }
   });
 
   it('isSignal rejects fake signals with generic Symbol.for keys (BUG-006)', () => {
@@ -79,34 +84,38 @@ describe('createSignal', () => {
     const {get: signal, set} = createSignal(666);
     const effect = vi.fn();
 
-    signal(effect);
+    try {
+      signal(effect);
 
-    expect(effect).not.toHaveBeenCalled();
+      expect(effect).not.toHaveBeenCalled();
 
-    touch(signal);
+      touch(signal);
 
-    expect(effect).toHaveBeenCalledWith(666);
+      expect(effect).toHaveBeenCalledWith(666);
 
-    set(1001);
+      set(1001);
 
-    expect(effect).toHaveBeenCalledWith(1001);
-
-    destroySignal(signal);
+      expect(effect).toHaveBeenCalledWith(1001);
+    } finally {
+      destroySignal(signal);
+    }
   });
 
   it('createSignal(otherSignal) should return otherSignal and NOT create a new signal', () => {
     const {get: signal, set} = createSignal(666);
 
-    assertSignalsCount(1, 'createSignal(666)');
+    try {
+      assertSignalsCount(1, 'createSignal(666)');
 
-    const {get: otherSignal, set: setOther} = createSignal(signal);
+      const {get: otherSignal, set: setOther} = createSignal(signal);
 
-    assertSignalsCount(1, 'createSignal(otherSignal)');
+      assertSignalsCount(1, 'createSignal(otherSignal)');
 
-    expect(signal).toBe(otherSignal);
-    expect(set).toBe(setOther);
-
-    destroySignal(signal);
+      expect(signal).toBe(otherSignal);
+      expect(set).toBe(setOther);
+    } finally {
+      destroySignal(signal);
+    }
   });
 
   it('mute, unmute and unsubscribe', () => {
@@ -118,31 +127,34 @@ describe('createSignal', () => {
       foo = sigFoo();
     });
 
-    expect(foo).toBe(666);
+    try {
+      expect(foo).toBe(666);
 
-    setFoo(23);
+      setFoo(23);
 
-    expect(foo).toBe(23);
+      expect(foo).toBe(23);
 
-    muteSignal(sigFoo);
-    setFoo(44);
+      muteSignal(sigFoo);
+      setFoo(44);
 
-    expect(foo).toBe(23);
+      expect(foo).toBe(23);
 
-    unmuteSignal(sigFoo);
+      unmuteSignal(sigFoo);
 
-    expect(foo).toBe(23);
+      expect(foo).toBe(23);
 
-    setFoo(111);
+      setFoo(111);
 
-    expect(foo).toBe(111);
+      expect(foo).toBe(111);
 
-    effect.destroy();
-    setFoo(222);
+      effect.destroy();
+      setFoo(222);
 
-    expect(foo).toBe(111);
-
-    destroySignal(sigFoo);
+      expect(foo).toBe(111);
+    } finally {
+      effect.destroy();
+      destroySignal(sigFoo);
+    }
   });
 
   it('set(_, {touch: true}) does NOT emit when signal is muted', () => {
@@ -151,28 +163,30 @@ describe('createSignal', () => {
 
     sig.onChange(effect);
 
-    expect(effect).not.toHaveBeenCalled();
+    try {
+      expect(effect).not.toHaveBeenCalled();
 
-    // baseline: touch on an unmuted signal triggers the effect
-    sig.set(1, {touch: true});
-    expect(effect).toHaveBeenCalledTimes(1);
+      // baseline: touch on an unmuted signal triggers the effect
+      sig.set(1, {touch: true});
+      expect(effect).toHaveBeenCalledTimes(1);
 
-    // mute then touch with same value → no emit
-    muteSignal(sig);
-    sig.set(1, {touch: true});
-    expect(effect).toHaveBeenCalledTimes(1);
+      // mute then touch with same value → no emit
+      muteSignal(sig);
+      sig.set(1, {touch: true});
+      expect(effect).toHaveBeenCalledTimes(1);
 
-    // mute then touch with different value → still no emit (writer stores new value, but mute blocks notification)
-    sig.set(2, {touch: true});
-    expect(effect).toHaveBeenCalledTimes(1);
-    expect(sig.value).toBe(2);
+      // mute then touch with different value → still no emit (writer stores new value, but mute blocks notification)
+      sig.set(2, {touch: true});
+      expect(effect).toHaveBeenCalledTimes(1);
+      expect(sig.value).toBe(2);
 
-    // unmute restores normal notification
-    unmuteSignal(sig);
-    sig.set(2, {touch: true});
-    expect(effect).toHaveBeenCalledTimes(2);
-
-    destroySignal(sig);
+      // unmute restores normal notification
+      unmuteSignal(sig);
+      sig.set(2, {touch: true});
+      expect(effect).toHaveBeenCalledTimes(2);
+    } finally {
+      destroySignal(sig);
+    }
   });
 
   it('set(_, {touch: true}) does NOT emit when signal is destroyed', () => {
@@ -181,17 +195,21 @@ describe('createSignal', () => {
 
     sig.onChange(effect);
 
-    sig.set(1, {touch: true});
-    expect(effect).toHaveBeenCalledTimes(1);
+    try {
+      sig.set(1, {touch: true});
+      expect(effect).toHaveBeenCalledTimes(1);
 
-    destroySignal(sig);
+      destroySignal(sig);
 
-    // touch on destroyed signal must not emit
-    sig.set(1, {touch: true});
-    expect(effect).toHaveBeenCalledTimes(1);
+      // touch on destroyed signal must not emit
+      sig.set(1, {touch: true});
+      expect(effect).toHaveBeenCalledTimes(1);
 
-    sig.set(99, {touch: true});
-    expect(effect).toHaveBeenCalledTimes(1);
+      sig.set(99, {touch: true});
+      expect(effect).toHaveBeenCalledTimes(1);
+    } finally {
+      destroySignal(sig);
+    }
   });
 
   it('mute, unmute with signal reader callback effect', () => {
@@ -203,56 +221,62 @@ describe('createSignal', () => {
       foo = val;
     });
 
-    expect(foo).toBe(0);
+    try {
+      expect(foo).toBe(0);
 
-    setFoo(23);
+      setFoo(23);
 
-    expect(foo).toBe(23);
+      expect(foo).toBe(23);
 
-    muteSignal(sigFoo);
-    setFoo(44);
+      muteSignal(sigFoo);
+      setFoo(44);
 
-    expect(foo).toBe(23);
+      expect(foo).toBe(23);
 
-    unmuteSignal(sigFoo);
+      unmuteSignal(sigFoo);
 
-    expect(foo).toBe(23);
+      expect(foo).toBe(23);
 
-    setFoo(111);
+      setFoo(111);
 
-    expect(foo).toBe(111);
+      expect(foo).toBe(111);
 
-    destroySignal(sigFoo);
-    setFoo(222);
+      destroySignal(sigFoo);
+      setFoo(222);
 
-    expect(foo).toBe(111);
+      expect(foo).toBe(111);
+    } finally {
+      destroySignal(sigFoo);
+    }
   });
 
   it('createSignal returns the new object-based signal api', () => {
     const foo = createSignal(666);
     const effect = vi.fn();
 
-    expect(foo.value).toBe(666);
-    expect(foo.get()).toBe(666);
-    expect(isSignal(foo)).toBe(true);
+    try {
+      expect(foo.value).toBe(666);
+      expect(foo.get()).toBe(666);
+      expect(isSignal(foo)).toBe(true);
 
-    const {get: sigRead, set: sigWrite} = foo;
-    expect(sigRead).toBe(foo.get);
-    expect(sigWrite).toBe(foo.set);
+      const {get: sigRead, set: sigWrite} = foo;
+      expect(sigRead).toBe(foo.get);
+      expect(sigWrite).toBe(foo.set);
 
-    foo.onChange(effect);
+      foo.onChange(effect);
 
-    expect(effect).not.toHaveBeenCalled();
+      expect(effect).not.toHaveBeenCalled();
 
-    foo.touch();
+      foo.touch();
 
-    expect(effect).toHaveBeenCalledWith(666);
+      expect(effect).toHaveBeenCalledWith(666);
 
-    foo.set(1001);
+      foo.set(1001);
 
-    expect(effect).toHaveBeenCalledWith(1001);
-
-    foo.destroy();
+      expect(effect).toHaveBeenCalledWith(1001);
+    } finally {
+      foo.destroy();
+    }
   });
 
   it('onChange tolerates a callback that returns a non-function value', () => {
@@ -268,14 +292,16 @@ describe('createSignal', () => {
       return val * 2;
     });
 
-    sig.set(2);
-    expect(seen).toEqual([2]);
+    try {
+      sig.set(2);
+      expect(seen).toEqual([2]);
 
-    sig.set(3);
-    expect(seen).toEqual([2, 3]);
-
-    unsubscribe();
-    destroySignal(sig);
+      sig.set(3);
+      expect(seen).toEqual([2, 3]);
+    } finally {
+      unsubscribe();
+      destroySignal(sig);
+    }
   });
 
   it('.value property read doesnt trigger dependencies, but write should do', () => {
@@ -292,24 +318,26 @@ describe('createSignal', () => {
       plah = foo.value; // Accessing .value should not trigger the effect
     });
 
-    expect(foo.value).toBe(1);
-    expect(bar).toBe(0);
-    expect(plah).toBe(1);
+    try {
+      expect(foo.value).toBe(1);
+      expect(bar).toBe(0);
+      expect(plah).toBe(1);
 
-    foo.value = 2;
+      foo.value = 2;
 
-    expect(foo.value).toBe(2);
-    expect(bar).toBe(2);
-    expect(plah).toBe(1);
+      expect(foo.value).toBe(2);
+      expect(bar).toBe(2);
+      expect(plah).toBe(1);
 
-    foo.set(3);
+      foo.set(3);
 
-    expect(foo.value).toBe(3);
-    expect(bar).toBe(3);
-    expect(plah).toBe(1);
-
-    eff.destroy();
-    foo.destroy();
+      expect(foo.value).toBe(3);
+      expect(bar).toBe(3);
+      expect(plah).toBe(1);
+    } finally {
+      eff.destroy();
+      foo.destroy();
+    }
   });
 
   it('dynamic depencenies', () => {
@@ -320,7 +348,7 @@ describe('createSignal', () => {
     let val = 0;
     let callCount = 0;
 
-    createEffect(() => {
+    const effect = createEffect(() => {
       ++callCount;
       if (a.get()) {
         val = b.get() + 1;
@@ -329,29 +357,32 @@ describe('createSignal', () => {
       }
     });
 
-    expect(a.get()).toBe(true);
-    expect(val).toBe(2);
-    expect(callCount).toBe(1);
+    try {
+      expect(a.get()).toBe(true);
+      expect(val).toBe(2);
+      expect(callCount).toBe(1);
 
-    b.set(2);
+      b.set(2);
 
-    expect(val).toBe(3);
-    expect(callCount).toBe(2);
+      expect(val).toBe(3);
+      expect(callCount).toBe(2);
 
-    a.set(false);
+      a.set(false);
 
-    expect(val).toBe(30);
-    expect(callCount).toBe(3);
+      expect(val).toBe(30);
+      expect(callCount).toBe(3);
 
-    b.set(5);
+      b.set(5);
 
-    expect(callCount).toBe(3);
+      expect(callCount).toBe(3);
 
-    a.destroy();
-    c.destroy();
+      a.destroy();
+      c.destroy();
 
-    assertEffectsCount(0, 'after [a,c].destroy()');
-
-    b.destroy();
+      assertEffectsCount(0, 'after [a,c].destroy()');
+    } finally {
+      effect.destroy();
+      destroySignal(a, b, c);
+    }
   });
 });

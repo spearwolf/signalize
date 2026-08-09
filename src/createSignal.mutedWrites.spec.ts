@@ -24,17 +24,19 @@ describe('writes on muted or destroyed signals', () => {
     const onChange = vi.fn();
     const unsubscribe = sig.onChange(onChange);
 
-    muteSignal(sig);
-    sig.set(2);
+    try {
+      muteSignal(sig);
+      sig.set(2);
 
-    expect(onChange).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
 
-    // the write itself happened — untracked and tracked reads both see it
-    expect(sig.value).toBe(2);
-    expect(sig.get()).toBe(2);
-
-    unsubscribe();
-    destroySignal(sig);
+      // the write itself happened — untracked and tracked reads both see it
+      expect(sig.value).toBe(2);
+      expect(sig.get()).toBe(2);
+    } finally {
+      unsubscribe();
+      destroySignal(sig);
+    }
   });
 
   it('an effect reading a muted signal sees the new value on its next run', () => {
@@ -46,24 +48,26 @@ describe('writes on muted or destroyed signals', () => {
       seen.push([sig.get(), other.get()]);
     });
 
-    expect(seen).toEqual([[1, 'a']]);
+    try {
+      expect(seen).toEqual([[1, 'a']]);
 
-    muteSignal(sig);
-    sig.set(2);
+      muteSignal(sig);
+      sig.set(2);
 
-    // sig did not trigger a rerun ...
-    expect(seen).toEqual([[1, 'a']]);
+      // sig did not trigger a rerun ...
+      expect(seen).toEqual([[1, 'a']]);
 
-    // ... but when something else does, the value is already 2
-    other.set('b');
+      // ... but when something else does, the value is already 2
+      other.set('b');
 
-    expect(seen).toEqual([
-      [1, 'a'],
-      [2, 'b'],
-    ]);
-
-    effect.destroy();
-    destroySignal(sig, other);
+      expect(seen).toEqual([
+        [1, 'a'],
+        [2, 'b'],
+      ]);
+    } finally {
+      effect.destroy();
+      destroySignal(sig, other);
+    }
   });
 
   it('unmute does not replay the write that happened while muted', () => {
@@ -71,28 +75,30 @@ describe('writes on muted or destroyed signals', () => {
     const onChange = vi.fn();
     const unsubscribe = sig.onChange(onChange);
 
-    muteSignal(sig);
-    sig.set(2);
-    unmuteSignal(sig);
+    try {
+      muteSignal(sig);
+      sig.set(2);
+      unmuteSignal(sig);
 
-    expect(onChange).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
 
-    // writing the same value again is equal to the stored 2 → still silent
-    sig.set(2);
-    expect(onChange).not.toHaveBeenCalled();
+      // writing the same value again is equal to the stored 2 → still silent
+      sig.set(2);
+      expect(onChange).not.toHaveBeenCalled();
 
-    // touch() is the way out
-    sig.touch();
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenCalledWith(2);
+      // touch() is the way out
+      sig.touch();
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith(2);
 
-    // and a genuinely new value notifies normally again
-    sig.set(3);
-    expect(onChange).toHaveBeenCalledTimes(2);
-    expect(onChange).toHaveBeenLastCalledWith(3);
-
-    unsubscribe();
-    destroySignal(sig);
+      // and a genuinely new value notifies normally again
+      sig.set(3);
+      expect(onChange).toHaveBeenCalledTimes(2);
+      expect(onChange).toHaveBeenLastCalledWith(3);
+    } finally {
+      unsubscribe();
+      destroySignal(sig);
+    }
   });
 
   it('set(fn, {lazy: true}) on a muted signal defers and does not notify', () => {
@@ -102,17 +108,19 @@ describe('writes on muted or destroyed signals', () => {
 
     const lazyFn = vi.fn(() => 'b');
 
-    muteSignal(sig);
-    sig.set(lazyFn, {lazy: true});
+    try {
+      muteSignal(sig);
+      sig.set(lazyFn, {lazy: true});
 
-    expect(onChange).not.toHaveBeenCalled();
-    expect(lazyFn).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+      expect(lazyFn).not.toHaveBeenCalled();
 
-    expect(sig.value).toBe('b');
-    expect(lazyFn).toHaveBeenCalledTimes(1);
-
-    unsubscribe();
-    destroySignal(sig);
+      expect(sig.value).toBe('b');
+      expect(lazyFn).toHaveBeenCalledTimes(1);
+    } finally {
+      unsubscribe();
+      destroySignal(sig);
+    }
   });
 
   it('set() on a destroyed signal stores the value but does not notify', () => {
@@ -120,23 +128,28 @@ describe('writes on muted or destroyed signals', () => {
     const onChange = vi.fn();
     const unsubscribe = sig.onChange(onChange);
 
-    sig.set(2);
-    expect(onChange).toHaveBeenCalledTimes(1);
+    try {
+      sig.set(2);
+      expect(onChange).toHaveBeenCalledTimes(1);
 
-    unsubscribe();
-    destroySignal(sig);
+      unsubscribe();
+      destroySignal(sig);
 
-    sig.set(99);
+      sig.set(99);
 
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(sig.value).toBe(99);
-    expect(sig.get()).toBe(99);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(sig.value).toBe(99);
+      expect(sig.get()).toBe(99);
 
-    // a destroyed signal stays destroyed — unmute cannot revive it
-    unmuteSignal(sig);
-    sig.set(100);
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(sig.value).toBe(100);
+      // a destroyed signal stays destroyed — unmute cannot revive it
+      unmuteSignal(sig);
+      sig.set(100);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(sig.value).toBe(100);
+    } finally {
+      unsubscribe();
+      destroySignal(sig);
+    }
   });
 
   it('Signal#muted reads and writes the same flag as muteSignal()/unmuteSignal()', () => {
@@ -144,31 +157,33 @@ describe('writes on muted or destroyed signals', () => {
     const onChange = vi.fn();
     const unsubscribe = sig.onChange(onChange);
 
-    expect(sig.muted).toBe(false);
+    try {
+      expect(sig.muted).toBe(false);
 
-    sig.muted = true;
-    expect(sig.muted).toBe(true);
+      sig.muted = true;
+      expect(sig.muted).toBe(true);
 
-    sig.set(2);
-    sig.touch(); // touch() is suppressed on a muted signal too
-    expect(onChange).not.toHaveBeenCalled();
+      sig.set(2);
+      sig.touch(); // touch() is suppressed on a muted signal too
+      expect(onChange).not.toHaveBeenCalled();
 
-    // the free functions and the accessor read and write the same flag
-    unmuteSignal(sig);
-    expect(sig.muted).toBe(false);
-    muteSignal(sig);
-    expect(sig.muted).toBe(true);
+      // the free functions and the accessor read and write the same flag
+      unmuteSignal(sig);
+      expect(sig.muted).toBe(false);
+      muteSignal(sig);
+      expect(sig.muted).toBe(true);
 
-    sig.muted = false;
-    expect(sig.muted).toBe(false);
+      sig.muted = false;
+      expect(sig.muted).toBe(false);
 
-    // now touch() gets through and pushes the value written while muted
-    sig.touch();
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenCalledWith(2);
-
-    unsubscribe();
-    destroySignal(sig);
+      // now touch() gets through and pushes the value written while muted
+      sig.touch();
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith(2);
+    } finally {
+      unsubscribe();
+      destroySignal(sig);
+    }
   });
 
   it('touch() on a destroyed signal does not notify', () => {
@@ -176,14 +191,17 @@ describe('writes on muted or destroyed signals', () => {
     const onChange = vi.fn();
     const unsubscribe = sig.onChange(onChange);
 
-    sig.set(2);
-    expect(onChange).toHaveBeenCalledTimes(1);
+    try {
+      sig.set(2);
+      expect(onChange).toHaveBeenCalledTimes(1);
 
-    destroySignal(sig);
+      destroySignal(sig);
 
-    sig.touch();
-    expect(onChange).toHaveBeenCalledTimes(1);
-
-    unsubscribe();
+      sig.touch();
+      expect(onChange).toHaveBeenCalledTimes(1);
+    } finally {
+      unsubscribe();
+      destroySignal(sig);
+    }
   });
 });

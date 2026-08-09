@@ -21,48 +21,60 @@ describe('onCreateEffect', () => {
 
     const effect = createEffect(() => {});
 
-    expect(effectCreated).toHaveBeenCalledTimes(1);
-    expect(effectDestroyed).toHaveBeenCalledTimes(0);
-    expect(effectCreated.mock.calls[0][0]).toBeInstanceOf(EffectImpl);
+    try {
+      expect(effectCreated).toHaveBeenCalledTimes(1);
+      expect(effectDestroyed).toHaveBeenCalledTimes(0);
+      expect(effectCreated.mock.calls[0][0]).toBeInstanceOf(EffectImpl);
 
-    unsubscribeCreateEffect();
+      unsubscribeCreateEffect();
 
-    expect(effectCreated).toHaveBeenCalledTimes(1);
-    expect(effectDestroyed).toHaveBeenCalledTimes(0);
+      expect(effectCreated).toHaveBeenCalledTimes(1);
+      expect(effectDestroyed).toHaveBeenCalledTimes(0);
 
-    assertEffectsCount(1);
+      assertEffectsCount(1);
 
-    effect.destroy();
+      effect.destroy();
 
-    expect(effectDestroyed).toHaveBeenCalledTimes(1);
-    expect(effectDestroyed.mock.calls[0][0]).toBe(
-      effectCreated.mock.calls[0][0],
-    );
-
-    unsubscribeDestroyEffect();
+      expect(effectDestroyed).toHaveBeenCalledTimes(1);
+      expect(effectDestroyed.mock.calls[0][0]).toBe(
+        effectCreated.mock.calls[0][0],
+      );
+    } finally {
+      unsubscribeCreateEffect();
+      unsubscribeDestroyEffect();
+      effect.destroy();
+    }
   });
 
   it('Effect wrapper clears its [$effect] reference after destroy', () => {
     const effect = createEffect(() => {});
 
-    expect(effect[$effect]).toBeInstanceOf(EffectImpl);
+    try {
+      expect(effect[$effect]).toBeInstanceOf(EffectImpl);
 
-    effect.destroy();
+      effect.destroy();
 
-    // Internal listener (once on DESTROY) clears the impl reference so the
-    // wrapper does not pin a destroyed effect alive for GC.
-    expect(effect[$effect]).toBeUndefined();
+      // Internal listener (once on DESTROY) clears the impl reference so the
+      // wrapper does not pin a destroyed effect alive for GC.
+      expect(effect[$effect]).toBeUndefined();
+    } finally {
+      effect.destroy();
+    }
   });
 
   it('Effect wrapper [$effect] is cleared even when impl is destroyed externally', () => {
     const effect = createEffect(() => {});
 
-    expect(effect[$effect]).toBeInstanceOf(EffectImpl);
+    try {
+      expect(effect[$effect]).toBeInstanceOf(EffectImpl);
 
-    // Destroy via the underlying impl (the once-listener on DESTROY
-    // is what makes the wrapper reset, regardless of which side initiates).
-    effect[$effect].destroy();
+      // Destroy via the underlying impl (the once-listener on DESTROY
+      // is what makes the wrapper reset, regardless of which side initiates).
+      effect[$effect].destroy();
 
-    expect(effect[$effect]).toBeUndefined();
+      expect(effect[$effect]).toBeUndefined();
+    } finally {
+      effect.destroy();
+    }
   });
 });

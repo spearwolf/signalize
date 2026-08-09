@@ -49,26 +49,31 @@ describe('EffectImpl.destroy() teardown order', () => {
       };
     });
 
-    expect(log).toEqual(['run:0']);
+    try {
+      expect(log).toEqual(['run:0']);
 
-    effect.destroy();
+      effect.destroy();
 
-    // No re-entrant run, hence no cleanup that could never be called.
-    expect(log).toEqual(['run:0', 'cleanup:0']);
+      // No re-entrant run, hence no cleanup that could never be called.
+      expect(log).toEqual(['run:0', 'cleanup:0']);
 
-    // The effect is fully detached: later writes reach nobody.
-    setA(7);
-    expect(log).toEqual(['run:0', 'cleanup:0']);
+      // The effect is fully detached: later writes reach nobody.
+      setA(7);
+      expect(log).toEqual(['run:0', 'cleanup:0']);
 
-    expect(getEffectsCount()).toBe(0);
+      expect(getEffectsCount()).toBe(0);
 
-    destroySignal(a);
+      destroySignal(a);
 
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
-    expect(getSubscriptionCount(globalEffectQueue)).toBe(effectSubscriptions);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destroySubscriptions,
-    );
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
+      expect(getSubscriptionCount(globalEffectQueue)).toBe(effectSubscriptions);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptions,
+      );
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('an onDestroyEffect handler sees an effect that no longer runs (BUG-008)', () => {
@@ -86,22 +91,28 @@ describe('EffectImpl.destroy() teardown order', () => {
       {autorun: false},
     );
 
-    expect(runCount).toBe(0);
+    let unsubscribe: () => void;
 
-    const seen: EffectImpl[] = [];
+    try {
+      expect(runCount).toBe(0);
 
-    const unsubscribe = onDestroyEffect((impl: EffectImpl) => {
-      seen.push(impl);
-      impl.run();
-    });
+      const seen: EffectImpl[] = [];
 
-    effect.destroy();
-    unsubscribe();
+      unsubscribe = onDestroyEffect((impl: EffectImpl) => {
+        seen.push(impl);
+        impl.run();
+      });
 
-    expect(seen).toHaveLength(1);
-    expect(runCount).toBe(0);
+      effect.destroy();
+      unsubscribe();
 
-    destroySignal(a);
+      expect(seen).toHaveLength(1);
+      expect(runCount).toBe(0);
+    } finally {
+      unsubscribe?.();
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('destroy() re-entered from the cleanup decrements the effect counter exactly once', () => {
@@ -120,14 +131,17 @@ describe('EffectImpl.destroy() teardown order', () => {
 
     impl = effect[$effect];
 
-    expect(getEffectsCount()).toBe(1);
+    try {
+      expect(getEffectsCount()).toBe(1);
 
-    impl.destroy();
+      impl.destroy();
 
-    expect(cleanupCalls).toBe(1);
-    expect(getEffectsCount()).toBe(0);
-
-    destroySignal(a);
+      expect(cleanupCalls).toBe(1);
+      expect(getEffectsCount()).toBe(0);
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('a DESTROY listener on the effect itself sees an effect that no longer runs', () => {
@@ -143,21 +157,24 @@ describe('EffectImpl.destroy() teardown order', () => {
       {autorun: false},
     );
 
-    const impl = effect[$effect];
+    try {
+      const impl = effect[$effect];
 
-    let seen: EffectImpl | undefined;
+      let seen: EffectImpl | undefined;
 
-    once(impl, DESTROY, (destroyed: EffectImpl) => {
-      seen = destroyed;
-      destroyed.run();
-    });
+      once(impl, DESTROY, (destroyed: EffectImpl) => {
+        seen = destroyed;
+        destroyed.run();
+      });
 
-    impl.destroy();
+      impl.destroy();
 
-    expect(seen).toBe(impl);
-    expect(runCount).toBe(0);
-
-    destroySignal(a);
+      expect(seen).toBe(impl);
+      expect(runCount).toBe(0);
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('destroy() re-entered from an onDestroyEffect handler decrements the effect counter exactly once', () => {
@@ -176,14 +193,18 @@ describe('EffectImpl.destroy() teardown order', () => {
       destroyed.destroy();
     });
 
-    impl.destroy();
-    unsubscribe();
+    try {
+      impl.destroy();
+      unsubscribe();
 
-    // The re-entrant destroy() is a no-op, so it emits no second event.
-    expect(handlerCalls).toBe(1);
-    expect(getEffectsCount()).toBe(0);
-
-    destroySignal(a);
+      // The re-entrant destroy() is a no-op, so it emits no second event.
+      expect(handlerCalls).toBe(1);
+      expect(getEffectsCount()).toBe(0);
+    } finally {
+      unsubscribe();
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('a throwing cleanup still tears the effect down completely', () => {
@@ -209,25 +230,37 @@ describe('EffectImpl.destroy() teardown order', () => {
       };
     });
 
-    expect(getEffectsCount()).toBe(2);
-    expect(childRuns).toBe(1);
+    try {
+      expect(getEffectsCount()).toBe(2);
+      expect(childRuns).toBe(1);
 
-    // The error reaches the caller — it is not swallowed.
-    expect(() => effect.destroy()).toThrow('cleanup boom');
+      // The error reaches the caller — it is not swallowed.
+      expect(() => effect.destroy()).toThrow('cleanup boom');
 
-    // ...and the teardown completed anyway.
-    expect(getEffectsCount()).toBe(0);
+      // ...and the teardown completed anyway.
+      expect(getEffectsCount()).toBe(0);
 
-    setB(1);
-    expect(childRuns).toBe(1);
+      setB(1);
+      expect(childRuns).toBe(1);
 
-    destroySignal(a, b);
+      destroySignal(a, b);
 
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
-    expect(getSubscriptionCount(globalEffectQueue)).toBe(effectSubscriptions);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destroySubscriptions,
-    );
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
+      expect(getSubscriptionCount(globalEffectQueue)).toBe(effectSubscriptions);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptions,
+      );
+    } finally {
+      // The cleanup throws by design, and destroy() re-raises it. Left
+      // unguarded here it would replace the failure the test is reporting
+      // (rule (d)) — and swallow destroySignal() with it.
+      try {
+        effect.destroy();
+      } catch {
+        // already reported by the assertion above, or irrelevant
+      }
+      destroySignal(a, b);
+    }
   });
 
   it('a throwing child cleanup does not orphan its siblings', () => {
@@ -257,24 +290,33 @@ describe('EffectImpl.destroy() teardown order', () => {
       }
     });
 
-    expect(getEffectsCount()).toBe(4);
-    expect(runs).toEqual([1, 1, 1]);
+    try {
+      expect(getEffectsCount()).toBe(4);
+      expect(runs).toEqual([1, 1, 1]);
 
-    expect(() => effect.destroy()).toThrow('child boom');
+      expect(() => effect.destroy()).toThrow('child boom');
 
-    expect(getEffectsCount()).toBe(0);
+      expect(getEffectsCount()).toBe(0);
 
-    // No zombie: a write reaches none of the siblings.
-    setB(1);
-    expect(runs).toEqual([1, 1, 1]);
+      // No zombie: a write reaches none of the siblings.
+      setB(1);
+      expect(runs).toEqual([1, 1, 1]);
 
-    destroySignal(a, b);
+      destroySignal(a, b);
 
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
-    expect(getSubscriptionCount(globalEffectQueue)).toBe(effectSubscriptions);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destroySubscriptions,
-    );
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
+      expect(getSubscriptionCount(globalEffectQueue)).toBe(effectSubscriptions);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptions,
+      );
+    } finally {
+      try {
+        effect.destroy();
+      } catch {
+        // see above: a throwing cleanup must not eat the real failure
+      }
+      destroySignal(a, b);
+    }
   });
 
   it('several throwing child cleanups are bundled into an AggregateError', () => {
@@ -296,23 +338,30 @@ describe('EffectImpl.destroy() teardown order', () => {
       }
     });
 
-    expect(getEffectsCount()).toBe(4);
-
-    let caught: unknown;
     try {
-      effect.destroy();
-    } catch (err) {
-      caught = err;
+      expect(getEffectsCount()).toBe(4);
+
+      let caught: unknown;
+      try {
+        effect.destroy();
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(AggregateError);
+      expect(
+        (caught as AggregateError).errors.map((err: Error) => err.message),
+      ).toEqual(['child one boom', 'child three boom']);
+
+      expect(getEffectsCount()).toBe(0);
+    } finally {
+      try {
+        effect.destroy();
+      } catch {
+        // see above: a throwing cleanup must not eat the real failure
+      }
+      destroySignal(a, b);
     }
-
-    expect(caught).toBeInstanceOf(AggregateError);
-    expect(
-      (caught as AggregateError).errors.map((err: Error) => err.message),
-    ).toEqual(['child one boom', 'child three boom']);
-
-    expect(getEffectsCount()).toBe(0);
-
-    destroySignal(a, b);
   });
 
   it('a parent cleanup and a child cleanup that both throw are reported together', () => {
@@ -334,24 +383,31 @@ describe('EffectImpl.destroy() teardown order', () => {
       };
     });
 
-    expect(getEffectsCount()).toBe(2);
-
-    let caught: unknown;
     try {
-      effect.destroy();
-    } catch (err) {
-      caught = err;
+      expect(getEffectsCount()).toBe(2);
+
+      let caught: unknown;
+      try {
+        effect.destroy();
+      } catch (err) {
+        caught = err;
+      }
+
+      // The parent error must not be swallowed by the child error.
+      expect(caught).toBeInstanceOf(AggregateError);
+      expect(
+        (caught as AggregateError).errors.map((err: Error) => err.message),
+      ).toEqual(['parent boom', 'child boom']);
+
+      expect(getEffectsCount()).toBe(0);
+    } finally {
+      try {
+        effect.destroy();
+      } catch {
+        // see above: a throwing cleanup must not eat the real failure
+      }
+      destroySignal(a, b);
     }
-
-    // The parent error must not be swallowed by the child error.
-    expect(caught).toBeInstanceOf(AggregateError);
-    expect(
-      (caught as AggregateError).errors.map((err: Error) => err.message),
-    ).toEqual(['parent boom', 'child boom']);
-
-    expect(getEffectsCount()).toBe(0);
-
-    destroySignal(a, b);
   });
 
   it('an effect that destroys itself mid-callback stops tracking (MEM-003)', () => {
@@ -377,21 +433,24 @@ describe('EffectImpl.destroy() teardown order', () => {
       {autorun: false},
     );
 
-    effect.run();
+    try {
+      effect.run();
 
-    expect(runs).toBe(1);
-    expect(getEffectsCount()).toBe(0);
+      expect(runs).toBe(1);
+      expect(getEffectsCount()).toBe(0);
 
-    // Kein Abo, das niemand mehr abbestellen kann.
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destroySubscriptions,
-    );
+      // Kein Abo, das niemand mehr abbestellen kann.
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptions,
+      );
 
-    setB(3);
-    expect(runs).toBe(1);
-
-    destroySignal(a, b);
+      setB(3);
+      expect(runs).toBe(1);
+    } finally {
+      effect.destroy();
+      destroySignal(a, b);
+    }
   });
 
   it('an effect destroyed while it is being created never saves its static deps (MEM-003)', () => {
@@ -410,35 +469,34 @@ describe('EffectImpl.destroy() teardown order', () => {
         ++runs;
         c();
       }, [c]);
+
+      expect(runs).toBe(0);
+      expect(getEffectsCount()).toBe(0);
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptions,
+      );
+
+      // `runs` proves nothing here, in either direction: a static-deps effect
+      // never runs at creation, and a later write cannot reach the callback
+      // either, because RECALL sets shouldRun and run() then bails on the
+      // destroyed flag. Only the subscription state tells
+      // "saveSignalsFromDeps() was skipped" apart from "it ran and subscribed
+      // anyway" — the two baselines above, and, naming the culprit directly,
+      // the absence of `c`'s id on both queues.
+      expect(getSubscribedEventNames(globalSignalQueue)).not.toContain(
+        signalImpl(c).id,
+      );
+      expect(getSubscribedEventNames(globalDestroySignalQueue)).not.toContain(
+        signalImpl(c).id,
+      );
     } finally {
-      // Must run even if createEffect() throws — otherwise this handler
-      // stays registered and destroys every effect the other tests in this
-      // file go on to create.
+      // unsubscribe() must run even if createEffect() throws — otherwise this
+      // handler stays registered and destroys every effect the other tests in
+      // this file go on to create.
       unsubscribe();
+      destroySignal(c);
     }
-
-    expect(runs).toBe(0);
-    expect(getEffectsCount()).toBe(0);
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destroySubscriptions,
-    );
-
-    // `runs` proves nothing here, in either direction: a static-deps effect
-    // never runs at creation, and a later write cannot reach the callback
-    // either, because RECALL sets shouldRun and run() then bails on the
-    // destroyed flag. Only the subscription state tells
-    // "saveSignalsFromDeps() was skipped" apart from "it ran and subscribed
-    // anyway" — the two baselines above, and, naming the culprit directly,
-    // the absence of `c`'s id on both queues.
-    expect(getSubscribedEventNames(globalSignalQueue)).not.toContain(
-      signalImpl(c).id,
-    );
-    expect(getSubscribedEventNames(globalDestroySignalQueue)).not.toContain(
-      signalImpl(c).id,
-    );
-
-    destroySignal(c);
   });
 
   it('a cleanup returned after a mid-callback self-destroy still runs (MEM-004)', () => {
@@ -461,13 +519,16 @@ describe('EffectImpl.destroy() teardown order', () => {
       };
     });
 
-    setA(1);
+    try {
+      setA(1);
 
-    expect(acquired).toBe(2);
-    expect(released).toBe(2);
-    assertEffectsCount(0, 'after mid-callback self-destroy');
-
-    destroySignal(a);
+      expect(acquired).toBe(2);
+      expect(released).toBe(2);
+      assertEffectsCount(0, 'after mid-callback self-destroy');
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('an effect is destroyed once its last live dependency dies, even when an earlier one was hard-destroyed mid-callback (MEM-006)', () => {
@@ -483,7 +544,7 @@ describe('EffectImpl.destroy() teardown order', () => {
     // marker the hard-destroy branch just set. The id survives in `#signals`,
     // unmarked and unsubscribed — which is why the untriggerable check reads
     // `#signalSubscriptions` rather than counting ids.
-    createEffect(() => {
+    const effect = createEffect(() => {
       a.get();
       a.destroy();
       b.get();
@@ -492,14 +553,19 @@ describe('EffectImpl.destroy() teardown order', () => {
       };
     });
 
-    expect(cleanupCalls).toBe(0);
+    try {
+      expect(cleanupCalls).toBe(0);
 
-    // Outside of any run: the last live dependency dies. Nothing left that
-    // could ever trigger this effect again.
-    b.destroy();
+      // Outside of any run: the last live dependency dies. Nothing left that
+      // could ever trigger this effect again.
+      b.destroy();
 
-    expect(cleanupCalls).toBe(1);
-    assertEffectsCount(0, 'after last live dependency hard-destroyed');
+      expect(cleanupCalls).toBe(1);
+      assertEffectsCount(0, 'after last live dependency hard-destroyed');
+    } finally {
+      effect.destroy();
+      destroySignal(a, b);
+    }
   });
 
   describe('Effect#onDestroy() (internal)', () => {
@@ -511,15 +577,18 @@ describe('EffectImpl.destroy() teardown order', () => {
         a.get();
       });
 
-      const unsubscribe = effect.onDestroy(onDestroyed);
-      expect(typeof unsubscribe).toBe('function');
+      try {
+        const unsubscribe = effect.onDestroy(onDestroyed);
+        expect(typeof unsubscribe).toBe('function');
 
-      unsubscribe();
-      effect.destroy();
+        unsubscribe();
+        effect.destroy();
 
-      expect(onDestroyed).not.toHaveBeenCalled();
-
-      destroySignal(a);
+        expect(onDestroyed).not.toHaveBeenCalled();
+      } finally {
+        effect.destroy();
+        destroySignal(a);
+      }
     });
 
     it('runs the callback right away and returns a no-op when the effect is already gone', () => {
@@ -529,15 +598,18 @@ describe('EffectImpl.destroy() teardown order', () => {
       const effect = createEffect(() => {
         a.get();
       });
-      effect.destroy();
+      try {
+        effect.destroy();
 
-      const unsubscribe = effect.onDestroy(onDestroyed);
+        const unsubscribe = effect.onDestroy(onDestroyed);
 
-      expect(onDestroyed).toHaveBeenCalledTimes(1);
-      expect(() => unsubscribe()).not.toThrow();
-      expect(onDestroyed).toHaveBeenCalledTimes(1);
-
-      destroySignal(a);
+        expect(onDestroyed).toHaveBeenCalledTimes(1);
+        expect(() => unsubscribe()).not.toThrow();
+        expect(onDestroyed).toHaveBeenCalledTimes(1);
+      } finally {
+        effect.destroy();
+        destroySignal(a);
+      }
     });
   });
 });

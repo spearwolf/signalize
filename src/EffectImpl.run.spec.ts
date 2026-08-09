@@ -34,38 +34,43 @@ describe('EffectImpl.run() lifecycle', () => {
       {autorun: false},
     );
 
-    effect.run();
-    expect(
-      getSubscriptionCount(globalSignalQueue),
-      'the tracked run subscribed to a and b',
-    ).toBe(signalSubscriptions + 2);
-
-    setA(1); // flips shouldRun; autorun: false, so nothing runs yet
-
-    beQuiet(() => {
+    try {
       effect.run();
-    });
+      expect(
+        getSubscriptionCount(globalSignalQueue),
+        'the tracked run subscribed to a and b',
+      ).toBe(signalSubscriptions + 2);
 
-    expect(seen, 'the quiet run did execute the callback').toEqual([
-      [0, 100],
-      [1, 100],
-    ]);
-    expect(
-      getSubscriptionCount(globalSignalQueue),
-      'the quiet run left the dependency set alone',
-    ).toBe(signalSubscriptions + 2);
+      setA(1); // flips shouldRun; autorun: false, so nothing runs yet
 
-    setB(200);
-    effect.run();
+      beQuiet(() => {
+        effect.run();
+      });
 
-    expect(seen, 'the effect is still reachable through both signals').toEqual([
-      [0, 100],
-      [1, 100],
-      [1, 200],
-    ]);
+      expect(seen, 'the quiet run did execute the callback').toEqual([
+        [0, 100],
+        [1, 100],
+      ]);
+      expect(
+        getSubscriptionCount(globalSignalQueue),
+        'the quiet run left the dependency set alone',
+      ).toBe(signalSubscriptions + 2);
 
-    effect.destroy();
-    destroySignal(a, b);
+      setB(200);
+      effect.run();
+
+      expect(
+        seen,
+        'the effect is still reachable through both signals',
+      ).toEqual([
+        [0, 100],
+        [1, 100],
+        [1, 200],
+      ]);
+    } finally {
+      effect.destroy();
+      destroySignal(a, b);
+    }
   });
 
   it('a throwing callback still releases the dependency it stopped reading (BUG-006)', () => {
@@ -83,31 +88,33 @@ describe('EffectImpl.run() lifecycle', () => {
       if (boom) throw new Error('boom');
     });
 
-    expect(getSubscriptionCount(globalSignalQueue), 'cond and x').toBe(
-      signalSubscriptions + 2,
-    );
+    try {
+      expect(getSubscriptionCount(globalSignalQueue), 'cond and x').toBe(
+        signalSubscriptions + 2,
+      );
 
-    boom = true;
-    expect(() => {
-      setCond(false);
-    }).toThrow('boom');
+      boom = true;
+      expect(() => {
+        setCond(false);
+      }).toThrow('boom');
 
-    expect(
-      getSubscriptionCount(globalSignalQueue),
-      'x is gone and y took its place, even though the callback threw',
-    ).toBe(signalSubscriptions + 2);
+      expect(
+        getSubscriptionCount(globalSignalQueue),
+        'x is gone and y took its place, even though the callback threw',
+      ).toBe(signalSubscriptions + 2);
 
-    boom = false;
-    const runsBefore = seen.length;
-    setX(99);
+      boom = false;
+      const runsBefore = seen.length;
+      setX(99);
 
-    expect(
-      seen.length - runsBefore,
-      'a write to the signal it no longer reads does not wake it',
-    ).toBe(0);
-
-    effect.destroy();
-    destroySignal(cond, x, y);
+      expect(
+        seen.length - runsBefore,
+        'a write to the signal it no longer reads does not wake it',
+      ).toBe(0);
+    } finally {
+      effect.destroy();
+      destroySignal(cond, x, y);
+    }
   });
 
   it('a callback that throws before its first read keeps every dependency', () => {
@@ -126,31 +133,33 @@ describe('EffectImpl.run() lifecycle', () => {
       seen.push([a(), b()]);
     });
 
-    expect(getSubscriptionCount(globalSignalQueue), 'a and b').toBe(
-      signalSubscriptions + 2,
-    );
+    try {
+      expect(getSubscriptionCount(globalSignalQueue), 'a and b').toBe(
+        signalSubscriptions + 2,
+      );
 
-    boom = true;
-    expect(() => {
-      setA(1);
-    }).toThrow('boom');
+      boom = true;
+      expect(() => {
+        setA(1);
+      }).toThrow('boom');
 
-    expect(
-      getSubscriptionCount(globalSignalQueue),
-      'a run that never reached a read committed no dependency set',
-    ).toBe(signalSubscriptions + 2);
+      expect(
+        getSubscriptionCount(globalSignalQueue),
+        'a run that never reached a read committed no dependency set',
+      ).toBe(signalSubscriptions + 2);
 
-    boom = false;
-    const runsBefore = seen.length;
-    setA(2);
+      boom = false;
+      const runsBefore = seen.length;
+      setA(2);
 
-    expect(
-      seen.length - runsBefore,
-      'the effect recovered and still wakes on a write',
-    ).toBe(1);
-
-    effect.destroy();
-    destroySignal(a, b);
+      expect(
+        seen.length - runsBefore,
+        'the effect recovered and still wakes on a write',
+      ).toBe(1);
+    } finally {
+      effect.destroy();
+      destroySignal(a, b);
+    }
   });
 
   it('a completed run that reads nothing at all still drops every dependency', () => {
@@ -172,29 +181,31 @@ describe('EffectImpl.run() lifecycle', () => {
       }
     });
 
-    expect(getSubscriptionCount(globalSignalQueue), 'flag and a').toBe(
-      signalSubscriptions + 2,
-    );
+    try {
+      expect(getSubscriptionCount(globalSignalQueue), 'flag and a').toBe(
+        signalSubscriptions + 2,
+      );
 
-    readEverything = false;
-    setFlag(false);
+      readEverything = false;
+      setFlag(false);
 
-    expect(
-      getSubscriptionCount(globalSignalQueue),
-      'a run that read nothing and returned normally unsubscribed everything',
-    ).toBe(signalSubscriptions);
+      expect(
+        getSubscriptionCount(globalSignalQueue),
+        'a run that read nothing and returned normally unsubscribed everything',
+      ).toBe(signalSubscriptions);
 
-    const runsBefore = seen.length;
-    setFlag(true);
-    setA(2);
+      const runsBefore = seen.length;
+      setFlag(true);
+      setA(2);
 
-    expect(
-      seen.length - runsBefore,
-      'neither signal can wake the effect anymore',
-    ).toBe(0);
-
-    effect.destroy();
-    destroySignal(flag, a);
+      expect(
+        seen.length - runsBefore,
+        'neither signal can wake the effect anymore',
+      ).toBe(0);
+    } finally {
+      effect.destroy();
+      destroySignal(flag, a);
+    }
   });
 
   it('every nested run of a self-writing effect releases its own resource (BUG-007)', () => {
@@ -211,15 +222,19 @@ describe('EffectImpl.run() lifecycle', () => {
       };
     });
 
-    expect(
-      [...held],
-      'the superseded runs handed their cleanups over instead of losing them',
-    ).toEqual(['res@3']);
+    try {
+      expect(
+        [...held],
+        'the superseded runs handed their cleanups over instead of losing them',
+      ).toEqual(['res@3']);
 
-    effect.destroy();
+      effect.destroy();
 
-    expect([...held], 'destroy() released the last one').toEqual([]);
-    destroySignal(n);
+      expect([...held], 'destroy() released the last one').toEqual([]);
+    } finally {
+      effect.destroy();
+      destroySignal(n);
+    }
   });
 
   it('a cleanup that re-enters run() does not drop the nested cleanup (BUG-007)', () => {
@@ -250,24 +265,28 @@ describe('EffectImpl.run() lifecycle', () => {
       };
     });
 
-    setN(1);
+    try {
+      setN(1);
 
-    expect(
-      released.length,
-      'no cleanup ran twice — the slot is assigned before the displaced one runs',
-    ).toBe(new Set(released).size);
+      expect(
+        released.length,
+        'no cleanup ran twice — the slot is assigned before the displaced one runs',
+      ).toBe(new Set(released).size);
 
-    expect(
-      [...held],
-      'every displaced cleanup ran instead of being overwritten',
-    ).toEqual([`handle#${acquired - 1}`]);
+      expect(
+        [...held],
+        'every displaced cleanup ran instead of being overwritten',
+      ).toEqual([`handle#${acquired - 1}`]);
 
-    effect.destroy();
+      effect.destroy();
 
-    expect([...held], 'destroy() released the last one').toEqual([]);
-    expect(released.length, 'every acquired handle was released once').toBe(
-      acquired,
-    );
-    destroySignal(n);
+      expect([...held], 'destroy() released the last one').toEqual([]);
+      expect(released.length, 'every acquired handle was released once').toBe(
+        acquired,
+      );
+    } finally {
+      effect.destroy();
+      destroySignal(n);
+    }
   });
 });

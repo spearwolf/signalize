@@ -32,26 +32,28 @@ describe('beQuiet', () => {
       });
     });
 
-    setA(1);
-    setC(4);
+    try {
+      setA(1);
+      setC(4);
 
-    expect(a()).toBe(1);
-    expect(b()).toBe(2);
-    expect(c()).toBe(4);
-    expect(d()).toBe(1);
+      expect(a()).toBe(1);
+      expect(b()).toBe(2);
+      expect(c()).toBe(4);
+      expect(d()).toBe(1);
 
-    effect.run(); // has no effect - no dependencies changed!
+      effect.run(); // has no effect - no dependencies changed!
 
-    expect(b()).toBe(2);
-    expect(d()).toBe(1);
+      expect(b()).toBe(2);
+      expect(d()).toBe(1);
 
-    touch(a);
+      touch(a);
 
-    expect(b()).toBe(2);
-    expect(d()).toBe(5);
-
-    effect.destroy();
-    destroySignal(a, b, c, d);
+      expect(b()).toBe(2);
+      expect(d()).toBe(5);
+    } finally {
+      effect.destroy();
+      destroySignal(a, b, c, d);
+    }
   });
 
   it('returns what the action returns, so an untracked peek is usable (BUG-010)', () => {
@@ -65,19 +67,21 @@ describe('beQuiet', () => {
       runs++;
     });
 
-    const peek = beQuiet(() => b());
+    try {
+      const peek = beQuiet(() => b());
 
-    expect(peek).toBe(23);
-    expect(isQuiet()).toBe(false);
+      expect(peek).toBe(23);
+      expect(isQuiet()).toBe(false);
 
-    runs = 0;
-    setB(42);
-    expect(runs, 'the quiet read stayed untracked').toBe(0);
+      runs = 0;
+      setB(42);
+      expect(runs, 'the quiet read stayed untracked').toBe(0);
 
-    setA(1);
-    expect(runs).toBe(1);
-
-    effect.destroy();
-    destroySignal(a, b);
+      setA(1);
+      expect(runs).toBe(1);
+    } finally {
+      effect.destroy();
+      destroySignal(a, b);
+    }
   });
 });

@@ -32,30 +32,34 @@ describe('createSignal({beforeRead})', () => {
     const beforeRead = vi.fn();
     const sig = createSignal(1, {beforeRead});
 
-    expect(beforeRead).not.toHaveBeenCalled();
+    try {
+      expect(beforeRead).not.toHaveBeenCalled();
 
-    sig.get();
-    expect(beforeRead).toHaveBeenCalledTimes(1);
+      sig.get();
+      expect(beforeRead).toHaveBeenCalledTimes(1);
 
-    sig.get();
-    sig.get();
-    expect(beforeRead).toHaveBeenCalledTimes(3);
-
-    destroySignal(sig);
+      sig.get();
+      sig.get();
+      expect(beforeRead).toHaveBeenCalledTimes(3);
+    } finally {
+      destroySignal(sig);
+    }
   });
 
   it('fires when reader is invoked with a callback (regression for #2.1)', () => {
     const beforeRead = vi.fn();
     const sig = createSignal(1, {beforeRead});
 
-    expect(beforeRead).not.toHaveBeenCalled();
+    try {
+      expect(beforeRead).not.toHaveBeenCalled();
 
-    // The reader-with-callback form must also trigger beforeRead.
-    sig.get((_val) => {});
+      // The reader-with-callback form must also trigger beforeRead.
+      sig.get((_val) => {});
 
-    expect(beforeRead).toHaveBeenCalledTimes(1);
-
-    destroySignal(sig);
+      expect(beforeRead).toHaveBeenCalledTimes(1);
+    } finally {
+      destroySignal(sig);
+    }
   });
 
   it('does NOT fire on .value property read (untracked)', () => {
@@ -64,24 +68,30 @@ describe('createSignal({beforeRead})', () => {
 
     // .value is the untracked path — beforeRead is a read-tracking concern,
     // and value() unwraps without going through the reader function.
-    void sig.value;
+    try {
+      void sig.value;
 
-    expect(beforeRead).not.toHaveBeenCalled();
-
-    destroySignal(sig);
+      expect(beforeRead).not.toHaveBeenCalled();
+    } finally {
+      destroySignal(sig);
+    }
   });
 
   it('is cleared on destroy', () => {
     const beforeRead = vi.fn();
     const sig = createSignal(1, {beforeRead});
 
-    sig.get();
-    expect(beforeRead).toHaveBeenCalledTimes(1);
+    try {
+      sig.get();
+      expect(beforeRead).toHaveBeenCalledTimes(1);
 
-    destroySignal(sig);
+      destroySignal(sig);
 
-    // After destroy the reader is a no-op; beforeRead must not be invoked.
-    sig.get();
-    expect(beforeRead).toHaveBeenCalledTimes(1);
+      // After destroy the reader is a no-op; beforeRead must not be invoked.
+      sig.get();
+      expect(beforeRead).toHaveBeenCalledTimes(1);
+    } finally {
+      destroySignal(sig);
+    }
   });
 });

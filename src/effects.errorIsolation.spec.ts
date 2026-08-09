@@ -55,31 +55,33 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
       {priority: 1},
     );
 
-    order.length = 0;
-    seen.length = 0;
-    armed = true;
-
-    let thrown: unknown;
     try {
-      sig.set(1);
-    } catch (err) {
-      thrown = err;
+      order.length = 0;
+      seen.length = 0;
+      armed = true;
+
+      let thrown: unknown;
+      try {
+        sig.set(1);
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(order, 'every effect ran, in priority order').toEqual([
+        'a',
+        'b',
+        'c',
+      ]);
+      expect(seen, 'the siblings saw the value that was written').toEqual([
+        1, 1, 1,
+      ]);
+      expect(thrown, 'a single failure arrives unchanged').toBe(boom);
+    } finally {
+      a.destroy();
+      b.destroy();
+      c.destroy();
+      destroySignal(sig);
     }
-
-    expect(order, 'every effect ran, in priority order').toEqual([
-      'a',
-      'b',
-      'c',
-    ]);
-    expect(seen, 'the siblings saw the value that was written').toEqual([
-      1, 1, 1,
-    ]);
-    expect(thrown, 'a single failure arrives unchanged').toBe(boom);
-
-    a.destroy();
-    b.destroy();
-    c.destroy();
-    destroySignal(sig);
   });
 
   it('bundles several failures of one write into an AggregateError', () => {
@@ -113,27 +115,29 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
       {priority: 1},
     );
 
-    order.length = 0;
-    armed = true;
-
-    let thrown: any;
     try {
-      sig.set(1);
-    } catch (err) {
-      thrown = err;
+      order.length = 0;
+      armed = true;
+
+      let thrown: any;
+      try {
+        sig.set(1);
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(order).toEqual(['a', 'b', 'c']);
+      expect(thrown).toBeInstanceOf(AggregateError);
+      expect(thrown.errors, 'in delivery order').toEqual([first, second]);
+      expect(thrown.message).toBe(
+        '[signalize] 2 errors while notifying the effects of a signal write',
+      );
+    } finally {
+      a.destroy();
+      b.destroy();
+      c.destroy();
+      destroySignal(sig);
     }
-
-    expect(order).toEqual(['a', 'b', 'c']);
-    expect(thrown).toBeInstanceOf(AggregateError);
-    expect(thrown.errors, 'in delivery order').toEqual([first, second]);
-    expect(thrown.message).toBe(
-      '[signalize] 2 errors while notifying the effects of a signal write',
-    );
-
-    a.destroy();
-    b.destroy();
-    c.destroy();
-    destroySignal(sig);
   });
 
   it('gives a nested write its own error pot', () => {
@@ -178,29 +182,31 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
       {priority: 1},
     );
 
-    lowRuns = 0;
-    armed = true;
-
-    let thrown: unknown;
     try {
-      outerSig.set(1);
-    } catch (err) {
-      thrown = err;
+      lowRuns = 0;
+      armed = true;
+
+      let thrown: unknown;
+      try {
+        outerSig.set(1);
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(caughtInside, 'the inner write threw at its own call site').toBe(
+        innerBoom,
+      );
+      expect(lowRuns, 'the outer delivery went on').toBe(1);
+      expect(thrown, 'the inner pot was not merged into the outer one').toBe(
+        outerBoom,
+      );
+    } finally {
+      writer.destroy();
+      innerEffect.destroy();
+      failing.destroy();
+      low.destroy();
+      destroySignal(outerSig, innerSig);
     }
-
-    expect(caughtInside, 'the inner write threw at its own call site').toBe(
-      innerBoom,
-    );
-    expect(lowRuns, 'the outer delivery went on').toBe(1);
-    expect(thrown, 'the inner pot was not merged into the outer one').toBe(
-      outerBoom,
-    );
-
-    writer.destroy();
-    innerEffect.destroy();
-    failing.destroy();
-    low.destroy();
-    destroySignal(outerSig, innerSig);
   });
 
   it('lets an uncaught nested failure become the failure of the writing effect', () => {
@@ -240,27 +246,30 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
       {priority: 1},
     );
 
-    lowRuns = 0;
-    armed = true;
-
-    let thrown: any;
     try {
-      outerSig.set(1);
-    } catch (err) {
-      thrown = err;
+      lowRuns = 0;
+      armed = true;
+
+      let thrown: any;
+      try {
+        outerSig.set(1);
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(lowRuns).toBe(1);
+      expect(thrown).toBeInstanceOf(AggregateError);
+      expect(
+        thrown.errors,
+        'one entry per failing effect of this write',
+      ).toEqual([innerBoom, outerBoom]);
+    } finally {
+      writer.destroy();
+      innerEffect.destroy();
+      failing.destroy();
+      low.destroy();
+      destroySignal(outerSig, innerSig);
     }
-
-    expect(lowRuns).toBe(1);
-    expect(thrown).toBeInstanceOf(AggregateError);
-    expect(thrown.errors, 'one entry per failing effect of this write').toEqual(
-      [innerBoom, outerBoom],
-    );
-
-    writer.destroy();
-    innerEffect.destroy();
-    failing.destroy();
-    low.destroy();
-    destroySignal(outerSig, innerSig);
   });
 
   it('keeps a failure already parked out of a nested write pot', () => {
@@ -310,31 +319,33 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
       {priority: 1},
     );
 
-    lowRuns = 0;
-    armed = true;
-
-    let thrown: unknown;
     try {
-      outerSig.set(1);
-    } catch (err) {
-      thrown = err;
+      lowRuns = 0;
+      armed = true;
+
+      let thrown: unknown;
+      try {
+        outerSig.set(1);
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(
+        caughtInside,
+        'the nested write saw its own failure only, not the parked one',
+      ).toBe(innerBoom);
+      expect(lowRuns, 'the outer delivery went on').toBe(1);
+      expect(
+        thrown,
+        'the outer pot came back from the nested frame intact and alone',
+      ).toBe(firstBoom);
+    } finally {
+      first.destroy();
+      writer.destroy();
+      innerEffect.destroy();
+      low.destroy();
+      destroySignal(outerSig, innerSig);
     }
-
-    expect(
-      caughtInside,
-      'the nested write saw its own failure only, not the parked one',
-    ).toBe(innerBoom);
-    expect(lowRuns, 'the outer delivery went on').toBe(1);
-    expect(
-      thrown,
-      'the outer pot came back from the nested frame intact and alone',
-    ).toBe(firstBoom);
-
-    first.destroy();
-    writer.destroy();
-    innerEffect.destroy();
-    low.destroy();
-    destroySignal(outerSig, innerSig);
   });
 
   it('runs every delayed effect of a batch before the flush throws', () => {
@@ -358,24 +369,26 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
       {priority: 1},
     );
 
-    lowRuns = 0;
-    armed = true;
-
-    let thrown: unknown;
     try {
-      batch(() => {
-        sig.set(1);
-      });
-    } catch (err) {
-      thrown = err;
+      lowRuns = 0;
+      armed = true;
+
+      let thrown: unknown;
+      try {
+        batch(() => {
+          sig.set(1);
+        });
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(lowRuns, 'the flush reached the lower priority').toBe(1);
+      expect(thrown, 'and threw at the batch() caller afterwards').toBe(boom);
+    } finally {
+      failing.destroy();
+      low.destroy();
+      destroySignal(sig);
     }
-
-    expect(lowRuns, 'the flush reached the lower priority').toBe(1);
-    expect(thrown, 'and threw at the batch() caller afterwards').toBe(boom);
-
-    failing.destroy();
-    low.destroy();
-    destroySignal(sig);
   });
 
   it('keeps the failures already collected when a link callback aborts the delivery', () => {
@@ -403,30 +416,32 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
       {priority: -5},
     );
 
-    lowRuns = 0;
-    armed = true;
-
-    let thrown: any;
     try {
-      sig.set(1);
-    } catch (err) {
-      thrown = err;
+      lowRuns = 0;
+      armed = true;
+
+      let thrown: any;
+      try {
+        sig.set(1);
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(thrown).toBeInstanceOf(AggregateError);
+      expect(
+        thrown.errors,
+        'the effect failure was not lost behind the link failure',
+      ).toEqual([effectBoom, linkBoom]);
+      expect(
+        lowRuns,
+        'a throwing link callback is not isolated and does end the delivery',
+      ).toBe(0);
+    } finally {
+      theLink.destroy();
+      failing.destroy();
+      low.destroy();
+      destroySignal(sig);
     }
-
-    expect(thrown).toBeInstanceOf(AggregateError);
-    expect(
-      thrown.errors,
-      'the effect failure was not lost behind the link failure',
-    ).toEqual([effectBoom, linkBoom]);
-    expect(
-      lowRuns,
-      'a throwing link callback is not isolated and does end the delivery',
-    ).toBe(0);
-
-    theLink.destroy();
-    failing.destroy();
-    low.destroy();
-    destroySignal(sig);
   });
 
   it('does not let a foreign listener on the effect queue stop a flush', () => {
@@ -452,24 +467,26 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
       throw boom;
     });
 
-    lowRuns = 0;
-
-    let thrown: unknown;
     try {
-      batch(() => {
-        sig.set(1);
-      });
-    } catch (err) {
-      thrown = err;
+      lowRuns = 0;
+
+      let thrown: unknown;
+      try {
+        batch(() => {
+          sig.set(1);
+        });
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(lowRuns).toBe(1);
+      expect(thrown).toBe(boom);
+    } finally {
+      unsubscribe();
+      high.destroy();
+      low.destroy();
+      destroySignal(sig);
     }
-
-    expect(lowRuns).toBe(1);
-    expect(thrown).toBe(boom);
-
-    unsubscribe();
-    high.destroy();
-    low.destroy();
-    destroySignal(sig);
   });
 
   // Documentation test, no isolation path involved: `Effect.run()` calls
@@ -487,15 +504,17 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
       if (armed) throw boom;
     });
 
-    armed = true;
+    try {
+      armed = true;
 
-    expect(() => {
-      effect[$effect]!.shouldRun = true;
-      effect.run();
-    }).toThrow('direct boom');
-
-    effect.destroy();
-    destroySignal(sig);
+      expect(() => {
+        effect[$effect]!.shouldRun = true;
+        effect.run();
+      }).toThrow('direct boom');
+    } finally {
+      effect.destroy();
+      destroySignal(sig);
+    }
   });
 
   it('throws at the emitter of a RECALL outside any delivery', () => {
@@ -508,15 +527,17 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
       if (armed) throw boom;
     });
 
-    armed = true;
-    const id = effectIdOf(effect);
+    try {
+      armed = true;
+      const id = effectIdOf(effect);
 
-    expect(() => {
-      emit(globalEffectQueue, id, id, RECALL);
-    }).toThrow('unframed boom');
-
-    effect.destroy();
-    destroySignal(sig);
+      expect(() => {
+        emit(globalEffectQueue, id, id, RECALL);
+      }).toThrow('unframed boom');
+    } finally {
+      effect.destroy();
+      destroySignal(sig);
+    }
   });
 
   it('leaves nothing behind after a run of failing writes', () => {
@@ -533,26 +554,32 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
     });
     const sibling = createEffect(() => sig.get(), {priority: -1});
 
-    armed = true;
-    for (let i = 1; i <= 3; i++) {
-      expect(() => sig.set(i)).toThrow('boom');
+    try {
+      armed = true;
+      for (let i = 1; i <= 3; i++) {
+        expect(() => sig.set(i)).toThrow('boom');
+      }
+
+      // No delivery frame stayed open either: an unframed RECALL still finds
+      // `collectDeliveryError()` refusing the error and throws at its emitter.
+      // A frame leaked by one of the three writes above would swallow it here.
+      const failingId = effectIdOf(failing);
+      expect(() =>
+        emit(globalEffectQueue, failingId, failingId, RECALL),
+      ).toThrow('boom');
+
+      failing.destroy();
+      sibling.destroy();
+      destroySignal(sig);
+
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
+      expect(getSubscriptionCount(globalEffectQueue)).toBe(effectSubscriptions);
+      expect(getEffectsCount()).toBe(effects);
+      expect(getSignalsCount()).toBe(signals);
+    } finally {
+      failing.destroy();
+      sibling.destroy();
+      destroySignal(sig);
     }
-
-    // No delivery frame stayed open either: an unframed RECALL still finds
-    // `collectDeliveryError()` refusing the error and throws at its emitter.
-    // A frame leaked by one of the three writes above would swallow it here.
-    const failingId = effectIdOf(failing);
-    expect(() => emit(globalEffectQueue, failingId, failingId, RECALL)).toThrow(
-      'boom',
-    );
-
-    failing.destroy();
-    sibling.destroy();
-    destroySignal(sig);
-
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
-    expect(getSubscriptionCount(globalEffectQueue)).toBe(effectSubscriptions);
-    expect(getEffectsCount()).toBe(effects);
-    expect(getSignalsCount()).toBe(signals);
   });
 });

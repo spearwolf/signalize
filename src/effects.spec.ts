@@ -29,29 +29,34 @@ describe('createEffect', () => {
 
     let valA = 0;
 
-    createEffect(() => {
+    const effect = createEffect(() => {
       const val = a();
       return () => {
         valA = val;
       };
     });
 
-    expect(a()).toBe(123);
-    expect(valA).toBe(0);
+    try {
+      expect(a()).toBe(123);
+      expect(valA).toBe(0);
 
-    setA(666);
+      setA(666);
 
-    expect(a()).toBe(666);
-    expect(valA).toBe(123);
+      expect(a()).toBe(666);
+      expect(valA).toBe(123);
 
-    setA(42);
+      setA(42);
 
-    expect(a()).toBe(42);
-    expect(valA).toBe(666);
+      expect(a()).toBe(42);
+      expect(valA).toBe(666);
 
-    destroySignal(a);
+      destroySignal(a);
 
-    expect(valA).toBe(42);
+      expect(valA).toBe(42);
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('async returned effect cleanup callback is called', async () => {
@@ -66,36 +71,39 @@ describe('createEffect', () => {
       };
     });
 
-    expect(a()).toBe(123);
-    expect(cleanupValues).toHaveLength(0);
+    try {
+      expect(a()).toBe(123);
+      expect(cleanupValues).toHaveLength(0);
 
-    // The cleanup of an async run becomes eligible once its promise has
-    // settled. Whether that run is still the current one decides *when* it
-    // runs, not *whether*: see the superseded case twelve lines down.
-    await settled();
+      // The cleanup of an async run becomes eligible once its promise has
+      // settled. Whether that run is still the current one decides *when* it
+      // runs, not *whether*: see the superseded case twelve lines down.
+      await settled();
 
-    setA(666);
+      setA(666);
 
-    expect(a()).toBe(666);
-    expect(cleanupValues).toEqual([123]);
+      expect(a()).toBe(666);
+      expect(cleanupValues).toEqual([123]);
 
-    // 667 supersedes the 666 run before its promise settled — the cleanup
-    // of the 666 run still runs, just late, once its promise settles below
-    // (MEM-004); it is not discarded.
-    setA(667);
+      // 667 supersedes the 666 run before its promise settled — the cleanup
+      // of the 666 run still runs, just late, once its promise settles below
+      // (MEM-004); it is not discarded.
+      setA(667);
 
-    expect(a()).toBe(667);
-    expect(cleanupValues).toEqual([123]);
+      expect(a()).toBe(667);
+      expect(cleanupValues).toEqual([123]);
 
-    await settled();
+      await settled();
 
-    expect(cleanupValues).toEqual([123, 666]);
+      expect(cleanupValues).toEqual([123, 666]);
 
-    effect.destroy();
+      effect.destroy();
 
-    expect(cleanupValues).toEqual([123, 666, 667]);
-
-    destroySignal(a);
+      expect(cleanupValues).toEqual([123, 666, 667]);
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('the effect callback is called synchronously and immediately', () => {
@@ -110,10 +118,13 @@ describe('createEffect', () => {
       valB = b();
     });
 
-    expect(valA).toBe(123);
-    expect(valB).toBe('abc');
-
-    effect.destroy();
+    try {
+      expect(valA).toBe(123);
+      expect(valB).toBe('abc');
+    } finally {
+      effect.destroy();
+      destroySignal(a, b);
+    }
   });
 
   it('dynamic effects only listen to the signals they actually read', () => {
@@ -132,26 +143,29 @@ describe('createEffect', () => {
       }
     });
 
-    expect(effectCallCount).toBe(1);
-    expect(valA).toBe(123);
-    expect(valB).toBeUndefined();
+    try {
+      expect(effectCallCount).toBe(1);
+      expect(valA).toBe(123);
+      expect(valB).toBeUndefined();
 
-    setB('def'); // no effect, because the signal was never read
+      setB('def'); // no effect, because the signal was never read
 
-    expect(effectCallCount).toBe(1);
+      expect(effectCallCount).toBe(1);
 
-    setA(666); // re-run effect
+      setA(666); // re-run effect
 
-    expect(effectCallCount).toBe(2);
-    expect(valA).toBe(666);
-    expect(valB).toBe('def');
+      expect(effectCallCount).toBe(2);
+      expect(valA).toBe(666);
+      expect(valB).toBe('def');
 
-    setB('ghi'); // now the effect is executed
+      setB('ghi'); // now the effect is executed
 
-    expect(effectCallCount).toBe(3);
-    expect(valB).toBe('ghi');
-
-    effect.destroy();
+      expect(effectCallCount).toBe(3);
+      expect(valB).toBe('ghi');
+    } finally {
+      effect.destroy();
+      destroySignal(a, b);
+    }
   });
 
   it('the effect callback is called again after calling a setter function', () => {
@@ -170,27 +184,30 @@ describe('createEffect', () => {
       valB(b());
     });
 
-    expect(effectCallCount).toBe(1);
-    expect(valA).toHaveBeenCalledWith(123);
-    expect(valB).toHaveBeenCalledWith('abc');
+    try {
+      expect(effectCallCount).toBe(1);
+      expect(valA).toHaveBeenCalledWith(123);
+      expect(valB).toHaveBeenCalledWith('abc');
 
-    setA(456);
+      setA(456);
 
-    expect(effectCallCount).toBe(2); // well, just to be really sure
-    expect(valA).toHaveBeenCalledWith(456);
-    expect(valB).toHaveBeenCalledWith('abc');
+      expect(effectCallCount).toBe(2); // well, just to be really sure
+      expect(valA).toHaveBeenCalledWith(456);
+      expect(valB).toHaveBeenCalledWith('abc');
 
-    setB('def');
+      setB('def');
 
-    expect(effectCallCount).toBe(3);
-    expect(valA).toHaveBeenCalledWith(456);
-    expect(valB).toHaveBeenCalledWith('def');
+      expect(effectCallCount).toBe(3);
+      expect(valA).toHaveBeenCalledWith(456);
+      expect(valB).toHaveBeenCalledWith('def');
 
-    setB('def'); // no change: no effect should be called here
+      setB('def'); // no change: no effect should be called here
 
-    expect(effectCallCount).toBe(3);
-
-    effect.destroy();
+      expect(effectCallCount).toBe(3);
+    } finally {
+      effect.destroy();
+      destroySignal(a, b);
+    }
   });
 
   it('the effect callback is called again after calling a setter function (with static dependencies)', () => {
@@ -209,32 +226,35 @@ describe('createEffect', () => {
       valB(b());
     }, [a, b]);
 
-    // IMPORTANT: we have a static dependency array, so when you create an effect, the effect callback is not called automatically
-    expect(effectCallCount).toBe(0);
+    try {
+      // IMPORTANT: we have a static dependency array, so when you create an effect, the effect callback is not called automatically
+      expect(effectCallCount).toBe(0);
 
-    setA(123);
+      setA(123);
 
-    expect(effectCallCount).toBe(1);
-    expect(valA).toHaveBeenCalledWith(123);
-    expect(valB).toHaveBeenCalledWith('abc');
+      expect(effectCallCount).toBe(1);
+      expect(valA).toHaveBeenCalledWith(123);
+      expect(valB).toHaveBeenCalledWith('abc');
 
-    setA(456);
+      setA(456);
 
-    expect(effectCallCount).toBe(2); // well, just to be really sure
-    expect(valA).toHaveBeenCalledWith(456);
-    expect(valB).toHaveBeenCalledWith('abc');
+      expect(effectCallCount).toBe(2); // well, just to be really sure
+      expect(valA).toHaveBeenCalledWith(456);
+      expect(valB).toHaveBeenCalledWith('abc');
 
-    setB('def');
+      setB('def');
 
-    expect(effectCallCount).toBe(3);
-    expect(valA).toHaveBeenCalledWith(456);
-    expect(valB).toHaveBeenCalledWith('def');
+      expect(effectCallCount).toBe(3);
+      expect(valA).toHaveBeenCalledWith(456);
+      expect(valB).toHaveBeenCalledWith('def');
 
-    setB('def'); // no change: no effect should be called here
+      setB('def'); // no change: no effect should be called here
 
-    expect(effectCallCount).toBe(3);
-
-    effect.destroy();
+      expect(effectCallCount).toBe(3);
+    } finally {
+      effect.destroy();
+      destroySignal(a, b);
+    }
   });
 
   it('skips a static dependency that is already destroyed at construction time (BUG-003)', () => {
@@ -247,30 +267,37 @@ describe('createEffect', () => {
 
     let runs = 0;
     let cleanupCalls = 0;
-    createEffect(() => {
+    const effect = createEffect(() => {
       runs += 1;
       return () => {
         cleanupCalls += 1;
       };
     }, [dead, alive]);
 
-    // Only the live dependency is subscribed — a destroyed signal never
-    // emits again, and its destroy event has already been and gone, so the
-    // subscription would be unremovable short of destroy().
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline + 1);
+    try {
+      // Only the live dependency is subscribed — a destroyed signal never
+      // emits again, and its destroy event has already been and gone, so the
+      // subscription would be unremovable short of destroy().
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(
+        sigQueueBaseline + 1,
+      );
 
-    alive.set(1);
-    expect(runs).toBe(1);
+      alive.set(1);
+      expect(runs).toBe(1);
 
-    // ... which is why losing the last live dependency still ends the
-    // effect instead of leaving a deaf shell behind.
-    alive.destroy();
-    expect(cleanupCalls).toBe(1);
-    assertEffectsCount(0, 'only dead deps left => effect destroyed');
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destroyQueueBaseline,
-    );
+      // ... which is why losing the last live dependency still ends the
+      // effect instead of leaving a deaf shell behind.
+      alive.destroy();
+      expect(cleanupCalls).toBe(1);
+      assertEffectsCount(0, 'only dead deps left => effect destroyed');
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroyQueueBaseline,
+      );
+    } finally {
+      effect.destroy();
+      destroySignal(dead, alive);
+    }
   });
 
   it('calling a setter from within an affect callback', () => {
@@ -282,9 +309,12 @@ describe('createEffect', () => {
       }
     });
 
-    expect(count()).toBe(23);
-
-    effect.destroy();
+    try {
+      expect(count()).toBe(23);
+    } finally {
+      effect.destroy();
+      destroySignal(count);
+    }
   });
 
   it('runaway self-triggering effect throws once maxDepth is exceeded', () => {
@@ -362,110 +392,114 @@ describe('createEffect', () => {
       });
     });
 
-    assertEffectsCount(3, 'after first effect run');
-    expect(destroyEffectMock).toHaveBeenCalledTimes(0);
+    try {
+      assertEffectsCount(3, 'after first effect run');
+      expect(destroyEffectMock).toHaveBeenCalledTimes(0);
 
-    expect(firstEffectCallCount).toBe(1);
-    expect(secondEffectCallCount).toBe(1);
-    expect(thirdEffectCallCount).toBe(1);
-    expect(a).toHaveBeenCalledTimes(3);
-    expect(b).toHaveBeenCalledTimes(2);
-    expect(c).toHaveBeenCalledTimes(2);
-    expect(d).toHaveBeenCalledTimes(1);
-    expect(e).toHaveBeenCalledTimes(1);
-    clearAllMocks();
+      expect(firstEffectCallCount).toBe(1);
+      expect(secondEffectCallCount).toBe(1);
+      expect(thirdEffectCallCount).toBe(1);
+      expect(a).toHaveBeenCalledTimes(3);
+      expect(b).toHaveBeenCalledTimes(2);
+      expect(c).toHaveBeenCalledTimes(2);
+      expect(d).toHaveBeenCalledTimes(1);
+      expect(e).toHaveBeenCalledTimes(1);
+      clearAllMocks();
 
-    // When parent (first) effect re-runs due to signal A change:
-    // 1. Child effects are destroyed (cleanup is called)
-    // 2. New child effects are created and run
-    setA(456);
+      // When parent (first) effect re-runs due to signal A change:
+      // 1. Child effects are destroyed (cleanup is called)
+      // 2. New child effects are created and run
+      setA(456);
 
-    assertEffectsCount(3, 'after second effect run');
-    // 2 child effects destroyed (second and third)
-    expect(destroyEffectMock).toHaveBeenCalledTimes(2);
+      assertEffectsCount(3, 'after second effect run');
+      // 2 child effects destroyed (second and third)
+      expect(destroyEffectMock).toHaveBeenCalledTimes(2);
 
-    expect(firstEffectCallCount).toBe(1);
-    // Child effects are recreated and re-run
-    expect(secondEffectCallCount).toBe(1);
-    expect(thirdEffectCallCount).toBe(1);
-    expect(a).toHaveBeenCalledTimes(3); // 2 in first + 1 in third
-    expect(b).toHaveBeenCalledTimes(2); // 1 in first + 1 in second
-    expect(c).toHaveBeenCalledTimes(2); // 1 in first + 1 in third
-    expect(d).toHaveBeenCalledTimes(1); // 1 in second
-    expect(e).toHaveBeenCalledTimes(1); // 1 in third
-    clearAllMocks();
+      expect(firstEffectCallCount).toBe(1);
+      // Child effects are recreated and re-run
+      expect(secondEffectCallCount).toBe(1);
+      expect(thirdEffectCallCount).toBe(1);
+      expect(a).toHaveBeenCalledTimes(3); // 2 in first + 1 in third
+      expect(b).toHaveBeenCalledTimes(2); // 1 in first + 1 in second
+      expect(c).toHaveBeenCalledTimes(2); // 1 in first + 1 in third
+      expect(d).toHaveBeenCalledTimes(1); // 1 in second
+      expect(e).toHaveBeenCalledTimes(1); // 1 in third
+      clearAllMocks();
 
-    // When first effect re-runs due to signal B change:
-    // Child effects are destroyed and recreated
-    setB('def');
+      // When first effect re-runs due to signal B change:
+      // Child effects are destroyed and recreated
+      setB('def');
 
-    // 2 more child effects destroyed
-    expect(destroyEffectMock).toHaveBeenCalledTimes(2);
+      // 2 more child effects destroyed
+      expect(destroyEffectMock).toHaveBeenCalledTimes(2);
 
-    expect(firstEffectCallCount).toBe(1);
-    // Child effects recreated
-    expect(secondEffectCallCount).toBe(1);
-    expect(thirdEffectCallCount).toBe(1);
-    expect(a).toHaveBeenCalledTimes(3);
-    expect(b).toHaveBeenCalledTimes(2);
-    expect(c).toHaveBeenCalledTimes(2);
-    expect(d).toHaveBeenCalledTimes(1);
-    expect(e).toHaveBeenCalledTimes(1);
-    clearAllMocks();
+      expect(firstEffectCallCount).toBe(1);
+      // Child effects recreated
+      expect(secondEffectCallCount).toBe(1);
+      expect(thirdEffectCallCount).toBe(1);
+      expect(a).toHaveBeenCalledTimes(3);
+      expect(b).toHaveBeenCalledTimes(2);
+      expect(c).toHaveBeenCalledTimes(2);
+      expect(d).toHaveBeenCalledTimes(1);
+      expect(e).toHaveBeenCalledTimes(1);
+      clearAllMocks();
 
-    // When first effect re-runs due to signal C change:
-    // Child effects are destroyed and recreated
-    setC('B');
+      // When first effect re-runs due to signal C change:
+      // Child effects are destroyed and recreated
+      setC('B');
 
-    expect(destroyEffectMock).toHaveBeenCalledTimes(2);
+      expect(destroyEffectMock).toHaveBeenCalledTimes(2);
 
-    expect(firstEffectCallCount).toBe(1);
-    expect(secondEffectCallCount).toBe(1);
-    expect(thirdEffectCallCount).toBe(1);
-    expect(a).toHaveBeenCalledTimes(3);
-    expect(b).toHaveBeenCalledTimes(2);
-    expect(c).toHaveBeenCalledTimes(2);
-    expect(d).toHaveBeenCalledTimes(1);
-    expect(e).toHaveBeenCalledTimes(1);
-    clearAllMocks();
+      expect(firstEffectCallCount).toBe(1);
+      expect(secondEffectCallCount).toBe(1);
+      expect(thirdEffectCallCount).toBe(1);
+      expect(a).toHaveBeenCalledTimes(3);
+      expect(b).toHaveBeenCalledTimes(2);
+      expect(c).toHaveBeenCalledTimes(2);
+      expect(d).toHaveBeenCalledTimes(1);
+      expect(e).toHaveBeenCalledTimes(1);
+      clearAllMocks();
 
-    // Signal D only affects second effect, which is now a child
-    // When second effect re-runs, third effect (its child) is destroyed and recreated
-    setD('bar');
+      // Signal D only affects second effect, which is now a child
+      // When second effect re-runs, third effect (its child) is destroyed and recreated
+      setD('bar');
 
-    // Only third effect is destroyed (child of second)
-    expect(destroyEffectMock).toHaveBeenCalledTimes(1);
+      // Only third effect is destroyed (child of second)
+      expect(destroyEffectMock).toHaveBeenCalledTimes(1);
 
-    expect(firstEffectCallCount).toBe(0);
-    expect(secondEffectCallCount).toBe(1);
-    expect(thirdEffectCallCount).toBe(1); // Recreated when second re-runs
-    expect(a).toHaveBeenCalledTimes(1);
-    expect(b).toHaveBeenCalledTimes(1);
-    expect(c).toHaveBeenCalledTimes(1);
-    expect(d).toHaveBeenCalledTimes(1);
-    expect(e).toHaveBeenCalledTimes(1);
-    clearAllMocks();
+      expect(firstEffectCallCount).toBe(0);
+      expect(secondEffectCallCount).toBe(1);
+      expect(thirdEffectCallCount).toBe(1); // Recreated when second re-runs
+      expect(a).toHaveBeenCalledTimes(1);
+      expect(b).toHaveBeenCalledTimes(1);
+      expect(c).toHaveBeenCalledTimes(1);
+      expect(d).toHaveBeenCalledTimes(1);
+      expect(e).toHaveBeenCalledTimes(1);
+      clearAllMocks();
 
-    // Signal E only affects third effect, which has no children
-    setE(false);
+      // Signal E only affects third effect, which has no children
+      setE(false);
 
-    expect(destroyEffectMock).toHaveBeenCalledTimes(0);
+      expect(destroyEffectMock).toHaveBeenCalledTimes(0);
 
-    expect(firstEffectCallCount).toBe(0);
-    expect(secondEffectCallCount).toBe(0);
-    expect(thirdEffectCallCount).toBe(1);
-    expect(a).toHaveBeenCalledTimes(1);
-    expect(b).toHaveBeenCalledTimes(0);
-    expect(c).toHaveBeenCalledTimes(1);
-    expect(d).toHaveBeenCalledTimes(0);
-    expect(e).toHaveBeenCalledTimes(1);
+      expect(firstEffectCallCount).toBe(0);
+      expect(secondEffectCallCount).toBe(0);
+      expect(thirdEffectCallCount).toBe(1);
+      expect(a).toHaveBeenCalledTimes(1);
+      expect(b).toHaveBeenCalledTimes(0);
+      expect(c).toHaveBeenCalledTimes(1);
+      expect(d).toHaveBeenCalledTimes(0);
+      expect(e).toHaveBeenCalledTimes(1);
 
-    effect.destroy();
+      effect.destroy();
 
-    // 3 effects destroyed on final destroy
-    expect(destroyEffectMock).toHaveBeenCalledTimes(3);
-
-    unsubDestroy();
+      // 3 effects destroyed on final destroy
+      expect(destroyEffectMock).toHaveBeenCalledTimes(3);
+    } finally {
+      unsubDestroy();
+      effect.destroy();
+      destroySignal(getA, getB, getC, getD, getE);
+    }
   });
 
   // BUG-005 — createEffect must not mutate a caller-supplied options object.
@@ -482,11 +516,13 @@ describe('createEffect', () => {
       shared,
     );
 
-    expect(shared).toEqual({autorun: false});
-    expect('dependencies' in shared).toBe(false);
-
-    effect.destroy();
-    destroySignal(get);
+    try {
+      expect(shared).toEqual({autorun: false});
+      expect('dependencies' in shared).toBe(false);
+    } finally {
+      effect.destroy();
+      destroySignal(get);
+    }
   });
 
   // BUG-003 — an unresolvable string/symbol dependency must throw a
@@ -496,19 +532,23 @@ describe('createEffect', () => {
 
     const countBefore = getEffectsCount();
 
-    expect(() => {
-      createEffect(() => {}, ['doesNotExist'], {attach: host});
-    }).toThrow(/doesNotExist/);
+    try {
+      expect(() => {
+        createEffect(() => {}, ['doesNotExist'], {attach: host});
+      }).toThrow(/doesNotExist/);
 
-    // The failed construction must not leave a half-built effect attached to
-    // the group — otherwise the group's own teardown later destroys a
-    // "zombie" that never went through `++EffectImpl.count`, and the global
-    // counter drifts (permanently, potentially negative).
-    expect(getEffectsCount()).toBe(countBefore);
+      // The failed construction must not leave a half-built effect attached to
+      // the group — otherwise the group's own teardown later destroys a
+      // "zombie" that never went through `++EffectImpl.count`, and the global
+      // counter drifts (permanently, potentially negative).
+      expect(getEffectsCount()).toBe(countBefore);
 
-    SignalGroup.findOrCreate(host).clear();
+      SignalGroup.findOrCreate(host).clear();
 
-    expect(getEffectsCount()).toBe(countBefore);
+      expect(getEffectsCount()).toBe(countBefore);
+    } finally {
+      SignalGroup.findOrCreate(host).clear();
+    }
   });
 
   it('throws a descriptive error when a named dependency is used without an attached group (bypassing the type check)', () => {

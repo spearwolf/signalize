@@ -23,34 +23,37 @@ describe('Effect -> autorun: false', () => {
 
     const effect = createEffect(effectCallback, {autorun: false});
 
-    assertEffectsCount(1);
+    try {
+      assertEffectsCount(1);
 
-    expect(effectCallback).toHaveBeenCalledTimes(0);
-    expect(value).toBe(-1);
+      expect(effectCallback).toHaveBeenCalledTimes(0);
+      expect(value).toBe(-1);
 
-    effect.run();
+      effect.run();
 
-    expect(effectCallback).toHaveBeenCalledTimes(1);
-    expect(value).toBe(0);
+      expect(effectCallback).toHaveBeenCalledTimes(1);
+      expect(value).toBe(0);
 
-    setValue(1);
+      setValue(1);
 
-    expect(effectCallback).toHaveBeenCalledTimes(1);
-    expect(value).toBe(0);
+      expect(effectCallback).toHaveBeenCalledTimes(1);
+      expect(value).toBe(0);
 
-    effect.run();
+      effect.run();
 
-    expect(effectCallback).toHaveBeenCalledTimes(2);
-    expect(value).toBe(1);
+      expect(effectCallback).toHaveBeenCalledTimes(2);
+      expect(value).toBe(1);
 
-    effect.destroy();
+      effect.destroy();
 
-    setValue(2);
+      setValue(2);
 
-    expect(effectCallback).toHaveBeenCalledTimes(2);
-    expect(value).toBe(1);
-    expect(signal()).toBe(2);
-
-    destroySignal(signal);
+      expect(effectCallback).toHaveBeenCalledTimes(2);
+      expect(value).toBe(1);
+      expect(signal()).toBe(2);
+    } finally {
+      effect.destroy();
+      destroySignal(signal);
+    }
   });
 });

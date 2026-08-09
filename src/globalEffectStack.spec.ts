@@ -17,25 +17,31 @@ describe('globalEffectStack', () => {
     it('should return undefined if the method not called within an effect callback', () => {
       expect(getCurrentEffect()).toBeUndefined();
       const effect = new EffectImpl(NOOP);
-      runWithinEffect(effect, NOOP);
-      expect(getCurrentEffect()).toBeUndefined();
-      effect.destroy();
+      try {
+        runWithinEffect(effect, NOOP);
+        expect(getCurrentEffect()).toBeUndefined();
+      } finally {
+        effect.destroy();
+      }
     });
 
     it('should return the current effect if the method is called within an effect callback', () => {
       const effect = new EffectImpl(NOOP);
       const childEffect = new EffectImpl(NOOP);
-      runWithinEffect(effect, () => {
-        expect(getCurrentEffect()).toBe(effect);
+      try {
+        runWithinEffect(effect, () => {
+          expect(getCurrentEffect()).toBe(effect);
 
-        runWithinEffect(childEffect, () => {
-          expect(getCurrentEffect()).toBe(childEffect);
+          runWithinEffect(childEffect, () => {
+            expect(getCurrentEffect()).toBe(childEffect);
+          });
+
+          expect(getCurrentEffect()).toBe(effect);
         });
-
-        expect(getCurrentEffect()).toBe(effect);
-      });
-      childEffect.destroy();
-      effect.destroy();
+      } finally {
+        childEffect.destroy();
+        effect.destroy();
+      }
     });
   });
 });

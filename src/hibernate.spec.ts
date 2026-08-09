@@ -5,7 +5,8 @@ import {
 import {batch} from './batch.js';
 import {beQuiet, isQuiet} from './bequiet.js';
 import {createSignal} from './createSignal.js';
-import {createEffect} from './effects.js';
+import type {EffectImpl} from './EffectImpl.js';
+import {createEffect, onCreateEffect} from './effects.js';
 import {getCurrentEffect} from './globalEffectStack.js';
 import {hibernate} from './hibernate.js';
 import {destroySignal} from './signal-core.js';
@@ -43,35 +44,37 @@ describe('hibernate', () => {
         a();
       });
 
-      expect(effectCallCount).toBe(1);
-
-      batch(() => {
-        setA(1);
-        // Within batch, effect should not have been called yet
+      try {
         expect(effectCallCount).toBe(1);
 
-        // When hibernate is called, it flushes the current batch first
-        // Then clears the batch context and executes the callback
-        hibernate(() => {
-          // The batch was flushed before hibernate callback, so effect already ran for setA(1)
-          expect(effectCallCount).toBe(2);
-          setA(2);
-          // Since we're not in a batch anymore, effect runs immediately
+        batch(() => {
+          setA(1);
+          // Within batch, effect should not have been called yet
+          expect(effectCallCount).toBe(1);
+
+          // When hibernate is called, it flushes the current batch first
+          // Then clears the batch context and executes the callback
+          hibernate(() => {
+            // The batch was flushed before hibernate callback, so effect already ran for setA(1)
+            expect(effectCallCount).toBe(2);
+            setA(2);
+            // Since we're not in a batch anymore, effect runs immediately
+            expect(effectCallCount).toBe(3);
+          });
+
+          // After hibernate, we're back in the batch context
+          setA(3);
+          // Effect still delayed because we're in the outer batch
           expect(effectCallCount).toBe(3);
         });
 
-        // After hibernate, we're back in the batch context
-        setA(3);
-        // Effect still delayed because we're in the outer batch
-        expect(effectCallCount).toBe(3);
-      });
-
-      // After batch completes, the final effect should run
-      expect(effectCallCount).toBe(4);
-      expect(a()).toBe(3);
-
-      effect.destroy();
-      destroySignal(a);
+        // After batch completes, the final effect should run
+        expect(effectCallCount).toBe(4);
+        expect(a()).toBe(3);
+      } finally {
+        effect.destroy();
+        destroySignal(a);
+      }
     });
 
     it('does not interfere with batch when called outside batch', () => {
@@ -83,19 +86,21 @@ describe('hibernate', () => {
         a();
       });
 
-      expect(effectCallCount).toBe(1);
+      try {
+        expect(effectCallCount).toBe(1);
 
-      hibernate(() => {
-        setA(1);
-        // Without batch, effect runs immediately
+        hibernate(() => {
+          setA(1);
+          // Without batch, effect runs immediately
+          expect(effectCallCount).toBe(2);
+        });
+
+        expect(a()).toBe(1);
         expect(effectCallCount).toBe(2);
-      });
-
-      expect(a()).toBe(1);
-      expect(effectCallCount).toBe(2);
-
-      effect.destroy();
-      destroySignal(a);
+      } finally {
+        effect.destroy();
+        destroySignal(a);
+      }
     });
 
     it('flushes batched effects before hibernate callback executes', () => {
@@ -109,37 +114,39 @@ describe('hibernate', () => {
         effectValues.push(a());
       });
 
-      expect(effectCallCount).toBe(1);
-      expect(effectValues).toEqual([0]);
-
-      batch(() => {
-        setA(1);
-        setA(2);
-        setA(3);
-        // All changes are batched, effect not yet called
+      try {
         expect(effectCallCount).toBe(1);
+        expect(effectValues).toEqual([0]);
 
-        hibernate(() => {
-          // Batch was flushed before callback - effect ran once for the latest value (3)
-          expect(effectCallCount).toBe(2);
-          expect(effectValues).toEqual([0, 3]);
+        batch(() => {
+          setA(1);
+          setA(2);
+          setA(3);
+          // All changes are batched, effect not yet called
+          expect(effectCallCount).toBe(1);
 
-          // Changes inside hibernate are immediate (no batch context)
-          setB(100); // Different signal, no effect
-          expect(effectCallCount).toBe(2);
+          hibernate(() => {
+            // Batch was flushed before callback - effect ran once for the latest value (3)
+            expect(effectCallCount).toBe(2);
+            expect(effectValues).toEqual([0, 3]);
+
+            // Changes inside hibernate are immediate (no batch context)
+            setB(100); // Different signal, no effect
+            expect(effectCallCount).toBe(2);
+          });
+
+          // Back in batch context, batch is restored (but was flushed, so it's empty now)
+          setA(4);
+          expect(effectCallCount).toBe(2); // Still batched
         });
 
-        // Back in batch context, batch is restored (but was flushed, so it's empty now)
-        setA(4);
-        expect(effectCallCount).toBe(2); // Still batched
-      });
-
-      // After batch completes, final effect runs
-      expect(effectCallCount).toBe(3);
-      expect(effectValues).toEqual([0, 3, 4]);
-
-      effect.destroy();
-      destroySignal(a, b);
+        // After batch completes, final effect runs
+        expect(effectCallCount).toBe(3);
+        expect(effectValues).toEqual([0, 3, 4]);
+      } finally {
+        effect.destroy();
+        destroySignal(a, b);
+      }
     });
   });
 
@@ -152,24 +159,26 @@ describe('hibernate', () => {
         setB(a() + 1);
       });
 
-      expect(b()).toBe(1);
+      try {
+        expect(b()).toBe(1);
 
-      beQuiet(() => {
-        expect(isQuiet()).toBe(true);
+        beQuiet(() => {
+          expect(isQuiet()).toBe(true);
 
-        hibernate(() => {
-          // Within hibernate, beQuiet is cleared
-          expect(isQuiet()).toBe(false);
+          hibernate(() => {
+            // Within hibernate, beQuiet is cleared
+            expect(isQuiet()).toBe(false);
+          });
+
+          // After hibernate, beQuiet is restored
+          expect(isQuiet()).toBe(true);
         });
 
-        // After hibernate, beQuiet is restored
-        expect(isQuiet()).toBe(true);
-      });
-
-      expect(isQuiet()).toBe(false);
-
-      effect.destroy();
-      destroySignal(a, b);
+        expect(isQuiet()).toBe(false);
+      } finally {
+        effect.destroy();
+        destroySignal(a, b);
+      }
     });
 
     it('preserves nested beQuiet count after hibernate', () => {
@@ -193,23 +202,35 @@ describe('hibernate', () => {
     it('clears effect stack within hibernate callback', () => {
       const {get: a} = createSignal(0);
 
-      const effect = createEffect(() => {
-        a();
-
-        // Inside an effect, getCurrentEffect should return the effect
-        expect(getCurrentEffect()).toBeDefined();
-
-        hibernate(() => {
-          // Within hibernate, effect stack is cleared
-          expect(getCurrentEffect()).toBeUndefined();
-        });
-
-        // After hibernate, we're back in the effect context
-        expect(getCurrentEffect()).toBeDefined();
+      // The assertions of this test live inside the callback, and run() throws
+      // before the Effect wrapper escapes createEffect — a failing one would
+      // leave an EffectImpl nobody holds. onCreateEffect is the only handle
+      // there is; same reason as in effects.spec.ts.
+      let impl: EffectImpl | undefined;
+      const unsubCreate = onCreateEffect((created: EffectImpl) => {
+        impl = created;
       });
 
-      effect.destroy();
-      destroySignal(a);
+      try {
+        createEffect(() => {
+          a();
+
+          // Inside an effect, getCurrentEffect should return the effect
+          expect(getCurrentEffect()).toBeDefined();
+
+          hibernate(() => {
+            // Within hibernate, effect stack is cleared
+            expect(getCurrentEffect()).toBeUndefined();
+          });
+
+          // After hibernate, we're back in the effect context
+          expect(getCurrentEffect()).toBeDefined();
+        });
+      } finally {
+        unsubCreate();
+        impl?.destroy();
+        destroySignal(a);
+      }
     });
 
     it('does not allow signal reads inside hibernate to create effect dependencies', () => {
@@ -228,20 +249,22 @@ describe('hibernate', () => {
         });
       });
 
-      expect(effectCallCount).toBe(1);
-      expect(c()).toBe(0);
+      try {
+        expect(effectCallCount).toBe(1);
+        expect(c()).toBe(0);
 
-      // Changing b should NOT trigger the effect
-      setB(200);
-      expect(effectCallCount).toBe(1);
+        // Changing b should NOT trigger the effect
+        setB(200);
+        expect(effectCallCount).toBe(1);
 
-      // Changing a should trigger the effect
-      setA(1);
-      expect(effectCallCount).toBe(2);
-      expect(c()).toBe(1);
-
-      effect.destroy();
-      destroySignal(a, b, c);
+        // Changing a should trigger the effect
+        setA(1);
+        expect(effectCallCount).toBe(2);
+        expect(c()).toBe(1);
+      } finally {
+        effect.destroy();
+        destroySignal(a, b, c);
+      }
     });
   });
 
@@ -323,56 +346,68 @@ describe('hibernate', () => {
         a();
       });
 
-      expect(effectCallCount).toBe(1);
-
-      batch(() => {
-        setA(1);
+      try {
         expect(effectCallCount).toBe(1);
 
-        expect(() => {
-          hibernate(() => {
-            // The batch was flushed before hibernate callback, so effect already ran for setA(1)
-            expect(effectCallCount).toBe(2);
-            setA(2);
-            expect(effectCallCount).toBe(3);
-            throw new Error('test error');
-          });
-        }).toThrow('test error');
+        batch(() => {
+          setA(1);
+          expect(effectCallCount).toBe(1);
 
-        // Back in batch context after exception
-        setA(3);
-        expect(effectCallCount).toBe(3);
-      });
+          expect(() => {
+            hibernate(() => {
+              // The batch was flushed before hibernate callback, so effect already ran for setA(1)
+              expect(effectCallCount).toBe(2);
+              setA(2);
+              expect(effectCallCount).toBe(3);
+              throw new Error('test error');
+            });
+          }).toThrow('test error');
 
-      // Batch runs after completing
-      expect(effectCallCount).toBe(4);
-      expect(a()).toBe(3);
+          // Back in batch context after exception
+          setA(3);
+          expect(effectCallCount).toBe(3);
+        });
 
-      effect.destroy();
-      destroySignal(a);
+        // Batch runs after completing
+        expect(effectCallCount).toBe(4);
+        expect(a()).toBe(3);
+      } finally {
+        effect.destroy();
+        destroySignal(a);
+      }
     });
 
     it('restores effect stack when callback throws', () => {
       const {get: a} = createSignal(0);
 
-      const effect = createEffect(() => {
-        a();
-        const currentEffectBefore = getCurrentEffect();
-        expect(currentEffectBefore).toBeDefined();
-
-        expect(() => {
-          hibernate(() => {
-            expect(getCurrentEffect()).toBeUndefined();
-            throw new Error('test error');
-          });
-        }).toThrow('test error');
-
-        // Effect context should be restored
-        expect(getCurrentEffect()).toBe(currentEffectBefore);
+      // Same as above: the assertions are inside the callback, so the only
+      // handle a failure leaves behind comes from onCreateEffect.
+      let impl: EffectImpl | undefined;
+      const unsubCreate = onCreateEffect((created: EffectImpl) => {
+        impl = created;
       });
 
-      effect.destroy();
-      destroySignal(a);
+      try {
+        createEffect(() => {
+          a();
+          const currentEffectBefore = getCurrentEffect();
+          expect(currentEffectBefore).toBeDefined();
+
+          expect(() => {
+            hibernate(() => {
+              expect(getCurrentEffect()).toBeUndefined();
+              throw new Error('test error');
+            });
+          }).toThrow('test error');
+
+          // Effect context should be restored
+          expect(getCurrentEffect()).toBe(currentEffectBefore);
+        });
+      } finally {
+        unsubCreate();
+        impl?.destroy();
+        destroySignal(a);
+      }
     });
   });
 
@@ -385,39 +420,52 @@ describe('hibernate', () => {
       let effectCallCount = 0;
       let hibernateWasExecuted = false;
 
-      const effect = createEffect(() => {
-        effectCallCount++;
-        a();
-
-        hibernate(() => {
-          hibernateWasExecuted = true;
-          // All contexts should be cleared
-          expect(isQuiet()).toBe(false);
-          expect(getCurrentEffect()).toBeUndefined();
-
-          // Changes should trigger effects immediately (no batch)
-          setB(b() + 1);
-
-          // Reading c should not create dependencies for outer effect
-          c();
-        });
+      // The hibernate() callback asserts, and it runs while createEffect() is
+      // still autorunning — so the creation belongs inside the try. A failing
+      // assertion in there throws before the Effect wrapper escapes
+      // createEffect, so the handle has to come from onCreateEffect, as in the
+      // two effect-stack tests above.
+      let impl: EffectImpl | undefined;
+      const unsubCreate = onCreateEffect((created: EffectImpl) => {
+        impl = created;
       });
 
-      expect(effectCallCount).toBe(1);
-      expect(hibernateWasExecuted).toBe(true);
-      expect(b()).toBe(1);
+      try {
+        createEffect(() => {
+          effectCallCount++;
+          a();
 
-      // Changing c should NOT trigger the effect (read inside hibernate)
-      setC(100);
-      expect(effectCallCount).toBe(1);
+          hibernate(() => {
+            hibernateWasExecuted = true;
+            // All contexts should be cleared
+            expect(isQuiet()).toBe(false);
+            expect(getCurrentEffect()).toBeUndefined();
 
-      // Changing a should trigger the effect
-      setA(1);
-      expect(effectCallCount).toBe(2);
-      expect(b()).toBe(2);
+            // Changes should trigger effects immediately (no batch)
+            setB(b() + 1);
 
-      effect.destroy();
-      destroySignal(a, b, c);
+            // Reading c should not create dependencies for outer effect
+            c();
+          });
+        });
+
+        expect(effectCallCount).toBe(1);
+        expect(hibernateWasExecuted).toBe(true);
+        expect(b()).toBe(1);
+
+        // Changing c should NOT trigger the effect (read inside hibernate)
+        setC(100);
+        expect(effectCallCount).toBe(1);
+
+        // Changing a should trigger the effect
+        setA(1);
+        expect(effectCallCount).toBe(2);
+        expect(b()).toBe(2);
+      } finally {
+        unsubCreate();
+        impl?.destroy();
+        destroySignal(a, b, c);
+      }
     });
 
     it('createEffect inside hibernate creates independent effect', () => {
@@ -441,29 +489,31 @@ describe('hibernate', () => {
         });
       });
 
-      expect(outerEffectCount).toBe(1);
-      expect(innerEffectCount).toBe(1);
-      expect(innerEffects.length).toBe(1);
+      try {
+        expect(outerEffectCount).toBe(1);
+        expect(innerEffectCount).toBe(1);
+        expect(innerEffects.length).toBe(1);
 
-      // Changing a should trigger outer effect
-      setA(1);
-      expect(outerEffectCount).toBe(2);
-      // A new inner effect is created each time outer runs
-      expect(innerEffectCount).toBe(2);
-      expect(innerEffects.length).toBe(2);
+        // Changing a should trigger outer effect
+        setA(1);
+        expect(outerEffectCount).toBe(2);
+        // A new inner effect is created each time outer runs
+        expect(innerEffectCount).toBe(2);
+        expect(innerEffects.length).toBe(2);
 
-      // Changing b should trigger all inner effects (both are subscribed)
-      setB(1);
-      expect(outerEffectCount).toBe(2);
-      // All inner effects respond to b change
-      expect(innerEffectCount).toBe(4);
-
-      outerEffect.destroy();
-      // Cleanup all inner effects
-      innerEffects.forEach((e) => {
-        e.destroy();
-      });
-      destroySignal(a, b);
+        // Changing b should trigger all inner effects (both are subscribed)
+        setB(1);
+        expect(outerEffectCount).toBe(2);
+        // All inner effects respond to b change
+        expect(innerEffectCount).toBe(4);
+      } finally {
+        outerEffect.destroy();
+        // Cleanup all inner effects
+        innerEffects.forEach((e) => {
+          e.destroy();
+        });
+        destroySignal(a, b);
+      }
     });
   });
 });

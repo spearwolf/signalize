@@ -29,25 +29,28 @@ describe('effect cleanup hook on effect destruction', () => {
       };
     });
 
-    expect(cleanupCalled).toBe(false);
-    expect(cleanupValue).toBe(0);
+    try {
+      expect(cleanupCalled).toBe(false);
+      expect(cleanupValue).toBe(0);
 
-    // Update the signal to verify cleanup is called before next run
-    setA(456);
-    expect(cleanupCalled).toBe(true);
-    expect(cleanupValue).toBe(123);
+      // Update the signal to verify cleanup is called before next run
+      setA(456);
+      expect(cleanupCalled).toBe(true);
+      expect(cleanupValue).toBe(123);
 
-    // Reset flags
-    cleanupCalled = false;
-    cleanupValue = 0;
+      // Reset flags
+      cleanupCalled = false;
+      cleanupValue = 0;
 
-    // Now destroy the effect and verify cleanup is called
-    effect.destroy();
+      // Now destroy the effect and verify cleanup is called
+      effect.destroy();
 
-    expect(cleanupCalled).toBe(true);
-    expect(cleanupValue).toBe(456);
-
-    destroySignal(a);
+      expect(cleanupCalled).toBe(true);
+      expect(cleanupValue).toBe(456);
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('cleanup hook is called when effect is destroyed (static effect)', () => {
@@ -66,29 +69,32 @@ describe('effect cleanup hook on effect destruction', () => {
       };
     }, [a]); // static dependency on a only
 
-    // For static effects, initial run doesn't happen until a signal changes
-    expect(cleanupCalled).toBe(false);
+    try {
+      // For static effects, initial run doesn't happen until a signal changes
+      expect(cleanupCalled).toBe(false);
 
-    // Update the signal
-    setA(456);
-    expect(cleanupCalled).toBe(false); // first run, no previous cleanup
+      // Update the signal
+      setA(456);
+      expect(cleanupCalled).toBe(false); // first run, no previous cleanup
 
-    // Update again to verify cleanup is called
-    setA(789);
-    expect(cleanupCalled).toBe(true);
-    expect(cleanupValue).toBe(456);
+      // Update again to verify cleanup is called
+      setA(789);
+      expect(cleanupCalled).toBe(true);
+      expect(cleanupValue).toBe(456);
 
-    // Reset flags
-    cleanupCalled = false;
-    cleanupValue = 0;
+      // Reset flags
+      cleanupCalled = false;
+      cleanupValue = 0;
 
-    // Now destroy the effect and verify cleanup is called
-    effect.destroy();
+      // Now destroy the effect and verify cleanup is called
+      effect.destroy();
 
-    expect(cleanupCalled).toBe(true);
-    expect(cleanupValue).toBe(789);
-
-    destroySignal(a, b);
+      expect(cleanupCalled).toBe(true);
+      expect(cleanupValue).toBe(789);
+    } finally {
+      effect.destroy();
+      destroySignal(a, b);
+    }
   });
 
   it('async cleanup hook is called when effect is destroyed', async () => {
@@ -103,24 +109,27 @@ describe('effect cleanup hook on effect destruction', () => {
       };
     });
 
-    expect(cleanupValues).toHaveLength(0);
+    try {
+      expect(cleanupValues).toHaveLength(0);
 
-    // The cleanup of an async run is only kept once its promise has settled.
-    await settled();
+      // The cleanup of an async run is only kept once its promise has settled.
+      await settled();
 
-    // Update signal to trigger cleanup
-    setA(456);
-    expect(cleanupValues).toEqual([123]);
+      // Update signal to trigger cleanup
+      setA(456);
+      expect(cleanupValues).toEqual([123]);
 
-    await settled();
+      await settled();
 
-    // Destroy effect and verify cleanup is called — synchronously, like a
-    // cleanup returned from a plain callback.
-    effect.destroy();
+      // Destroy effect and verify cleanup is called — synchronously, like a
+      // cleanup returned from a plain callback.
+      effect.destroy();
 
-    expect(cleanupValues).toEqual([123, 456]);
-
-    destroySignal(a);
+      expect(cleanupValues).toEqual([123, 456]);
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('cleanup hook is called only once on effect destruction', () => {
@@ -135,20 +144,23 @@ describe('effect cleanup hook on effect destruction', () => {
       };
     });
 
-    expect(cleanupCallCount).toBe(0);
+    try {
+      expect(cleanupCallCount).toBe(0);
 
-    // Destroy the effect
-    effect.destroy();
+      // Destroy the effect
+      effect.destroy();
 
-    expect(cleanupCallCount).toBe(1);
+      expect(cleanupCallCount).toBe(1);
 
-    // Destroying again should do nothing
-    effect.destroy();
-    effect.destroy();
+      // Destroying again should do nothing
+      effect.destroy();
+      effect.destroy();
 
-    expect(cleanupCallCount).toBe(1);
-
-    destroySignal(a);
+      expect(cleanupCallCount).toBe(1);
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('cleanup hook with side effects is properly executed on destroy', () => {
@@ -169,22 +181,25 @@ describe('effect cleanup hook on effect destruction', () => {
       };
     });
 
-    expect(intervals).toEqual([100]);
-    expect(cleanupLog).toEqual([]);
+    try {
+      expect(intervals).toEqual([100]);
+      expect(cleanupLog).toEqual([]);
 
-    // Update to trigger cleanup
-    setInterval(200);
-    expect(intervals).toEqual([100, 200]);
-    expect(cleanupLog).toEqual(['cleaned up resource 100']);
+      // Update to trigger cleanup
+      setInterval(200);
+      expect(intervals).toEqual([100, 200]);
+      expect(cleanupLog).toEqual(['cleaned up resource 100']);
 
-    // Destroy effect
-    effect.destroy();
-    expect(cleanupLog).toEqual([
-      'cleaned up resource 100',
-      'cleaned up resource 200',
-    ]);
-
-    destroySignal(interval);
+      // Destroy effect
+      effect.destroy();
+      expect(cleanupLog).toEqual([
+        'cleaned up resource 100',
+        'cleaned up resource 200',
+      ]);
+    } finally {
+      effect.destroy();
+      destroySignal(interval);
+    }
   });
 
   it('multiple effects with cleanup hooks are all cleaned up on destruction', () => {
@@ -209,16 +224,21 @@ describe('effect cleanup hook on effect destruction', () => {
       return () => cleanupLog.push('effect3');
     });
 
-    expect(cleanupLog).toEqual([]);
+    try {
+      expect(cleanupLog).toEqual([]);
 
-    // Destroy all effects
-    effect1.destroy();
-    effect2.destroy();
-    effect3.destroy();
+      // Destroy all effects
+      effect1.destroy();
+      effect2.destroy();
+      effect3.destroy();
 
-    expect(cleanupLog).toEqual(['effect1', 'effect2', 'effect3']);
-
-    destroySignal(a, b, c);
+      expect(cleanupLog).toEqual(['effect1', 'effect2', 'effect3']);
+    } finally {
+      effect1.destroy();
+      effect2.destroy();
+      effect3.destroy();
+      destroySignal(a, b, c);
+    }
   });
 
   it('nested effects cleanup hooks are called when parent is destroyed', () => {
@@ -238,16 +258,19 @@ describe('effect cleanup hook on effect destruction', () => {
       return () => cleanupLog.push('parent');
     });
 
-    expect(cleanupLog).toEqual([]);
+    try {
+      expect(cleanupLog).toEqual([]);
 
-    // Destroy parent effect
-    parentEffect.destroy();
+      // Destroy parent effect
+      parentEffect.destroy();
 
-    // Both parent and child cleanup should be called
-    expect(cleanupLog).toContain('parent');
-    expect(cleanupLog).toContain('child');
-
-    destroySignal(a, b);
+      // Both parent and child cleanup should be called
+      expect(cleanupLog).toContain('parent');
+      expect(cleanupLog).toContain('child');
+    } finally {
+      parentEffect.destroy();
+      destroySignal(a, b);
+    }
   });
 
   it('cleanup hook is not called if effect never ran', () => {
@@ -265,16 +288,19 @@ describe('effect cleanup hook on effect destruction', () => {
       {autorun: false},
     );
 
-    // Effect was created but never ran
-    expect(cleanupCalled).toBe(false);
+    try {
+      // Effect was created but never ran
+      expect(cleanupCalled).toBe(false);
 
-    // Destroy effect
-    effect.destroy();
+      // Destroy effect
+      effect.destroy();
 
-    // Cleanup should not be called since effect never ran
-    expect(cleanupCalled).toBe(false);
-
-    destroySignal(a);
+      // Cleanup should not be called since effect never ran
+      expect(cleanupCalled).toBe(false);
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
   });
 
   it('nested effects cleanup hooks are called when parent re-runs', () => {
@@ -297,28 +323,31 @@ describe('effect cleanup hook on effect destruction', () => {
       return () => cleanupLog.push(`parent-cleanup:${aVal}`);
     });
 
-    // Initial run
-    expect(runLog).toEqual(['parent:1', 'child:2']);
-    expect(cleanupLog).toEqual([]);
+    try {
+      // Initial run
+      expect(runLog).toEqual(['parent:1', 'child:2']);
+      expect(cleanupLog).toEqual([]);
 
-    // Update parent signal - should trigger cleanup of child effect
-    setA(10);
+      // Update parent signal - should trigger cleanup of child effect
+      setA(10);
 
-    expect(runLog).toEqual(['parent:1', 'child:2', 'parent:10', 'child:2']);
-    // Parent cleanup is called, then child cleanup is called (child is destroyed before parent re-runs its callback)
-    expect(cleanupLog).toEqual(['parent-cleanup:1', 'child-cleanup:2']);
+      expect(runLog).toEqual(['parent:1', 'child:2', 'parent:10', 'child:2']);
+      // Parent cleanup is called, then child cleanup is called (child is destroyed before parent re-runs its callback)
+      expect(cleanupLog).toEqual(['parent-cleanup:1', 'child-cleanup:2']);
 
-    // Destroy parent effect
-    parentEffect.destroy();
+      // Destroy parent effect
+      parentEffect.destroy();
 
-    expect(cleanupLog).toEqual([
-      'parent-cleanup:1',
-      'child-cleanup:2',
-      'parent-cleanup:10',
-      'child-cleanup:2',
-    ]);
-
-    destroySignal(a, b);
+      expect(cleanupLog).toEqual([
+        'parent-cleanup:1',
+        'child-cleanup:2',
+        'parent-cleanup:10',
+        'child-cleanup:2',
+      ]);
+    } finally {
+      parentEffect.destroy();
+      destroySignal(a, b);
+    }
   });
 
   it('deeply nested effects cleanup hooks are called in correct order when parent re-runs', () => {
@@ -345,27 +374,30 @@ describe('effect cleanup hook on effect destruction', () => {
       return () => cleanupLog.push('parent');
     });
 
-    expect(cleanupLog).toEqual([]);
+    try {
+      expect(cleanupLog).toEqual([]);
 
-    // Update parent signal - should trigger cleanup of all nested effects
-    setA(10);
+      // Update parent signal - should trigger cleanup of all nested effects
+      setA(10);
 
-    // Parent cleanup, then child cleanup (which triggers grandchild cleanup)
-    expect(cleanupLog).toEqual(['parent', 'child', 'grandchild']);
+      // Parent cleanup, then child cleanup (which triggers grandchild cleanup)
+      expect(cleanupLog).toEqual(['parent', 'child', 'grandchild']);
 
-    parentEffect.destroy();
+      parentEffect.destroy();
 
-    // Second round of cleanups
-    expect(cleanupLog).toEqual([
-      'parent',
-      'child',
-      'grandchild',
-      'parent',
-      'child',
-      'grandchild',
-    ]);
-
-    destroySignal(a, b, c);
+      // Second round of cleanups
+      expect(cleanupLog).toEqual([
+        'parent',
+        'child',
+        'grandchild',
+        'parent',
+        'child',
+        'grandchild',
+      ]);
+    } finally {
+      parentEffect.destroy();
+      destroySignal(a, b, c);
+    }
   });
 
   it('multiple nested effects cleanup hooks are all called when parent re-runs', () => {
@@ -391,25 +423,28 @@ describe('effect cleanup hook on effect destruction', () => {
       return () => cleanupLog.push('parent');
     });
 
-    expect(cleanupLog).toEqual([]);
+    try {
+      expect(cleanupLog).toEqual([]);
 
-    // Update parent signal - should trigger cleanup of both nested effects
-    setA(10);
+      // Update parent signal - should trigger cleanup of both nested effects
+      setA(10);
 
-    expect(cleanupLog).toEqual(['parent', 'child1', 'child2']);
+      expect(cleanupLog).toEqual(['parent', 'child1', 'child2']);
 
-    parentEffect.destroy();
+      parentEffect.destroy();
 
-    expect(cleanupLog).toEqual([
-      'parent',
-      'child1',
-      'child2',
-      'parent',
-      'child1',
-      'child2',
-    ]);
-
-    destroySignal(a, b, c);
+      expect(cleanupLog).toEqual([
+        'parent',
+        'child1',
+        'child2',
+        'parent',
+        'child1',
+        'child2',
+      ]);
+    } finally {
+      parentEffect.destroy();
+      destroySignal(a, b, c);
+    }
   });
 
   it('nested effect cleanup receives correct values when parent re-runs multiple times', () => {
@@ -425,20 +460,23 @@ describe('effect cleanup hook on effect destruction', () => {
       });
     });
 
-    expect(cleanupValues).toEqual([]);
+    try {
+      expect(cleanupValues).toEqual([]);
 
-    setA(2);
-    expect(cleanupValues).toEqual([1]);
+      setA(2);
+      expect(cleanupValues).toEqual([1]);
 
-    setA(3);
-    expect(cleanupValues).toEqual([1, 2]);
+      setA(3);
+      expect(cleanupValues).toEqual([1, 2]);
 
-    setA(4);
-    expect(cleanupValues).toEqual([1, 2, 3]);
+      setA(4);
+      expect(cleanupValues).toEqual([1, 2, 3]);
 
-    parentEffect.destroy();
-    expect(cleanupValues).toEqual([1, 2, 3, 4]);
-
-    destroySignal(a);
+      parentEffect.destroy();
+      expect(cleanupValues).toEqual([1, 2, 3, 4]);
+    } finally {
+      parentEffect.destroy();
+      destroySignal(a);
+    }
   });
 });

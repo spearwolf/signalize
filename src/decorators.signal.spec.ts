@@ -9,9 +9,12 @@ import {
   createSignal,
   destroyObjectSignals,
   destroySignal,
+  type Effect,
   findObjectSignalByName,
   findObjectSignalNames,
+  type Signal,
   SignalGroup,
+  type SignalReader,
   value,
 } from './index.js';
 
@@ -33,26 +36,30 @@ describe('@signal is a class accessor decorator', () => {
 
     const foo = new Foo();
 
-    expect(foo.foo).toBe(1);
-    assertSignalsCount(1, 'after new Foo');
+    let computedFoo: SignalReader<number>;
 
-    const fooSignal = findObjectSignalByName(foo, 'foo');
+    try {
+      expect(foo.foo).toBe(1);
+      assertSignalsCount(1, 'after new Foo');
 
-    expect(fooSignal).toBeDefined();
-    expect(value(fooSignal)).toBe(1);
-    expect(value([foo, 'foo'])).toBe(1);
+      const fooSignal = findObjectSignalByName(foo, 'foo');
 
-    const computedFoo = createMemo(() => foo.foo + 100);
+      expect(fooSignal).toBeDefined();
+      expect(value(fooSignal)).toBe(1);
+      expect(value([foo, 'foo'])).toBe(1);
 
-    foo.foo = 2;
+      computedFoo = createMemo(() => foo.foo + 100);
 
-    expect(foo.foo).toBe(2);
-    expect(value(fooSignal)).toBe(2);
-    expect(computedFoo()).toBe(102);
-    assertSignalsCount(2, 'after createMemo()');
+      foo.foo = 2;
 
-    destroyObjectSignals(foo);
-    destroySignal(computedFoo);
+      expect(foo.foo).toBe(2);
+      expect(value(fooSignal)).toBe(2);
+      expect(computedFoo()).toBe(102);
+      assertSignalsCount(2, 'after createMemo()');
+    } finally {
+      destroyObjectSignals(foo);
+      destroySignal(computedFoo);
+    }
   });
 
   it('signal with custom comparator', () => {
@@ -66,21 +73,23 @@ describe('@signal is a class accessor decorator', () => {
     const foo = new Foo();
     const bar = createMemo(() => foo.foo + 100, {lazy: true});
 
-    expect(foo.foo).toBe(1);
-    expect(bar()).toBe(101);
+    try {
+      expect(foo.foo).toBe(1);
+      expect(bar()).toBe(101);
 
-    foo.foo = 2;
+      foo.foo = 2;
 
-    expect(foo.foo).toBe(1);
-    expect(bar()).toBe(101);
+      expect(foo.foo).toBe(1);
+      expect(bar()).toBe(101);
 
-    foo.foo = 4;
+      foo.foo = 4;
 
-    expect(foo.foo).toBe(4);
-    expect(bar()).toBe(104);
-
-    destroyObjectSignals(foo);
-    destroySignal(bar);
+      expect(foo.foo).toBe(4);
+      expect(bar()).toBe(104);
+    } finally {
+      destroyObjectSignals(foo);
+      destroySignal(bar);
+    }
   });
 
   it('each object has its on signal instance', () => {
@@ -89,37 +98,42 @@ describe('@signal is a class accessor decorator', () => {
     }
 
     const foo = new Foo();
-    expect(foo.foo).toBe(1);
-    assertSignalsCount(1, 'after new Foo');
 
-    const foo2 = new Foo();
-    expect(foo2.foo).toBe(1);
-    assertSignalsCount(2, 'after new Foo (2)');
+    let foo2: Foo;
 
-    const fooSignal = findObjectSignalByName(foo, 'foo');
-    const foo2Signal = findObjectSignalByName(foo2, 'foo');
+    try {
+      expect(foo.foo).toBe(1);
+      assertSignalsCount(1, 'after new Foo');
 
-    expect(fooSignal).toBeDefined();
-    expect(foo2Signal).toBeDefined();
-    expect(fooSignal).not.toBe(foo2Signal);
+      foo2 = new Foo();
+      expect(foo2.foo).toBe(1);
+      assertSignalsCount(2, 'after new Foo (2)');
 
-    const onFoo = vi.fn();
-    const onFoo2 = vi.fn();
+      const fooSignal = findObjectSignalByName(foo, 'foo');
+      const foo2Signal = findObjectSignalByName(foo2, 'foo');
 
-    fooSignal.onChange(onFoo);
-    foo2Signal.onChange(onFoo2);
+      expect(fooSignal).toBeDefined();
+      expect(foo2Signal).toBeDefined();
+      expect(fooSignal).not.toBe(foo2Signal);
 
-    foo.foo = 123;
-    expect(onFoo).toHaveBeenCalledTimes(1);
-    expect(onFoo2).not.toHaveBeenCalled();
+      const onFoo = vi.fn();
+      const onFoo2 = vi.fn();
 
-    foo2.foo = 456;
-    expect(onFoo2).toHaveBeenCalledTimes(1);
+      fooSignal.onChange(onFoo);
+      foo2Signal.onChange(onFoo2);
 
-    expect(foo.foo).toBe(123);
-    expect(foo2.foo).toBe(456);
+      foo.foo = 123;
+      expect(onFoo).toHaveBeenCalledTimes(1);
+      expect(onFoo2).not.toHaveBeenCalled();
 
-    destroyObjectSignals(foo, foo2);
+      foo2.foo = 456;
+      expect(onFoo2).toHaveBeenCalledTimes(1);
+
+      expect(foo.foo).toBe(123);
+      expect(foo2.foo).toBe(456);
+    } finally {
+      destroyObjectSignals(foo, foo2);
+    }
   });
 
   it('get the signals from the object using the group', () => {
@@ -131,31 +145,33 @@ describe('@signal is a class accessor decorator', () => {
 
     const foo = new Foo();
 
-    assertSignalsCount(3, 'after new Foo');
+    try {
+      assertSignalsCount(3, 'after new Foo');
 
-    foo.foo = 666;
+      foo.foo = 666;
 
-    expect(foo.foo).toBe(666);
+      expect(foo.foo).toBe(666);
 
-    const group = SignalGroup.get(foo);
+      const group = SignalGroup.get(foo);
 
-    expect(group.signal('foo').value).toBe(666);
+      expect(group.signal('foo').value).toBe(666);
 
-    foo.bar = 42;
+      foo.bar = 42;
 
-    expect(foo.bar).toBe(42);
-    expect(group.signal('plah').value).toBe(42);
+      expect(foo.bar).toBe(42);
+      expect(group.signal('plah').value).toBe(42);
 
-    foo.xyz = 'hello';
+      foo.xyz = 'hello';
 
-    expect(foo.xyz).toBe('hello');
-    expect(group.signal('xyz').value).toBe('hello');
+      expect(foo.xyz).toBe('hello');
+      expect(group.signal('xyz').value).toBe('hello');
 
-    expect(findObjectSignalNames(foo).sort()).toEqual(
-      ['foo', 'plah', 'xyz'].sort(),
-    );
-
-    group.clear();
+      expect(findObjectSignalNames(foo).sort()).toEqual(
+        ['foo', 'plah', 'xyz'].sort(),
+      );
+    } finally {
+      SignalGroup.get(foo)?.clear();
+    }
   });
 
   it('readAsValue: true makes the property getter an untracked read', () => {
@@ -165,33 +181,38 @@ describe('@signal is a class accessor decorator', () => {
 
     const foo = new Foo();
 
-    expect(foo.foo).toBe(1);
-    assertSignalsCount(1, 'after new Foo');
+    let tick: Signal<number>;
+    let eff: Effect;
 
-    const tick = createSignal(0);
-    const runs: number[] = [];
+    try {
+      expect(foo.foo).toBe(1);
+      assertSignalsCount(1, 'after new Foo');
 
-    const eff = createEffect(() => {
-      tick.get();
-      runs.push(foo.foo);
-    });
+      tick = createSignal(0);
+      const runs: number[] = [];
 
-    expect(runs).toEqual([1]);
+      eff = createEffect(() => {
+        tick.get();
+        runs.push(foo.foo);
+      });
 
-    // the write notifies the property's own signal, but the effect never
-    // subscribed to it — with the default (tracking) getter it would rerun
-    foo.foo = 2;
-    expect(foo.foo).toBe(2);
-    expect(runs).toEqual([1]);
+      expect(runs).toEqual([1]);
 
-    // a tracked dependency does rerun it, and the untracked read then shows
-    // the value that was written in between
-    tick.set(1);
-    expect(runs).toEqual([1, 2]);
+      // the write notifies the property's own signal, but the effect never
+      // subscribed to it — with the default (tracking) getter it would rerun
+      foo.foo = 2;
+      expect(foo.foo).toBe(2);
+      expect(runs).toEqual([1]);
 
-    eff.destroy();
-    destroyObjectSignals(foo);
-    destroySignal(tick);
+      // a tracked dependency does rerun it, and the untracked read then shows
+      // the value that was written in between
+      tick.set(1);
+      expect(runs).toEqual([1, 2]);
+    } finally {
+      eff?.destroy();
+      destroyObjectSignals(foo);
+      destroySignal(tick);
+    }
   });
 
   it('the property getter returns undefined once the object signals are destroyed', () => {
@@ -200,17 +221,21 @@ describe('@signal is a class accessor decorator', () => {
     }
 
     const foo = new Foo();
-    expect(foo.foo).toBe(1);
+    try {
+      expect(foo.foo).toBe(1);
 
-    destroyObjectSignals(foo);
+      destroyObjectSignals(foo);
 
-    // the store is empty, so the accessor has nothing left to read from
-    expect(foo.foo).toBeUndefined();
+      // the store is empty, so the accessor has nothing left to read from
+      expect(foo.foo).toBeUndefined();
 
-    // and the setter falls through its optional chain instead of throwing
-    expect(() => {
-      foo.foo = 42;
-    }).not.toThrow();
-    expect(foo.foo).toBeUndefined();
+      // and the setter falls through its optional chain instead of throwing
+      expect(() => {
+        foo.foo = 42;
+      }).not.toThrow();
+      expect(foo.foo).toBeUndefined();
+    } finally {
+      destroyObjectSignals(foo);
+    }
   });
 });

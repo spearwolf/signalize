@@ -29,21 +29,23 @@ describe('nested effects inside a static-deps effect', () => {
       createEffect(() => a.get());
     }, [trigger.get]);
 
-    outer.run();
+    try {
+      outer.run();
 
-    const countAfterFirstRun = getEffectsCount();
+      const countAfterFirstRun = getEffectsCount();
 
-    for (let i = 1; i <= 5; i++) {
-      trigger.set(i);
+      for (let i = 1; i <= 5; i++) {
+        trigger.set(i);
+      }
+
+      expect(
+        getEffectsCount(),
+        'effects count must stay constant over 5 reruns',
+      ).toBe(countAfterFirstRun);
+    } finally {
+      outer.destroy();
+      destroySignal(a, trigger);
     }
-
-    expect(
-      getEffectsCount(),
-      'effects count must stay constant over 5 reruns',
-    ).toBe(countAfterFirstRun);
-
-    outer.destroy();
-    destroySignal(a, trigger);
   });
 
   it('destroys the child effect when the parent is destroyed (MEM-001)', () => {
@@ -66,36 +68,41 @@ describe('nested effects inside a static-deps effect', () => {
       });
     }, [trigger.get]);
 
-    outer.run();
+    try {
+      outer.run();
 
-    expect(childRuns).toHaveBeenCalledTimes(1);
-    expect(getEffectsCount()).toBe(2);
+      expect(childRuns).toHaveBeenCalledTimes(1);
+      expect(getEffectsCount()).toBe(2);
 
-    trigger.set(1);
+      trigger.set(1);
 
-    expect(
-      childCleanup,
-      'child cleanup runs before the parent reruns',
-    ).toHaveBeenCalledTimes(1);
-    expect(childRuns).toHaveBeenCalledTimes(2);
-    expect(getEffectsCount()).toBe(2);
+      expect(
+        childCleanup,
+        'child cleanup runs before the parent reruns',
+      ).toHaveBeenCalledTimes(1);
+      expect(childRuns).toHaveBeenCalledTimes(2);
+      expect(getEffectsCount()).toBe(2);
 
-    outer.destroy();
+      outer.destroy();
 
-    expect(childCleanup).toHaveBeenCalledTimes(2);
-    expect(getEffectsCount()).toBe(0);
+      expect(childCleanup).toHaveBeenCalledTimes(2);
+      expect(getEffectsCount()).toBe(0);
 
-    destroySignal(a, trigger);
+      destroySignal(a, trigger);
 
-    expect(getSubscriptionCount(globalSignalQueue)).toBe(
-      signalSubscriptionsBefore,
-    );
-    expect(getSubscriptionCount(globalEffectQueue)).toBe(
-      effectSubscriptionsBefore,
-    );
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destroySubscriptionsBefore,
-    );
+      expect(getSubscriptionCount(globalSignalQueue)).toBe(
+        signalSubscriptionsBefore,
+      );
+      expect(getSubscriptionCount(globalEffectQueue)).toBe(
+        effectSubscriptionsBefore,
+      );
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptionsBefore,
+      );
+    } finally {
+      outer.destroy();
+      destroySignal(a, trigger);
+    }
   });
 
   it('still does not auto-track signals read in the callback (pitfall 7)', () => {
@@ -108,17 +115,19 @@ describe('nested effects inside a static-deps effect', () => {
       runs(a.get());
     }, [trigger.get]);
 
-    outer.run();
-    expect(runs).toHaveBeenCalledTimes(1);
+    try {
+      outer.run();
+      expect(runs).toHaveBeenCalledTimes(1);
 
-    a.set(1);
-    expect(runs, 'a is read but not a dependency').toHaveBeenCalledTimes(1);
+      a.set(1);
+      expect(runs, 'a is read but not a dependency').toHaveBeenCalledTimes(1);
 
-    trigger.set(1);
-    expect(runs).toHaveBeenCalledTimes(2);
-
-    outer.destroy();
-    destroySignal(a, trigger);
+      trigger.set(1);
+      expect(runs).toHaveBeenCalledTimes(2);
+    } finally {
+      outer.destroy();
+      destroySignal(a, trigger);
+    }
   });
 
   it('keeps auto-tracking off after a re-entrant run returns (pitfall 7)', () => {
@@ -141,22 +150,26 @@ describe('nested effects inside a static-deps effect', () => {
       runs(a.get()); // read *after* the inner run returned
     }, [trigger.get]);
 
-    outer.run();
+    try {
+      outer.run();
 
-    expect(runs, 'outer run plus the re-entrant one').toHaveBeenCalledTimes(2);
+      expect(runs, 'outer run plus the re-entrant one').toHaveBeenCalledTimes(
+        2,
+      );
 
-    a.set(99);
+      a.set(99);
 
-    expect(
-      runs,
-      'a was read after the re-entrant run — still must not be a dependency',
-    ).toHaveBeenCalledTimes(2);
+      expect(
+        runs,
+        'a was read after the re-entrant run — still must not be a dependency',
+      ).toHaveBeenCalledTimes(2);
 
-    trigger.set(2);
-    expect(runs).toHaveBeenCalledTimes(3);
-
-    outer.destroy();
-    destroySignal(a, trigger);
+      trigger.set(2);
+      expect(runs).toHaveBeenCalledTimes(3);
+    } finally {
+      outer.destroy();
+      destroySignal(a, trigger);
+    }
   });
 
   it('a dynamic child under a static-deps parent tracks its own signals', () => {
@@ -173,31 +186,37 @@ describe('nested effects inside a static-deps effect', () => {
       });
     }, [trigger.get]);
 
-    outer.run();
-    expect(childRuns).toHaveBeenCalledTimes(1);
+    try {
+      outer.run();
+      expect(childRuns).toHaveBeenCalledTimes(1);
 
-    a.set(1);
-    expect(
-      childRuns,
-      'the child subscribed to a on its own',
-    ).toHaveBeenCalledTimes(2);
-    expect(childRuns).toHaveBeenLastCalledWith(1);
+      a.set(1);
+      expect(
+        childRuns,
+        'the child subscribed to a on its own',
+      ).toHaveBeenCalledTimes(2);
+      expect(childRuns).toHaveBeenLastCalledWith(1);
 
-    trigger.set(1); // parent reruns → child destroyed and rebuilt
-    expect(childRuns).toHaveBeenCalledTimes(3);
+      trigger.set(1); // parent reruns → child destroyed and rebuilt
+      expect(childRuns).toHaveBeenCalledTimes(3);
 
-    a.set(2);
-    expect(childRuns, 'the fresh child tracks a as well').toHaveBeenCalledTimes(
-      4,
-    );
-    expect(childRuns).toHaveBeenLastCalledWith(2);
+      a.set(2);
+      expect(
+        childRuns,
+        'the fresh child tracks a as well',
+      ).toHaveBeenCalledTimes(4);
+      expect(childRuns).toHaveBeenLastCalledWith(2);
 
-    outer.destroy();
+      outer.destroy();
 
-    a.set(3);
-    expect(childRuns, 'no child outlives the parent').toHaveBeenCalledTimes(4);
-
-    destroySignal(a, trigger);
+      a.set(3);
+      expect(childRuns, 'no child outlives the parent').toHaveBeenCalledTimes(
+        4,
+      );
+    } finally {
+      outer.destroy();
+      destroySignal(a, trigger);
+    }
   });
 
   it('creates a fresh child effect instance on every rerun (IMP-001)', () => {
@@ -211,17 +230,19 @@ describe('nested effects inside a static-deps effect', () => {
       childIds.push(child[$effect]!.id);
     }, [trigger.get]);
 
-    outer.run();
+    try {
+      outer.run();
 
-    for (let i = 1; i <= 4; i++) {
-      trigger.set(i);
+      for (let i = 1; i <= 4; i++) {
+        trigger.set(i);
+      }
+
+      expect(childIds).toHaveLength(5);
+      expect(new Set(childIds).size, 'every rerun creates a new child').toBe(5);
+    } finally {
+      outer.destroy();
+      destroySignal(a, trigger);
     }
-
-    expect(childIds).toHaveLength(5);
-    expect(new Set(childIds).size, 'every rerun creates a new child').toBe(5);
-
-    outer.destroy();
-    destroySignal(a, trigger);
   });
 
   it('counter-probe: dynamic deps stay stable over 5 reruns', () => {
@@ -233,16 +254,18 @@ describe('nested effects inside a static-deps effect', () => {
       createEffect(() => a.get());
     });
 
-    const countAfterFirstRun = getEffectsCount();
+    try {
+      const countAfterFirstRun = getEffectsCount();
 
-    for (let i = 1; i <= 5; i++) {
-      trigger.set(i);
+      for (let i = 1; i <= 5; i++) {
+        trigger.set(i);
+      }
+
+      expect(getEffectsCount()).toBe(countAfterFirstRun);
+    } finally {
+      outer.destroy();
+      destroySignal(a, trigger);
     }
-
-    expect(getEffectsCount()).toBe(countAfterFirstRun);
-
-    outer.destroy();
-    destroySignal(a, trigger);
   });
 
   it('hibernate() still detaches an effect from its static-deps parent', () => {
@@ -261,16 +284,19 @@ describe('nested effects inside a static-deps effect', () => {
       });
     }, [trigger.get]);
 
-    outer.run();
-    outer.destroy();
+    try {
+      outer.run();
+      outer.destroy();
 
-    expect(
-      getEffectsCount(),
-      'an effect created under hibernate() outlives the parent',
-    ).toBe(1);
-
-    escaped.destroy();
-    destroySignal(a, trigger);
+      expect(
+        getEffectsCount(),
+        'an effect created under hibernate() outlives the parent',
+      ).toBe(1);
+    } finally {
+      escaped?.destroy();
+      outer.destroy();
+      destroySignal(a, trigger);
+    }
   });
 
   it('Signal.onChange callbacks no longer orphan nested effects (MEM-001)', () => {
@@ -281,13 +307,15 @@ describe('nested effects inside a static-deps effect', () => {
       createEffect(() => a.get());
     });
 
-    for (let i = 1; i <= 5; i++) {
-      trigger.set(i);
+    try {
+      for (let i = 1; i <= 5; i++) {
+        trigger.set(i);
+      }
+
+      expect(getEffectsCount(), 'one onChange effect + one child').toBe(2);
+    } finally {
+      unsubscribe();
+      destroySignal(a, trigger);
     }
-
-    expect(getEffectsCount(), 'one onChange effect + one child').toBe(2);
-
-    unsubscribe();
-    destroySignal(a, trigger);
   });
 });

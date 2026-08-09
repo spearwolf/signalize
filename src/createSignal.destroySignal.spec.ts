@@ -15,6 +15,7 @@ import {createSignal} from './createSignal.js';
 import {createEffect, onEffectError} from './effects.js';
 import {destroySignal} from './signal-core.js';
 import {touch} from './touch.js';
+import type {SignalReader} from './types.js';
 
 describe('destroySignal', () => {
   beforeEach(() => {
@@ -38,28 +39,32 @@ describe('destroySignal', () => {
       foo = val;
     });
 
-    expect(foo).toBe(0);
+    try {
+      expect(foo).toBe(0);
 
-    touch(sigFoo);
+      touch(sigFoo);
 
-    expect(foo).toBe(666);
+      expect(foo).toBe(666);
 
-    assertEffectsCount(1, 'step-a');
-    assertEffectSubscriptionsCountChange(1, 'step-a');
-    assertSignalDestroySubscriptionsCountChange(1);
+      assertEffectsCount(1, 'step-a');
+      assertEffectSubscriptionsCountChange(1, 'step-a');
+      assertSignalDestroySubscriptionsCountChange(1);
 
-    setFoo(23);
+      setFoo(23);
 
-    expect(foo).toBe(23);
+      expect(foo).toBe(23);
 
-    destroySignal(sigFoo);
-    setFoo(512);
+      destroySignal(sigFoo);
+      setFoo(512);
 
-    expect(foo).toBe(23);
+      expect(foo).toBe(23);
 
-    assertEffectsCount(0, 'end');
-    assertEffectSubscriptionsCountChange(-1, 'end');
-    assertSignalDestroySubscriptionsCountChange(-1);
+      assertEffectsCount(0, 'end');
+      assertEffectSubscriptionsCountChange(-1, 'end');
+      assertSignalDestroySubscriptionsCountChange(-1);
+    } finally {
+      destroySignal(sigFoo);
+    }
   });
 
   it('destroy signal destroys effects and memos', () => {
@@ -72,82 +77,89 @@ describe('destroySignal', () => {
     let effectCallCount = 0;
     let memoCallCount = 0;
 
-    createEffect(() => {
+    const effect = createEffect(() => {
       foo = getFoo();
       bar = getBar();
       ++effectCallCount;
     });
 
-    assertEffectsCount(1, 'step-a');
-    assertEffectSubscriptionsCountChange(1, 'step-a');
-    assertSignalDestroySubscriptionsCountChange(2, 'step-a');
+    let plah: SignalReader<number>;
 
-    const plah = createMemo(() => {
-      ++memoCallCount;
-      return getFoo() + getBar();
-    });
+    try {
+      assertEffectsCount(1, 'step-a');
+      assertEffectSubscriptionsCountChange(1, 'step-a');
+      assertSignalDestroySubscriptionsCountChange(2, 'step-a');
 
-    assertEffectsCount(2, 'step-b');
-    assertEffectSubscriptionsCountChange(1, 'step-b');
-    assertSignalDestroySubscriptionsCountChange(3, 'step-b');
+      plah = createMemo(() => {
+        ++memoCallCount;
+        return getFoo() + getBar();
+      });
 
-    expect(foo).toBe(1);
-    expect(bar).toBe(2);
-    expect(plah()).toBe(3);
-    expect(effectCallCount).toBe(1);
-    expect(memoCallCount).toBe(1);
+      assertEffectsCount(2, 'step-b');
+      assertEffectSubscriptionsCountChange(1, 'step-b');
+      assertSignalDestroySubscriptionsCountChange(3, 'step-b');
 
-    setFoo(4);
-    setBar(5);
+      expect(foo).toBe(1);
+      expect(bar).toBe(2);
+      expect(plah()).toBe(3);
+      expect(effectCallCount).toBe(1);
+      expect(memoCallCount).toBe(1);
 
-    expect(foo).toBe(4);
-    expect(bar).toBe(5);
-    expect(plah()).toBe(9);
-    expect(effectCallCount).toBe(3);
-    expect(memoCallCount).toBe(3);
+      setFoo(4);
+      setBar(5);
 
-    destroySignal(getFoo);
+      expect(foo).toBe(4);
+      expect(bar).toBe(5);
+      expect(plah()).toBe(9);
+      expect(effectCallCount).toBe(3);
+      expect(memoCallCount).toBe(3);
 
-    assertEffectsCount(2, 'step-c');
-    assertEffectSubscriptionsCount(2, 'step-c');
-    // assertSignalDestroySubscriptionsCountChange(-2, 'step-c');
+      destroySignal(getFoo);
 
-    batch(() => {
-      setFoo(10);
-      setBar(11);
-    });
+      assertEffectsCount(2, 'step-c');
+      assertEffectSubscriptionsCount(2, 'step-c');
+      // assertSignalDestroySubscriptionsCountChange(-2, 'step-c');
 
-    expect(foo).toBe(10);
-    expect(bar).toBe(11);
-    expect(plah()).toBe(21);
-    expect(effectCallCount).toBe(4);
-    expect(memoCallCount).toBe(4);
+      batch(() => {
+        setFoo(10);
+        setBar(11);
+      });
 
-    assertEffectsCount(2, 'step-d');
-    assertEffectSubscriptionsCount(2, 'step-d');
+      expect(foo).toBe(10);
+      expect(bar).toBe(11);
+      expect(plah()).toBe(21);
+      expect(effectCallCount).toBe(4);
+      expect(memoCallCount).toBe(4);
 
-    destroySignal(getBar);
+      assertEffectsCount(2, 'step-d');
+      assertEffectSubscriptionsCount(2, 'step-d');
 
-    batch(() => {
-      setFoo(22);
-      setBar(23);
-    });
+      destroySignal(getBar);
 
-    expect(foo).toBe(10);
-    expect(bar).toBe(11);
-    expect(plah()).toBe(21);
-    expect(effectCallCount).toBe(4);
-    expect(memoCallCount).toBe(4);
+      batch(() => {
+        setFoo(22);
+        setBar(23);
+      });
 
-    assertEffectsCount(0, 'step-e');
-    assertEffectSubscriptionsCount(0, 'step-e');
-    // assertSignalDestroySubscriptionsCountChange(-2, 'step-e');
+      expect(foo).toBe(10);
+      expect(bar).toBe(11);
+      expect(plah()).toBe(21);
+      expect(effectCallCount).toBe(4);
+      expect(memoCallCount).toBe(4);
 
-    destroySignal(plah);
+      assertEffectsCount(0, 'step-e');
+      assertEffectSubscriptionsCount(0, 'step-e');
+      // assertSignalDestroySubscriptionsCountChange(-2, 'step-e');
 
-    assertEffectsCount(0, 'end');
-    assertEffectSubscriptionsCount(0, 'end');
-    // assertSignalDestroySubscriptionsCountChange(-1, 'end');
+      destroySignal(plah);
+
+      assertEffectsCount(0, 'end');
+      assertEffectSubscriptionsCount(0, 'end');
+      // assertSignalDestroySubscriptionsCountChange(-1, 'end');
+    } finally {
+      effect.destroy();
+      destroySignal(plah, getFoo, getBar);
+    }
   });
 
   describe('a dependency destroyed while the effect is running', () => {
@@ -160,7 +172,7 @@ describe('destroySignal', () => {
 
       let runs = 0;
 
-      createEffect(() => {
+      const effect = createEffect(() => {
         ++runs;
         a.get();
         if (runs === 2) {
@@ -168,15 +180,20 @@ describe('destroySignal', () => {
         }
       });
 
-      assertEffectsCount(1, 'after the first run');
+      try {
+        assertEffectsCount(1, 'after the first run');
 
-      a.set(2);
+        a.set(2);
 
-      expect(runs).toBe(2);
-      assertEffectsCount(
-        0,
-        'the last dependency died during the run — the effect must not survive it',
-      );
+        expect(runs).toBe(2);
+        assertEffectsCount(
+          0,
+          'the last dependency died during the run — the effect must not survive it',
+        );
+      } finally {
+        effect.destroy();
+        destroySignal(a);
+      }
     });
 
     it('keeps the effect alive when the same run subscribes to a new signal', () => {
@@ -197,22 +214,27 @@ describe('destroySignal', () => {
         }
       });
 
-      expect(seen).toEqual([1]);
+      try {
+        expect(seen).toEqual([1]);
 
-      swap = true;
-      a.set(2);
+        swap = true;
+        a.set(2);
 
-      expect(seen).toEqual([1, 10]);
-      assertEffectsCount(1, 'the effect swapped dependencies, it did not die');
+        expect(seen).toEqual([1, 10]);
+        assertEffectsCount(
+          1,
+          'the effect swapped dependencies, it did not die',
+        );
 
-      b.set(20);
+        b.set(20);
 
-      expect(seen, 'and the new dependency really triggers it').toEqual([
-        1, 10, 20,
-      ]);
-
-      effect.destroy();
-      destroySignal(b);
+        expect(seen, 'and the new dependency really triggers it').toEqual([
+          1, 10, 20,
+        ]);
+      } finally {
+        effect.destroy();
+        destroySignal(a, b);
+      }
     });
 
     it('waits for the outermost run when the effect re-entered itself', () => {
@@ -236,24 +258,29 @@ describe('destroySignal', () => {
         log.push(`leave:${val}`);
       });
 
-      once(effect[$effect]!, DESTROY, () => {
-        log.push('destroyed');
-      });
+      try {
+        once(effect[$effect]!, DESTROY, () => {
+          log.push('destroyed');
+        });
 
-      a.set(1);
+        a.set(1);
 
-      expect(log).toEqual([
-        'enter:0',
-        'leave:0',
-        'enter:1',
-        'enter:2',
-        'leave:2',
-        'after-inner',
-        'leave:1',
-        'destroyed',
-      ]);
+        expect(log).toEqual([
+          'enter:0',
+          'leave:0',
+          'enter:1',
+          'enter:2',
+          'leave:2',
+          'after-inner',
+          'leave:1',
+          'destroyed',
+        ]);
 
-      assertEffectsCount(0, 'destroyed once the outermost run returned');
+        assertEffectsCount(0, 'destroyed once the outermost run returned');
+      } finally {
+        effect.destroy();
+        destroySignal(a);
+      }
     });
 
     it('destroys the effect even when that run throws', () => {
@@ -265,7 +292,7 @@ describe('destroySignal', () => {
 
       let runs = 0;
 
-      createEffect(() => {
+      const effect = createEffect(() => {
         ++runs;
         a.get();
         if (runs === 2) {
@@ -274,11 +301,16 @@ describe('destroySignal', () => {
         }
       });
 
-      assertEffectsCount(1, 'after the first run');
+      try {
+        assertEffectsCount(1, 'after the first run');
 
-      expect(() => a.set(2), 'the run keeps its own error').toThrow('boom');
+        expect(() => a.set(2), 'the run keeps its own error').toThrow('boom');
 
-      assertEffectsCount(0, 'and the effect is torn down all the same');
+        assertEffectsCount(0, 'and the effect is torn down all the same');
+      } finally {
+        effect.destroy();
+        destroySignal(a);
+      }
     });
 
     it('reports a teardown error through onEffectError instead of raising it', () => {
@@ -294,7 +326,7 @@ describe('destroySignal', () => {
 
       let runs = 0;
 
-      createEffect(() => {
+      const effect = createEffect(() => {
         ++runs;
         const val = a.get();
         if (val === 2) {
@@ -305,12 +337,16 @@ describe('destroySignal', () => {
         };
       });
 
-      expect(() => a.set(2), 'the writer is left alone').not.toThrow();
+      try {
+        expect(() => a.set(2), 'the writer is left alone').not.toThrow();
 
-      expect(errors).toEqual([{message: 'cleanup boom', phase: 'cleanup'}]);
-      assertEffectsCount(0, 'the teardown completed despite the error');
-
-      unsubscribe();
+        expect(errors).toEqual([{message: 'cleanup boom', phase: 'cleanup'}]);
+        assertEffectsCount(0, 'the teardown completed despite the error');
+      } finally {
+        unsubscribe();
+        effect.destroy();
+        destroySignal(a);
+      }
     });
   });
 });
