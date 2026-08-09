@@ -36,7 +36,7 @@ Signal, Effect
 //   SignalReader, SignalWriter, SignalLike, SignalParams, SignalWriterParams,
 //   EffectOptions, EffectCallback, CreateMemoOptions, LinkOptions,
 //   EffectErrorPayload, EffectErrorPhase, EffectErrorCallback, FailingEffect,
-//   SignalLink, ValueCallback, SignalAutoMapKeyType,
+//   SignalLink, ValueCallback, SignalAutoMapKeyType, AbortSignalLike,
 //   CompareFunc, BeforeReadFunc, VoidFunc, ValueChangedCallback
 ```
 
@@ -160,7 +160,7 @@ con.lastValue;  con.isMuted;  con.isDestroyed;
 con.mute();  con.unmute();  con.toggleMute();
 con.touch();  con.destroy();  con.attach(obj);
 
-await con.nextValue({signal});                                    // optional AbortSignal; rejects with an Error on destroy, with signal.reason on abort
+await con.nextValue({signal});                                    // optional AbortSignal (AbortSignalLike); rejects with an Error on destroy, with signal.reason on abort
 for await (const v of con.asyncValues((v, i) => i >= 5, {signal})) { /* … */ }
 // abort throws the signal's reason out of the loop; the link being
 // destroyed ends it quietly instead, same as `stop(value, i) → true`

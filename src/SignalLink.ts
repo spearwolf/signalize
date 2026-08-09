@@ -13,7 +13,7 @@ import {$queueUnsubscribes, DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
 import {signalImpl} from './signal-core.js';
-import {ISignalImpl, SignalLike} from './types.js';
+import {AbortSignalLike, ISignalImpl, SignalLike} from './types.js';
 
 export type ValueCallback<ValueType = any> = (value: ValueType) => void;
 
@@ -164,7 +164,9 @@ export abstract class SignalLink<ValueType = any> {
    *
    * `options.signal` — an `AbortSignal` — rejects (and unsubscribes) early:
    * an already-aborted signal rejects immediately, without waiting for the
-   * next value or a destroy.
+   * next value or a destroy. The parameter type is `AbortSignalLike`, a
+   * structural subset of `AbortSignal`; every real `AbortSignal` satisfies
+   * it.
    *
    * Deliberately a hand-rolled `Promise` rather than eventize's own
    * `onceAsync(obj, name, {signal})` (which does support an `AbortSignal`
@@ -179,7 +181,7 @@ export abstract class SignalLink<ValueType = any> {
    * `DESTROY` needs to *reject* here, and `onceAsync` has no way to make
    * one name in its list do that while another resolves.
    */
-  nextValue(options?: {signal?: AbortSignal}): Promise<ValueType> {
+  nextValue(options?: {signal?: AbortSignalLike}): Promise<ValueType> {
     const {signal} = options ?? {};
 
     return new Promise((resolve, reject) => {
@@ -261,8 +263,10 @@ export abstract class SignalLink<ValueType = any> {
    * destroyed — in both cases the loop simply ends, `for await` sees a
    * normal completion.
    *
-   * `options.signal` — an `AbortSignal`, forwarded to every internal
-   * `nextValue()` call — makes an *aborted* iteration end differently: it
+   * `options.signal` — an `AbortSignal` (typed as `AbortSignalLike`, a
+   * structural subset every real `AbortSignal` satisfies), forwarded to
+   * every internal `nextValue()` call — makes an *aborted* iteration end
+   * differently: it
    * **throws** the abort reason out of the loop instead of ending quietly.
    * That is deliberate, not an oversight: destroy is this link's own
    * lifecycle, expected and unremarkable; abort is the caller cancelling
@@ -299,7 +303,7 @@ export abstract class SignalLink<ValueType = any> {
    */
   async *asyncValues(
     stopAction?: (value: ValueType, index: number) => boolean,
-    options?: {signal?: AbortSignal},
+    options?: {signal?: AbortSignalLike},
   ) {
     retain(this, VALUE);
     this.#activeAsyncValuesCount += 1;

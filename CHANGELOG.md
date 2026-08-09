@@ -133,6 +133,10 @@
 - the published tarball is an allowlist (`package.json#files`) instead of an `.npmignore` denylist — 125 files / 550 kB down to 42 files / 319 kB, and an internal planning document no longer ships (BUILD-001)
 - `lib/*.js` and `lib/*.js.map` are no longer published; no resolution path ever reached them and they were 25 % of the tarball (BUILD-006)
 - the test-only assertion helper moved to `src/__testing__/` and is excluded from the declaration build, so the published package no longer carries a module that calls Vitest's global `expect` (ARCH-004)
+- the published `.d.ts` finally carry their JSDoc — `removeComments` no longer applies to the declaration build, so every documented symbol reaches the consumer's tooltip (BUILD-004)
+- `@internal` symbols are stripped from the published types: `Effect#onDestroy`, `SignalGroup#memberCounts`, `clearGroupFromFinalizer`, the `signal-core` leaf functions and the `collect-errors` helpers are no longer in autocomplete (BUILD-011)
+- `nextValue()` and `asyncValues()` take an `AbortSignalLike` instead of the global `AbortSignal`, so the types resolve for a consumer on plain `"lib": ["ES2023"]` without `@types/node` (BUILD-005)
+- `dist/` ships sourcemaps with the source embedded; `lib/` no longer ships a declaration map that points at files the package does not contain (BUILD-007)
 
 ### Breaking Changes
 

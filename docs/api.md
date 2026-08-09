@@ -368,8 +368,9 @@ signal) is destroyed.
 
 ### `nextValue(options?)` / `asyncValues(stop?, options?)`
 
-`options.signal` — an `AbortSignal` — aborts the wait: an already-aborted
-signal rejects immediately, and one that aborts while a value is pending
+`options.signal` — an `AbortSignal` (typed as `AbortSignalLike`, a
+structural subset every real `AbortSignal` satisfies) — aborts the wait: an
+already-aborted signal rejects immediately, and one that aborts while a value is pending
 rejects at that point, with the signal's `reason`. `asyncValues()` forwards
 the same `options` to every internal `nextValue()` call, but does **not**
 end the same way `nextValue()` does: an abort makes the loop **throw** the
@@ -666,6 +667,7 @@ Exported from `@spearwolf/signalize`:
 | `EffectCallback`             | `() => void \| (() => void)`.                                    |
 | `CreateMemoOptions`          | Options for `createMemo`.                                        |
 | `SignalLink<T>`, `ValueCallback<T>` | Link types.                                               |
+| `AbortSignalLike`            | Structural subset of `AbortSignal` accepted by `nextValue()` / `asyncValues()`. |
 | `CompareFunc<T>`             | `(a: T, b: T) => boolean`.                                       |
 | `BeforeReadFunc`             | `() => void`.                                                    |
 | `VoidFunc`                   | `() => void`.                                                    |

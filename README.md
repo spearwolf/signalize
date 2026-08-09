@@ -331,7 +331,7 @@ pnpm install
 | `pnpm checkPkgTypes` | `attw --pack --profile esm-only` — checks the `exports` map and shipped `.d.ts` across the resolution modes that apply to an ESM-only package |
 | `pnpm bench` | Runs the microbenchmark suite in `bench/` |
 | `pnpm check` / `pnpm fix` | Biome lint + format — check only / auto-fix |
-| `pnpm compile` | `tsc` → `lib/` (types + sourcemaps) |
+| `pnpm compile` | two `tsc` passes → `lib/` (`compile:js` for JS + sourcemaps, `compile:types` for documented, `@internal`-free `.d.ts`) |
 | `pnpm bundle` | rollup → `dist/` |
 | `pnpm clean` | Remove build artifacts |
 | `pnpm cbt` | clean + compile + bundle + test |

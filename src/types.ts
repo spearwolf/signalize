@@ -115,3 +115,24 @@ export interface SignalValueParams {
 export interface SignalWriterParams<T>
   extends SignalParams<T>,
     SignalValueParams {}
+
+/**
+ * The structural subset of the standard `AbortSignal` that `nextValue()`
+ * and `asyncValues()` actually touch.
+ *
+ * Named as its own type rather than referencing the global `AbortSignal`:
+ * that global lives in `lib.dom.d.ts` or in `@types/node`, and a consumer
+ * compiling against plain `"lib": ["ES2023"]` has neither — the published
+ * declarations would not resolve for them (BUILD-005). Every real
+ * `AbortSignal`, DOM or Node, satisfies this shape.
+ */
+export interface AbortSignalLike {
+  readonly aborted: boolean;
+  readonly reason?: unknown;
+  addEventListener(
+    type: 'abort',
+    listener: () => void,
+    options?: {once?: boolean},
+  ): void;
+  removeEventListener(type: 'abort', listener: () => void): void;
+}

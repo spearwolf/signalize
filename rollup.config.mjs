@@ -27,6 +27,7 @@ export default {
       entryFileNames: '[name].js',
       chunkFileNames: 'signalize.[hash].js',
       format: 'es',
+      sourcemap: true,
     },
   ],
   treeshake: 'smallest',

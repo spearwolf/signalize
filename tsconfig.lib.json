@@ -7,9 +7,6 @@
     "rootDir": "./src",
     "outDir": "lib",
     "sourceMap": true,
-    "declaration": true,
-    "declarationDir": "lib",
-    "declarationMap": true,
     "isolatedModules": true
   }
 }

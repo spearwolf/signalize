@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.lib.json",
+
+  "compilerOptions": {
+    "emitDeclarationOnly": true,
+    "sourceMap": false,
+    "declaration": true,
+    "declarationDir": "lib",
+    "declarationMap": false,
+    "removeComments": false,
+    "stripInternal": true
+  }
+}

@@ -591,7 +591,8 @@ log.unmute();
 
 - `nextValue()` and `asyncValues()` integrate with `for await` loops; useful
   for testing and for one-shot waits. Both take an optional `{signal}`
-  (`AbortSignal`) to cancel the wait without destroying the link. `nextValue()`
+  (`AbortSignal`, typed as `AbortSignalLike`, a structural subset every real
+  `AbortSignal` satisfies) to cancel the wait without destroying the link. `nextValue()`
   rejects with an `Error` — not `undefined` — if the link is destroyed first,
   and with the signal's `reason` if aborted first. `asyncValues()` treats the
   two differently: the link being destroyed ends its loop quietly, same as

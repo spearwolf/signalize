@@ -171,7 +171,9 @@ Also avoid reading an imported binding at module-eval time across module boundar
 | `pnpm test:smoke` | Clears `smoke/build`, compiles `smoke/*.ts` (`tsc --project smoke/tsconfig.json`), then hard-fails if no `smoke/build/*.test.js` matched — a renamed test file or a stale leftover masking that — before `node --test` runs it; exact command in `package.json`. Runs (does not build the shipped artifact) against an already-built `dist/`/`lib/`; plain Node, no Vitest |
 | `pnpm smoke` | `pnpm dist` + `pnpm test:smoke` — builds first, then smoke-tests; the single-command entry point for a human or for iterating on `smoke/dist-smoke.test.ts` |
 | `pnpm bench` | Vitest Bench over `bench/*.bench.ts`; informative in CI, no regression gate |
-| `pnpm compile` | `tsc --project tsconfig.lib.json` → `lib/` (types + sourcemaps) |
+| `pnpm compile` | `run-s compile:js compile:types` — two `tsc` passes into `lib/` |
+| `pnpm compile:js` | `tsc --project tsconfig.lib.json` → `lib/*.js` + `lib/*.js.map`, for Rollup |
+| `pnpm compile:types` | `tsc --project tsconfig.types.json` → `lib/*.d.ts`, with JSDoc kept and `@internal` symbols stripped |
 | `pnpm bundle` | rollup → `dist/index.js`, `dist/decorators.js` |
 | `pnpm clean` | `rimraf build types tests dist lib coverage smoke/build` |
 | `pnpm check` / `pnpm fix` | Biome lint+format check / Biome auto-fix |
@@ -180,7 +182,11 @@ Also avoid reading an imported binding at module-eval time across module boundar
 | `pnpm checkPkgTypes` | `attw --pack --profile esm-only` — package types audit. The profile ignores `node10` and `node16 (from CJS)`, which cannot pass for an ESM-only package with a subpath export (no `exports`-map support / ESM served to a CJS resolver, respectively); `node16 (from ESM)` and `bundler` are still checked in full. Blocks in CI (`pnpm world`, `ci.yml`), not just documented |
 | `pnpm dist` | clean + compile + bundle (no test) |
 
-`package.json#files` is an allowlist, not a denylist — there is no `.npmignore`. What ships in the npm tarball (2026-08-09): `dist/`, `lib/**/*.d.ts`, `docs/`, `skills/`, plus `README.md`, `CHANGELOG.md`, `LICENSE` and `package.json` — 42 files. `npm pack --dry-run` is the way to check this against the current tree.
+`package.json#files` is an allowlist, not a denylist — there is no `.npmignore`. What ships in the npm tarball (2026-08-09): `dist/`, `lib/**/*.d.ts`, `docs/`, `skills/`, plus `README.md`, `CHANGELOG.md`, `LICENSE` and `package.json` — 45 files, 493.8 kB unpacked, 134.2 kB packed. `npm pack --dry-run` is the way to check this against the current tree.
+
+`pnpm compile` is two `tsc` passes, not one, because `removeComments` does not distinguish `.js` output from `.d.ts` output: turning it off to keep JSDoc in the declarations would also put it back into `lib/*.js`, which Rollup then carries into `dist/` — measured at ~110 kB more in `dist/*.js` for comments nobody reads there. `tsconfig.lib.json` (`compile:js`) stays `removeComments: true` and emits only JS plus its sourcemap; `tsconfig.types.json` (`compile:types`) is `emitDeclarationOnly`, keeps comments, and sets `stripInternal: true`.
+
+**`@internal` is a compiler switch here, not a comment.** Since `pnpm compile:types` sets `stripInternal: true`, any JSDoc-tagged `@internal` symbol is cut from the published `.d.ts` — an `@internal` on a symbol a consumer is meant to see quietly removes it from autocomplete, and neither `attw` nor the test suite notices (2026-08-09, BUILD-011).
 
 Any filtered run (`pnpm test <pattern>`, `pnpm test -t "<name>"`) ends with exit 1: the per-file coverage thresholds are evaluated against the files that did *not* run, so the gate always fails. Read the test result, not the exit code — it is not a test failure.
 
