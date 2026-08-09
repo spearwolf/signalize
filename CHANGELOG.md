@@ -137,6 +137,8 @@
 - `@internal` symbols are stripped from the published types: `Effect#onDestroy`, `SignalGroup#memberCounts`, `clearGroupFromFinalizer`, the `signal-core` leaf functions and the `collect-errors` helpers are no longer in autocomplete (BUILD-011)
 - `nextValue()` and `asyncValues()` take an `AbortSignalLike` instead of the global `AbortSignal`, so the types resolve for a consumer on plain `"lib": ["ES2023"]` without `@types/node` (BUILD-005)
 - `dist/` ships sourcemaps with the source embedded; `lib/` no longer ships a declaration map that points at files the package does not contain (BUILD-007)
+- `engines.node` lowered from `>=24.13` to `>=22` — no construct in `src/` needs anything newer, and Node 22 stays in LTS until 2027 (BUILD-009)
+- CI runs the full gate as a matrix over Node 22 and Node 24, so the declared floor is exercised instead of asserted (BUILD-009)
 
 ### Breaking Changes
 

@@ -5,7 +5,7 @@ description: Write, review, or debug code that uses `@spearwolf/signalize` — s
 
 # Using @spearwolf/signalize
 
-Framework-agnostic, **synchronous** fine-grained reactivity. ESM-only, `sideEffects: false`, ES2023, Node `>=24.13` or any modern browser. Peer dep: `@spearwolf/eventize`. Fully typed.
+Framework-agnostic, **synchronous** fine-grained reactivity. ESM-only, `sideEffects: false`, ES2023, Node `>=22` or any modern browser. Peer dep: `@spearwolf/eventize`. Fully typed.
 
 ```ts
 import {createSignal, createEffect, createMemo, link, SignalGroup} from '@spearwolf/signalize';

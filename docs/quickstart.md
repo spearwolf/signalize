@@ -7,7 +7,7 @@ npm install @spearwolf/signalize
 # or: pnpm add @spearwolf/signalize
 ```
 
-ESM-only. Requires Node `>=24.13` or a modern browser. Targets ES2023.
+ESM-only. Requires Node `>=22` or a modern browser. Targets ES2023.
 `@spearwolf/eventize` is a peer dependency.
 
 ## Five-minute tour

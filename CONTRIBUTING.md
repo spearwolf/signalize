@@ -8,7 +8,7 @@ Please read our [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
 
 ### Prerequisites
 
-- Node.js (see `package.json` for version)
+- Node.js `>=22` — the same floor as `engines.node` in `package.json`. Nothing in the build needs more: `pnpm world` runs green on Node 22 (measured 2026-08-09 against 22.13.1), and CI runs the full gate on Node 22 and Node 24. One devDependency is narrower than the floor — `npm-run-all2@9` declares `^22.22.2 || ^24.15.0 || >=26.0.0` — so on an older 22.x `pnpm install` prints an engine warning, and refuses outright if you have `engineStrict` turned on
 - pnpm package manager
 
 ### Setup

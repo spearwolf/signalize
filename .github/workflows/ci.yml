@@ -11,10 +11,18 @@ on:
 
 jobs:
   test:
-    name: Run all checks, linters and tests
+    name: Run all checks, linters and tests (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # Both ends of the supported range, because `engines.node` is `>=22`:
+    # the floor gets run, not just declared (BUILD-009). fail-fast is off
+    # so a version-specific failure stays visible as one — with it on, the
+    # first red leg cancels the other and hides which versions are affected.
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['22', '24']
     steps:
       - uses: actions/checkout@v7
 
@@ -23,7 +31,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: ${{ matrix.node-version }}
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
@@ -66,6 +74,9 @@ jobs:
       # numbers in the log for humans to eyeball.
       - run: pnpm bench
         name: Run microbenchmarks (informative, non-blocking)
+        # Only on the newer leg: two engines' timings in one run read like a
+        # regression when they are nothing but two different JITs.
+        if: matrix.node-version == '24'
         continue-on-error: true
 
       - name: Publish coverage summary
@@ -76,7 +87,7 @@ jobs:
               const s = require('./coverage/coverage-summary.json').total;
               const fmt = (k) => \`| \${k} | \${s[k].pct}% (\${s[k].covered}/\${s[k].total}) |\`;
               const md = [
-                '## Coverage',
+                \`## Coverage (Node \${process.version})\`,
                 '',
                 '| Metric | Coverage |',
                 '|---|---|',
@@ -98,6 +109,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-report
+          name: coverage-report-node${{ matrix.node-version }}
           path: coverage/
           retention-days: 14

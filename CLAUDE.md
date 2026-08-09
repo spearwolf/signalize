@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-`@spearwolf/signalize` — synchronous signals/effects/memos/links on top of `@spearwolf/eventize`. ESM-only, Node `>=24.13`, ES2023.
+`@spearwolf/signalize` — synchronous signals/effects/memos/links on top of `@spearwolf/eventize`. ESM-only, Node `>=22`, ES2023.
 
 ## Where the knowledge lives
 

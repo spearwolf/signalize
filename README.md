@@ -90,7 +90,7 @@ In complex interactive front-ends—such as **3D configurators, real-time dashbo
 - **TypeScript-first** — every primitive, option, and decorator is fully
   typed.
 
-Runs anywhere modern JavaScript runs. Targets ES2023, requires Node `>=24.13`.
+Runs anywhere modern JavaScript runs. Targets ES2023, requires Node `>=22`.
 
 ## Install
 
@@ -311,7 +311,8 @@ The package ships an agent skill at [`skills/using-signalize/`](./skills/using-s
 ## Development
 
 The package manager is **pnpm** (`pnpm@11.17.0`); `npm install` is not supported
-here. Node `>=24.13` is required to build.
+here. Node `>=22` builds and tests the repo; see
+[CONTRIBUTING.md](./CONTRIBUTING.md) for what the toolchain expects.
 
 ```shell
 git clone https://github.com/spearwolf/signalize.git
