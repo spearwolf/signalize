@@ -29,6 +29,9 @@ jobs:
       - run: pnpm check
         name: Run biome checks (lint + format)
 
+      - run: pnpm typecheck
+        name: Type-check everything, including specs and benchmarks
+
       # Both checks below need the artifact they check, and `pnpm dist` is
       # `clean + compile + bundle` — `clean` deletes `coverage/`. All three
       # steps therefore run *before* `pnpm test`; behind it, the final

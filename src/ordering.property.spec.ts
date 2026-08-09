@@ -113,7 +113,9 @@ describe('ordering invariants (property based)', () => {
         const signals = Array.from({length: numSignals}, () => createSignal(0));
 
         const calls: Array<[number, number]> = [];
-        const readValuesByEffect: number[][] = effectSpecs.map(() => []);
+        const readValuesByEffect: number[][] = effectSpecs.map(
+          (): number[] => [],
+        );
 
         const effects = effectSpecs.map(({priority, deps}, creationOrder) =>
           createEffect(

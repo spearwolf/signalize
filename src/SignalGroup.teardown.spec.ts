@@ -591,7 +591,7 @@ describe('SignalGroup teardown robustness', () => {
       });
 
       let siblingDestroyed = 0;
-      const sibling = link(sig, (v) => v, {attach: host});
+      const sibling = link(sig, (v: number) => v, {attach: host});
       on(sibling, DESTROY, () => {
         siblingDestroyed += 1;
       });
@@ -802,7 +802,7 @@ describe('SignalGroup teardown robustness', () => {
       });
 
       let siblingDestroyed = 0;
-      const sibling = link(external, (v) => v, {attach: host});
+      const sibling = link(external, (v: number) => v, {attach: host});
       on(sibling, DESTROY, () => {
         siblingDestroyed += 1;
       });

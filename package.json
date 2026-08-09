@@ -24,6 +24,7 @@
     "update": "npx npm-check-updates -u",
     "publish:pkg": "node scripts/publishPackage.cjs",
     "checkPkgTypes": "attw --pack --profile esm-only",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "compile": "tsc --project tsconfig.lib.json",
     "bundle": "rollup -c rollup.config.mjs",
     "clean": "rimraf build types tests dist lib coverage smoke/build",
@@ -41,7 +42,7 @@
     "cbt": "run-s -sn clean compile bundle test",
     "dist": "run-s -sn clean compile bundle",
     "smoke": "run-s -sn dist test:smoke",
-    "world": "run-s -sn clean check compile bundle test:smoke checkPkgTypes test test:gc"
+    "world": "run-s -sn clean check typecheck compile bundle test:smoke checkPkgTypes test test:gc"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

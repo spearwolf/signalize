@@ -124,6 +124,7 @@
 - `pnpm test` now runs the GC suites (`SignalGroup.gc.spec.ts`, `link.gc.spec.ts`) itself, via a dedicated `gc` project in `vitest.config.ts` (`--expose-gc`, Vitest's default `forks` pool), so they are measured in the same coverage run as everything else instead of only under `pnpm test:gc`. `pnpm world` now includes the `test:gc` step (TEST-005, TEST-014)
 - `pnpm world` and CI now also run `checkPkgTypes` and `test:smoke`, both against a freshly built `lib/`/`dist/` (`pnpm dist`, which runs before either); `pnpm smoke` runs the smoke test's build-and-run pair on its own, and `pnpm clean` removes `smoke/build` along with the other generated directories (TEST-008, BUILD-008)
 - `pnpm checkPkgTypes` now runs `attw --pack --profile esm-only` instead of the unprofiled `attw --pack`, and is bestable for the first time: the unprofiled check always failed, because `node10` and `node16 (from CJS)` cannot pass for a package that is ESM-only and uses a subpath export — the profile excludes exactly those two modes and leaves `node16 (from ESM)` and `bundler` checked in full (BUILD-008)
+- New `pnpm typecheck` script (`tsc --noEmit -p tsconfig.json`) runs a real compiler pass over specs, benchmarks and the Vitest configs — code that was previously only transpiled by SWC and never type-checked. Wired into `pnpm world` (after `check`, before `compile`) and into CI, right after the `pnpm check` step (BUILD-003)
 
 ### Breaking Changes
 
