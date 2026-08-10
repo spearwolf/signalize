@@ -1,5 +1,9 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
-import {assertEffectsCount} from './__testing__/assert-helpers.js';
+import {
+  assertEffectsCount,
+  assertLinksCount,
+  assertSignalsCount,
+} from './__testing__/assert-helpers.js';
 import {createSignal} from './createSignal.js';
 import {EffectImpl, type EffectOptions} from './EffectImpl.js';
 import {
@@ -18,10 +22,14 @@ const settled = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 describe('createEffect', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
   });
 
   afterEach(() => {
     assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
   });
 
   it('the effect cleanup callback is called like react:useEffect', () => {

@@ -1,4 +1,8 @@
-import {assertEffectsCount} from './__testing__/assert-helpers.js';
+import {
+  assertEffectsCount,
+  assertLinksCount,
+  assertSignalsCount,
+} from './__testing__/assert-helpers.js';
 import {createEffect} from './effects.js';
 import {createSignal} from './index.js';
 import {destroySignal} from './signal-core.js';
@@ -6,10 +10,14 @@ import {destroySignal} from './signal-core.js';
 describe('Effect -> autorun: false', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
   });
 
   afterEach(() => {
     assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
   });
 
   it('if autorun is false then the effect is not executed by default', () => {

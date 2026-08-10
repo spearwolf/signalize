@@ -3,8 +3,10 @@ import {
   assertEffectSubscriptionsCount,
   assertEffectSubscriptionsCountChange,
   assertEffectsCount,
+  assertLinksCount,
   assertSignalDestroySubscriptionsCount,
   assertSignalDestroySubscriptionsCountChange,
+  assertSignalsCount,
   saveEffectSubscriptionsCount,
   saveSignalDestroySubscriptionsCount,
 } from './__testing__/assert-helpers.js';
@@ -21,12 +23,16 @@ import type {SignalReader} from './types.js';
 describe('destroySignal', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
     saveEffectSubscriptionsCount(true);
     saveSignalDestroySubscriptionsCount(true);
   });
 
   afterEach(() => {
     assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
     assertEffectSubscriptionsCount(0, 'afterEach');
     assertSignalDestroySubscriptionsCount(0, 'afterEach');
   });

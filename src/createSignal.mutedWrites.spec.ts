@@ -1,5 +1,6 @@
 import {
   assertEffectsCount,
+  assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {createSignal} from './createSignal.js';
@@ -12,11 +13,13 @@ describe('writes on muted or destroyed signals', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
   });
 
   afterEach(() => {
     assertEffectsCount(0, 'afterEach');
     assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
   });
 
   it('set() on a muted signal stores the value but does not notify', () => {

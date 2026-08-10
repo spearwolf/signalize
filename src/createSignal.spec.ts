@@ -1,6 +1,7 @@
 import type {MockInstance} from 'vitest';
 import {
   assertEffectsCount,
+  assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {createSignal} from './createSignal.js';
@@ -30,11 +31,13 @@ describe('createSignal', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
   });
 
   afterEach(() => {
     assertEffectsCount(0, 'afterEach');
     assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
   });
 
   it('works as expected', () => {

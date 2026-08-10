@@ -1,5 +1,9 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
-import {assertEffectsCount} from './__testing__/assert-helpers.js';
+import {
+  assertEffectsCount,
+  assertLinksCount,
+  assertSignalsCount,
+} from './__testing__/assert-helpers.js';
 import {$effect} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {createEffect, onEffectError} from './effects.js';
@@ -19,6 +23,8 @@ describe('async effect callbacks', () => {
 
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
     unhandled = [];
     onUnhandledRejection = (reason: unknown) => {
       unhandled.push(reason);
@@ -32,6 +38,8 @@ describe('async effect callbacks', () => {
     // console.error mocked for the rest of the file.
     vi.restoreAllMocks();
     assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
   });
 
   describe('error channel', () => {

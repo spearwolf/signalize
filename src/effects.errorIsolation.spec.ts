@@ -1,6 +1,7 @@
 import {emit, getSubscriptionCount, on} from '@spearwolf/eventize';
 import {
   assertEffectsCount,
+  assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {batch} from './batch.js';
@@ -18,11 +19,13 @@ describe('a throwing effect callback does not silence its siblings (BUG-004)', (
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
   });
 
   afterEach(() => {
     assertEffectsCount(0, 'afterEach');
     assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
   });
 
   it('delivers to every effect and throws the failure afterwards', () => {

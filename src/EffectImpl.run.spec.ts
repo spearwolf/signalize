@@ -1,6 +1,7 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
 import {
   assertEffectsCount,
+  assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {beQuiet} from './bequiet.js';
@@ -13,11 +14,13 @@ describe('EffectImpl.run() lifecycle', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
   });
 
   afterEach(() => {
     assertEffectsCount(0, 'afterEach');
     assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
   });
 
   it('a quiet run keeps the dependencies it is not allowed to re-register (BUG-005)', () => {

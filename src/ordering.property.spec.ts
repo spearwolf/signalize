@@ -2,6 +2,7 @@ import {Priority} from '@spearwolf/eventize';
 import fc from 'fast-check';
 import {
   assertEffectsCount,
+  assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {batch} from './batch.js';
@@ -62,11 +63,13 @@ describe('ordering invariants (property based)', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
   });
 
   afterEach(() => {
     assertEffectsCount(0, 'afterEach');
     assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
   });
 
   it('P1 — priority ordering without a batch', () => {

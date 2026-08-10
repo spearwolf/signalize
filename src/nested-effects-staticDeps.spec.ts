@@ -1,5 +1,9 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
-import {assertEffectsCount} from './__testing__/assert-helpers.js';
+import {
+  assertEffectsCount,
+  assertLinksCount,
+  assertSignalsCount,
+} from './__testing__/assert-helpers.js';
 import {$effect} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {createEffect, getEffectsCount} from './effects.js';
@@ -15,10 +19,14 @@ import {destroySignal} from './signal-core.js';
 describe('nested effects inside a static-deps effect', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
   });
 
   afterEach(() => {
     assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
   });
 
   it('does not leak an orphaned child effect per rerun (MEM-001)', () => {

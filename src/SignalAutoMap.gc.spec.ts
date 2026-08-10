@@ -24,6 +24,10 @@ const forceGc = async () => {
   }
 };
 
+// No `assertSignalsCount()` guard in beforeEach/afterEach here, unlike the
+// neighbouring specs: this file's whole subject is a counter that comes back
+// down at a time nobody can name. Each test takes its own baseline instead,
+// which keeps one failure from turning into three.
 describe('SignalAutoMap GC behavior (requires --expose-gc) — MEM-007', () => {
   it('a dropped map is collected and releases its destroy-queue subscriptions (MEM-007)', async () => {
     const destBefore = getSubscriptionCount(globalDestroySignalQueue);
