@@ -1,4 +1,5 @@
-import {once} from '@spearwolf/eventize';
+import {once, Priority} from '@spearwolf/eventize';
+import {collect, throwCollectedErrors} from './collect-errors.js';
 import {$queueUnsubscribes, DESTROY} from './constants.js';
 import {Signal} from './Signal.js';
 import {
@@ -239,7 +240,18 @@ export function link<ValueType>(
     );
   }
 
-  once(newLink, DESTROY, () => {
+  // MEM-010: unlike `attachEffect()`'s hook above, the damage here is
+  // permanent, not just until the next `clear()`. On normal priority a
+  // higher-priority application `DESTROY` listener that throws aborts
+  // eventize's delivery before this line runs — `getLinksCount()` then
+  // stays too high for the life of the process (`destroySignal(source)`
+  // does not correct it, measured), the registry keeps the frozen entry,
+  // and the next `link(source, sameTarget)` hands back that destroyed link,
+  // which throws as soon as anything calls `attach()` on it. Same reach as
+  // the sibling hooks: `Priority.Max` is `+Infinity`, not an exclusive slot,
+  // so a listener registered at `Priority.Max` first still runs first — but
+  // every ordinary priority is covered.
+  once(newLink, DESTROY, Priority.Max, () => {
     links.delete(targetKey);
     if (links.size === 0) {
       gLinks.delete(sourceSignal);
@@ -259,6 +271,10 @@ export function link<ValueType>(
  *
  * @param source - The source signal
  * @param target - Optional specific target to unlink (if omitted, all targets are unlinked)
+ *
+ * Every matching link is torn down, even if an earlier one's `DESTROY`
+ * listener throws (MEM-011). A single failure is rethrown unchanged; several
+ * are bundled into an `AggregateError`, in teardown order.
  */
 export function unlink<ValueType>(
   source: LinkableSource<ValueType>,
@@ -269,9 +285,14 @@ export function unlink<ValueType>(
   if (gLinks.has(sourceSignal)) {
     const links = gLinks.get(sourceSignal)!;
 
+    // MEM-011: collected rather than let through — without this, the first
+    // link whose DESTROY listener throws ends the loop, every link behind
+    // it stays fully subscribed, and `links.clear()` never runs.
+    const errors: unknown[] = [];
+
     if (target == null) {
       for (const link of links.values()) {
-        link.destroy();
+        collect(errors, () => link.destroy());
       }
       links.clear();
     } else {
@@ -279,13 +300,15 @@ export function unlink<ValueType>(
         signalImpl(target as SignalLike<ValueType>) ?? target,
       );
       if (link != null) {
-        link.destroy();
+        collect(errors, () => link.destroy());
       }
     }
 
     if (links.size === 0) {
       gLinks.delete(sourceSignal);
     }
+
+    throwCollectedErrors(errors, 'unlinking a source signal');
   }
 }
 

@@ -6,6 +6,7 @@ import {
 } from './__testing__/assert-helpers.js';
 import {DESTROY} from './constants.js';
 import {createSignal, destroySignal, link, unlink} from './index.js';
+import type {SignalLink} from './SignalLink.js';
 
 describe('unlink()', () => {
   beforeEach(() => {
@@ -311,5 +312,101 @@ describe('unlink()', () => {
     } finally {
       destroySignal(sigA);
     }
+  });
+
+  describe('MEM-011: one failing link does not cost its siblings their teardown', () => {
+    it('unlink(source) tears every link down and reports afterwards', () => {
+      const src = createSignal(0);
+      const first = link(src, () => {});
+      const second = link(src, () => {});
+      const third = link(src, () => {});
+
+      try {
+        assertLinksCount(3, 'three links on one source');
+
+        on(first, DESTROY, () => {
+          throw new Error('listener boom');
+        });
+
+        expect(
+          () => unlink(src),
+          'the failure still reaches the caller',
+        ).toThrow('listener boom');
+
+        expect(
+          [first, second, third].map((l) => l.isDestroyed),
+          'every link was torn down, not only the ones before the throw',
+        ).toEqual([true, true, true]);
+
+        assertLinksCount(0, 'and the register is empty again');
+      } finally {
+        destroySignal(src);
+      }
+    });
+
+    it('one failure is rethrown unchanged, several arrive as an AggregateError', () => {
+      const src = createSignal(0);
+      const solo = new Error('solo boom');
+      const created: SignalLink<number>[] = [];
+
+      try {
+        const one = link(src, () => {});
+        created.push(one);
+
+        on(one, DESTROY, () => {
+          throw solo;
+        });
+
+        let caught: unknown;
+        try {
+          unlink(src);
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught, 'the single error is the very same object').toBe(solo);
+        assertLinksCount(0, 'after the single failure');
+
+        const a = link(src, () => {});
+        const b = link(src, () => {});
+        created.push(a, b);
+
+        on(a, DESTROY, () => {
+          throw new Error('boom-a');
+        });
+        on(b, DESTROY, () => {
+          throw new Error('boom-b');
+        });
+
+        let aggregated: unknown;
+        try {
+          unlink(src);
+        } catch (err) {
+          aggregated = err;
+        }
+
+        expect(aggregated, 'two failures are bundled').toBeInstanceOf(
+          AggregateError,
+        );
+        expect(
+          (aggregated as AggregateError).errors.map((e: Error) => e.message),
+          'in teardown order',
+        ).toEqual(['boom-a', 'boom-b']);
+        assertLinksCount(0, 'after the double failure');
+      } finally {
+        // Rule (d) from package 7a: on the unfixed code `unlink()` leaves
+        // links standing that still carry their throwing listeners, so an
+        // unguarded teardown here would fail a second time and replace the
+        // assertion that brought us here. Each link goes down on its own.
+        for (const l of created) {
+          try {
+            l.destroy();
+          } catch {
+            /* ignore */
+          }
+        }
+        destroySignal(src);
+      }
+    });
   });
 });

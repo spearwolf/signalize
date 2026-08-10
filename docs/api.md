@@ -371,6 +371,12 @@ limit: nothing is thrown and nothing is refused.
 Drop a specific `(source, target)` link, or all links from `source` if no
 target is given.
 
+> **Teardown errors.** Every matching link is torn down, even if an earlier
+> one's `DESTROY` listener throws. The failures are collected and raised
+> afterwards: a lone one unchanged, several as an `AggregateError` whose
+> `errors` array holds them in teardown order — the same shape `clear()` and
+> `off()` use above.
+
 ### `getLinksCount(source?)`
 
 Total link count, or count for a single source. Counts exactly the links
@@ -577,7 +583,7 @@ receive it.
 | `detachSignal(sig)`                     | Remove a signal (does **not** destroy it).                             |
 | `hasSignal(name)`                       | Lookup walks parent chain.                                             |
 | `signal<T>(name)`                       | Returns the named `Signal<T>` (parent fallback) or `undefined`.        |
-| `attachEffect(eff)` / `runEffects()`    | Track an effect / run all attached and child effects.                  |
+| `attachEffect(eff)` / `runEffects()`    | Track an effect / run all attached and child effects. Throws on an already destroyed effect, like `attachSignal()` and `attachLink()`. A destroyed effect takes itself out of the group by itself. |
 | `attachLink(link)` / `detachLink(link)` | Track / untrack a link. A destroyed link takes itself out of the group, whichever route attached it. |
 | `attachGroup(child)` / `detachGroup(child)` | Nest groups. `attachGroup()` throws when the edge would create a cycle — attaching a group to itself, or to one of its own descendants. |
 | `off()`                                 | Destroy attached effects/links and drop all external subscriptions on group signals — an external effect that survives the detach re-subscribes on its next run, static deps as well as dynamic ones; signals stay alive, the group remains reusable — except a memo signal `{attach}`ed inside an effect body, which belongs to that effect and dies with it. Child groups are `off()`'d recursively. Emits an `OFF` event. |

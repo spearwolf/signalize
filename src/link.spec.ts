@@ -1,4 +1,4 @@
-import {getSubscriptionCount, on} from '@spearwolf/eventize';
+import {getSubscriptionCount, on, Priority} from '@spearwolf/eventize';
 import {
   assertEffectsCount,
   assertLinksCount,
@@ -801,6 +801,45 @@ describe('link() comprehensive tests', () => {
         unlink(a);
         unlink(b);
         destroySignal(a, b);
+      }
+    });
+  });
+
+  // Last block in the file on purpose: before the fix the counter drift
+  // this test exposes is permanent for the whole module, so every test
+  // behind it would fail as collateral in the red run.
+  describe('MEM-010: the registry lets go even when a DESTROY listener throws first', () => {
+    it('a throwing listener does not strand the entry, the counter or the next link()', () => {
+      const src = createSignal(1);
+      const target = createSignal(0);
+
+      try {
+        const first = link(src, target);
+        assertLinksCount(1, 'after link');
+
+        on(first, DESTROY, Priority.High, () => {
+          throw new Error('listener boom');
+        });
+
+        expect(
+          () => first.destroy(),
+          'the listener error still reaches the caller',
+        ).toThrow('listener boom');
+
+        assertLinksCount(0, 'the counter came back down');
+
+        const second = link(src, target);
+        try {
+          expect(
+            second,
+            'link() built a fresh link instead of handing back the frozen one',
+          ).not.toBe(first);
+          expect(second.isDestroyed, 'and it is usable').toBe(false);
+        } finally {
+          second.destroy();
+        }
+      } finally {
+        destroySignal(src, target);
       }
     });
   });

@@ -736,10 +736,20 @@ export class SignalGroup {
    * without that, a long-lived group with effect churn keeps every dead
    * `EffectImpl` and its callback closure alive until `clear()`.
    *
+   * Throws on an effect that is already destroyed (CONS-006), the same rule
+   * `#addSignal()` and `attachLink()` already apply: its DESTROY has fired
+   * and `off(this)` has run, so the counter-hook below never fires again —
+   * the group would carry the corpse and its callback closure until
+   * `clear()`.
+   *
    * @param effect - The effect to attach
    * @returns The attached effect
    */
   attachEffect(effect: EffectImpl) {
+    if (effect?.destroyed) {
+      throw new Error('Cannot attach a destroyed effect to a group');
+    }
+
     // Guarded because eventize's own dedup can't help: `add()` only dedupes
     // `LISTENER_IS_OBJ` and `LISTENER_IS_NAMED_FUNC` (method-name) listeners.
     // A function is neither, so `once()` re-adds it every call — held
@@ -747,7 +757,15 @@ export class SignalGroup {
     // `attachEffect(sameEffect)` would grow the DESTROY list without bound.
     if (!this.#effects.has(effect)) {
       this.#effects.add(effect);
-      once(effect, DESTROY, () => {
+      // MEM-009: the counter-edge to `attachLink()`'s hook (see its comment
+      // at `Priority.Max` above). On normal priority, a higher-priority
+      // application `DESTROY` listener that throws aborts eventize's
+      // delivery before this line runs, and the group keeps the dead
+      // `EffectImpl` and its callback closure until the next `clear()`. The
+      // guarantee reaches exactly as far as the priority does — a listener
+      // registered at `Priority.Max` *before* this one still wins the tie
+      // and can still swallow it; every ordinary priority is covered.
+      once(effect, DESTROY, Priority.Max, () => {
         this.#effects.delete(effect);
       });
     }

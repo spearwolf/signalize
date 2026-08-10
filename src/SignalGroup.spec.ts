@@ -597,6 +597,80 @@ describe('SignalGroup', () => {
       }
     });
 
+    it('attachEffect() takes the effect back out even when a DESTROY listener throws first (MEM-009)', () => {
+      // The counterpart to `attachLink()`'s hook, which has carried
+      // `Priority.Max` since MEM-002. eventize ends the delivery at the
+      // first throwing listener, so a bookkeeping hook on normal priority
+      // is at the mercy of whoever subscribed before it: the group kept the
+      // dead `EffectImpl` and its callback closure until the next
+      // `clear()`. The group's own accounting comes before application
+      // code.
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(0);
+
+      const effect = createEffect(() => {
+        signal.get();
+      });
+      const effectImpl = effect[$effect];
+
+      try {
+        group.attachEffect(effectImpl);
+        expect(getGroupMemberCounts(group).effects).toBe(1);
+
+        on(effectImpl, DESTROY, Priority.High, () => {
+          throw new Error('listener boom');
+        });
+
+        expect(
+          () => effect.destroy(),
+          'the listener error still reaches the caller',
+        ).toThrow('listener boom');
+
+        assertEffectsCount(0, 'the effect itself is destroyed either way');
+
+        expect(
+          getGroupMemberCounts(group).effects,
+          'the group let go of the dead effect, listener or no listener',
+        ).toBe(0);
+      } finally {
+        effect.destroy();
+        signal.destroy();
+        group.clear();
+      }
+    });
+
+    it('attachEffect() refuses a destroyed effect, like its two siblings (CONS-006)', () => {
+      // `#addSignal()` and `attachLink()` both reject a corpse; this one
+      // took it and held it. A destroyed `EffectImpl` has emitted its
+      // DESTROY and run `off(this)`, so the `once(effect, DESTROY, …)`
+      // counter-hook below never fires again — the group would carry the
+      // effect and its callback closure until `clear()`.
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(0);
+
+      const effect = createEffect(() => {
+        signal.get();
+      });
+      const effectImpl = effect[$effect];
+
+      try {
+        effect.destroy();
+        assertEffectsCount(0, 'the effect is gone before the attach');
+
+        expect(() => group.attachEffect(effectImpl)).toThrow(
+          'Cannot attach a destroyed effect to a group',
+        );
+
+        expect(
+          getGroupMemberCounts(group).effects,
+          'the group did not take the corpse',
+        ).toBe(0);
+      } finally {
+        signal.destroy();
+        group.clear();
+      }
+    });
+
     it('runEffects() runs all effects in the group', () => {
       const group = SignalGroup.findOrCreate({});
       const signal = createSignal(0);

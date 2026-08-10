@@ -153,6 +153,7 @@ m();                 // SignalReader<T>
 const con = link(src, target, {attach: obj});   // target: signal | (value) => void
 unlink(src, target);   unlink(src);             // drop one, or all links from src
 getLinksCount();       getLinksCount(src);
+// unlink(src) tears every link down, then reports — several failures as an AggregateError
 // held until destroy()/unlink()/{attach} clears/source|target dies — a link on a still-live source is never reclaimed by GC alone
 // link() warns once per source (console.warn) at 1000 links on that source
 
@@ -206,7 +207,7 @@ getSignalGroupsCount();
 g.attachSignal(s);  g.attachSignalByName('n', s);  g.detachSignal(s);
 g.signal('n');      // walks the parent chain
 g.hasSignal('n');
-g.attachEffect(e);  g.runEffects();
+g.attachEffect(e);  g.runEffects();  // attachEffect throws on a destroyed effect
 g.attachLink(l);    g.detachLink(l);  // a destroyed link takes itself out of the group
 g.attachGroup(child);  g.detachGroup(child);
 g.off();            // destroy attached effects/links, drop external subs, KEEP signals — not an in-effect {attach} memo's

@@ -94,6 +94,7 @@ import {link, unlink, getLinksCount} from '@spearwolf/signalize';
 
 const con = link(src, target, {attach: obj});  // target: signal | callback
 unlink(src, target);  unlink(src);
+// unlink(src) tears every link down, then reports — several failures as an AggregateError
 // held until destroy()/unlink()/{attach} clears/source|target dies — a link on a still-live source is never reclaimed by GC alone
 
 con.lastValue; con.isMuted; con.isDestroyed;  // lastValue = last announced value; a frame superseded by a re-entrant write, or one whose callback destroyed the link, does not set it
@@ -133,7 +134,7 @@ g.attachSignal(s); g.attachSignalByName('n', s);
 g.attachSignalByName('n', s2);  // rebind: destroys s unless attachSignal'd/other name
 g.attachSignalByName('n');      // releases the name the same way
 g.detachSignal(s); g.signal('n'); g.hasSignal('n');
-g.attachEffect(e); g.runEffects();
+g.attachEffect(e); g.runEffects();  // attachEffect throws on a destroyed effect
 g.attachLink(l);   g.detachLink(l);  // a destroyed link takes itself out of the group
 g.attachGroup(c);  // throws on self or on a descendant
 g.detachGroup(c);
