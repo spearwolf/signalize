@@ -202,7 +202,8 @@ requestAnimationFrame(function loop() {
 ```
 
 - Tracking still works the normal way; only the timing changes.
-- `eff.run()` inside a `batch()` defers the run until the batch ends.
+- `eff.run()` inside a `batch()` queues the run and carries it out when the
+  batch ends — for an `{autorun: false}` effect too.
 - `eff.run()` after `eff.destroy()` is a silent no-op.
 
 ## Priority
@@ -296,7 +297,7 @@ calculations.
 > For a class-bound memo, call `createMemo(..., {attach: this})` in the class
 > body — there is no memo decorator.
 
-## Memos: `batchWrites` is opt-in, and reading a composed memo is why
+## Memos: `batchWrites` is opt-in, and grouping side-effect writes is all it does
 
 A memo's recompute writes its signal directly — no `batch()` involved. Turn
 that on with `{batchWrites: true}` only if the memo's `computer` itself
@@ -319,12 +320,14 @@ const doubled = createMemo(
 
 Without `batchWrites`, a downstream effect depending on both `doubled` and
 `flag` sees two separate runs — the first with `flag` already updated but
-`doubled` still at its old value. `batchWrites: true` restores the old
-one-run grouping, at a cost: **any** effect run is deferred while a batch is
-open, including another memo's recompute triggered by reading it inside the
-callback. Reading a *composed* memo — a normal pattern — from inside a
-`batchWrites: true` callback can therefore return that memo's stale,
-pre-recompute value:
+`doubled` still at its old value. `batchWrites: true` restores the one-run
+grouping, at a cost that is now purely an allocation: one `Batch` instance per
+recompute that is not already inside another batch, on a path that otherwise
+allocates nothing. That is why the default is `false` — every memo would pay
+it, and a `computer` that writes other signals is the exception, not the rule.
+
+Reading a *composed* memo from inside such a callback is safe, and used to
+not be:
 
 ```ts
 const source = createSignal(0);
@@ -336,12 +339,12 @@ const outer = createMemo(
 );
 ```
 
-If `inner` is dirty when `outer` recomputes, its deferred run inside
-`outer`'s batch is a no-op for a `{lazy: true}` memo specifically — `[RECALL]`
-only marks a lazy memo dirty, it never calls `run()` for it — so `outer`
-keeps reading `inner`'s stale value until something else reads `inner`
-directly, outside any batch. This is why the default is `false`: composed
-memos are the common case, side-effect-writing callbacks are not.
+If `inner` is dirty when `outer` recomputes, reading it runs it right there,
+inside `outer`'s batch — a memo's read hook is not subject to the batch's
+deferral, only its resulting write is. `outer` sees `inner`'s fresh value on
+the first read. This used to return the stale value instead, and for a
+`{lazy: true}` `inner` it stayed stale until something read it directly
+outside any batch.
 
 ## Batching
 
@@ -355,7 +358,12 @@ batch(() => {
 ```
 
 - Batches nest. Only the outermost flush runs.
-- `effect.run()` inside a batch queues the run.
+- `effect.run()` inside a batch queues the run, and the flush carries it out —
+  including for an `{autorun: false}` effect, which a plain signal write still
+  leaves alone.
+- Reading a memo inside the callback recomputes it right there instead of
+  returning the value it had before the batch; the recompute's own write stays
+  in the batch.
 - An effect that throws during the flush does not end it — the remaining
   delayed effects still run, and the failure reaches the `batch()` caller
   afterwards.

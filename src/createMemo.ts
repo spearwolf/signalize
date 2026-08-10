@@ -30,22 +30,22 @@ export interface CreateMemoOptions {
    * deduplicated run instead of one per write with a torn intermediate
    * state (some signals updated, others not yet).
    *
-   * That grouping has a price, and it is the reason the default is `false`
-   * rather than `true`: `EffectImpl.run()` defers *any* run while a batch is
-   * open, and a memo's tracked read triggers its own recompute via exactly
-   * that path (`beforeRead`). So a `callback` that reads another memo which
-   * happens to be dirty at that moment gets that memo's *stale*
-   * pre-recompute value instead of a fresh one — for a `{lazy: true}` memo
-   * this is not just delayed but potentially permanent, since a lazy memo's
-   * deferred run inside the batch flush is *also* a no-op (`autorun` is
-   * `false`, so `[RECALL]` only marks it dirty without running it; nothing
-   * but a later direct, unbatched read forces it to catch up).
+   * That grouping costs an allocation, and that is now the whole price: one
+   * `Batch` instance per recompute, on a path that otherwise allocates
+   * nothing. Only for a recompute that is not already inside another batch,
+   * though — `batch()` reuses an open one and allocates nothing then. Which
+   * is why the default stays `false`: reading other memos from inside a
+   * `callback` (composed memos) is normal use, writing to unrelated signals
+   * as a side effect is the exception, and the ordinary memo should not pay
+   * for the exception (PERF-001).
    *
-   * Reading other memos from inside a `callback` — composed memos — is
-   * normal use; writing to unrelated signals as a side effect is not. `true`
-   * trades read consistency for that side-effect grouping; the default
-   * trades it back for read consistency, which is what composed memos rely
-   * on (PERF-001).
+   * The other half of that reasoning is gone. `true` used to mean that a
+   * memo read from inside `callback` while dirty came back with its *stale*
+   * pre-recompute value — not merely delayed but potentially permanent for a
+   * `{lazy: true}` one — because `beforeRead` deferred the recompute like
+   * any other run in an open batch. Since ASYNC-003 `beforeRead` recomputes
+   * at the read regardless of an open batch, so composed memos read fresh
+   * under either setting.
    */
   batchWrites?: boolean;
 }
@@ -133,7 +133,10 @@ export function createMemo<Type>(
     );
 
     const sImpl = signalImpl(si);
-    sImpl.beforeRead = e.run;
+    // Not `e.run`: that one defers while a batch is open, and a read cannot
+    // be deferred without being answered wrongly (ASYNC-003). The write the
+    // recompute makes still lands in the open batch.
+    sImpl.beforeRead = e.runImmediately;
 
     // The memo signal takes its effect down with it (a destroyed memo has
     // nothing left to compute).

@@ -31,9 +31,46 @@ class Batch {
     this.delayedEffects.push([priority, new Set([effectId])]);
   }
 
+  /**
+   * Take an effect id back out of the queue.
+   *
+   * The counterpart of {@link batch}, for the one run that cannot be
+   * deferred: a memo whose value is being read right now runs past the
+   * batch gate (ASYNC-003), and the entry an earlier write left for it is
+   * then a duplicate of a run that has already happened. A later write
+   * re-queues the effect through `batch()` as before — this takes the
+   * pending run away, not the effect's place in the priority order.
+   */
+  unbatch(effectId: symbol, priority: number) {
+    const len = this.delayedEffects.length;
+    for (let i = 0; i < len; i++) {
+      const [prio, effects] = this.delayedEffects[i];
+      if (prio === priority) {
+        effects.delete(effectId);
+        return;
+      }
+    }
+  }
+
   flush() {
-    this.run();
-    this.delayedEffects.length = 0;
+    // The queue is spent either way: `run()` delivers a RECALL to every id
+    // in it and only then re-raises what the effects handed in, so a throw
+    // is never "we stopped halfway". Clearing after `run()` instead of in a
+    // `finally` used to leave the whole queue standing — and `hibernate()`,
+    // its only caller, then restored a batch that recalled every one of
+    // them a second time when it closed: two runs of the same callback for
+    // one write, and the same failure reported at two different callers.
+    //
+    // The argument covers the delivery, not `run()`'s own setup: a throw out
+    // of `beginIsolatedDelivery()` or the two `on()` subscriptions ahead of
+    // the loop would clear a queue nothing was delivered from. Neither can
+    // throw today (an array push and two subscribes), which is why this is a
+    // note and not a second `try`.
+    try {
+      this.run();
+    } finally {
+      this.delayedEffects.length = 0;
+    }
   }
 
   run() {

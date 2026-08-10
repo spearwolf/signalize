@@ -80,9 +80,8 @@ const m = createMemo(() => a.get() * 2, {
   attach:       obj,
   name:         'm',     // group registration
   batchWrites:  false,   // true only if computer() itself writes OTHER signals —
-                          // costs read-freshness: a dirty composed memo read
-                          // inside the batch can come back stale (permanently,
-                          // if that memo is lazy)
+                          // costs one Batch instance per recompute (none if a
+                          // batch is already open) — why it is not the default
 });
 m();                 // SignalReader
 ```

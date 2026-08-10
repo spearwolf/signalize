@@ -479,13 +479,18 @@ describe('hibernate', () => {
         // and the quiet counter closes at zero instead of going negative
         expect(seen.quietAfterFrame, 'the quiet frame closed cleanly').toBe(0);
 
-        // The failed flush never reached `delayedEffects.length = 0`, so the
-        // restored batch still holds `boom` and recalls it once more when it
-        // closes — a second *run* of the callback, not merely a second throw
-        // of the same one. Pre-existing, unchanged by this fix, asserted so
-        // the next change to batch.ts has to say so.
-        expect(boomRuns, 'the failed flush left boom in the queue').toBe(2);
-        expect((escaped as Error)?.message).toBe('effect boom');
+        // `flush()` empties the queue in a `finally` now, so the restored
+        // batch has nothing left to recall: one write, one run, one report —
+        // at the `hibernate()` caller, which is the frame that asked for the
+        // flush. It used to leave `boom` in the queue (`delayedEffects.length
+        // = 0` sat *after* the throwing `run()`), run its callback a second
+        // time when the outer batch closed, and hand the same failure to a
+        // second caller.
+        expect(boomRuns, 'the failed flush took its queue with it').toBe(1);
+        expect(
+          escaped,
+          'and nothing is left for the outer batch to rethrow',
+        ).toBeUndefined();
       } finally {
         // The quiet counter is module state and no counter guard can see it:
         // without the fix this test leaves it at -1, and every later

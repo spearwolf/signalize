@@ -191,6 +191,25 @@ export class EffectImpl {
   autorun = true;
   shouldRun = true;
 
+  /**
+   * Set while an explicitly requested run of a **non-autorun** effect sits
+   * parked in an open batch (ASYNC-002).
+   *
+   * `[RECALL]` drops the flush's redispatch for a non-autorun effect — that
+   * is what `{autorun: false}` means for a *signal write*. But `run()` is
+   * not a signal write: somebody asked, in so many words, for this effect
+   * to run, and the batch only ever promised to postpone that run, not to
+   * swallow it. The note is what tells the two apart at the flush, where
+   * the effect id is all that arrives.
+   *
+   * Cleared by the run that honours it, not by `[RECALL]`: a request can
+   * also be spent by a run that happened for another reason before the
+   * flush got to it — the batch then dedups its RECALL away, and the note
+   * would stay armed for the next unrelated write. That is the moment
+   * `{autorun: false}` would silently have become `true`.
+   */
+  #explicitRunRequested = false;
+
   readonly priority: number;
 
   #dependencies?: SignalLike<unknown>[];
@@ -463,14 +482,49 @@ export class EffectImpl {
    * The optional return value of the _effect callback_ is stored as the next _cleanup callback_.
    */
   run = (): void => {
+    this.#run(false);
+  };
+
+  /**
+   * Run the effect callback now, even while a batch is open.
+   *
+   * The entry point for a read that demands a current value — a memo's
+   * `beforeRead` (ASYNC-003). Everything else about the run is identical,
+   * including that its own writes go into the open batch.
+   *
+   * @internal
+   */
+  runImmediately = (): void => {
+    this.#run(true);
+  };
+
+  #run(immediate: boolean): void {
     if (this.#destroyed) return;
     if (!this.shouldRun) return;
 
     const curBatch = getCurrentBatch();
     if (curBatch) {
-      curBatch.batch(this.id, this.priority);
-      return;
+      if (!immediate) {
+        // ASYNC-002: the id is the only thing that reaches the flush, and
+        // `[RECALL]` cannot tell a redispatched write from a run somebody
+        // asked for. The note travels with the effect instead.
+        if (!this.autorun) {
+          this.#explicitRunRequested = true;
+        }
+        curBatch.batch(this.id, this.priority);
+        return;
+      }
+      // ASYNC-003: a read that demands a current value is not deferrable —
+      // postponing it does not delay the answer, it falsifies it. The write
+      // this run is about to make still goes into the open batch, and that
+      // is the point: the value is current *and* the notification stays
+      // grouped. What the queue must not keep is the run itself, which is
+      // happening right now; left in there it would recompute a second time
+      // at the flush.
+      curBatch.unbatch(this.id, this.priority);
     }
+
+    this.#explicitRunRequested = false;
 
     if (this.#runDepth >= EffectImpl.maxDepth) {
       throw new Error(
@@ -593,7 +647,7 @@ export class EffectImpl {
         }
       }
     }
-  };
+  }
 
   /**
    * Run the callback on the effect stack with subscribe-on-read turned off —
@@ -624,10 +678,14 @@ export class EffectImpl {
    * failure is collected and re-raised once every other subscriber of that
    * write has run. A `run()` outside a delivery — `effect.run()`, a
    * hand-emitted RECALL — still throws immediately, at its caller.
+   *
+   * A `run()` an open batch parked is carried out here when the batch
+   * closes, `autorun` or not (ASYNC-002): what the missing `autorun` waives
+   * is the redispatch of a *write*, never a run somebody asked for.
    */
   [RECALL]() {
     this.shouldRun = true;
-    if (!this.autorun) return;
+    if (!this.autorun && !this.#explicitRunRequested) return;
     try {
       this.run();
     } catch (err) {

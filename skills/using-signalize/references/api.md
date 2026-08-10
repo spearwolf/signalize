@@ -137,12 +137,16 @@ const m = createMemo(() => a.get() * 2, {
   attach:       obj,
   name:         'm',     // group registration name
   batchWrites:  false,   // true only if the computer itself writes OTHER signals as
-                          // a side effect. Costs freshness: reading a composed memo
-                          // that's dirty from inside the batch returns its stale
-                          // value (permanently, if that memo is lazy — its deferred
-                          // run inside the batch flush is a no-op, `autorun` is
-                          // false). Composed memos are the common case, side-effect
-                          // writes are not — that's why the default is false.
+                          // a side effect. Costs an allocation: one Batch instance
+                          // per recompute, on a path that otherwise allocates
+                          // nothing — none at all if a batch is already open, since
+                          // batch() reuses it. Side-effect writes are the exception,
+                          // so the default leaves that cost unpaid. Reading a
+                          // composed memo from inside such a callback is fine: a
+                          // memo's read hook recomputes past the open batch, so it
+                          // comes back fresh under either setting. (One level — a
+                          // memo stale only through another memo still reads its
+                          // pre-batch value; see docs/api.md.)
 });
 m();                 // SignalReader<T>
 ```

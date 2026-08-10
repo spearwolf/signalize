@@ -18,6 +18,14 @@ export class Effect {
 
   run = () => this[$effect]?.run();
 
+  /**
+   * Run the effect callback now, even while a batch is open.
+   *
+   * @internal Used by `createMemo()` as the memo signal's `beforeRead`
+   * hook. Stripped from the published `.d.ts` by `stripInternal`.
+   */
+  runImmediately = () => this[$effect]?.runImmediately();
+
   destroy = () => {
     this[$effect]?.destroy();
     this[$effect] = undefined;
@@ -42,9 +50,9 @@ export class Effect {
    *
    * @internal Used by `createMemo()` to bind a memo signal to the lifetime of
    * the effect that created it. Not part of the public API surface: unlike
-   * `run` and `destroy` on this class it is a prototype method, not a bound
-   * property, and that inconsistency should be settled before it becomes a
-   * promise.
+   * `run`, `runImmediately` and `destroy` on this class — all three bound
+   * properties — it is a prototype method, and that inconsistency should be
+   * settled before it becomes a promise.
    */
   onDestroy(callback: VoidFunc): () => void {
     const effect = this[$effect];

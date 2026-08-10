@@ -590,20 +590,23 @@ describe('createMemo', () => {
     //    Losing the batch by default costs this grouping — see the first two
     //    tests below.
     //
-    // 2. `EffectImpl.run()` defers *every* run while a batch is open —
+    // 2. `EffectImpl.run()` *used to* defer every run while a batch was open,
     //    including a dirty dependency's run triggered by `beforeRead` while
-    //    the memo's own callback is reading it. Inside the old unconditional
-    //    batch(), a memo callback that reads another dirty (or lazy and
+    //    the memo's own callback was reading it. Inside the old unconditional
+    //    batch(), a memo callback that read another dirty (or lazy and
     //    never-autorun) memo got that memo's *stale* pre-recompute value —
-    //    permanently stale for a lazy one, since nothing forces it to run on
-    //    its own. Losing the batch by default fixes this — see the third and
-    //    fourth tests below, which is the correctness case for the new
-    //    default, independent of the performance numbers in bench/.
+    //    permanently stale for a lazy one, since nothing forced it to run on
+    //    its own. That mechanism is gone: since ASYNC-003 a memo's
+    //    `beforeRead` is not `e.run` but `e.runImmediately`, which recomputes
+    //    past the batch gate. Both settings now read the same fresh value —
+    //    see the third and fourth tests below, which are twins rather than
+    //    opposites.
     //
     // Composed memos (one memo reading another) are normal use; a memo
     // callback that writes other signals as a side effect is not. `batch()`
-    // is opt-in via `{batchWrites: true}` for the latter, and reintroduces
-    // the staleness risk from point 2 as its price.
+    // is opt-in via `{batchWrites: true}` for the latter, and its price is
+    // now an allocation — one `Batch` instance per recompute — not the
+    // read-freshness of point 2.
 
     it('default (no batchWrites): a side-effect write in the callback is NOT grouped with the memo write', () => {
       const source = createSignal(0);
@@ -675,20 +678,25 @@ describe('createMemo', () => {
       }
     });
 
-    // W5 — the actual justification for defaulting to `false`: reading a
-    // composed (lazy, dirty) memo from within another memo's callback.
+    // W5 — reading a composed (lazy, dirty) memo from within another memo's
+    // callback. This used to be the correctness half of the case for
+    // defaulting to `false`; today it is only the record of a fixed defect.
     //
-    // `EffectImpl.run()` defers *any* run while a batch is open (see
-    // `run()`'s `getCurrentBatch()` check), and a memo's `beforeRead` is
-    // exactly `e.run`. With the old unconditional batch(), a dirty inner
-    // memo read from inside an outer memo's callback got deferred instead of
-    // recomputed — the read returned the stale pre-write value. For a lazy
-    // inner memo this isn't even "deferred": `[RECALL]` only sets
-    // `shouldRun = true` and calls `run()` solely when `autorun` is true, so
-    // a lazy memo's deferred run inside the batch flush is *also* a no-op —
-    // it stays stale until something reads it directly, outside any batch.
+    // `EffectImpl.run()` defers any run while a batch is open (see `#run()`'s
+    // `getCurrentBatch()` check), and a memo's `beforeRead` used to be
+    // exactly `e.run`. With a batch open, a dirty inner memo read from inside
+    // an outer memo's callback got deferred instead of recomputed — the read
+    // returned the stale pre-write value. For a lazy inner memo that wasn't
+    // even "deferred": `[RECALL]` only sets `shouldRun = true` and calls
+    // `run()` when `autorun` is set, so a lazy memo's deferred run inside the
+    // batch flush was *also* a no-op — it stayed stale until something read
+    // it directly, outside any batch.
+    //
+    // Since ASYNC-003 `beforeRead` is `e.runImmediately`, which recomputes at
+    // the read regardless of an open batch, so both settings read the same
+    // fresh value. The recompute's own write still goes into the batch.
 
-    it('{batchWrites: true}: reading a dirty lazy memo from within a batched outer memo returns its stale value', () => {
+    it('{batchWrites: true}: reading a dirty lazy memo from within a batched outer memo returns its fresh value (ASYNC-003, audit 2026-08-08)', () => {
       const dep = createSignal(1);
 
       const inner = createMemo(() => dep.get() * 10, {lazy: true});
@@ -709,19 +717,22 @@ describe('createMemo', () => {
         dep.set(2);
 
         // Read right after the write — nothing else has touched `inner` yet.
-        // Correct would be 2 + 20 = 22; instead outer's batch() deferred
-        // inner's dirty run, so the callback read inner's pre-write value.
+        // 2 + 20 = 22: `beforeRead` runs the dirty `inner` at the read, even
+        // though outer's own batch() is open around the callback. This used
+        // to be 12, healed only by a later unbatched read of `inner`.
         expect(
           outer(),
-          'stale: dep updated, inner did not — a torn value, not just delayed',
-        ).toBe(12);
+          "fresh on the first read, inside outer's own batch()",
+        ).toBe(22);
         expect(
           signalImpl(inner)?.value,
-          "inner itself never recomputed on its own — lazy, autorun stays false through the batch's own deferred redispatch",
-        ).toBe(10);
+          'inner recomputed at the read, not at some later unbatched one',
+        ).toBe(20);
 
-        // Only a direct, unbatched read of `inner` forces it to catch up, and
-        // that retroactively cascades into a second, now-correct `outer` run.
+        // These two used to be the healing step: a direct, unbatched read of
+        // `inner` forced it to catch up and dragged `outer` to 22 with it.
+        // They are kept as the inverse assertion — both values are already
+        // settled, so a later read must change nothing.
         expect(inner()).toBe(20);
         expect(outer()).toBe(22);
       } finally {
@@ -729,7 +740,10 @@ describe('createMemo', () => {
       }
     });
 
-    it('default (no batchWrites): reading a dirty lazy memo from within an outer memo returns its fresh value', () => {
+    // The twin of the test above, not its counterpart: with no batch open
+    // around the recompute there is no gate for `beforeRead` to walk past in
+    // the first place, and the result is the same fresh value either way.
+    it('default (no batchWrites): reading a dirty lazy memo from within an outer memo returns its fresh value too', () => {
       const dep = createSignal(1);
 
       const inner = createMemo(() => dep.get() * 10, {lazy: true});

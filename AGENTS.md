@@ -90,6 +90,8 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 1. Creates `Batch` instance, sets it as current context
 2. `effect.run()` enqueues into a priority-ordered queue instead of running
 3. Batch end → drains queue, each effect runs at most once
+4. Two things walk past that gate: a memo's read hook is `EffectImpl.runImmediately` (not `run`), so a read recomputes on the spot and takes its queued entry back via `Batch.unbatch()` (ASYNC-003); and an explicitly requested `run()` is remembered on the effect, so the flush carries it out even without `autorun` (ASYNC-002)
+5. The memo pull is one level deep. `#run()` returns at `!shouldRun` before it ever sees the gate, so a memo that is stale only through *another* memo is not pulled — its upstream's write is what the batch is holding back, and nothing marked it dirty. It catches up at the flush only if that upstream is eager; reading the upstream first, in the same batch, is the way out and works for a lazy one too. And a memo reading *both* a signal written in the batch *and* an upstream memo recomputes twice per batch: the upstream's write re-queues the reader right after it read that value. The two are complementary — a memo is either not reached or computed twice, never both. All pinned by tests in `batch.spec.ts`; closing either needs "maybe dirty" propagation, which this library does not have
 
 ### Other context modes
 

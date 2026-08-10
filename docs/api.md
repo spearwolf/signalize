@@ -185,7 +185,7 @@ the parent's rerun.
 
 | Member     | Description                                                                              |
 | ---------- | ---------------------------------------------------------------------------------------- |
-| `run()`    | Run the callback if dependencies have changed since the last run; otherwise no-op. Inside a `batch()`, queues the effect. |
+| `run()`    | Run the callback if dependencies have changed since the last run; otherwise no-op. Inside a `batch()`, queues the effect — and the queued run is carried out when the batch closes, `{autorun: false}` or not. |
 | `destroy()`| Mark the effect destroyed, drop subscriptions, notify, then run cleanup and destroy child effects. |
 
 > **Teardown order.** `destroy()` marks the effect as destroyed and
@@ -294,7 +294,7 @@ first compute then happens on the first read, at which point the reader exists.
 | `priority` | `number`                      | `1000`       | Higher than default effects so memos resolve first in a flush.               |
 | `attach`   | `object \| SignalGroup`       | `—`          | Lifecycle group.                                                             |
 | `name`     | `string \| symbol`            | `—`          | Name within the attached group (`group.signal(name)`).                       |
-| `batchWrites` | `boolean`                   | `false`      | Wrap the recompute in `batch()`. See below — this is a trade-off, not a free upgrade. |
+| `batchWrites` | `boolean`                   | `false`      | Wrap the recompute in `batch()`. Groups side-effect writes with the memo's own; costs an allocation. See below. |
 
 **Eager (default) vs lazy.** Effects that depend on a memo only re-run if the
 memo value changes. With `lazy: true` the memo is not evaluated on dep change,
@@ -307,15 +307,17 @@ read and return, not write) — the batch then groups those writes with the
 memo's own write so a downstream effect depending on both sees one
 consistent run instead of one per write with a torn intermediate value.
 
-That grouping has a real cost: any effect's run is deferred while a batch is
-open, including another memo's recompute triggered by reading it — reading a
-*composed* memo (a normal, common pattern) from inside a `batchWrites: true`
-callback can return that memo's stale, pre-recompute value instead of a
-fresh one. For a `{lazy: true}` memo read this way, the staleness can persist
-indefinitely — a lazy memo's deferred run is a no-op (it only marks itself
-dirty), so nothing but a later direct, unbatched read forces it to catch up.
-This is why the default is `false`: composed memos are the common case,
-side-effect-writing callbacks are not.
+That grouping costs an allocation: one `Batch` instance per recompute that is
+not already inside another batch, on a path that otherwise allocates nothing.
+(Inside an open batch, `batch()` reuses it and allocates nothing at all.) That
+is the whole cost today, and it is why the default is `false` — every memo
+would pay it, while side-effect-writing callbacks are the exception.
+
+It used to cost read freshness as well: a *composed* memo read from inside a
+`batchWrites: true` callback while dirty came back stale, permanently so for a
+`{lazy: true}` one. That no longer applies — a memo's `beforeRead` recomputes
+at the read and walks past the open batch (its own write still goes into the
+batch), so composed memos read fresh under either setting.
 
 **Lifetime when created inside another effect's body.** The memo's internal
 effect is registered there as a child effect (see "Effects: dynamic vs static
@@ -488,6 +490,40 @@ complete, several failures as an `AggregateError`. If `callback` and the flush
 both fail, both failures arrive together as an `AggregateError`, the callback's
 error first — the flush no longer replaces what the callback threw.
 
+Reading a memo inside the callback recomputes it there and then, instead of
+handing back the value it had before the batch — a memo whose dependency was
+written in the same batch reads the new value, and one *created* inside the
+batch reads a value at all. The recompute's own write stays inside the batch
+and is deduplicated with everything else, so downstream effects still run once,
+after the callback. Explicitly calling `effect.run()` inside the callback
+queues that run and carries it out at the flush, even for an `{autorun: false}`
+effect; a plain signal write still leaves such an effect alone.
+
+> **Only one level.** This reaches a memo the batch itself marked dirty. A memo
+> that is stale only *through another memo* — it reads no signal written in this
+> batch, just another memo that does — is not pulled forward: nothing marked it
+> dirty, since its upstream's write is precisely what the batch is holding back.
+> Inside the batch it still reads its pre-batch value. It catches up at the
+> flush if that upstream is eager; a `{lazy: true}` upstream never pushes, so
+> the downstream memo stays on its old value after the flush too, until
+> something reads the lazy one outside the batch.
+>
+> **Read the upstream first.** That is the way out, and it works for both: read
+> the upstream memo inside the same batch, before the downstream one. The
+> upstream's own read pulls its recompute forward, its write marks the
+> downstream memo dirty, and the downstream read then finds work to do instead
+> of returning early. `batch(() => { dep.set(2); inner(); outer(); })` reads
+> fresh where `batch(() => { dep.set(2); outer(); })` does not.
+>
+> Pulling a chain forward also costs a recompute — but only for a memo that
+> reads *both* a signal written in this batch *and* an upstream memo. Such a
+> memo recomputes twice per batch: once at the read, and once at the flush,
+> because the upstream's write lands in the batch and marks the reader dirty
+> again a moment after it read that very value. A memo that reads only the
+> upstream memo is the case above and recomputes once. Values and downstream
+> runs are correct either way; a `{batchWrites: true}` memo whose `computer`
+> writes other signals performs those side writes twice.
+
 ### `beQuiet(callback): T`
 
 Inside `callback`, signal **reads do not subscribe** the surrounding effect,
@@ -523,7 +559,9 @@ restored on exit, including after a throw — whether the throw came from
 `callback` or from the flush below. Stackable.
 
 > If a batch was active, its queued effects are flushed before the callback
-> runs (so they aren't lost or re-batched).
+> runs (so they aren't lost or re-batched). The queue is emptied even when an
+> effect in it throws, so the restored batch never recalls anyone a second
+> time; the failure is reported once, here at the `hibernate()` caller.
 
 ---
 
