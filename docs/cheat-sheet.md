@@ -125,7 +125,7 @@ import {SignalGroup, getSignalGroupsCount} from '@spearwolf/signalize';
 
 const g = SignalGroup.findOrCreate(obj);   // throws on null
 SignalGroup.get(obj);                       // existing or undefined
-SignalGroup.delete(obj);                    // clear & remove
+SignalGroup.delete(obj);                    // clear & remove — obj or the group itself
 SignalGroup.clear();                        // global
 getSignalGroupsCount();                     // live group count; collected groups are not counted
 

@@ -69,7 +69,7 @@ createEffect(() => {
 
 **14 — `SignalGroup.findOrCreate(group)` returns the group itself.** Passing an existing `SignalGroup` is an identity no-op. `findOrCreate(null)` throws.
 
-**15 — `SignalGroup.delete(obj)` ≠ `g.clear()`.** Both clear; the static form additionally looks the group up by the host object. `g.off()` is the softer variant — it destroys attached effects and links and drops external subscriptions but keeps the signals alive — except a memo signal `{attach}`ed inside an effect body, which belongs to that effect and dies with it, name and all (7a). The instance method `destroy()` is deprecated and warns; use `clear()`.
+**15 — `SignalGroup.delete(obj)` ≠ `g.clear()`.** Both clear; the static form additionally looks the group up by the host object, and takes a group itself just as `get()`/`findOrCreate()` do. `g.off()` is the softer variant — it destroys attached effects and links and drops external subscriptions but keeps the signals alive — except a memo signal `{attach}`ed inside an effect body, which belongs to that effect and dies with it, name and all (7a). The instance method `destroy()` is deprecated and warns; use `clear()`.
 
 **16 — Attaching a group does not keep the host object alive.** The registry is a `WeakMap` and the back-pointer a `WeakRef`, by design.
 

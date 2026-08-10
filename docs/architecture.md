@@ -103,8 +103,9 @@ groups. Clearing a group destroys everything in it.
 - The store is a `WeakMap<object, SignalGroup>` and the back-pointer is a
   `WeakRef`, so attaching a group to a user object does **not** keep that
   object alive.
-- `SignalGroup.delete(obj)` is the public destructor. The instance method is
-  `group.clear()` (the older `destroy()` is deprecated and warns).
+- `SignalGroup.delete(obj)` is the public destructor, for the host object or
+  for the group itself. The instance method is `group.clear()` (the older
+  `destroy()` is deprecated and warns).
 - Groups can nest via `attachGroup()`. Named signal lookup
   (`group.signal(name)`) walks up the parent chain.
 - **Automatic cleanup via `FinalizationRegistry`:** When the user object

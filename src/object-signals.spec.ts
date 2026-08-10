@@ -12,6 +12,7 @@ import {
   storeAsObjectSignal,
 } from './object-signals.js';
 import {touch} from './touch.js';
+import {value} from './value.js';
 
 describe('object signals', () => {
   beforeEach(() => {
@@ -119,6 +120,41 @@ describe('object signals', () => {
       expect(onChange).toHaveBeenCalledWith(1);
     } finally {
       unsubscribe();
+      destroyObjectSignals(host);
+    }
+  });
+
+  it('touch() and value() reject a source that is neither a signal nor a tuple (CONS-007)', () => {
+    const notASignal = {} as any;
+
+    expect(() => touch(notASignal)).toThrow(TypeError);
+    expect(() => touch(notASignal)).toThrow(
+      '[signalize] touch: source must be a signal or an [object, propertyName] tuple',
+    );
+
+    expect(() => value(notASignal)).toThrow(TypeError);
+    expect(() => value(notASignal)).toThrow(
+      '[signalize] value: source must be a signal or an [object, propertyName] tuple',
+    );
+
+    expect(() => touch(undefined as any)).toThrow(
+      '[signalize] touch: source must be a signal or an [object, propertyName] tuple',
+    );
+    expect(() => value(undefined as any)).toThrow(
+      '[signalize] value: source must be a signal or an [object, propertyName] tuple',
+    );
+  });
+
+  it('value([obj, name]) stays a plain undefined when no signal is stored under that name (CONS-007)', () => {
+    const host: Record<string, unknown> = {};
+    const foo = createSignal(1);
+    storeAsObjectSignal(host, 'foo', foo);
+
+    try {
+      expect(value([host, 'foo'] as any)).toBe(1);
+      expect(value([host, 'bar'] as any)).toBeUndefined();
+      expect(value([{other: 1}, 'other'] as any)).toBeUndefined();
+    } finally {
       destroyObjectSignals(host);
     }
   });

@@ -113,6 +113,36 @@ describe('SignalGroup', () => {
       }
     });
 
+    it('SignalGroup.delete() takes the group itself, like get() and findOrCreate() (API-014)', () => {
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+      const signal = createSignal(1);
+      const effect = createEffect(() => {}, {attach: host});
+      try {
+        group.attachSignal(signal);
+
+        assertSignalsCount(1, 'after attach');
+        assertEffectsCount(1, 'after attach');
+
+        SignalGroup.delete(group);
+
+        assertSignalsCount(0, 'the attached signal is destroyed');
+        assertEffectsCount(0, 'the attached effect is destroyed');
+        expect(
+          getGroupMemberCounts(group),
+          'the group let go of every member',
+        ).toEqual(NO_GROUP_MEMBERS);
+        expect(
+          SignalGroup.get(host),
+          'and the store entry under the host went with it',
+        ).toBeUndefined();
+      } finally {
+        signal.destroy();
+        effect.destroy();
+        group.clear();
+      }
+    });
+
     it('SignalGroup.clear() removes all groups', () => {
       const obj1 = {};
       const obj2 = {};

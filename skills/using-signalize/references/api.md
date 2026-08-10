@@ -204,7 +204,7 @@ isQuiet();
 ```ts
 const g = SignalGroup.findOrCreate(obj);   // throws on null; same instance per obj
 SignalGroup.get(obj);                       // existing group or undefined
-SignalGroup.delete(obj);                    // clear & remove — the preferred destructor
+SignalGroup.delete(obj);                    // clear & remove — the preferred destructor; a group works as the argument too
 SignalGroup.clear();                        // global reset
 getSignalGroupsCount();
 

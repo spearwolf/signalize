@@ -297,9 +297,21 @@ export class SignalGroup {
 
   /**
    * Delete and clear the SignalGroup associated with an object.
-   * @param object - The object whose group should be deleted
+   * Passing a group itself works too and clears that group directly, the
+   * same argument `get()` and `findOrCreate()` accept.
+   * @param object - The object whose group should be deleted, or the group
    */
   static delete(object: object) {
+    // API-014: a group is a valid argument for itself, exactly as in `get()`
+    // and `findOrCreate()`. A group made by `findOrCreate(host)` is filed
+    // under `host`, never under itself, so the store lookup alone turned
+    // `SignalGroup.delete(group)` — the documented public destructor — into
+    // a silent no-op. Nothing else has to be undone here: `clear()` drops
+    // the store entry under the host itself, through `#storeKey`.
+    if (object instanceof SignalGroup) {
+      object.clear();
+      return;
+    }
     store.get(object)?.clear();
   }
 

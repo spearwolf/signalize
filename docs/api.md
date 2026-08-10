@@ -83,8 +83,10 @@ existing signal-like (then this very signal is returned, no new one created).
 | `muteSignal(sig)`              | Suppress notifications without destroying; reads and writes keep working. |
 | `unmuteSignal(sig)`            | Resume notifications. Does not replay writes made while muted.         |
 | `getSignalsCount()`            | Count of live signals — created, not destroyed, still reachable. Self-corrects once a dropped signal is collected, at a time you cannot observe or force (debugging / leak checks). |
-| `value(sig \| [obj, key])`     | Untracked read (signal or `[host, name]`).                             |
-| `touch(sig \| [obj, key])`     | Force a notify.                                                        |
+| `value(sig \| [obj, key])`     | Untracked read (signal or `[host, name]`). Throws `TypeError` on anything else. |
+| `touch(sig \| [obj, key])`     | Force a notify. Throws `TypeError` on anything else.                   |
+
+> **A non-signal argument.** Three functions object to one: `link()`, `touch()` and `value()` throw a `TypeError` prefixed with `[signalize] <fn>:`. Four do not: `destroySignal()`, `muteSignal()`, `unmuteSignal()` and `unlink()` do nothing and report nothing — they are teardown-shaped, and a teardown that refuses an argument it does not recognise is harder to use than one that shrugs. `getLinksCount(notASignal)` answers `0`, the same answer a signal without links gives. Do not read that silence as confirmation that the argument was a signal; `isSignal(v)` is the way to ask.
 
 ---
 
@@ -577,7 +579,7 @@ does not pin user objects.
 | ----------------------------------- | ----------------------------------------------------------------------------- |
 | `SignalGroup.findOrCreate(obj)`     | Get or create the group attached to `obj`. Passing a group returns it as-is. Throws on `null`. |
 | `SignalGroup.get(obj)`              | Existing group, or `undefined`.                                                |
-| `SignalGroup.delete(obj)`           | Clear and remove the group.                                                    |
+| `SignalGroup.delete(obj)`           | Clear and remove the group. Passing the group itself works too, like `get()` / `findOrCreate()`. |
 | `SignalGroup.clear()`               | Clear all groups globally. Sweeps to the end even if a group's teardown throws; a group created *during* the sweep (typically from a `DESTROY` listener) survives it and stays registered — still counted by `getSignalGroupsCount()`, still reachable by the next `clear()`. |
 | `SignalGroup.destroy(obj)`          | **Deprecated.** Use `delete()`.                                                |
 | `getSignalGroupsCount()`            | Count of live `SignalGroup` instances (debugging / leak checks). A group that has been garbage-collected with its host is not counted. |
