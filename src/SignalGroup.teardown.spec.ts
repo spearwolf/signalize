@@ -973,4 +973,119 @@ describe('SignalGroup teardown robustness', () => {
       }
     });
   });
+
+  describe('the teardown order is part of the contract (TEST-019)', () => {
+    it('clear() emits DESTROY before it takes anything apart', () => {
+      const obj = {};
+      const group = SignalGroup.findOrCreate(obj);
+      const source = createSignal(1, {attach: obj});
+      const target = createSignal(0, {attach: obj});
+      const child = SignalGroup.findOrCreate({});
+
+      createEffect(() => source.get(), {attach: obj});
+      link(source, target, {attach: obj});
+
+      let calls = 0;
+      let seen: ReturnType<typeof getGroupMemberCounts> | undefined;
+
+      try {
+        group.attachGroup(child);
+
+        on(group, DESTROY, () => {
+          calls += 1;
+          seen = getGroupMemberCounts(group);
+        });
+
+        group.clear();
+
+        expect(calls, 'the DESTROY listener ran exactly once').toBe(1);
+        expect(seen, 'the listener saw the group still intact').toEqual({
+          signals: 2,
+          namedSignals: 0,
+          otherSignals: 0,
+          effects: 1,
+          links: 1,
+          groups: 1,
+        });
+      } finally {
+        group.clear();
+        child.clear();
+        destroySignal(source, target);
+      }
+    });
+
+    it('clear() destroys the effects before the signals', () => {
+      const obj = {};
+      const group = SignalGroup.findOrCreate(obj);
+      const source = createSignal(1, {attach: obj});
+      const order: string[] = [];
+
+      createEffect(
+        () => {
+          source.get();
+          return () => {
+            order.push(`effect cleanup: ${getSignalsCount()} signal(s) alive`);
+          };
+        },
+        {attach: obj},
+      );
+
+      try {
+        group.clear();
+
+        expect(
+          order,
+          'the cleanup callback still sees the signal it depended on',
+        ).toEqual(['effect cleanup: 1 signal(s) alive']);
+      } finally {
+        group.clear();
+        destroySignal(source);
+      }
+    });
+
+    it('off() switches the child groups off before its own members', () => {
+      const parentObj = {};
+      const childObj = {};
+      const parent = SignalGroup.findOrCreate(parentObj);
+      const child = SignalGroup.findOrCreate(childObj);
+      const parentSignal = createSignal(1, {attach: parentObj});
+      const childSignal = createSignal(2, {attach: childObj});
+      const order: string[] = [];
+
+      createEffect(
+        () => {
+          parentSignal.get();
+          return () => {
+            order.push('parent effect');
+          };
+        },
+        {attach: parentObj},
+      );
+
+      createEffect(
+        () => {
+          childSignal.get();
+          return () => {
+            order.push('child effect');
+          };
+        },
+        {attach: childObj},
+      );
+
+      try {
+        parent.attachGroup(child);
+
+        parent.off();
+
+        expect(order, 'depth-first: the child goes first').toEqual([
+          'child effect',
+          'parent effect',
+        ]);
+      } finally {
+        parent.clear();
+        child.clear();
+        destroySignal(parentSignal, childSignal);
+      }
+    });
+  });
 });

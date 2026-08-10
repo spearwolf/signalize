@@ -1442,6 +1442,14 @@ describe('SignalGroup', () => {
         expect(result).toBe(effect[$effect]);
 
         group.attachSignal(signal);
+
+        // The effect the group just took must not survive its teardown. Until
+        // TEST-017 gave this test a `finally`, that was policed by the
+        // `afterEach` counter alone — a detector by accident. Here it is a
+        // promise: drop the effect loop from `SignalGroup#clear()` and this
+        // line goes red, not the rest of the file.
+        group.clear();
+        assertEffectsCount(0, 'clear() destroyed the attached effect');
       } finally {
         effect.destroy();
         signal.destroy();
@@ -1659,6 +1667,113 @@ describe('SignalGroup', () => {
         group.clear();
         source.destroy();
         target.destroy();
+      }
+    });
+
+    it('hasSignal() answers instead of hanging when the parent chain is cyclic (TEST-018)', () => {
+      const a = SignalGroup.findOrCreate({});
+      const b = SignalGroup.findOrCreate({});
+      const inB = createSignal(1);
+
+      b.attachSignalByName('inB', inB);
+
+      // Break the forest invariant on purpose, exactly as the Floyd test
+      // above does: `attachGroup()` rejects every edge that would close a
+      // cycle, so this is the only way to reach the guard.
+      b.attachGroup(a); // a → b
+      b[$setParentGroup](a); // a ↔ b
+
+      try {
+        expect(
+          () => a.hasSignal('nobody'),
+          'the walk ends instead of running until the stack gives out',
+        ).not.toThrow();
+
+        expect(
+          a.hasSignal('nobody'),
+          'a cyclic chain answers like an unknown name',
+        ).toBe(false);
+
+        expect(
+          a.hasSignal('inB'),
+          'one hop up the cyclic chain still answers',
+        ).toBe(true);
+      } finally {
+        b[$setParentGroup](undefined);
+        b.clear();
+        a.clear();
+        inB.destroy();
+      }
+    });
+
+    it('signal() answers instead of hanging when the parent chain is cyclic (TEST-018)', () => {
+      const a = SignalGroup.findOrCreate({});
+      const b = SignalGroup.findOrCreate({});
+      const inB = createSignal(1);
+
+      b.attachSignalByName('inB', inB);
+
+      b.attachGroup(a); // a → b
+      b[$setParentGroup](a); // a ↔ b
+
+      try {
+        expect(
+          () => a.signal('nobody'),
+          'the walk ends instead of running until the stack gives out',
+        ).not.toThrow();
+
+        expect(
+          a.signal('nobody'),
+          'a cyclic chain answers like an unknown name',
+        ).toBeUndefined();
+
+        expect(
+          a.signal('inB'),
+          'one hop up the cyclic chain still answers',
+        ).toBe(inB);
+      } finally {
+        b[$setParentGroup](undefined);
+        b.clear();
+        a.clear();
+        inB.destroy();
+      }
+    });
+
+    it('runEffects() ignores a re-entrant call from an effect callback (TEST-018)', () => {
+      const group = SignalGroup.findOrCreate({});
+      const order: string[] = [];
+
+      const first = createEffect(
+        () => {
+          order.push('first: enter');
+          group.runEffects();
+          order.push('first: leave');
+        },
+        {autorun: false},
+      );
+
+      const second = createEffect(
+        () => {
+          order.push('second');
+        },
+        {autorun: false},
+      );
+
+      try {
+        group.attachEffect(first[$effect]);
+        group.attachEffect(second[$effect]);
+
+        group.runEffects();
+
+        expect(order, 'the re-entrant call ran nothing at all').toEqual([
+          'first: enter',
+          'first: leave',
+          'second',
+        ]);
+      } finally {
+        first.destroy();
+        second.destroy();
+        group.clear();
       }
     });
   });

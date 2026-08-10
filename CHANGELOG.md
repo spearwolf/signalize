@@ -121,6 +121,7 @@
 - The four `*.gc.spec.ts` suites fail instead of skipping themselves when the run has no `--expose-gc` (BUILD-016)
 - Every spec with counter guards now tears its resources down in a `finally`, so a real regression fails one test instead of taking the rest of the file with it — 384 tests converted across 32 files (TEST-017)
 - The two save/restore frames without a test — `beQuiet()` and `runWithinEffect()` — and the `attachEffect()` dedup guard are now pinned: removing the `finally` or the guard fails a test instead of passing silently (TEST-016, TEST-021)
+- The three untested `BUSY_*` re-entrancy guards and the three documented teardown orders of `SignalGroup` are pinned: removing a guard or swapping an order now fails exactly one test instead of passing silently (TEST-018, TEST-019)
 
 ### Build System
 
