@@ -9,7 +9,11 @@ import {
 } from '@spearwolf/eventize';
 import {getCurrentBatch} from './batch.js';
 import {isQuiet} from './bequiet.js';
-import {collectDeliveryError, throwCollectedErrors} from './collect-errors.js';
+import {
+  collect,
+  collectDeliveryError,
+  throwCollectedErrors,
+} from './collect-errors.js';
 import {
   $createEffect,
   $destroyEffect,
@@ -747,11 +751,7 @@ export class EffectImpl {
    */
   private collectDestroyChildEffects(errors: unknown[]): void {
     for (const effect of this.childEffects) {
-      try {
-        effect.destroy();
-      } catch (err) {
-        errors.push(err);
-      }
+      collect(errors, () => effect.destroy());
     }
     this.childEffects.length = 0;
   }

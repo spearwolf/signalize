@@ -7,7 +7,7 @@ import {
   once,
   Priority,
 } from '@spearwolf/eventize';
-import {throwCollectedErrors} from './collect-errors.js';
+import {collect, throwCollectedErrors} from './collect-errors.js';
 import {DESTROY, OFF} from './constants.js';
 import {EffectImpl} from './EffectImpl.js';
 import {globalDestroySignalQueue} from './global-queues.js';
@@ -332,11 +332,7 @@ export class SignalGroup {
         allGroups.delete(ref);
         continue;
       }
-      try {
-        group.clear();
-      } catch (err) {
-        errors.push(err);
-      }
+      collect(errors, () => group.clear());
     }
     throwCollectedErrors(errors, 'clearing all signal groups');
   }
@@ -913,31 +909,19 @@ export class SignalGroup {
       // Recurse into child groups first (depth-first, mirrors clear()).
       // Snapshots throughout — a destroy hook may mutate the sets underneath.
       for (const childGroup of [...this.#groups]) {
-        try {
-          childGroup.off();
-        } catch (err) {
-          errors.push(err);
-        }
+        collect(errors, () => childGroup.off());
       }
 
       // Destroy own effects: their cleanup callbacks fire, their signal-queue
       // subscriptions are removed via EffectImpl.destroy().
       for (const effect of [...this.#effects]) {
-        try {
-          effect.destroy();
-        } catch (err) {
-          errors.push(err);
-        }
+        collect(errors, () => effect.destroy());
       }
       this.#effects.clear();
 
       // Destroy own links: they unsubscribe from their source signals.
       for (const link of [...this.#links]) {
-        try {
-          link.destroy();
-        } catch (err) {
-          errors.push(err);
-        }
+        collect(errors, () => link.destroy());
       }
       this.#links.clear();
 
@@ -948,22 +932,16 @@ export class SignalGroup {
       // itself via EffectImpl[$destroySignal].
       for (const si of [...this.#signals]) {
         if (!si.destroyed) {
-          try {
-            emit(globalDestroySignalQueue, si.id, si.id, {detach: true});
-          } catch (err) {
-            errors.push(err);
-          }
+          collect(errors, () =>
+            emit(globalDestroySignalQueue, si.id, si.id, {detach: true}),
+          );
         }
       }
 
       // Signals, named-signal lookup, signal-key map, and child-group set
       // are intentionally left intact — the group remains reusable.
 
-      try {
-        emit(this, OFF, this);
-      } catch (err) {
-        errors.push(err);
-      }
+      collect(errors, () => emit(this, OFF, this));
 
       throwCollectedErrors(errors, 'switching off a signal group');
     } finally {
@@ -990,45 +968,25 @@ export class SignalGroup {
     try {
       const errors: unknown[] = [];
 
-      try {
-        emit(this, DESTROY, this);
-      } catch (err) {
-        errors.push(err);
-      }
+      collect(errors, () => emit(this, DESTROY, this));
       off(this);
 
       // Snapshots throughout: a destroyed effect takes itself out of
       // `#effects`, a destroyed signal out of `#signals`, mid-loop.
       for (const childGroup of [...this.#groups]) {
-        try {
-          childGroup.clear();
-        } catch (err) {
-          errors.push(err);
-        }
+        collect(errors, () => childGroup.clear());
       }
 
       for (const effect of [...this.#effects]) {
-        try {
-          effect.destroy();
-        } catch (err) {
-          errors.push(err);
-        }
+        collect(errors, () => effect.destroy());
       }
 
       for (const signal of [...this.#signals]) {
-        try {
-          destroySignal(signal);
-        } catch (err) {
-          errors.push(err);
-        }
+        collect(errors, () => destroySignal(signal));
       }
 
       for (const link of [...this.#links]) {
-        try {
-          link.destroy();
-        } catch (err) {
-          errors.push(err);
-        }
+        collect(errors, () => link.destroy());
       }
 
       for (const unsubscribe of [

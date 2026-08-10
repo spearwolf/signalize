@@ -8,7 +8,7 @@ import {
   retain,
   unretain,
 } from '@spearwolf/eventize';
-import {throwCollectedErrors} from './collect-errors.js';
+import {collect, throwCollectedErrors} from './collect-errors.js';
 import {$queueUnsubscribes, DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
@@ -520,11 +520,7 @@ export abstract class SignalLink<ValueType = any> {
     // `throwCollectedErrors()`.
     const releaseErrors: unknown[] = [];
     for (const unsubscribe of this[$queueUnsubscribes]) {
-      try {
-        unsubscribe();
-      } catch (err) {
-        releaseErrors.push(err);
-      }
+      collect(releaseErrors, unsubscribe);
     }
     // Emptying the array also disarms `link.ts`'s finalizer for this link:
     // it holds *this* array, so a later collection finds nothing left to
@@ -541,11 +537,7 @@ export abstract class SignalLink<ValueType = any> {
     // link that reports `isDestroyed === true` while still being subscribed,
     // unfrozen and holding its last value, permanently. So the emit joins the
     // same collect-and-carry-on pattern as the release loop above.
-    try {
-      emit(this, DESTROY, this);
-    } catch (err) {
-      releaseErrors.push(err);
-    }
+    collect(releaseErrors, () => emit(this, DESTROY, this));
 
     // No `unretain(this, VALUE)` (and no `retainClear()`, which used to
     // stand here) — `off(obj)` without a listener argument runs

@@ -23,6 +23,26 @@ export const throwCollectedErrors = (errors: unknown[], what: string): void => {
   );
 };
 
+/**
+ * Run `fn` and, if it throws, append the failure to `errors` instead of
+ * letting it out.
+ *
+ * The one shape every teardown in this library repeats: keep going, report
+ * at the end via {@link throwCollectedErrors}. Written down once so that a
+ * forgotten `catch` cannot quietly reintroduce an abort.
+ *
+ * @param errors - The caller-owned list the failure is appended to
+ * @param fn - The step to run under the guard
+ * @internal
+ */
+export const collect = (errors: unknown[], fn: () => void): void => {
+  try {
+    fn();
+  } catch (err) {
+    errors.push(err);
+  }
+};
+
 /*
  * The delivery frame.
  *
