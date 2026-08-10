@@ -3,6 +3,7 @@ import {
   beginIsolatedDelivery,
   collectDeliveryError,
   endIsolatedDelivery,
+  throwCollectedErrors,
 } from './collect-errors.js';
 import {RECALL} from './constants.js';
 import {globalEffectCalledQueue, globalEffectQueue} from './global-queues.js';
@@ -125,8 +126,15 @@ const isThenable = (value: unknown): value is PromiseLike<unknown> =>
  * delayed effects; its error — or an `AggregateError`, if several of them
  * failed — arrives at the `batch()` caller once the flush is complete.
  *
+ * If `callback` *and* the flush fail, both errors arrive together as an
+ * `AggregateError`, callback error first — the flush no longer replaces what
+ * the callback threw. A single failure, from either side, is rethrown
+ * unchanged, including the `TypeError` of the thenable guard above.
+ *
  * @param callback - Synchronous function containing signal updates to batch
- * @throws {TypeError} if `callback` returns a thenable
+ * @throws {TypeError} if `callback` returns a thenable and the flush succeeds
+ * @throws {AggregateError} if both sides fail — the callback's error (or the
+ *   `TypeError` above) as `errors[0]`, the flush's as `errors[1]`
  */
 export function batch<T>(callback: () => NonThenable<T>): void {
   // if there is a current batch context, we use it, otherwise we just create a new one.
@@ -137,6 +145,11 @@ export function batch<T>(callback: () => NonThenable<T>): void {
   } else {
     curBatch = undefined;
   }
+  // Created on the first failure, never on the happy path: `batch()` sits in
+  // front of every grouped write and the overwhelming majority of calls
+  // collect nothing. Same reasoning as the delivery frame's array.
+  let errors: unknown[] | undefined;
+
   try {
     const result = callback();
     if (isThenable(result)) {
@@ -148,10 +161,32 @@ export function batch<T>(callback: () => NonThenable<T>): void {
           'it into several synchronous batch() calls.',
       );
     }
+  } catch (err) {
+    // Held, not rethrown: the flush below runs either way, and a failing
+    // effect in it must not take this error's place (BUG-012).
+    errors = [err];
   } finally {
     if (curBatch) {
       Batch.current = undefined;
-      curBatch.run();
+      try {
+        curBatch.run();
+      } catch (err) {
+        if (errors === undefined) {
+          errors = [err];
+        } else {
+          errors.push(err);
+        }
+      }
     }
+  }
+
+  // One error is rethrown unchanged — the common case keeps its identity,
+  // including the `TypeError` the thenable guard promises at the call site.
+  // Two become an `AggregateError` in that order: callback first, flush
+  // second. A flush that already bundled several failing effects arrives as
+  // one nested `AggregateError`; nothing is flattened, exactly as everywhere
+  // else this helper is used.
+  if (errors !== undefined) {
+    throwCollectedErrors(errors, 'running a batch');
   }
 }

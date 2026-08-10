@@ -3,12 +3,12 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
-import {batch} from './batch.js';
-import {beQuiet, isQuiet} from './bequiet.js';
+import {batch, getCurrentBatch} from './batch.js';
+import {beQuiet, clearBeQuiet, getBeQuietCount, isQuiet} from './bequiet.js';
 import {createSignal} from './createSignal.js';
-import type {EffectImpl} from './EffectImpl.js';
+import {EffectImpl} from './EffectImpl.js';
 import {createEffect, onCreateEffect} from './effects.js';
-import {getCurrentEffect} from './globalEffectStack.js';
+import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 import {hibernate} from './hibernate.js';
 import {destroySignal} from './signal-core.js';
 
@@ -409,6 +409,101 @@ describe('hibernate', () => {
       } finally {
         unsubCreate();
         impl?.destroy();
+        destroySignal(a);
+      }
+    });
+
+    it('restores all three contexts when the flushed batch throws (ASYNC-001)', () => {
+      // The flush used to sit *before* the `try`, so an effect that threw in
+      // it skipped all three `restore*` calls. Two of the three repair
+      // themselves on the way out (`batch()` resets `Batch.current`,
+      // `runWithinEffect()` pops the stack) — the quiet counter does not, and
+      // is left one below where it started, for the rest of the process.
+      //
+      // Not a single `expect()` runs inside the batch callback: an assertion
+      // failure in there is thrown away by `Batch.run()` in `batch()`'s
+      // `finally` (BUG-012, fixed in the same package). The observations are
+      // recorded and asserted afterwards, where nothing can overwrite them.
+      const {get: a, set: setA} = createSignal(0);
+      let boomRuns = 0;
+      const boom = createEffect(() => {
+        if (a() > 0) {
+          boomRuns++;
+          throw new Error('effect boom');
+        }
+      });
+      const host = new EffectImpl(() => {});
+
+      const seen: Record<string, unknown> = {hibernateCallbackRan: false};
+      let escaped: unknown;
+
+      try {
+        try {
+          batch(() => {
+            setA(1); // queues `boom`, which throws on the next flush
+
+            beQuiet(() => {
+              runWithinEffect(host, () => {
+                seen.batchBefore = getCurrentBatch();
+                seen.quietBefore = getBeQuietCount();
+                seen.effectBefore = getCurrentEffect();
+
+                try {
+                  hibernate(() => {
+                    seen.hibernateCallbackRan = true;
+                  });
+                } catch (err) {
+                  seen.thrown = err;
+                }
+
+                seen.batchAfter = getCurrentBatch();
+                seen.quietAfter = getBeQuietCount();
+                seen.effectAfter = getCurrentEffect();
+
+                return () => {};
+              });
+            });
+
+            seen.quietAfterFrame = getBeQuietCount();
+          });
+        } catch (err) {
+          escaped = err;
+        }
+
+        // preconditions: all three contexts were set when hibernate() was called
+        expect(seen.batchBefore).toBeDefined();
+        expect(seen.quietBefore).toBe(1);
+        expect(seen.effectBefore).toBe(host);
+
+        // the flush throws before the hibernate callback gets to run
+        expect((seen.thrown as Error)?.message).toBe('effect boom');
+        expect(seen.hibernateCallbackRan).toBe(false);
+
+        // ASYNC-001: the three restores must have run anyway
+        expect(seen.batchAfter, 'the batch context is back').toBe(
+          seen.batchBefore,
+        );
+        expect(seen.quietAfter, 'the quiet frame is back').toBe(1);
+        expect(seen.effectAfter, 'the effect stack is back').toBe(host);
+
+        // and the quiet counter closes at zero instead of going negative
+        expect(seen.quietAfterFrame, 'the quiet frame closed cleanly').toBe(0);
+
+        // The failed flush never reached `delayedEffects.length = 0`, so the
+        // restored batch still holds `boom` and recalls it once more when it
+        // closes — a second *run* of the callback, not merely a second throw
+        // of the same one. Pre-existing, unchanged by this fix, asserted so
+        // the next change to batch.ts has to say so.
+        expect(boomRuns, 'the failed flush left boom in the queue').toBe(2);
+        expect((escaped as Error)?.message).toBe('effect boom');
+      } finally {
+        // The quiet counter is module state and no counter guard can see it:
+        // without the fix this test leaves it at -1, and every later
+        // `beQuiet()` in this file would then count 0 and report `isQuiet()`
+        // as false. The test takes its own damage back.
+        clearBeQuiet();
+        host.destroy();
+        boom.destroy();
         destroySignal(a);
       }
     });

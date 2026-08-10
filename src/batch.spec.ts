@@ -433,4 +433,143 @@ describe('batch', () => {
       }
     });
   });
+
+  describe('the callback error survives a failing flush (BUG-012)', () => {
+    it('reports both the callback error and the effect error, as an AggregateError', () => {
+      const {get: a, set: setA} = createSignal(0);
+      const boom = createEffect(() => {
+        if (a() > 0) {
+          throw new Error('effect boom');
+        }
+      });
+
+      try {
+        const callbackError = new Error('callback boom');
+        let caught: unknown;
+
+        try {
+          batch(() => {
+            setA(1); // queues `boom` for the flush in the `finally`
+            throw callbackError;
+          });
+        } catch (err) {
+          caught = err;
+        }
+
+        // The flush runs in `batch()`'s `finally`; its error used to replace
+        // the callback's without a trace — no `cause`, no `errors`.
+        expect(caught).toBeInstanceOf(AggregateError);
+
+        const errors = (caught as AggregateError).errors;
+        expect(errors).toHaveLength(2);
+        expect(errors[0], 'the callback error comes first').toBe(callbackError);
+        expect((errors[1] as Error).message).toBe('effect boom');
+
+        expect(getCurrentBatch()).toBeUndefined();
+      } finally {
+        boom.destroy();
+        destroySignal(a);
+      }
+    });
+
+    it('does not let a failing effect swallow the thenable TypeError', () => {
+      const {get: a, set: setA} = createSignal(0);
+      const boom = createEffect(() => {
+        if (a() > 0) {
+          throw new Error('effect boom');
+        }
+      });
+
+      try {
+        let caught: unknown;
+
+        try {
+          batch(() => {
+            setA(1);
+            // biome-ignore lint/suspicious/noThenProperty: intentionally building a non-promise thenable, as in the ASYNC-003 block above
+            return {then: () => {}};
+          });
+        } catch (err) {
+          caught = err;
+        }
+
+        // The guard is documented as a hard error at the call site. A failing
+        // effect in the same batch used to make it disappear entirely.
+        expect(caught).toBeInstanceOf(AggregateError);
+
+        const errors = (caught as AggregateError).errors;
+        expect(errors).toHaveLength(2);
+        expect(errors[0]).toBeInstanceOf(TypeError);
+        expect((errors[0] as TypeError).message).toContain(
+          '[signalize] batch:',
+        );
+        expect((errors[1] as Error).message).toBe('effect boom');
+      } finally {
+        boom.destroy();
+        destroySignal(a);
+      }
+    });
+
+    it('rethrows a lone callback error unchanged, without wrapping it', () => {
+      const callbackError = new Error('callback boom');
+      let caught: unknown;
+
+      try {
+        batch(() => {
+          throw callbackError;
+        });
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught, 'the single error keeps its identity').toBe(callbackError);
+      expect(getCurrentBatch()).toBeUndefined();
+    });
+
+    it('rethrows a lone flush error unchanged, without wrapping it', () => {
+      const {get: a, set: setA} = createSignal(0);
+      const boom = createEffect(() => {
+        if (a() > 0) {
+          throw new Error('effect boom');
+        }
+      });
+
+      try {
+        let caught: unknown;
+
+        try {
+          batch(() => {
+            setA(1);
+          });
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(Error);
+        expect(caught).not.toBeInstanceOf(AggregateError);
+        expect((caught as Error).message).toBe('effect boom');
+      } finally {
+        boom.destroy();
+        destroySignal(a);
+      }
+    });
+
+    it('a nested batch hands its callback error to the outer batch unchanged', () => {
+      const callbackError = new Error('boom from nested');
+      let caught: unknown;
+
+      try {
+        batch(() => {
+          batch(() => {
+            throw callbackError;
+          });
+        });
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBe(callbackError);
+      expect(getCurrentBatch()).toBeUndefined();
+    });
+  });
 });

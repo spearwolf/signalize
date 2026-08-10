@@ -192,7 +192,7 @@ hibernate(() => { /* outer reactive context suspended */ });
 isQuiet();
 ```
 
-`hibernate` flushes an active outer batch before running its callback, so queued effects are not lost, and restores batches / quiet state / effect stack afterwards.
+`hibernate` flushes an active outer batch before running its callback, so queued effects are not lost, and restores batches / quiet state / effect stack afterwards — also when it is the flush itself that throws.
 
 ## SignalGroup
 

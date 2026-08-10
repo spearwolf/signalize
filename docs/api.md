@@ -431,11 +431,12 @@ and flushed in descending priority order.
 current call stack — an `async` callback returns a pending `Promise` at its
 first `await`, at which point `batch()` closes the batch and everything after
 that `await` runs unbatched, with no error. To catch this early, `batch()`
-throws `TypeError` if `callback` returns a thenable, and its signature rejects
-an `async` callback (or anything typed to return `Promise`/`PromiseLike`) at
-`tsc` time. Writes made before the check — i.e. everything the callback did
-synchronously before returning — are still flushed; only what runs after the
-callback returns is left unbatched.
+throws `TypeError` if `callback` returns a thenable — wrapped in an
+`AggregateError` as `errors[0]` if the flush that follows fails as well — and
+its signature rejects an `async` callback (or anything typed to return
+`Promise`/`PromiseLike`) at `tsc` time. Writes made before the check — i.e.
+everything the callback did synchronously before returning — are still
+flushed; only what runs after the callback returns is left unbatched.
 
 This is a synchronous throw at the `batch()` call site, unlike an async
 *effect* callback's rejection, which cannot be thrown at any caller and goes
@@ -443,7 +444,9 @@ to `onEffectError()` instead (see `createEffect`).
 
 An effect that throws during the flush no longer holds up the remaining
 delayed effects; its failure reaches the `batch()` caller after the flush is
-complete, several failures as an `AggregateError`.
+complete, several failures as an `AggregateError`. If `callback` and the flush
+both fail, both failures arrive together as an `AggregateError`, the callback's
+error first — the flush no longer replaces what the callback threw.
 
 ### `beQuiet(callback): T`
 
@@ -476,7 +479,8 @@ again: use `hibernate()` to step out of the frame when a run is meant to track.
 Suspends *all* outer reactive context (current batch, quiet counter, effect
 stack) for the duration of `callback`. Inside, you can start fresh contexts
 (`batch`, new effects) — they work normally and are isolated. State is
-restored on exit, including after a throw. Stackable.
+restored on exit, including after a throw — whether the throw came from
+`callback` or from the flush below. Stackable.
 
 > If a batch was active, its queued effects are flushed before the callback
 > runs (so they aren't lost or re-batched).
