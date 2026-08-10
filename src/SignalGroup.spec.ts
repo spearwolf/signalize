@@ -561,6 +561,42 @@ describe('SignalGroup', () => {
       }
     });
 
+    it('attachEffect() called repeatedly adds no second DESTROY listener (TEST-021)', () => {
+      // The counterpart to the two `attachLink()` tests in `link.spec.ts`
+      // (`re-attaching the same group on repeated cache hits …`, `no
+      // combination of the two attach routes …`): eventize dedupes only
+      // object and named-method listeners, so the plain function passed to
+      // `once(effect, DESTROY, …)` is registered again on every call. The
+      // guard in `attachEffect()` is the only thing keeping a repeated
+      // attach of the same effect from growing that list without bound.
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(0);
+
+      const effect = createEffect(() => {
+        signal.get();
+      });
+      const effectImpl = effect[$effect];
+
+      try {
+        const subscriptionsBefore = getSubscriptionCount(effectImpl);
+
+        group.attachEffect(effectImpl);
+        group.attachEffect(effectImpl);
+        group.attachEffect(effectImpl);
+
+        expect(
+          getSubscriptionCount(effectImpl) - subscriptionsBefore,
+          'exactly one DESTROY listener for three attaches',
+        ).toBe(1);
+
+        expect(getGroupMemberCounts(group).effects).toBe(1);
+      } finally {
+        effect.destroy();
+        signal.destroy();
+        group.clear();
+      }
+    });
+
     it('runEffects() runs all effects in the group', () => {
       const group = SignalGroup.findOrCreate({});
       const signal = createSignal(0);

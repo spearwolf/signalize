@@ -44,4 +44,58 @@ describe('globalEffectStack', () => {
       }
     });
   });
+
+  describe('runWithinEffect()', () => {
+    it('pops the effect when the callback throws (TEST-016)', () => {
+      // The stack is module state. An effect left on it after a throwing
+      // callback is picked up by the next top-level signal read, which then
+      // subscribes a corpse. Drop the `finally` in
+      // `src/globalEffectStack.ts` and this test is one of the two that
+      // notice.
+      const effect = new EffectImpl(NOOP);
+
+      try {
+        expect(() =>
+          runWithinEffect(effect, () => {
+            throw new Error('boom');
+          }),
+        ).toThrow('boom');
+
+        expect(
+          getCurrentEffect(),
+          'the throwing effect left the stack on the way out',
+        ).toBeUndefined();
+      } finally {
+        effect.destroy();
+      }
+    });
+
+    it('restores the enclosing effect when a nested callback throws (TEST-016)', () => {
+      // Not the same claim as above: this one pins the *restore*, not the
+      // empty stack. A nested effect that throws must hand the frame back
+      // to its parent, which is what nested effects rely on.
+      const outer = new EffectImpl(NOOP);
+      const inner = new EffectImpl(NOOP);
+
+      try {
+        runWithinEffect(outer, () => {
+          expect(() =>
+            runWithinEffect(inner, () => {
+              throw new Error('boom');
+            }),
+          ).toThrow('boom');
+
+          expect(
+            getCurrentEffect(),
+            'the enclosing effect is current again',
+          ).toBe(outer);
+        });
+
+        expect(getCurrentEffect()).toBeUndefined();
+      } finally {
+        inner.destroy();
+        outer.destroy();
+      }
+    });
+  });
 });

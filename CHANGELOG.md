@@ -120,6 +120,7 @@
 - A new fast-check property suite (`src/ordering.property.spec.ts`) pins the ordering invariants that only ever had one or two handwritten examples: priority order with and without a batch, dedup and final-value visibility in a batch flush, nested batches behaving like one flat batch, nested effects rebuilding in pre-order on every rerun, and a memo read during a flush never seeing a stale value. All five `it()` blocks run against a fixed seed for reproducible failures (TEST-012)
 - The four `*.gc.spec.ts` suites fail instead of skipping themselves when the run has no `--expose-gc` (BUILD-016)
 - Every spec with counter guards now tears its resources down in a `finally`, so a real regression fails one test instead of taking the rest of the file with it — 384 tests converted across 32 files (TEST-017)
+- The two save/restore frames without a test — `beQuiet()` and `runWithinEffect()` — and the `attachEffect()` dedup guard are now pinned: removing the `finally` or the guard fails a test instead of passing silently (TEST-016, TEST-021)
 
 ### Build System
 

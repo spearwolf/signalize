@@ -84,4 +84,38 @@ describe('beQuiet', () => {
       destroySignal(a, b);
     }
   });
+
+  it('closes the quiet frame when the action throws, so the next write is loud again (TEST-016)', () => {
+    // The counter behind `beQuiet()` is module state, so a frame that is
+    // not closed on the way out is not a local mistake: every later write
+    // in the process stays muted and every effect stays deaf. Drop the
+    // `finally` in `src/bequiet.ts` and this test is the only one that
+    // notices.
+    const {get: a, set: setA} = createSignal(0);
+
+    let runs = 0;
+
+    const effect = createEffect(() => {
+      a();
+      runs++;
+    });
+
+    try {
+      expect(() =>
+        beQuiet(() => {
+          throw new Error('boom');
+        }),
+      ).toThrow('boom');
+
+      expect(isQuiet(), 'the quiet frame closed on the way out').toBe(false);
+
+      runs = 0;
+      setA(1);
+
+      expect(runs, 'the effect still hears a write after the throw').toBe(1);
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
+  });
 });
