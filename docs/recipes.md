@@ -227,8 +227,7 @@ afterwards.
 const sig = createSignal(0);
 
 createEffect(() => {
-  sig.get();
-  throw new Error('a failed');
+  if (sig.get() > 0) throw new Error('a failed');   // not on the first run
 }, {priority: 10});
 
 createEffect(() => console.log('b sees', sig.get()), {priority: 5});
@@ -247,7 +246,13 @@ try {
   through contributes that whole object as its single entry. Recurse if you
   want to count leaves.
 - The failing effect stays usable — it keeps its dependencies and runs again
-  on the next change.
+  on the next change. Which is why the callback above guards on `sig.get() > 0`
+  instead of throwing unconditionally: a throw on the **first** run is a
+  different story. That run happens inside `createEffect()`, before any
+  `Effect` was handed out, so it takes the creation back — the effect is
+  destroyed and the error arrives at the `createEffect()` call instead of at a
+  write. `{attach}` is the exception: the group already holds the effect, so it
+  survives and behaves like every other failing run.
 - A **nested** write has its own pot: if an effect callback writes another
   signal, the failures of *that* delivery are thrown at the inner `set()`,
   inside the callback. Let them through and they come back as that effect's

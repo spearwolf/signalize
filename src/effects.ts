@@ -19,6 +19,18 @@ import type {EffectErrorCallback} from './types.js';
  * `EffectImpl.maxDepth = N` only if the recursion is intentional —
  * normally the cycle should be broken (e.g. by guarding the write).
  *
+ * A throw out of the very first run — the autorun this call performs itself —
+ * is the one case in which an effect does not survive its own failure, and
+ * one option decides it. Without `attach` the creation is taken back: the
+ * effect is destroyed, nothing stays counted or subscribed, and the error
+ * arrives here — that also holds where something else happened to be holding
+ * the effect, such as the parent whose callback this call ran inside. With
+ * `attach` it survives, keeps its dependencies and runs again on the next
+ * change, exactly as after any later failing run. The error arrives here
+ * either way. A rollback that fails on top of that (a throwing
+ * `onDestroyEffect()` handler, a throwing cleanup) is reported next to the
+ * original error as an `AggregateError`, never in its place.
+ *
  * @param callback - The function to run reactively
  * @param dependencies - Optional array of signals to explicitly depend on
  * @param options - Configuration options (autorun, priority, attach)

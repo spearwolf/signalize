@@ -114,6 +114,19 @@ other effects of that same write; they all run first, and the failure (or an
 `AggregateError` over several of them) is re-raised afterwards. The effect
 itself stays usable: it keeps its dependencies and runs again on the next
 change.
+The **first** run is the exception, because `createEffect()` performs it
+itself and there is no `Effect` to keep: a throw out of it takes the creation
+back — the effect is destroyed, nothing stays counted or subscribed, and the
+error arrives at the `createEffect()` call. `attach` decides this, and it is
+the only thing that decides it: with `{attach}` the effect survives its failed
+first run, keeps its dependencies, runs again on the next change, and goes
+down with `group.clear()` like any other member. Without it the creation is
+taken back even where something else was holding the effect — one created
+inside another effect's callback is a child of that parent and is rolled back
+all the same, so a parent that catches the failure no longer keeps it.
+Should the rollback itself fail (an
+`onDestroyEffect()` handler or a cleanup throwing), both failures arrive
+together as an `AggregateError`, creation error first.
 
 **`options`** *(`EffectOptions`)*:
 
@@ -265,6 +278,13 @@ A memo is a signal driven by a high-priority effect. Reading the returned
 function tracks the memo as a dependency.
 
 **`computer`** — `() => T`. Any signals read inside become dependencies.
+A throw out of the **first** compute — the one `createMemo()` runs itself —
+leaves neither the memo signal nor its internal effect behind: the creation is
+taken back and the error arrives at the `createMemo()` call, which never
+returned a reader anybody could have used. With `{attach}` both stay, because
+the group holds them and `clear()` reaches them; the same rule and the same
+condition as `createEffect()`. `{lazy: true}` sidesteps the question — the
+first compute then happens on the first read, at which point the reader exists.
 
 **`options`** *(`CreateMemoOptions`)*:
 

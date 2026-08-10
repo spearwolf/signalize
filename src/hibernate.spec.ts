@@ -7,7 +7,7 @@ import {batch, getCurrentBatch} from './batch.js';
 import {beQuiet, clearBeQuiet, getBeQuietCount, isQuiet} from './bequiet.js';
 import {createSignal} from './createSignal.js';
 import {EffectImpl} from './EffectImpl.js';
-import {createEffect, onCreateEffect} from './effects.js';
+import {createEffect} from './effects.js';
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 import {hibernate} from './hibernate.js';
 import {destroySignal} from './signal-core.js';
@@ -205,17 +205,12 @@ describe('hibernate', () => {
     it('clears effect stack within hibernate callback', () => {
       const {get: a} = createSignal(0);
 
-      // The assertions of this test live inside the callback, and run() throws
-      // before the Effect wrapper escapes createEffect — a failing one would
-      // leave an EffectImpl nobody holds. onCreateEffect is the only handle
-      // there is; same reason as in effects.spec.ts.
-      let impl: EffectImpl | undefined;
-      const unsubCreate = onCreateEffect((created: EffectImpl) => {
-        impl = created;
-      });
+      // The assertions of this test live inside the callback, so the creation
+      // belongs inside the try.
+      let effect: ReturnType<typeof createEffect> | undefined;
 
       try {
-        createEffect(() => {
+        effect = createEffect(() => {
           a();
 
           // Inside an effect, getCurrentEffect should return the effect
@@ -230,8 +225,7 @@ describe('hibernate', () => {
           expect(getCurrentEffect()).toBeDefined();
         });
       } finally {
-        unsubCreate();
-        impl?.destroy();
+        effect?.destroy();
         destroySignal(a);
       }
     });
@@ -383,15 +377,12 @@ describe('hibernate', () => {
     it('restores effect stack when callback throws', () => {
       const {get: a} = createSignal(0);
 
-      // Same as above: the assertions are inside the callback, so the only
-      // handle a failure leaves behind comes from onCreateEffect.
-      let impl: EffectImpl | undefined;
-      const unsubCreate = onCreateEffect((created: EffectImpl) => {
-        impl = created;
-      });
+      // Same as above: the assertions are inside the callback, so the
+      // creation belongs inside the try.
+      let effect: ReturnType<typeof createEffect> | undefined;
 
       try {
-        createEffect(() => {
+        effect = createEffect(() => {
           a();
           const currentEffectBefore = getCurrentEffect();
           expect(currentEffectBefore).toBeDefined();
@@ -407,8 +398,7 @@ describe('hibernate', () => {
           expect(getCurrentEffect()).toBe(currentEffectBefore);
         });
       } finally {
-        unsubCreate();
-        impl?.destroy();
+        effect?.destroy();
         destroySignal(a);
       }
     });
@@ -519,17 +509,12 @@ describe('hibernate', () => {
       let hibernateWasExecuted = false;
 
       // The hibernate() callback asserts, and it runs while createEffect() is
-      // still autorunning — so the creation belongs inside the try. A failing
-      // assertion in there throws before the Effect wrapper escapes
-      // createEffect, so the handle has to come from onCreateEffect, as in the
+      // still autorunning — so the creation belongs inside the try, as in the
       // two effect-stack tests above.
-      let impl: EffectImpl | undefined;
-      const unsubCreate = onCreateEffect((created: EffectImpl) => {
-        impl = created;
-      });
+      let effect: ReturnType<typeof createEffect> | undefined;
 
       try {
-        createEffect(() => {
+        effect = createEffect(() => {
           effectCallCount++;
           a();
 
@@ -560,8 +545,7 @@ describe('hibernate', () => {
         expect(effectCallCount).toBe(2);
         expect(b()).toBe(2);
       } finally {
-        unsubCreate();
-        impl?.destroy();
+        effect?.destroy();
         destroySignal(a, b, c);
       }
     });

@@ -61,6 +61,8 @@ EffectImpl.maxDepth = 256;
 // async: cleanup of a superseded run runs LATE (on settle), rejections are reported
 // a throwing callback no longer stops the other effects of that write
 // set() re-raises after the delivery — several failures as an AggregateError
+// but a throwing FIRST run destroys the effect and throws at createEffect()
+//   — unless {attach} holds it; same for createMemo() and its memo signal
 onEffectError(({error, effectId, phase}) => {});  // → unsubscribe
 // no handler → console.error instead of an unhandled rejection
 // handler MUST be sync or catch itself — nothing awaits it

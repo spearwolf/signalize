@@ -6,12 +6,7 @@ import {
 } from './__testing__/assert-helpers.js';
 import {createSignal} from './createSignal.js';
 import {EffectImpl, type EffectOptions} from './EffectImpl.js';
-import {
-  createEffect,
-  getEffectsCount,
-  onCreateEffect,
-  onDestroyEffect,
-} from './effects.js';
+import {createEffect, getEffectsCount, onDestroyEffect} from './effects.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
 import {destroySignal} from './signal-core.js';
@@ -331,13 +326,6 @@ describe('createEffect', () => {
 
     const {get: count, set: setCount} = createSignal(0);
 
-    // run() throws before the Effect wrapper escapes createEffect, so capture
-    // the underlying EffectImpl via onCreateEffect to clean it up afterwards.
-    let leaked: EffectImpl | undefined;
-    const unsubCreate = onCreateEffect((eff: EffectImpl) => {
-      leaked = eff;
-    });
-
     try {
       expect(() => {
         createEffect(() => {
@@ -345,9 +333,7 @@ describe('createEffect', () => {
         });
       }).toThrow(/maxDepth=8/);
     } finally {
-      unsubCreate();
       EffectImpl.maxDepth = originalMaxDepth;
-      leaked?.destroy();
       destroySignal(count);
     }
   });

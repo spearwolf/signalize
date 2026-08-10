@@ -413,18 +413,37 @@ export class EffectImpl {
 
     const effect = new EffectImpl(callback, options);
 
-    // An effect born while another effect's callback is running belongs to
-    // that effect and dies with it — see collectDestroyChildEffects().
-    getCurrentEffect()?.attachChildEffect(effect);
+    // BUG-012, from the other side: the constructor has counted and
+    // subscribed, but the caller holds nothing yet. If anything behind it
+    // throws, `new Effect(effect)` is never reached and the effect is
+    // unreachable for everyone — unless something else is already holding
+    // it. `{attach}` is exactly that holder: the constructor has put the
+    // effect into the group, `clear()` still reaches it, and docs/api.md
+    // promises such an effect stays usable and runs again on the next
+    // change. So the rollback is for the unheld case, and there it follows
+    // the rule `run()` already follows: a run that throws still leaves the
+    // effect in a defined state. The teardown must neither replace nor
+    // displace the creation error, hence collecting instead of `throw err`.
+    try {
+      // An effect born while another effect's callback is running belongs to
+      // that effect and dies with it — see collectDestroyChildEffects().
+      getCurrentEffect()?.attachChildEffect(effect);
 
-    emit(globalEffectQueue, $createEffect, effect);
+      emit(globalEffectQueue, $createEffect, effect);
 
-    if (effect.hasStaticDeps()) {
-      if (!effect.destroyed) {
-        effect.saveSignalsFromDeps();
+      if (effect.hasStaticDeps()) {
+        if (!effect.destroyed) {
+          effect.saveSignalsFromDeps();
+        }
+      } else if (effect.autorun) {
+        effect.run();
       }
-    } else if (effect.autorun) {
-      effect.run();
+    } catch (err) {
+      const errors: unknown[] = [err];
+      if (options?.attach == null) {
+        collect(errors, () => effect.destroy());
+      }
+      throwCollectedErrors(errors, 'creating an effect');
     }
 
     return new Effect(effect);
