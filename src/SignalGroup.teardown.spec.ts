@@ -644,6 +644,43 @@ describe('SignalGroup teardown robustness', () => {
     }
   });
 
+  it('the backstop leaves a group alone that is no longer registered (TEST-020)', () => {
+    // The counterpart to the test above: there the group is still filed in
+    // the registry and the backstop has to reach it. Here it was cleared
+    // explicitly first, and the membership check is all that keeps a
+    // finalizer job that was already queued from running a second teardown
+    // over it. `clear()` unregisters from both FinalizationRegistries, so
+    // the only way to reach this code path at all is the direct call the
+    // seam exists for.
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+    createSignal(0, {attach: host});
+
+    let destroyEmits = 0;
+
+    try {
+      group.clear();
+
+      // After the explicit teardown — `clear()` runs `off(this)`, so a
+      // listener from before would not be heard either way and would prove
+      // nothing.
+      on(group, DESTROY, () => {
+        destroyEmits += 1;
+      });
+
+      clearGroupFromFinalizer(group);
+
+      expect(
+        destroyEmits,
+        'a group that already left the registry is not torn down twice',
+      ).toBe(0);
+    } finally {
+      // The second `clear()` is the idempotent belt: it emits `DESTROY` once
+      // more, after the assertion, and takes the listener off with it.
+      group.clear();
+    }
+  });
+
   describe('every teardown step collects instead of aborting', () => {
     it('off() collects a throwing child group and still tears down its own members', () => {
       const parentHost = {};

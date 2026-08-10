@@ -122,6 +122,8 @@
 - Every spec with counter guards now tears its resources down in a `finally`, so a real regression fails one test instead of taking the rest of the file with it — 384 tests converted across 32 files (TEST-017)
 - The two save/restore frames without a test — `beQuiet()` and `runWithinEffect()` — and the `attachEffect()` dedup guard are now pinned: removing the `finally` or the guard fails a test instead of passing silently (TEST-016, TEST-021)
 - The three untested `BUSY_*` re-entrancy guards and the three documented teardown orders of `SignalGroup` are pinned: removing a guard or swapping an order now fails exactly one test instead of passing silently (TEST-018, TEST-019)
+- Three of the five finalizer bookkeeping spots around a collected link and group are pinned: the double decrement of `getLinksCount()` on a collected link, the husk left behind in `getSignalGroupsCount()`, and the membership check in the `SignalGroup` finalizer backstop each now fail exactly one test instead of passing silently. The other two — the wrapper `delete` in the resource finalizer and the self-keyed-group registration skip — have no observable effect of their own and stay untested by design (TEST-020)
+- The point at which an effect bumps its generation counter, the destroyed-read and unread-lazy branches of `createSignal()`, and the name fallback in `SignalGroup#detachSignal()` are pinned: each now fails exactly one test instead of passing silently (TEST-023, TEST-024, TEST-025)
 
 ### Build System
 

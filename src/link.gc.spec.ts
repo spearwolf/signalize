@@ -321,4 +321,64 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
       error.mockRestore();
     }
   });
+
+  it('a destroyed link is not counted down a second time when it is collected (TEST-020)', async () => {
+    // `destroy()` decrements `gLinksCount` and unregisters the link from
+    // `gLinkFinalizer` in the same breath. Without the unregister the
+    // finalizer fires later — the link is unreachable by then — and
+    // decrements a second time for the same link, so `getLinksCount()`
+    // undercounts every link that is still alive. The `gLinksCount > 0`
+    // clamp hides this whenever the count is already 0, which is why the
+    // survivors below are load-bearing.
+    const SURVIVOR_COUNT = 50;
+    const CORPSE_COUNT = 50;
+
+    const survivorSource = createSignal(0);
+    const corpseRefs: WeakRef<object>[] = [];
+
+    try {
+      for (let i = 0; i < SURVIVOR_COUNT; i += 1) {
+        link(survivorSource, () => {});
+      }
+
+      (() => {
+        for (let i = 0; i < CORPSE_COUNT; i += 1) {
+          const source = createSignal(i);
+          const corpse = link(source, () => {});
+          corpse.destroy();
+          corpseRefs.push(new WeakRef(corpse));
+        }
+      })();
+
+      expect(getLinksCount(), 'the corpses are already counted out').toBe(
+        SURVIVOR_COUNT,
+      );
+
+      for (
+        let i = 0;
+        i < 20 && corpseRefs.some((ref) => ref.deref() !== undefined);
+        i += 1
+      ) {
+        await forceGc();
+      }
+
+      // The witness: without a collected corpse the assertion below would
+      // hold for the trivial reason that nothing ran at all.
+      expect(
+        corpseRefs.filter((ref) => ref.deref() !== undefined).length,
+        'every destroyed link really was collected',
+      ).toBe(0);
+
+      // One more round, so a finalizer job that was queued in the sweep
+      // above has had every chance to run before the count is read.
+      await forceGc();
+
+      expect(getLinksCount(), 'the live links are still all counted').toBe(
+        SURVIVOR_COUNT,
+      );
+    } finally {
+      unlink(survivorSource);
+      destroySignal(survivorSource);
+    }
+  });
 });

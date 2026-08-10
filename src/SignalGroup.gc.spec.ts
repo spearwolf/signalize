@@ -421,4 +421,49 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
       group.clear();
     }
   });
+
+  it('getSignalGroupsCount() drops the husk of a collected group on the way past', async () => {
+    // The resource finalizer takes the dead WeakRef out of `allGroups` too,
+    // but it runs in a job of its own: a FinalizationRegistry callback is
+    // never invoked synchronously from `gc()`. So the moment right after the
+    // collection — with no `await` in between — is the one window in which
+    // the husk is provably still in the set, and therefore the only one in
+    // which the sweep inside the counter is the thing being measured.
+    const baselineGroups = getSignalGroupsCount();
+    let groupRef!: WeakRef<SignalGroup>;
+
+    (() => {
+      const host = {marker: 'husk-sweep'};
+      groupRef = new WeakRef(SignalGroup.findOrCreate(host));
+    })();
+
+    let countAtCollection: number | undefined;
+
+    try {
+      expect(getSignalGroupsCount()).toBe(baselineGroups + 1);
+
+      for (let i = 0; i < 20; i += 1) {
+        gc();
+        if (groupRef.deref() === undefined) {
+          countAtCollection = getSignalGroupsCount();
+          break;
+        }
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+
+      expect(
+        countAtCollection,
+        'the group was never collected — the measurement never happened',
+      ).not.toBeUndefined();
+
+      expect(
+        countAtCollection,
+        'the husk is not counted, even before its finalizer has run',
+      ).toBe(baselineGroups);
+    } finally {
+      // The host lives and dies inside the IIFE, so a group that was *not*
+      // collected has no handle left but the static sweep.
+      SignalGroup.clear();
+    }
+  });
 });

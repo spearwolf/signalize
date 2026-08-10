@@ -15,9 +15,9 @@ const coverageThresholds = {
   branches: 85,
   functions: 96,
   lines: 98,
-  'src/**/!(EffectImpl|SignalGroup|SignalLink|SignalAutoMap|bequiet|collect-errors|createSignal|link|signal-core).ts':
+  'src/**/!(EffectImpl|SignalGroup|SignalLink|SignalAutoMap|collect-errors|createSignal|link|signal-core).ts':
     {statements: 100, branches: 100, functions: 100, lines: 100},
-  'src/{SignalLink,SignalAutoMap,bequiet,collect-errors}.ts': {
+  'src/{SignalLink,SignalAutoMap,collect-errors}.ts': {
     statements: 100,
     branches: 95,
     functions: 100,
@@ -148,7 +148,7 @@ export default defineConfig({
        * Tier 2 (the negated glob) pins every file no remaining audit package
        * touches at 100 % — including files that do not exist yet, which is the
        * point: new code arrives covered or it arrives named in an error.
-       * Tier 3 covers the four files that are at 100 % today but are still on
+       * Tier 3 covers the three files that are at 100 % today but are still on
        * the worklist; they keep statements, functions and lines at 100 and get
        * two uncovered branches of slack for defensive guards.
        *

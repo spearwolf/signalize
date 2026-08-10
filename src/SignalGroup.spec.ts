@@ -1183,6 +1183,47 @@ describe('SignalGroup', () => {
       }
     });
 
+    it('detachSignal() hands the name to the most recently bound candidate, not the first (TEST-025)', () => {
+      // The neighbour above stops one candidate short: after its two
+      // detaches exactly one signal is left under the name, and "the last
+      // one" and "the first one" are then the same signal. With two
+      // candidates left the rule becomes visible — and it is the rule that
+      // decides what `group.signal(name)` returns after a detach.
+      const group = SignalGroup.findOrCreate({});
+      const first = createSignal(1);
+      const second = createSignal(2);
+      const active = createSignal(3);
+
+      try {
+        // Explicitly attached, so the rebind does not destroy them and they
+        // stay fallback candidates (MEM-003).
+        group.attachSignal(first);
+        group.attachSignal(second);
+
+        group.attachSignalByName('slot', first);
+        group.attachSignalByName('slot', second);
+        group.attachSignalByName('slot', active);
+
+        expect(group.signal('slot')).toBe(active);
+
+        group.detachSignal(active);
+
+        expect(
+          group.signal('slot'),
+          'the youngest remaining candidate takes the slot',
+        ).toBe(second);
+
+        group.detachSignal(second);
+
+        expect(group.signal('slot'), 'and the next one after that').toBe(first);
+      } finally {
+        first.destroy();
+        second.destroy();
+        active.destroy();
+        group.clear();
+      }
+    });
+
     it('attachSignalByName() is idempotent for the same (name, signal) pair', () => {
       const group = SignalGroup.findOrCreate({});
       const signal = createSignal(1);

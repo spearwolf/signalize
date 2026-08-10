@@ -383,6 +383,87 @@ describe('async effect callbacks', () => {
       }
     });
 
+    it('a cleanup that settles after the run it was superseded by does not take the slot (TEST-023)', async () => {
+      // The sibling above pins the *sequence*, this one the *numbering*. Move
+      // the `++this.#generation` from just before the callback to the top of
+      // `run()` and the sibling stays green: with both promises settling in
+      // the order their runs were entered, the slot ends up holding the same
+      // cleanup either way. It only comes apart when the inner run settles
+      // *after* the outer one — then the bump at the top hands both runs the
+      // same number, the older cleanup passes the identity check and
+      // displaces the newer one out of the slot.
+      const log: string[] = [];
+      const {get: a, set: setA} = createSignal(0);
+
+      let runSeq = 0;
+      let releaseInner!: () => void;
+      const innerSettles = new Promise<void>((resolve) => {
+        releaseInner = resolve;
+      });
+
+      const effect = createEffect(async () => {
+        const seq = ++runSeq;
+        a();
+        log.push(`run:${seq}`);
+        // Run 2 is the nested one, entered from the cleanup of run 1. Held
+        // back until run 3 — the outer run — has already stored its cleanup.
+        if (seq === 2) await innerSettles;
+        return () => {
+          log.push(`cleanup:${seq}`);
+          if (seq === 1) setA(99);
+        };
+      });
+
+      try {
+        await flush();
+
+        setA(1);
+
+        expect(log, 'the cleanup of run 1 re-entered the effect').toEqual([
+          'run:1',
+          'cleanup:1',
+          'run:2',
+          'run:3',
+        ]);
+
+        await flush();
+
+        expect(log, 'only the outer run has settled so far').toEqual([
+          'run:1',
+          'cleanup:1',
+          'run:2',
+          'run:3',
+        ]);
+
+        releaseInner();
+        await flush();
+
+        // The inner run is the older one: its cleanup is stale on arrival and
+        // runs on the spot instead of pushing the current one out of the slot.
+        expect(
+          log.at(-1),
+          'the late cleanup of the inner run ran orphaned',
+        ).toBe('cleanup:2');
+
+        effect.destroy();
+
+        expect(log, 'the slot held the cleanup of the outer run').toEqual([
+          'run:1',
+          'cleanup:1',
+          'run:2',
+          'run:3',
+          'cleanup:2',
+          'cleanup:3',
+        ]);
+      } finally {
+        // Before the teardown: a failed assertion above must not leave the
+        // effect callback of run 2 awaiting a promise nobody resolves.
+        releaseInner();
+        effect.destroy();
+        destroySignal(a);
+      }
+    });
+
     it('runs a cleanup that settles after the effect was destroyed (MEM-004)', async () => {
       const log: string[] = [];
       const {get: a} = createSignal(0);

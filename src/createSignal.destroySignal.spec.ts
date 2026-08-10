@@ -1,4 +1,4 @@
-import {once} from '@spearwolf/eventize';
+import {getSubscriptionCount, once} from '@spearwolf/eventize';
 import {
   assertEffectSubscriptionsCount,
   assertEffectSubscriptionsCountChange,
@@ -13,6 +13,7 @@ import {$effect, DESTROY} from './constants.js';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
 import {createEffect, onEffectError} from './effects.js';
+import {globalSignalQueue} from './global-queues.js';
 import {destroySignal} from './signal-core.js';
 import {touch} from './touch.js';
 import type {SignalReader} from './types.js';
@@ -159,6 +160,35 @@ describe('destroySignal', () => {
     } finally {
       effect.destroy();
       destroySignal(plah, getFoo, getBar);
+    }
+  });
+
+  it('a destroyed signal does not report its reads to the running effect', () => {
+    // The other half of the `destroySignal()` promise. The write half — a
+    // destroyed signal notifies nobody — is covered above; this is the read
+    // half: an effect that reads a corpse must not subscribe to its id.
+    // Without the guard the effect carries a dependency on a signal that can
+    // never fire again, for as long as the effect lives.
+    const alive = createSignal(1);
+    const dead = createSignal(2);
+
+    destroySignal(dead);
+
+    const subscriptionsBefore = getSubscriptionCount(globalSignalQueue);
+
+    const effect = createEffect(() => {
+      alive.get();
+      dead.get();
+    });
+
+    try {
+      expect(
+        getSubscriptionCount(globalSignalQueue) - subscriptionsBefore,
+        'the effect subscribed to the live signal and to nothing else',
+      ).toBe(1);
+    } finally {
+      effect.destroy();
+      destroySignal(alive);
     }
   });
 
