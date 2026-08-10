@@ -137,6 +137,18 @@ export const signalImpl = <Type = unknown>(
  * remain usable as plain value containers: `set()` stores the new value and
  * reads return it. There is no way to revive them.
  *
+ * A throwing effect cleanup no longer ends the delivery: it is collected until
+ * every subscriber of that signal has run, so a link, a group or an auto map
+ * registered behind that effect still learns that the signal is gone. A single
+ * failure is then re-raised unchanged, several as an `AggregateError` in
+ * delivery order.
+ *
+ * Only effects are isolated, the same exception a write makes: everything else
+ * on this queue is library code without a `catch` of its own, and its throw
+ * does end the delivery — the failures collected before it are re-raised with
+ * it. The frame is per signal, not per call: with several arguments, a failing
+ * delivery still leaves the signals behind it untouched.
+ *
  * @param signalLikes - Signals to destroy
  */
 export const destroySignal = (...signalLikes: SignalLike[]): void => {
@@ -157,7 +169,33 @@ export const destroySignal = (...signalLikes: SignalLike[]): void => {
       // function on a signal that no longer exists.
       signalFinalizer.unregister(signal);
       --g_signalsCount;
-      emit(globalDestroySignalQueue, signal.id, signal.id);
+
+      const outerErrors = beginIsolatedDelivery();
+      try {
+        emit(globalDestroySignalQueue, signal.id, signal.id);
+      } catch (err) {
+        // Same asymmetry as in `writeSignal()`: an effect parks its own
+        // failure in the frame and the delivery goes on. Everything else
+        // on this queue — a `SignalLink`, a `SignalGroup`, a
+        // `SignalAutoMap`, a memo — is library code without a `catch` of
+        // its own, so its throw *does* end the delivery. It must at least
+        // not swallow what the effects before it already handed in.
+        //
+        // The return value is dropped on purpose, and only for as long as
+        // the frame above is opened unconditionally: it is then always
+        // `true`. The moment that opening becomes conditional — PERF-008
+        // wants to tie it to a per-signal-id subscriber count — this line
+        // turns into a silent swallow and needs the `if (!…) throw err;`
+        // the listener in `EffectImpl` carries. It cannot be written here
+        // ahead of time: the `throw` branch is unreachable today, and this
+        // is the file that sets tier 1 of the coverage thresholds.
+        collectDeliveryError(err);
+      } finally {
+        endIsolatedDelivery(
+          outerErrors,
+          'notifying the subscribers of a destroyed signal',
+        );
+      }
     }
   }
 };

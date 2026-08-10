@@ -7,6 +7,7 @@ import {
   assertSignalDestroySubscriptionsCount,
   assertSignalDestroySubscriptionsCountChange,
   assertSignalsCount,
+  getGroupMemberCounts,
   saveEffectSubscriptionsCount,
   saveSignalDestroySubscriptionsCount,
 } from './__testing__/assert-helpers.js';
@@ -16,7 +17,10 @@ import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
 import {createEffect, onEffectError} from './effects.js';
 import {globalSignalQueue} from './global-queues.js';
-import {destroySignal} from './signal-core.js';
+import {link} from './link.js';
+import {SignalAutoMap} from './SignalAutoMap.js';
+import {SignalGroup} from './SignalGroup.js';
+import {destroySignal, signalImpl} from './signal-core.js';
 import {touch} from './touch.js';
 import type {SignalReader} from './types.js';
 
@@ -382,6 +386,287 @@ describe('destroySignal', () => {
         unsubscribe();
         effect.destroy();
         destroySignal(a);
+      }
+    });
+  });
+
+  describe('the destroy delivery is isolated, like a write (BUG-011)', () => {
+    it('serves every subscriber behind a throwing effect cleanup', () => {
+      // Subscription order on `globalDestroySignalQueue` is registration
+      // order, and the effect registers first — so everything created after
+      // it is exactly what a throwing cleanup used to skip. All three
+      // victims from the finding are here: the link stayed subscribed to a
+      // dead source, the group kept the dead SignalImpl, the auto map kept
+      // its entry.
+      const a = createSignal(0);
+      const host = {a};
+      let propagated = 0;
+
+      const effect = createEffect(() => {
+        a.get();
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      });
+      const sibling = link(a.get, (value: number) => {
+        propagated = value;
+      });
+      const group = SignalGroup.findOrCreate({});
+      group.attachSignal(a.get);
+      const map = SignalAutoMap.fromProps(host, ['a']);
+
+      try {
+        expect(map.get('a'), 'the map holds that signal, not a copy').toBe(a);
+        expect(propagated, 'the link is live before the destroy').toBe(0);
+
+        expect(
+          () => destroySignal(a),
+          'the failure still reaches the caller',
+        ).toThrow('cleanup boom');
+
+        expect(sibling.isDestroyed, 'the link let go of the dead source').toBe(
+          true,
+        );
+        expect(
+          getGroupMemberCounts(group).signals,
+          'the group dropped the dead signal',
+        ).toBe(0);
+        expect(map.has('a'), 'the auto map dropped its entry').toBe(false);
+      } finally {
+        // Against the unfixed code the link, the group entry and the map
+        // entry are still there, and the file's counter guards would then
+        // fail in every later test of this file rather than in this one.
+        // The test takes its own damage back; against the fixed code all
+        // three lines are no-ops.
+        sibling.destroy();
+        map.clear();
+        group.clear();
+        try {
+          effect.destroy();
+        } catch {
+          // the cleanup throws by design; already reported above
+        }
+        destroySignal(a);
+      }
+    });
+
+    it('bundles two failing subscribers into an AggregateError, in delivery order', () => {
+      const a = createSignal(0);
+
+      const first = createEffect(() => {
+        a.get();
+        return () => {
+          throw new Error('cleanup one');
+        };
+      });
+      const second = createEffect(() => {
+        a.get();
+        return () => {
+          throw new Error('cleanup two');
+        };
+      });
+
+      try {
+        let caught: unknown;
+        try {
+          destroySignal(a);
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(AggregateError);
+        expect(
+          (caught as AggregateError).errors.map(
+            (err) => (err as Error).message,
+          ),
+          'both failures, in the order they were delivered',
+        ).toEqual(['cleanup one', 'cleanup two']);
+
+        assertEffectsCount(0, 'both effects tore themselves down');
+      } finally {
+        for (const effect of [first, second]) {
+          try {
+            effect.destroy();
+          } catch {
+            // the cleanups throw by design
+          }
+        }
+        destroySignal(a);
+      }
+    });
+
+    it('rethrows a lone failure unchanged, with its identity intact', () => {
+      // The counter-probe: one failing subscriber must not become an
+      // `AggregateError`. `toBe` on the instance, not `toThrow` on the
+      // message — a wrapper carrying the same message would pass that.
+      const a = createSignal(0);
+      const boom = new Error('cleanup boom');
+
+      const effect = createEffect(() => {
+        a.get();
+        return () => {
+          throw boom;
+        };
+      });
+
+      try {
+        let caught: unknown;
+        try {
+          destroySignal(a);
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught, 'the same object, not a wrapper').toBe(boom);
+      } finally {
+        try {
+          effect.destroy();
+        } catch {
+          // thrown by design
+        }
+        destroySignal(a);
+      }
+    });
+
+    it('leaves a destroy without a failing subscriber alone', () => {
+      // The other counter-probe: the ordinary path must stay silent.
+      const a = createSignal(0);
+      let cleanupRuns = 0;
+
+      const effect = createEffect(() => {
+        a.get();
+        return () => {
+          ++cleanupRuns;
+        };
+      });
+
+      try {
+        expect(() => destroySignal(a)).not.toThrow();
+        expect(cleanupRuns).toBe(1);
+        assertEffectsCount(0, 'the effect lost its last dependency');
+      } finally {
+        effect.destroy();
+        destroySignal(a);
+      }
+    });
+
+    it('stops at the failing signal when several are destroyed at once', () => {
+      // Pre-existing and untouched here: the frame is opened per signal, so
+      // `destroySignal(a, b)` still leaves `b` alive when a subscriber of
+      // `a` throws. Isolation is a property of one delivery, not of the
+      // argument list. Asserted so that widening the frame to the whole
+      // loop — which would change the throw form across signals — has to be
+      // a decision instead of a side effect.
+      const a = createSignal(0);
+      const b = createSignal(0);
+
+      const effect = createEffect(() => {
+        a.get();
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      });
+
+      try {
+        expect(() => destroySignal(a, b)).toThrow('cleanup boom');
+
+        expect(signalImpl(a).destroyed, 'a is gone').toBe(true);
+        expect(signalImpl(b).destroyed, 'b never got its turn').toBe(false);
+      } finally {
+        try {
+          effect.destroy();
+        } catch {
+          // thrown by design
+        }
+        destroySignal(a, b);
+      }
+    });
+
+    it('rethrows at the group when no delivery frame is open (soft-detach)', () => {
+      // `SignalGroup#off()` emits the soft-detach on the same queue, and it
+      // does *not* open a delivery frame. The effect listener then has
+      // nowhere to park its failure and rethrows at once, where the group's
+      // own per-signal guard picks it up — the same contract `[RECALL]`
+      // keeps for a `run()` outside any delivery.
+      const a = createSignal(0);
+      const group = SignalGroup.findOrCreate({});
+      group.attachSignal(a.get);
+
+      const effect = createEffect(() => {
+        a.get();
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      });
+
+      try {
+        expect(() => group.off(), 'raised by the group, not swallowed').toThrow(
+          'cleanup boom',
+        );
+        assertEffectsCount(0, 'the effect lost its only dependency');
+      } finally {
+        group.clear();
+        try {
+          effect.destroy();
+        } catch {
+          // thrown by design
+        }
+        destroySignal(a);
+      }
+    });
+
+    it('rethrows at the group even when a foreign delivery frame is open', () => {
+      // The counter-probe to the test above, and the reason the listener
+      // asks *which* frame is open rather than whether one is:
+      // `g_deliveryDepth` is module-global. A `group.off()` called from an
+      // effect callback runs inside the write's frame — a frame the group
+      // never opened and knows nothing about. Parking the failure there
+      // would let `off()` return successfully and surface the error at the
+      // writer instead, one caller and one moment removed from the code
+      // that asked for the teardown. Only `destroySignal()` opens a frame
+      // for this queue, so the soft-detach rethrows here too.
+      const a = createSignal(0);
+      const w = createSignal(0);
+      const group = SignalGroup.findOrCreate({});
+      group.attachSignal(a.get);
+
+      const victim = createEffect(() => {
+        a.get();
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      });
+
+      let offThrew: string | undefined;
+      const driver = createEffect(() => {
+        if (w.get() === 1) {
+          try {
+            group.off();
+          } catch (err) {
+            offThrew = (err as Error).message;
+          }
+        }
+      });
+
+      try {
+        expect(
+          () => w.set(1),
+          'the write is not the one who asked for the teardown',
+        ).not.toThrow();
+
+        expect(offThrew, 'the group got its own failure back').toBe(
+          'cleanup boom',
+        );
+        assertEffectsCount(1, 'only the driver is left');
+      } finally {
+        group.clear();
+        try {
+          victim.destroy();
+        } catch {
+          // thrown by design
+        }
+        driver.destroy();
+        destroySignal(a, w);
       }
     });
   });

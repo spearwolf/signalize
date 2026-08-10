@@ -1,6 +1,8 @@
 import {
   getSubscribedEventNames,
   getSubscriptionCount,
+  off,
+  on,
   once,
 } from '@spearwolf/eventize';
 import {
@@ -616,6 +618,187 @@ describe('EffectImpl.destroy() teardown order', () => {
         expect(onDestroyed).toHaveBeenCalledTimes(1);
       } finally {
         effect.destroy();
+        destroySignal(a);
+      }
+    });
+  });
+
+  describe('every teardown step is guarded on its own (MEM-008)', () => {
+    it('runs the cleanup callback even when an onDestroyEffect handler throws', () => {
+      // The finding's own scenario, reachable through fully public API: the
+      // four steps used to share one `try`, so a throwing reporter took the
+      // cleanup — the one place userland releases its resources — with it,
+      // on an effect that counts as destroyed and gets no second attempt.
+      const {get: a} = createSignal(0);
+      let cleanupRuns = 0;
+
+      const effect = createEffect(() => {
+        a();
+        return () => {
+          ++cleanupRuns;
+        };
+      });
+
+      const unsubscribe = onDestroyEffect(() => {
+        throw new Error('reporter boom');
+      });
+
+      try {
+        expect(
+          () => effect.destroy(),
+          'the reporter failure still reaches the caller',
+        ).toThrow('reporter boom');
+
+        expect(cleanupRuns, 'the cleanup ran all the same').toBe(1);
+        expect(getEffectsCount()).toBe(0);
+      } finally {
+        unsubscribe();
+        effect.destroy();
+        destroySignal(a);
+      }
+    });
+
+    it('unsubscribes, reports and cleans up even when a DESTROY listener throws', () => {
+      // The first of the four steps. It used to skip the other three: the
+      // instance kept its own listeners (`off(this)` never ran), no
+      // `onDestroyEffect()` handler was ever told, and the cleanup did not
+      // run.
+      const {get: a} = createSignal(0);
+      let cleanupRuns = 0;
+      let reported = 0;
+
+      const effect = createEffect(() => {
+        a();
+        return () => {
+          ++cleanupRuns;
+        };
+      });
+      const impl = effect[$effect] as EffectImpl;
+
+      on(impl, DESTROY, () => {
+        throw new Error('listener boom');
+      });
+      const unsubscribe = onDestroyEffect(() => {
+        ++reported;
+      });
+
+      try {
+        expect(() => effect.destroy()).toThrow('listener boom');
+
+        expect(
+          getSubscriptionCount(impl),
+          'off(this) ran: no listener is left on the instance',
+        ).toBe(0);
+        expect(reported, 'the destroy was still reported').toBe(1);
+        expect(cleanupRuns, 'and the cleanup still ran').toBe(1);
+        expect(getEffectsCount()).toBe(0);
+      } finally {
+        unsubscribe();
+        off(impl);
+        effect.destroy();
+        destroySignal(a);
+      }
+    });
+
+    it('reports every failing step, in teardown order', () => {
+      // Three failures in one teardown — listener, reporter, cleanup — plus
+      // a child. Before the split only the first of the four steps could
+      // ever be reported, so the two behind it vanished without a trace.
+      const {get: a} = createSignal(0);
+      const {get: b} = createSignal(0);
+
+      const effect = createEffect(() => {
+        a();
+        createEffect(() => {
+          b();
+          return () => {
+            throw new Error('child boom');
+          };
+        });
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      });
+      const impl = effect[$effect] as EffectImpl;
+
+      on(impl, DESTROY, () => {
+        throw new Error('listener boom');
+      });
+      const unsubscribe = onDestroyEffect(() => {
+        throw new Error('reporter boom');
+      });
+
+      try {
+        let caught: unknown;
+        try {
+          effect.destroy();
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(AggregateError);
+        const errors = (caught as AggregateError).errors;
+
+        expect(errors, 'three own steps plus the child').toHaveLength(4);
+        expect(
+          errors.slice(0, 3).map((err) => (err as Error).message),
+          'the four steps report in teardown order',
+        ).toEqual(['listener boom', 'reporter boom', 'cleanup boom']);
+
+        // The child fails in the same three ways and hands its report over
+        // whole: nested, not flattened, exactly as everywhere else this
+        // helper is used. Its own `emit(this, DESTROY)` has no listener, so
+        // two of the three steps fail there.
+        expect(errors[3]).toBeInstanceOf(AggregateError);
+        expect(
+          (errors[3] as AggregateError).errors.map(
+            (err) => (err as Error).message,
+          ),
+        ).toEqual(['reporter boom', 'child boom']);
+
+        expect(getEffectsCount()).toBe(0);
+      } finally {
+        unsubscribe();
+        off(impl);
+        try {
+          effect.destroy();
+        } catch {
+          // thrown by design
+        }
+        destroySignal(a, b);
+      }
+    });
+
+    it('rethrows a lone failing step unchanged, with its identity intact', () => {
+      // The counter-probe: one failure must not become an `AggregateError`.
+      // `toBe` on the instance — a wrapper with the same message would pass
+      // a `toThrow()`.
+      const {get: a} = createSignal(0);
+      const boom = new Error('cleanup boom');
+
+      const effect = createEffect(() => {
+        a();
+        return () => {
+          throw boom;
+        };
+      });
+
+      try {
+        let caught: unknown;
+        try {
+          effect.destroy();
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught, 'the same object, not a wrapper').toBe(boom);
+        expect(getEffectsCount()).toBe(0);
+      } finally {
+        try {
+          effect.destroy();
+        } catch {
+          // thrown by design
+        }
         destroySignal(a);
       }
     });

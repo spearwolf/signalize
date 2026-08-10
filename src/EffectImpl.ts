@@ -642,6 +642,46 @@ export class EffectImpl {
   }
 
   [$destroySignal](signalId: symbol, params?: {detach?: boolean}): void {
+    // BUG-011: this is the listener eventize calls, and — exactly as in
+    // `[RECALL]` — the only place where swallowing helps. One frame
+    // further out, around `emit()`, the dispatch loop has already given
+    // up on every subscriber behind this one: the link that is still
+    // attached to the dead source, the group that still holds the dead
+    // SignalImpl, the auto map entry that is still there.
+    //
+    // Which frame that is, matters. `collectDeliveryError()` knows only
+    // the delivery *depth*, and that counter is module-global: an open
+    // frame is no proof that it belongs to this delivery. Two emitters
+    // reach this queue, and only one of them opens a frame. A hard
+    // destroy always parks in its own — `destroySignal()` opens it per
+    // signal id, immediately around its own emit. The soft-detach comes
+    // from `SignalGroup#off()`, which opens none and collects per signal
+    // itself; parking there would hand the failure to whatever frame
+    // happens to be open further out — the write's, when the `off()` runs
+    // from an effect callback — and `off()` would return successfully
+    // while its own report lost the entry. A silent success is the worst
+    // error shape there is, so a detach rethrows, and so does a destroy
+    // with no frame at all.
+    //
+    // That guard and the missing frame are one decision, not two: giving
+    // `SignalGroup#off()` a frame of its own — the obvious first move for
+    // anyone isolating the soft-detach path — changes nothing here, because
+    // `params?.detach` still rethrows before the frame is ever asked. The
+    // next step then looks like dropping this condition, and that is
+    // exactly how the silent success comes back. What such a frame needs is
+    // identity — a token the frame carries and this listener compares
+    // against its own delivery — not one condition fewer.
+    try {
+      this.onSignalDestroyed(signalId, params);
+    } catch (err) {
+      if (params?.detach || !collectDeliveryError(err)) throw err;
+    }
+  }
+
+  private onSignalDestroyed(
+    signalId: symbol,
+    params?: {detach?: boolean},
+  ): void {
     if (!this.#signals.has(signalId)) return;
 
     if (params?.detach) {
@@ -924,15 +964,18 @@ export class EffectImpl {
    * cleanup cannot trigger another run, and `run()` is a no-op.
    *
    * Calling `destroy()` again (including re-entrantly from a cleanup) does
-   * nothing. A cleanup callback that throws propagates to the caller, but
-   * does not stop the teardown: child effects, the internal bookkeeping and
-   * the effect counter are settled in any case.
+   * nothing. Every step of the teardown is guarded on its own, so a throw
+   * propagates to the caller but stops nothing: a `DESTROY` listener, an
+   * `onDestroyEffect()` handler and the cleanup callback each fail alone,
+   * and child effects, the internal bookkeeping and the effect counter are
+   * settled in any case.
    *
-   * When more than one thing throws — this effect's cleanup and a child's,
-   * or several children's — every error is reported: the failures are
-   * collected during the teardown and re-raised afterwards as an
-   * `AggregateError` whose `errors` array holds them in teardown order (own
-   * cleanup first, then the children). A lone error is rethrown unchanged.
+   * When more than one thing throws — several of this effect's own teardown
+   * steps, its cleanup and a child's, or several children's — every error is
+   * reported: the failures are collected during the teardown and re-raised
+   * afterwards as an `AggregateError` whose `errors` array holds them in
+   * teardown order (own steps first, then the children). A lone error is
+   * rethrown unchanged.
    */
   destroy = (): void => {
     if (this.#destroyed) return;
@@ -950,18 +993,18 @@ export class EffectImpl {
     // sealed this instance, a half-finished teardown would be permanent:
     // orphaned child effects and a counter that never comes back down. So
     // nothing here rethrows before the last step is done.
+    //
+    // MEM-008: and each of the four steps carries its own guard, not one
+    // shared `try`. A failing first step used to take the three behind it —
+    // among them the cleanup callback, the one place userland releases its
+    // resources, on an effect that already counts as destroyed and gets no
+    // second attempt.
     const errors: unknown[] = [];
 
-    try {
-      emit(this, DESTROY, this);
-      off(this);
-
-      emit(globalEffectQueue, $destroyEffect, this);
-
-      this.runCleanupCallback();
-    } catch (err) {
-      errors.push(err);
-    }
+    collect(errors, () => emit(this, DESTROY, this));
+    collect(errors, () => off(this));
+    collect(errors, () => emit(globalEffectQueue, $destroyEffect, this));
+    collect(errors, () => this.runCleanupCallback());
 
     try {
       this.collectDestroyChildEffects(errors);

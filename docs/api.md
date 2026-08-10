@@ -64,6 +64,16 @@ existing signal-like (then this very signal is returned, no new one created).
 > effect and does end the delivery — the failures collected before it are
 > still re-raised together with it.
 
+> The same holds for `destroySignal()`, with the same exception: a throwing
+> effect cleanup no longer ends the delivery, so a `link()`, a `SignalGroup`
+> or a `SignalAutoMap` registered behind that effect still learns that the
+> signal is gone instead of keeping a dead one. Several failures arrive as an
+> `AggregateError` in delivery order, a lone one unchanged. Only effects are
+> isolated — a throwing `'destroy'` listener on a link, or anything else on
+> that queue, still ends the delivery, with the failures collected before it
+> re-raised alongside. The frame is per signal: `destroySignal(a, b)` with a
+> failing subscriber of `a` still leaves `b` alive and untouched.
+
 ### Top-level helpers
 
 | Function                       | Purpose                                                                |
@@ -171,12 +181,16 @@ the parent's rerun.
 > — a cleanup callback, an `onDestroyEffect(cb)` handler — therefore sees an
 > effect that no longer reacts: writing to a signal the effect depends on
 > triggers no further run, and `run()` is a no-op. Repeated or re-entrant
-> `destroy()` calls do nothing. A cleanup that throws propagates to the
-> caller of `destroy()`, but the teardown still completes — including the
-> child effects, so a failing sibling never leaves a live effect behind. If
-> more than one cleanup throws (this effect's and a child's, or several
+> `destroy()` calls do nothing. Every step of the teardown is guarded on its
+> own: a `DESTROY` listener on the effect, an `onDestroyEffect(cb)` handler
+> and the cleanup callback each throw to the caller of `destroy()` without
+> stopping the steps behind them — including the child effects, so a failing
+> sibling never leaves a live effect behind. If more than one thing throws
+> (several of the effect's own steps, its cleanup and a child's, or several
 > children's), the caller gets an `AggregateError` whose `errors` array holds
-> every failure in teardown order; a lone error is rethrown unchanged.
+> every failure in teardown order — the effect's own steps first, then one
+> entry per failing child, nested rather than flattened. A lone error is
+> rethrown unchanged.
 
 ### Top-level helpers
 
