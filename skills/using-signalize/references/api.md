@@ -173,7 +173,9 @@ source again — the nested run wins: the outer one emits no `'value'` and leave
 alone, as does one whose callback destroyed the link.
 
 `asyncValues()` retains only the last propagated value — intermediate values
-between two reads are lost. Several `asyncValues()` iterators over the same
+between two reads are lost. Within one iterator every propagated value arrives
+at most once — a read with nothing new waits for the next propagation.
+Several `asyncValues()` iterators over the same
 link share that one retained slot; it's released only once the last of them
 stops, so one finishing early doesn't cut off a still-running sibling. That
 release switches retaining off, so a `nextValue()` after the last iterator

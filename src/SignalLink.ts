@@ -17,6 +17,14 @@ import {AbortSignalLike, ISignalImpl, SignalLike} from './types.js';
 
 export type ValueCallback<ValueType = any> = (value: ValueType) => void;
 
+/**
+ * W1: the handle that cancels the read an `asyncValues()` iterator is
+ * currently waiting on — present only while a read is actually pending,
+ * cleared again the moment it settles. See `asyncValues()` for why an
+ * iterator parked in an `await` cannot be closed without it.
+ */
+type PendingRead = {cancel?: () => void};
+
 // Eventize injects EventizedObject members at runtime via eventize(this) in
 // the constructor — declaration merging tells TS the brand is present.
 // biome-ignore lint/correctness/noUnusedVariables: declaration merging requires the same type-parameter name as the class
@@ -68,6 +76,17 @@ export abstract class SignalLink<ValueType = any> {
   // to `action()`. Only ever compared for equality — the absolute value
   // carries no meaning, and no path reads it from outside this class.
   #propagationGeneration = 0;
+
+  // ASYNC-005: the generation of the most recent VALUE emit — assigned on
+  // every emit, whether anything retains VALUE or not, and never cleared
+  // (`unretain()` empties eventize's slot without touching this). It is
+  // read in one place only, from inside a VALUE delivery, where it always
+  // describes *that* delivery: a live emit has just written it, and a
+  // replay carries the value the emit that wrote it put in the slot. That
+  // is what lets a cursor tell a replay it has already consumed from a new
+  // value. 0 = nothing emitted yet. Only ever compared for equality, like
+  // the counter above it.
+  #emittedGeneration = 0;
 
   readonly source: ISignalImpl<ValueType>;
 
@@ -182,6 +201,25 @@ export abstract class SignalLink<ValueType = any> {
    * one name in its list do that while another resolves.
    */
   nextValue(options?: {signal?: AbortSignalLike}): Promise<ValueType> {
+    return this.#nextValue(null, options);
+  }
+
+  /**
+   * The implementation behind `nextValue()`, with one addition: an optional
+   * `cursor` carrying the propagation generation its owner last consumed.
+   *
+   * With a cursor, a synchronous replay of an already-consumed generation is
+   * ignored and the call keeps waiting for the *next* propagation — that is
+   * what stops an `asyncValues()` loop from being handed the retained value
+   * over and over (ASYNC-005). Without one (`null`, i.e. every public
+   * `nextValue()` call) the behaviour is unchanged: whatever sits in the
+   * retained slot settles the promise right away.
+   */
+  #nextValue(
+    cursor: {generation: number} | null,
+    options?: {signal?: AbortSignalLike},
+    pendingRead?: PendingRead,
+  ): Promise<ValueType> {
     const {signal} = options ?? {};
 
     return new Promise((resolve, reject) => {
@@ -203,16 +241,37 @@ export abstract class SignalLink<ValueType = any> {
       }
 
       const subscriptions: (() => void)[] = [];
-      const unsubscribe = () =>
+      const unsubscribe = () => {
+        // W1: every settle path runs this, which is exactly when the cancel
+        // handle below stops being valid — a read that is over cannot be
+        // cancelled, and leaving a stale handle around would let a later
+        // `return()` unsubscribe a *different* call's listeners.
+        if (pendingRead != null) {
+          pendingRead.cancel = undefined;
+        }
         subscriptions.forEach((unsub) => {
           unsub();
         });
+      };
+
+      if (pendingRead != null) {
+        // W1: hand the caller — `asyncValues()`, and only it — a way to end
+        // this read from the outside. Rejecting with an `Error` of our own
+        // (never `signal.reason`) makes the generator's catch clause treat
+        // it as a normal stop, so it breaks out of the loop and runs its
+        // `finally` instead of rethrowing.
+        pendingRead.cancel = () => {
+          unsubscribe();
+          reject(new Error('SignalLink read cancelled by the iterator'));
+        };
+      }
 
       // K1: DESTROY and the abort listener are subscribed *before* VALUE,
       // and each is pushed onto `subscriptions` immediately, not batched
       // into one `push()` call after all three exist. Reason: eventize
-      // replays a *retained* event synchronously, inside the `once()` call
-      // itself, before that call returns — and `asyncValues()` retains
+      // replays a *retained* event synchronously, inside the subscribe call
+      // itself (`on()` for VALUE below, `once()` for the rest), before that
+      // call returns — and `asyncValues()` retains
       // VALUE (ASYNC-005). If VALUE were subscribed first, its own replay
       // could run before `subscriptions` holds anything else at all —
       // including the not-yet-registered DESTROY/abort handles — so the
@@ -247,13 +306,41 @@ export abstract class SignalLink<ValueType = any> {
         subscriptions.push(() => signal.removeEventListener('abort', onAbort));
       }
 
-      subscriptions.push(
-        // we can not just use 'once' here because the value is retained
-        once(this, VALUE, (val) => {
-          unsubscribe();
-          resolve(val);
-        }),
-      );
+      // ASYNC-005: `on`, not `once` — which is what the line that used to
+      // stand here ("we can not just use 'once' here because the value is
+      // retained") was reaching for, three refactors ago. A retained VALUE is
+      // replayed synchronously inside this very call (see the K1 block
+      // above), and a replay of a generation this caller has already consumed
+      // is not a next value: it has to be ignored *while staying subscribed*.
+      // A `once` is spent by the replay, so ignoring it would leave this
+      // promise pending for good. A plain `nextValue()` passes no cursor and
+      // therefore still settles on the replay, exactly as before.
+      // `hasSettled`, not `settledInline`: the listener sets it on *every*
+      // resolution, including one that arrives minutes later. It answers the
+      // inline question only because it is read exactly once, on the line
+      // after `on()` returns — at that point "has settled" can only mean
+      // "settled during the subscribe call".
+      let hasSettled = false;
+      const releaseValue = on(this, VALUE, (val) => {
+        if (cursor != null && cursor.generation === this.#emittedGeneration) {
+          return;
+        }
+        if (cursor != null) {
+          cursor.generation = this.#emittedGeneration;
+        }
+        hasSettled = true;
+        unsubscribe();
+        resolve(val);
+      });
+      if (hasSettled) {
+        // Settled by the replay, i.e. from inside the `on()` call above:
+        // `unsubscribe()` ran before this handle existed, so it walked past
+        // it. Release it here instead — the one thing `once` used to do for
+        // us, since a spent obligation removes itself.
+        releaseValue();
+      } else {
+        subscriptions.push(releaseValue);
+      }
     });
   }
 
@@ -276,7 +363,11 @@ export abstract class SignalLink<ValueType = any> {
    *
    * Retains only the **last** propagated value (a sampler, not a lossless
    * stream) — a value that arrives between two reads of a slow consumer is
-   * lost, same as a single `retain()`'d event anywhere else. Several
+   * lost, same as a single `retain()`'d event anywhere else. Each iterator
+   * sees each propagated value at most once: a read that finds nothing new
+   * waits for the next propagation instead of being handed the retained
+   * value again (ASYNC-005). A plain `nextValue()` is unchanged — it still
+   * settles on whatever is in the slot. Several
    * `asyncValues()` iterators may run over the same link concurrently; they
    * share that one retained slot, released only once the *last* active
    * iterator stops (ASYNC-005) — an iterator finishing early must not cut a
@@ -299,19 +390,62 @@ export abstract class SignalLink<ValueType = any> {
    * VALUE stays retained until the link is destroyed.
    * There is no fix within the iterator protocol itself; the caller closing
    * what it opens is the contract, same as any other manually-driven
-   * iterator.
+   * iterator. What the contract *does* guarantee is that closing works at
+   * any time: `.return()`/`.throw()` settle even while the iterator is
+   * waiting for a value that never comes (W1).
    */
-  async *asyncValues(
+  asyncValues(
+    stopAction?: (value: ValueType, index: number) => boolean,
+    options?: {signal?: AbortSignalLike},
+  ) {
+    // W1: an async generator suspended in an `await` — which is where this
+    // one spends every idle phase, inside `#nextValue()` — cannot be closed
+    // from the outside: `.return()`/`.throw()` are queued behind the pending
+    // read and only run once it settles. With ASYNC-005 fixed, a read that
+    // finds nothing new waits for the next propagation, so that queue can
+    // sit there forever, and `.return()` — the very call this method's
+    // contract asks callers to make — would never settle, never run the
+    // `finally` below, never release the retain policy.
+    //
+    // So the iterator gets one thing a bare generator has not: a handle on
+    // its own pending read. `.return()`/`.throw()` pull it first, the read
+    // rejects, the generator leaves its `await` and runs to completion — and
+    // only then does the queued call it was blocking get its turn.
+    const pendingRead: PendingRead = {};
+    const iterator = this.#asyncValues(pendingRead, stopAction, options);
+
+    const closeIterator = iterator.return.bind(iterator);
+    iterator.return = ((value?: any) => {
+      pendingRead.cancel?.();
+      return closeIterator(value);
+    }) as typeof iterator.return;
+
+    const failIterator = iterator.throw.bind(iterator);
+    iterator.throw = ((err?: any) => {
+      pendingRead.cancel?.();
+      return failIterator(err);
+    }) as typeof iterator.throw;
+
+    return iterator;
+  }
+
+  async *#asyncValues(
+    pendingRead: PendingRead,
     stopAction?: (value: ValueType, index: number) => boolean,
     options?: {signal?: AbortSignalLike},
   ) {
     retain(this, VALUE);
     this.#activeAsyncValuesCount += 1;
+    // ASYNC-005: this iterator's own cursor into the shared retained slot.
+    // 0 accepts whatever is in the slot right now — a second iterator
+    // joining a running one still starts with the current value, as before —
+    // and from then on the same generation is never handed out twice.
+    const cursor = {generation: 0};
     try {
       let i = 0;
       while (!this.isDestroyed) {
         try {
-          const next = await this.nextValue(options);
+          const next = await this.#nextValue(cursor, options, pendingRead);
           if (stopAction?.(next, i++)) break;
           yield next;
         } catch (err) {
@@ -343,7 +477,7 @@ export abstract class SignalLink<ValueType = any> {
         // slot, the other takes the policy with it — and only the policy is
         // the problem here. After a `retainClear()` VALUE stays retained:
         // every further propagated value lands in the slot with nobody
-        // listening, and the next `once(this, VALUE, …)` — from
+        // listening, and the next `on(this, VALUE, …)` — from
         // `nextValue()`, i.e. from this class's own contract — gets it
         // replayed synchronously inside the registration call instead of
         // waiting for the next one. `unretain` deletes the stored value
@@ -490,6 +624,7 @@ export abstract class SignalLink<ValueType = any> {
       // that keeps VALUE monotonic without emitting before `action()`.
       if (this.#propagationGeneration !== generation) return;
 
+      this.#emittedGeneration = generation;
       emit(this, VALUE, value);
       this.lastValue = value;
     }

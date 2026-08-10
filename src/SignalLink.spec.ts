@@ -314,6 +314,43 @@ describe('SignalLink', () => {
       }
     });
 
+    it('a nextValue({signal}) settling through the replay releases its DESTROY subscription on the link too, repeatedly (TEST-022)', {
+      timeout: 500,
+    }, async () => {
+      const sigA = createSignal(1);
+      const controller = new AbortController();
+
+      try {
+        const con = link(sigA, () => {});
+
+        const iter = con.asyncValues();
+        const p0 = iter.next();
+        sigA.set(2);
+        await p0;
+
+        // Baseline inside the retained state, with no read pending: the
+        // generator sits at its yield, so every listener a nextValue() adds
+        // from here on has to be gone again once it settles.
+        const baseline = getSubscriptionCount(con);
+
+        for (let i = 0; i < 3; i++) {
+          const result = await con.nextValue({signal: controller.signal});
+          expect(result).toBe(2);
+          expect(
+            getSubscriptionCount(con),
+            'a replay-resolved nextValue() must leave no listener on the link',
+          ).toBe(baseline);
+          expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
+        }
+
+        await iter.return(undefined as any);
+        con.destroy();
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
+    });
+
     it('a shared AbortSignal across an asyncValues(stop, {signal}) loop does not accumulate abort listeners once VALUE is retained', {
       timeout: 1000,
     }, async () => {
@@ -338,8 +375,15 @@ describe('SignalLink', () => {
         // K1's exact trigger — and each one must still leave the signal
         // listener-free once it settles, not just the first.
         for (let i = 0; i < 3; i++) {
-          const {done} = await iter.next();
+          // Written while the generator sits at its `yield`, i.e. with no
+          // VALUE listener subscribed: the emit goes straight into the
+          // retained slot, and the `iter.next()` below picks it up through
+          // the synchronous replay — K1's trigger, now without relying on the
+          // same value being handed out over and over (ASYNC-005).
+          sigA.set(3 + i);
+          const {value, done} = await iter.next();
           expect(done).toBe(false);
+          expect(value).toBe(3 + i);
           expect(getEventListeners(controller.signal, 'abort').length).toBe(0);
         }
 

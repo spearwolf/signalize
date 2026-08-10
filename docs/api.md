@@ -384,7 +384,9 @@ A link destroyed while a `nextValue()` is pending rejects with
 `undefined` — so a `catch` block has something to inspect.
 
 `asyncValues()` only ever holds the **last** propagated value — it is a
-sampler, not a lossless stream. Several `asyncValues()` iterators can run
+sampler, not a lossless stream. Within one iterator every propagated value
+arrives at most once — a read with nothing new waits for the next
+propagation. Several `asyncValues()` iterators can run
 over the same link concurrently; they share that one retained slot, and it
 is only released once the *last* of them stops (finishes, breaks, or is
 `.return()`ed) — an earlier one finishing does not cut a still-running
@@ -394,7 +396,10 @@ all, so a later `nextValue()` waits for the next value instead of resolving
 with one that arrived while nobody was iterating. The other side of that
 coin — `asyncValues()` claims the retain policy of the `'value'` event for
 itself and gives it up at the end, so a `retain(link, 'value')` you set
-yourself does not survive an `asyncValues()` run.
+yourself does not survive an `asyncValues()` run. Closing a manually driven
+iterator works at any time, including while it is waiting for a value that
+never comes: `.return()` and `.throw()` cancel the pending read, so they
+settle instead of queueing behind it forever.
 
 **Re-entrant propagation.** If `action()` — the link callback, or an effect
 on the target signal — writes the source again, the nested propagation runs
