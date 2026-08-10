@@ -1,7 +1,13 @@
 import {getSubscriptionCount, Priority} from '@spearwolf/eventize';
-import {getGroupMemberCounts} from './__testing__/assert-helpers.js';
+import {
+  assertEffectsCount,
+  assertLinksCount,
+  assertSignalsCount,
+  getGroupMemberCounts,
+} from './__testing__/assert-helpers.js';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
+import type {Effect} from './Effect.js';
 import type {EffectImpl} from './EffectImpl.js';
 import {createEffect, getEffectsCount, onCreateEffect} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';
@@ -10,6 +16,18 @@ import {destroySignal, getSignalsCount, signalImpl} from './signal-core.js';
 import type {SignalReader} from './types.js';
 
 describe('createMemo', () => {
+  beforeEach(() => {
+    assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
+  });
+
+  afterEach(() => {
+    assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
+  });
+
   it('non-lazy by default', () => {
     const {get: firstName, set: setFirstName} = createSignal<string>();
     const {get: lastName, set: setLastName} = createSignal<string>();
@@ -22,29 +40,34 @@ describe('createMemo', () => {
       return lastName() ? `${first} ${lastName()}` : first;
     });
 
-    expect(fullName()).toBe('');
+    try {
+      expect(fullName()).toBe('');
 
-    expect(memoCallCount).toBe(1);
+      expect(memoCallCount).toBe(1);
 
-    setFirstName('Spearwolf');
+      setFirstName('Spearwolf');
 
-    expect(memoCallCount).toBe(2);
+      expect(memoCallCount).toBe(2);
 
-    expect(fullName()).toBe('Spearwolf');
+      expect(fullName()).toBe('Spearwolf');
 
-    expect(memoCallCount).toBe(2);
+      expect(memoCallCount).toBe(2);
 
-    setLastName('Overlord');
+      setLastName('Overlord');
 
-    expect(memoCallCount).toBe(3);
+      expect(memoCallCount).toBe(3);
 
-    expect(fullName()).toBe('Spearwolf Overlord');
+      expect(fullName()).toBe('Spearwolf Overlord');
 
-    for (let i = 0; i < 10; ++i) {
-      fullName();
+      for (let i = 0; i < 10; ++i) {
+        fullName();
+      }
+
+      expect(memoCallCount).toBe(3);
+    } finally {
+      // destroySignal() on the memo reader takes its internal effect with it.
+      destroySignal(fullName, firstName, lastName);
     }
-
-    expect(memoCallCount).toBe(3);
   });
 
   it('lazy memo works as expected', () => {
@@ -62,29 +85,33 @@ describe('createMemo', () => {
       {lazy: true},
     );
 
-    expect(fullName()).toBe('');
+    try {
+      expect(fullName()).toBe('');
 
-    expect(memoCallCount).toBe(1);
+      expect(memoCallCount).toBe(1);
 
-    setFirstName('Spearwolf');
+      setFirstName('Spearwolf');
 
-    expect(memoCallCount).toBe(1);
+      expect(memoCallCount).toBe(1);
 
-    expect(fullName()).toBe('Spearwolf');
+      expect(fullName()).toBe('Spearwolf');
 
-    expect(memoCallCount).toBe(2);
+      expect(memoCallCount).toBe(2);
 
-    setLastName('Overlord');
+      setLastName('Overlord');
 
-    expect(memoCallCount).toBe(2);
+      expect(memoCallCount).toBe(2);
 
-    expect(fullName()).toBe('Spearwolf Overlord');
+      expect(fullName()).toBe('Spearwolf Overlord');
 
-    for (let i = 0; i < 10; ++i) {
-      fullName();
+      for (let i = 0; i < 10; ++i) {
+        fullName();
+      }
+
+      expect(memoCallCount).toBe(3);
+    } finally {
+      destroySignal(fullName, firstName, lastName);
     }
-
-    expect(memoCallCount).toBe(3);
   });
 
   describe('memo signal lifecycle inside an effect body (MEM-005)', () => {
@@ -99,28 +126,31 @@ describe('createMemo', () => {
         createMemo(() => src.get() * 2)();
       });
 
-      const signalsAfterFirstRun = getSignalsCount();
-      const effectsAfterFirstRun = getEffectsCount();
-      expect(signalsAfterFirstRun).toBe(signalsBeforeFirstRun + 1);
+      try {
+        const signalsAfterFirstRun = getSignalsCount();
+        const effectsAfterFirstRun = getEffectsCount();
+        expect(signalsAfterFirstRun).toBe(signalsBeforeFirstRun + 1);
 
-      for (let i = 1; i <= 10; i++) {
-        trigger.set(i);
+        for (let i = 1; i <= 10; i++) {
+          trigger.set(i);
+        }
+
+        expect(
+          getSignalsCount(),
+          'signal count must stay constant over 10 reruns',
+        ).toBe(signalsAfterFirstRun);
+        expect(
+          getEffectsCount(),
+          'effect count must stay constant over 10 reruns (MEM-001)',
+        ).toBe(effectsAfterFirstRun);
+
+        outer.destroy();
+
+        expect(getSignalsCount()).toBe(signalsBeforeFirstRun);
+      } finally {
+        outer.destroy();
+        destroySignal(trigger, src);
       }
-
-      expect(
-        getSignalsCount(),
-        'signal count must stay constant over 10 reruns',
-      ).toBe(signalsAfterFirstRun);
-      expect(
-        getEffectsCount(),
-        'effect count must stay constant over 10 reruns (MEM-001)',
-      ).toBe(effectsAfterFirstRun);
-
-      outer.destroy();
-
-      expect(getSignalsCount()).toBe(signalsBeforeFirstRun);
-
-      destroySignal(trigger, src);
     });
 
     it('does not leak the once subscription on globalDestroySignalQueue', () => {
@@ -136,16 +166,21 @@ describe('createMemo', () => {
         createMemo(() => src.get() * 2)();
       });
 
-      for (let i = 1; i <= 5; i++) {
-        trigger.set(i);
+      try {
+        for (let i = 1; i <= 5; i++) {
+          trigger.set(i);
+        }
+
+        outer.destroy();
+        destroySignal(trigger, src);
+
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+          destroySubscriptionsBefore,
+        );
+      } finally {
+        outer.destroy();
+        destroySignal(trigger, src);
       }
-
-      outer.destroy();
-      destroySignal(trigger, src);
-
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-        destroySubscriptionsBefore,
-      );
     });
 
     it('a memo attached to a group outside any effect body is destroyed once, by the group', () => {
@@ -159,12 +194,17 @@ describe('createMemo', () => {
 
       const fortyTwo = createMemo(() => 42, {attach: group});
 
-      expect(fortyTwo()).toBe(42);
-      expect(getSignalsCount()).toBe(signalsBefore + 1);
+      try {
+        expect(fortyTwo()).toBe(42);
+        expect(getSignalsCount()).toBe(signalsBefore + 1);
 
-      expect(() => group.clear()).not.toThrow();
+        expect(() => group.clear()).not.toThrow();
 
-      expect(getSignalsCount()).toBe(signalsBefore);
+        expect(getSignalsCount()).toBe(signalsBefore);
+      } finally {
+        destroySignal(fortyTwo);
+        group.clear();
+      }
     });
 
     it('a memo created outside any effect body survives its dependencies being destroyed', () => {
@@ -179,32 +219,39 @@ describe('createMemo', () => {
       const b = createSignal(2);
 
       const sum = createMemo(() => a.get() + b.get());
-      expect(sum()).toBe(3);
 
+      // The downstream effect must not exist yet when `sum()` is read for the
+      // first time, so its handle is declared here and assigned inside.
       const downstreamRuns = vi.fn();
-      const downstream = createEffect(() => {
-        downstreamRuns(sum());
-      });
-      expect(downstreamRuns).toHaveBeenCalledTimes(1);
-      expect(downstreamRuns).toHaveBeenLastCalledWith(3);
+      let downstream: Effect;
 
-      const signalsBeforeDepsDestroyed = getSignalsCount();
-      const effectsBeforeDepsDestroyed = getEffectsCount();
+      try {
+        expect(sum()).toBe(3);
 
-      destroySignal(a, b);
+        downstream = createEffect(() => {
+          downstreamRuns(sum());
+        });
+        expect(downstreamRuns).toHaveBeenCalledTimes(1);
+        expect(downstreamRuns).toHaveBeenLastCalledWith(3);
 
-      expect(
-        getSignalsCount(),
-        'a and b are gone, the memo signal is not — it was not created inside an effect body',
-      ).toBe(signalsBeforeDepsDestroyed - 2);
-      expect(
-        getEffectsCount(),
-        "only the memo's own effect dies here (its last dependency is gone) — the downstream effect must survive, not be swept along as collateral damage",
-      ).toBe(effectsBeforeDepsDestroyed - 1);
-      expect(sum(), 'reads the frozen last value').toBe(3);
+        const signalsBeforeDepsDestroyed = getSignalsCount();
+        const effectsBeforeDepsDestroyed = getEffectsCount();
 
-      downstream.destroy();
-      destroySignal(sum);
+        destroySignal(a, b);
+
+        expect(
+          getSignalsCount(),
+          'a and b are gone, the memo signal is not — it was not created inside an effect body',
+        ).toBe(signalsBeforeDepsDestroyed - 2);
+        expect(
+          getEffectsCount(),
+          "only the memo's own effect dies here (its last dependency is gone) — the downstream effect must survive, not be swept along as collateral damage",
+        ).toBe(effectsBeforeDepsDestroyed - 1);
+        expect(sum(), 'reads the frozen last value').toBe(3);
+      } finally {
+        downstream?.destroy();
+        destroySignal(sum, a, b);
+      }
     });
 
     it('a memo attached to a group with real dependencies survives SignalGroup#off()', () => {
@@ -221,23 +268,26 @@ describe('createMemo', () => {
         attach: group,
         name: 'doubled',
       });
-      expect(doubled()).toBe(2);
+      try {
+        expect(doubled()).toBe(2);
 
-      const signalsBeforeOff = getSignalsCount();
+        const signalsBeforeOff = getSignalsCount();
 
-      expect(() => group.off()).not.toThrow();
+        expect(() => group.off()).not.toThrow();
 
-      expect(getSignalsCount(), 'off() must not destroy attached signals').toBe(
-        signalsBeforeOff,
-      );
-      expect(doubled(), 'the signal is still readable').toBe(2);
-      expect(
-        group.signal('doubled'),
-        'still resolvable by name — the group remains reusable',
-      ).toBeDefined();
-
-      group.clear();
-      destroySignal(a);
+        expect(
+          getSignalsCount(),
+          'off() must not destroy attached signals',
+        ).toBe(signalsBeforeOff);
+        expect(doubled(), 'the signal is still readable').toBe(2);
+        expect(
+          group.signal('doubled'),
+          'still resolvable by name — the group remains reusable',
+        ).toBeDefined();
+      } finally {
+        destroySignal(doubled, a);
+        group.clear();
+      }
     });
 
     it('destroys the memo signal even if its effect died during its own creation (K1)', () => {
@@ -262,15 +312,22 @@ describe('createMemo', () => {
         createMemo(() => 42);
       });
 
-      unsubscribe();
+      try {
+        unsubscribe();
 
-      expect(
-        getSignalsCount(),
-        'the memo signal must not be leaked even though its own effect was already destroyed before this wrapper could subscribe to it',
-      ).toBe(signalsBefore);
+        expect(
+          getSignalsCount(),
+          'the memo signal must not be leaked even though its own effect was already destroyed before this wrapper could subscribe to it',
+        ).toBe(signalsBefore);
 
-      outer.destroy();
-      destroySignal(trigger);
+        outer.destroy();
+      } finally {
+        // The onCreateEffect() handler is global: leaving it registered would
+        // destroy every Priority.C effect of every later test in this file.
+        unsubscribe();
+        outer.destroy();
+        destroySignal(trigger);
+      }
     });
 
     it('an effect whose only dependency is a self-created memo keeps rerunning (K2)', () => {
@@ -290,31 +347,34 @@ describe('createMemo', () => {
         seen.push(total());
       });
 
-      expect(seen).toEqual([2]);
+      try {
+        expect(seen).toEqual([2]);
 
-      a.set(5);
+        a.set(5);
 
-      expect(seen, 'the outer effect must rerun on the first change').toEqual([
-        2, 10,
-      ]);
+        expect(seen, 'the outer effect must rerun on the first change').toEqual(
+          [2, 10],
+        );
 
-      a.set(7);
+        a.set(7);
 
-      expect(seen, 'and on every change after that').toEqual([2, 10, 14]);
+        expect(seen, 'and on every change after that').toEqual([2, 10, 14]);
 
-      expect(getSignalsCount(), 'no signal leaks across the reruns').toBe(
-        signalsBefore + 1, // only the current memo signal
-      );
-      expect(getEffectsCount(), 'no zombie effect is left behind').toBe(
-        effectsBefore + 2, // the outer effect and the current memo effect
-      );
+        expect(getSignalsCount(), 'no signal leaks across the reruns').toBe(
+          signalsBefore + 1, // only the current memo signal
+        );
+        expect(getEffectsCount(), 'no zombie effect is left behind').toBe(
+          effectsBefore + 2, // the outer effect and the current memo effect
+        );
 
-      outer.destroy();
+        outer.destroy();
 
-      expect(getSignalsCount()).toBe(signalsBefore);
-      expect(getEffectsCount()).toBe(effectsBefore);
-
-      destroySignal(a);
+        expect(getSignalsCount()).toBe(signalsBefore);
+        expect(getEffectsCount()).toBe(effectsBefore);
+      } finally {
+        outer.destroy();
+        destroySignal(a);
+      }
     });
 
     it('a memo created with {attach} inside an effect body is destroyed on the parent rerun instead of piling up in the group (MEM-008)', () => {
@@ -333,38 +393,44 @@ describe('createMemo', () => {
         createMemo(() => src.get() * 2, {attach: host});
       });
 
-      expect(getGroupMemberCounts(group).signals).toBe(1);
+      try {
+        expect(getGroupMemberCounts(group).signals).toBe(1);
 
-      for (let i = 1; i <= 10; i++) {
-        trigger.set(i);
+        for (let i = 1; i <= 10; i++) {
+          trigger.set(i);
+        }
+
+        expect(
+          getGroupMemberCounts(group).signals,
+          'one memo signal per group, not one per parent rerun',
+        ).toBe(1);
+        expect(getGroupMemberCounts(group).effects).toBe(1);
+        expect(getSignalsCount(), 'trigger, src and the current memo').toBe(
+          signalsBefore + 1,
+        );
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+          destroySubscriptionsBefore + 4,
+        );
+
+        outer.destroy();
+
+        expect(
+          getGroupMemberCounts(group).signals,
+          'the last memo signal dies with the effect that created it',
+        ).toBe(0);
+
+        group.clear();
+        destroySignal(trigger, src);
+
+        expect(getSignalsCount()).toBe(signalsBefore - 2);
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+          destroySubscriptionsBefore,
+        );
+      } finally {
+        outer.destroy();
+        destroySignal(trigger, src);
+        group.clear();
       }
-
-      expect(
-        getGroupMemberCounts(group).signals,
-        'one memo signal per group, not one per parent rerun',
-      ).toBe(1);
-      expect(getGroupMemberCounts(group).effects).toBe(1);
-      expect(getSignalsCount(), 'trigger, src and the current memo').toBe(
-        signalsBefore + 1,
-      );
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-        destroySubscriptionsBefore + 4,
-      );
-
-      outer.destroy();
-
-      expect(
-        getGroupMemberCounts(group).signals,
-        'the last memo signal dies with the effect that created it',
-      ).toBe(0);
-
-      group.clear();
-      destroySignal(trigger, src);
-
-      expect(getSignalsCount()).toBe(signalsBefore - 2);
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-        destroySubscriptionsBefore,
-      );
     });
 
     it('a memo created with {attach} inside an effect body dies with the effect that created it, not with the group (MEM-008)', () => {
@@ -387,29 +453,31 @@ describe('createMemo', () => {
         });
       });
 
-      expect(attached()).toBe(2);
+      try {
+        expect(attached()).toBe(2);
 
-      const signalsBeforeOff = getSignalsCount();
+        const signalsBeforeOff = getSignalsCount();
 
-      expect(() => group.off()).not.toThrow();
+        expect(() => group.off()).not.toThrow();
 
-      expect(
-        getSignalsCount(),
-        'off() destroys the group effects, and this memo signal belongs to its effect',
-      ).toBe(signalsBeforeOff - 1);
-      expect(
-        attached(),
-        'the escaped reader keeps handing out the last computed value',
-      ).toBe(2);
-      expect(
-        group.signal('doubled'),
-        'a hard-destroyed signal loses its name (MEM-002)',
-      ).toBeUndefined();
-      expect(group.hasSignal('doubled')).toBe(false);
-
-      outer.destroy();
-      group.clear();
-      destroySignal(a);
+        expect(
+          getSignalsCount(),
+          'off() destroys the group effects, and this memo signal belongs to its effect',
+        ).toBe(signalsBeforeOff - 1);
+        expect(
+          attached(),
+          'the escaped reader keeps handing out the last computed value',
+        ).toBe(2);
+        expect(
+          group.signal('doubled'),
+          'a hard-destroyed signal loses its name (MEM-002)',
+        ).toBeUndefined();
+        expect(group.hasSignal('doubled')).toBe(false);
+      } finally {
+        outer.destroy(); // takes the memo signal it created with it
+        destroySignal(a);
+        group.clear();
+      }
     });
 
     it('a memo reader that escapes the effect body freezes at its last value', () => {
@@ -423,25 +491,28 @@ describe('createMemo', () => {
         escaped = createMemo(() => src.get() * 2);
       });
 
-      expect(escaped()).toBe(2);
+      try {
+        expect(escaped()).toBe(2);
 
-      const signalsBeforeDestroy = getSignalsCount();
+        const signalsBeforeDestroy = getSignalsCount();
 
-      outer.destroy();
+        outer.destroy();
 
-      expect(
-        getSignalsCount(),
-        'the memo signal dies with the effect that created it',
-      ).toBe(signalsBeforeDestroy - 1);
+        expect(
+          getSignalsCount(),
+          'the memo signal dies with the effect that created it',
+        ).toBe(signalsBeforeDestroy - 1);
 
-      src.set(100); // the memo effect is gone, no recompute can happen
+        src.set(100); // the memo effect is gone, no recompute can happen
 
-      expect(
-        escaped(),
-        'the escaped reader keeps returning the last computed value',
-      ).toBe(2);
-
-      destroySignal(trigger, src);
+        expect(
+          escaped(),
+          'the escaped reader keeps returning the last computed value',
+        ).toBe(2);
+      } finally {
+        outer.destroy(); // takes the memo signal it created with it
+        destroySignal(trigger, src);
+      }
     });
   });
 
@@ -456,26 +527,30 @@ describe('createMemo', () => {
       const src = createSignal(1);
       const doubled = createMemo(() => src.get() * 2);
 
-      expect(doubled()).toBe(2);
+      try {
+        expect(doubled()).toBe(2);
 
-      // The memo's own effect self-destroys here: its last live
-      // dependency is gone (EffectImpl[$destroySignal]).
-      destroySignal(src);
+        // The memo's own effect self-destroys here: its last live
+        // dependency is gone (EffectImpl[$destroySignal]).
+        destroySignal(src);
 
-      expect(getEffectsCount()).toBe(effectsBefore);
-      expect(
-        getSubscriptionCount(globalDestroySignalQueue),
-        'the once() that ties the effect to the memo signal must go with the effect',
-      ).toBe(destroySubscriptionsBefore);
+        expect(getEffectsCount()).toBe(effectsBefore);
+        expect(
+          getSubscriptionCount(globalDestroySignalQueue),
+          'the once() that ties the effect to the memo signal must go with the effect',
+        ).toBe(destroySubscriptionsBefore);
 
-      // The memo signal itself stays alive and frozen — that is the
-      // documented behaviour of a memo created outside an effect body.
-      expect(getSignalsCount()).toBe(signalsBefore + 1);
-      expect(doubled()).toBe(2);
+        // The memo signal itself stays alive and frozen — that is the
+        // documented behaviour of a memo created outside an effect body.
+        expect(getSignalsCount()).toBe(signalsBefore + 1);
+        expect(doubled()).toBe(2);
 
-      destroySignal(doubled);
+        destroySignal(doubled);
 
-      expect(getSignalsCount()).toBe(signalsBefore);
+        expect(getSignalsCount()).toBe(signalsBefore);
+      } finally {
+        destroySignal(doubled, src);
+      }
     });
 
     it('does not accumulate on the global destroy queue over many memos', () => {
@@ -486,18 +561,20 @@ describe('createMemo', () => {
 
       const memos: Array<SignalReader<number>> = [];
 
-      for (let i = 0; i < 50; i++) {
-        const src = createSignal(i);
-        memos.push(createMemo(() => src.get() * 2));
-        destroySignal(src);
+      try {
+        for (let i = 0; i < 50; i++) {
+          const src = createSignal(i);
+          memos.push(createMemo(() => src.get() * 2));
+          destroySignal(src);
+        }
+
+        expect(getEffectsCount()).toBe(effectsBefore);
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+          destroySubscriptionsBefore,
+        );
+      } finally {
+        destroySignal(...memos);
       }
-
-      expect(getEffectsCount()).toBe(effectsBefore);
-      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-        destroySubscriptionsBefore,
-      );
-
-      destroySignal(...memos);
     });
   });
 
@@ -543,22 +620,24 @@ describe('createMemo', () => {
         runs(doubled(), sideEffectSignal.get());
       });
 
-      expect(runs).toHaveBeenCalledTimes(1);
-      runs.mockClear();
+      try {
+        expect(runs).toHaveBeenCalledTimes(1);
+        runs.mockClear();
 
-      source.set(5);
+        source.set(5);
 
-      // Unbatched: the side-effect write and the memo write each notify on
-      // their own, so the downstream effect (depending on both) reruns twice.
-      expect(runs).toHaveBeenCalledTimes(2);
-      // The first of those two runs sees the torn intermediate state: the
-      // side-effect signal already updated, the memo's own signal not yet
-      // (S1) — this is the price of the new default, spelled out.
-      expect(runs).toHaveBeenNthCalledWith(1, 0, 'touched');
-      expect(runs).toHaveBeenNthCalledWith(2, 10, 'touched');
-
-      downstream.destroy();
-      destroySignal(source, sideEffectSignal, doubled);
+        // Unbatched: the side-effect write and the memo write each notify on
+        // their own, so the downstream effect (depending on both) reruns twice.
+        expect(runs).toHaveBeenCalledTimes(2);
+        // The first of those two runs sees the torn intermediate state: the
+        // side-effect signal already updated, the memo's own signal not yet
+        // (S1) — this is the price of the new default, spelled out.
+        expect(runs).toHaveBeenNthCalledWith(1, 0, 'touched');
+        expect(runs).toHaveBeenNthCalledWith(2, 10, 'touched');
+      } finally {
+        downstream.destroy();
+        destroySignal(source, sideEffectSignal, doubled);
+      }
     });
 
     it('{batchWrites: true} restores the old grouping: side-effect write and memo write dedupe into one downstream run', () => {
@@ -579,19 +658,21 @@ describe('createMemo', () => {
         runs(doubled(), sideEffectSignal.get());
       });
 
-      expect(runs).toHaveBeenCalledTimes(1);
-      runs.mockClear();
+      try {
+        expect(runs).toHaveBeenCalledTimes(1);
+        runs.mockClear();
 
-      source.set(5);
+        source.set(5);
 
-      // Batched: both writes happen inside the memo effect's own batch(), so
-      // the downstream effect (deduplicated by effect id) reruns exactly once
-      // with the final, consistent values.
-      expect(runs).toHaveBeenCalledTimes(1);
-      expect(runs).toHaveBeenLastCalledWith(10, 'touched');
-
-      downstream.destroy();
-      destroySignal(source, sideEffectSignal, doubled);
+        // Batched: both writes happen inside the memo effect's own batch(), so
+        // the downstream effect (deduplicated by effect id) reruns exactly once
+        // with the final, consistent values.
+        expect(runs).toHaveBeenCalledTimes(1);
+        expect(runs).toHaveBeenLastCalledWith(10, 'touched');
+      } finally {
+        downstream.destroy();
+        destroySignal(source, sideEffectSignal, doubled);
+      }
     });
 
     // W5 — the actual justification for defaulting to `false`: reading a
@@ -611,61 +692,75 @@ describe('createMemo', () => {
       const dep = createSignal(1);
 
       const inner = createMemo(() => dep.get() * 10, {lazy: true});
-      expect(inner()).toBe(10); // prime: force the first run, subscribe to dep
 
-      const outer = createMemo(() => dep.get() + inner(), {
-        batchWrites: true,
-      });
+      // `outer` must not exist while `inner` is primed below, so its handle
+      // is declared here and assigned inside the try.
+      let outer!: SignalReader<number>;
 
-      expect(outer()).toBe(11);
+      try {
+        expect(inner()).toBe(10); // prime: force the first run, subscribe to dep
 
-      dep.set(2);
+        outer = createMemo(() => dep.get() + inner(), {
+          batchWrites: true,
+        });
 
-      // Read right after the write — nothing else has touched `inner` yet.
-      // Correct would be 2 + 20 = 22; instead outer's batch() deferred
-      // inner's dirty run, so the callback read inner's pre-write value.
-      expect(
-        outer(),
-        'stale: dep updated, inner did not — a torn value, not just delayed',
-      ).toBe(12);
-      expect(
-        signalImpl(inner)?.value,
-        "inner itself never recomputed on its own — lazy, autorun stays false through the batch's own deferred redispatch",
-      ).toBe(10);
+        expect(outer()).toBe(11);
 
-      // Only a direct, unbatched read of `inner` forces it to catch up, and
-      // that retroactively cascades into a second, now-correct `outer` run.
-      expect(inner()).toBe(20);
-      expect(outer()).toBe(22);
+        dep.set(2);
 
-      destroySignal(dep, inner, outer);
+        // Read right after the write — nothing else has touched `inner` yet.
+        // Correct would be 2 + 20 = 22; instead outer's batch() deferred
+        // inner's dirty run, so the callback read inner's pre-write value.
+        expect(
+          outer(),
+          'stale: dep updated, inner did not — a torn value, not just delayed',
+        ).toBe(12);
+        expect(
+          signalImpl(inner)?.value,
+          "inner itself never recomputed on its own — lazy, autorun stays false through the batch's own deferred redispatch",
+        ).toBe(10);
+
+        // Only a direct, unbatched read of `inner` forces it to catch up, and
+        // that retroactively cascades into a second, now-correct `outer` run.
+        expect(inner()).toBe(20);
+        expect(outer()).toBe(22);
+      } finally {
+        destroySignal(dep, inner, outer);
+      }
     });
 
     it('default (no batchWrites): reading a dirty lazy memo from within an outer memo returns its fresh value', () => {
       const dep = createSignal(1);
 
       const inner = createMemo(() => dep.get() * 10, {lazy: true});
-      // Prime: forces inner's first run now, subscribing it to `dep` before
-      // `outer` exists. This fixes the listener order on `dep`'s RECALL
-      // (inner before outer, same-priority ties break on registration
-      // order) that this test depends on — inner must be marked dirty
-      // before outer's callback reads it. Reversed, outer's read would hit
-      // `!shouldRun` and return 12 regardless of batching — for a reason
-      // that has nothing to do with the point this test makes.
-      expect(inner()).toBe(10);
 
-      const outer = createMemo(() => dep.get() + inner());
+      let outer!: SignalReader<number>;
 
-      expect(outer()).toBe(11);
+      try {
+        // Prime: forces inner's first run now, subscribing it to `dep` before
+        // `outer` exists. This fixes the listener order on `dep`'s RECALL
+        // (inner before outer, same-priority ties break on registration
+        // order) that this test depends on — inner must be marked dirty
+        // before outer's callback reads it. Reversed, outer's read would hit
+        // `!shouldRun` and return 12 regardless of batching — for a reason
+        // that has nothing to do with the point this test makes.
+        expect(inner()).toBe(10);
 
-      dep.set(2);
+        outer = createMemo(() => dep.get() + inner());
 
-      // No batch open during outer's recompute, so reading the dirty `inner`
-      // inside outer's callback runs it synchronously instead of deferring
-      // it — outer sees the correct, fresh value on the very first read.
-      expect(outer(), 'fresh on the first read, no second run needed').toBe(22);
+        expect(outer()).toBe(11);
 
-      destroySignal(dep, inner, outer);
+        dep.set(2);
+
+        // No batch open during outer's recompute, so reading the dirty `inner`
+        // inside outer's callback runs it synchronously instead of deferring
+        // it — outer sees the correct, fresh value on the very first read.
+        expect(outer(), 'fresh on the first read, no second run needed').toBe(
+          22,
+        );
+      } finally {
+        destroySignal(dep, inner, outer);
+      }
     });
   });
 });

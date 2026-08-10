@@ -1,68 +1,97 @@
+import {
+  assertEffectsCount,
+  assertLinksCount,
+  assertSignalsCount,
+} from './__testing__/assert-helpers.js';
 import {createSignal} from './createSignal.js';
-import {signalImpl} from './signal-core.js';
+import {destroySignal, signalImpl} from './signal-core.js';
 
 describe('create lazy signal', () => {
+  beforeEach(() => {
+    assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
+  });
+
+  afterEach(() => {
+    assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
+  });
+
   it('works as expected', () => {
     const lazyFn = vi.fn(() => 'foo');
     const {get: val, set: setValue} = createSignal(lazyFn, {lazy: true});
 
-    expect(val()).toBe('foo');
-    expect(val()).toBe('foo');
-    expect(lazyFn).toHaveBeenCalledTimes(1);
+    try {
+      expect(val()).toBe('foo');
+      expect(val()).toBe('foo');
+      expect(lazyFn).toHaveBeenCalledTimes(1);
 
-    const lazyFn2 = vi.fn(() => 'bar');
-    setValue(lazyFn2, {lazy: true});
+      const lazyFn2 = vi.fn(() => 'bar');
+      setValue(lazyFn2, {lazy: true});
 
-    expect(val()).toBe('bar');
+      expect(val()).toBe('bar');
 
-    expect(lazyFn).toHaveBeenCalledTimes(1);
-    expect(lazyFn2).toHaveBeenCalledTimes(1);
+      expect(lazyFn).toHaveBeenCalledTimes(1);
+      expect(lazyFn2).toHaveBeenCalledTimes(1);
 
-    setValue('plah');
+      setValue('plah');
 
-    expect(val()).toBe('plah');
+      expect(val()).toBe('plah');
+    } finally {
+      destroySignal(val);
+    }
   });
 
   it('set() stores function as value — there is no updater-function pattern', () => {
     const count = createSignal(0);
 
-    // BAD pattern: passing a function to set() does NOT work like React's setState
-    // The function itself becomes the signal value, it is NOT called with the current value
-    //
-    // Note: TypeScript correctly prevents `count.set((v: number) => v + 1)` because
-    // the type `(v: number) => number` doesn't match `number | (() => number)`.
-    // But this can still happen with `any` types or untyped code, so we test runtime behavior.
-    const updater = (v: number) => v + 1;
-    (count.set as any)(updater);
+    try {
+      // BAD pattern: passing a function to set() does NOT work like React's setState
+      // The function itself becomes the signal value, it is NOT called with the current value
+      //
+      // Note: TypeScript correctly prevents `count.set((v: number) => v + 1)` because
+      // the type `(v: number) => number` doesn't match `number | (() => number)`.
+      // But this can still happen with `any` types or untyped code, so we test runtime behavior.
+      const updater = (v: number) => v + 1;
+      (count.set as any)(updater);
 
-    // The value is the function itself, not the result of calling it
-    expect(count.value).toBe(updater);
-    expect(typeof count.value).toBe('function');
+      // The value is the function itself, not the result of calling it
+      expect(count.value).toBe(updater);
+      expect(typeof count.value).toBe('function');
 
-    // The correct way to update based on current value:
-    count.set(0); // reset to number
-    count.set(count.value + 1);
-    expect(count.value).toBe(1);
-    count.set(count.value + 1);
-    expect(count.value).toBe(2);
+      // The correct way to update based on current value:
+      count.set(0); // reset to number
+      count.set(count.value + 1);
+      expect(count.value).toBe(1);
+      count.set(count.value + 1);
+      expect(count.value).toBe(2);
+    } finally {
+      destroySignal(count);
+    }
   });
 
   it('set() with {lazy: true} defers evaluation to next read', () => {
     const count = createSignal(10);
 
-    const computeFn = vi.fn(() => 42);
-    count.set(computeFn, {lazy: true});
+    try {
+      const computeFn = vi.fn(() => 42);
+      count.set(computeFn, {lazy: true});
 
-    // The function has NOT been called yet
-    expect(computeFn).toHaveBeenCalledTimes(0);
+      // The function has NOT been called yet
+      expect(computeFn).toHaveBeenCalledTimes(0);
 
-    // On the next read, the function is evaluated and the result becomes the value
-    expect(count.get()).toBe(42);
-    expect(computeFn).toHaveBeenCalledTimes(1);
+      // On the next read, the function is evaluated and the result becomes the value
+      expect(count.get()).toBe(42);
+      expect(computeFn).toHaveBeenCalledTimes(1);
 
-    // Subsequent reads return the cached value without re-calling the function
-    expect(count.get()).toBe(42);
-    expect(computeFn).toHaveBeenCalledTimes(1);
+      // Subsequent reads return the cached value without re-calling the function
+      expect(count.get()).toBe(42);
+      expect(computeFn).toHaveBeenCalledTimes(1);
+    } finally {
+      destroySignal(count);
+    }
   });
 
   it('laziness is NOT catching on', () => {
@@ -71,16 +100,20 @@ describe('create lazy signal', () => {
 
     const {get: val, set: setValue} = createSignal(lazy0, {lazy: true});
 
-    expect(val()).toBe('foo');
-    expect(val()).toBe('foo');
-    expect(lazy0).toHaveBeenCalledTimes(1);
+    try {
+      expect(val()).toBe('foo');
+      expect(val()).toBe('foo');
+      expect(lazy0).toHaveBeenCalledTimes(1);
 
-    setValue(lazy1);
+      setValue(lazy1);
 
-    expect(val()).toBe(lazy1);
+      expect(val()).toBe(lazy1);
 
-    expect(lazy0).toHaveBeenCalledTimes(1);
-    expect(lazy1).toHaveBeenCalledTimes(0);
+      expect(lazy0).toHaveBeenCalledTimes(1);
+      expect(lazy1).toHaveBeenCalledTimes(0);
+    } finally {
+      destroySignal(val);
+    }
   });
 
   it('set(undefined) replaces the factory of a lazy signal that was never read (TEST-024)', () => {

@@ -1,4 +1,9 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
+import {
+  assertEffectsCount,
+  assertLinksCount,
+  assertSignalsCount,
+} from './__testing__/assert-helpers.js';
 import {createSignal} from './createSignal.js';
 import type {Effect} from './Effect.js';
 import {createEffect, getEffectsCount} from './effects.js';
@@ -7,6 +12,18 @@ import {getLinksCount} from './link.js';
 import {destroySignal, getSignalsCount} from './signal-core.js';
 
 describe('unsubscribe as return function from effect callback', () => {
+  beforeEach(() => {
+    assertEffectsCount(0, 'beforeEach');
+    assertSignalsCount(0, 'beforeEach');
+    assertLinksCount(0, 'beforeEach');
+  });
+
+  afterEach(() => {
+    assertEffectsCount(0, 'afterEach');
+    assertSignalsCount(0, 'afterEach');
+    assertLinksCount(0, 'afterEach');
+  });
+
   it('should be called before recalling the effect callback', () => {
     const {get: a, set: setA} = createSignal(123);
     const {get: b, set: setB} = createSignal('abc');
@@ -28,7 +45,9 @@ describe('unsubscribe as return function from effect callback', () => {
       subscriptionOrder.length = 0;
     };
 
-    createEffect(() => {
+    // The inner effect is created inside the outer callback and has no handle
+    // of its own — destroying the outer one takes it with it.
+    const outer = createEffect(() => {
       ++effectCallCount0;
       valA(a());
 
@@ -52,47 +71,52 @@ describe('unsubscribe as return function from effect callback', () => {
       };
     });
 
-    expect(effectCallCount0).toBe(1);
-    expect(effectCallCount1).toBe(1);
+    try {
+      expect(effectCallCount0).toBe(1);
+      expect(effectCallCount1).toBe(1);
 
-    expect(valA).toHaveBeenCalledWith(123);
-    expect(valB).toHaveBeenCalledWith('abc');
+      expect(valA).toHaveBeenCalledWith(123);
+      expect(valB).toHaveBeenCalledWith('abc');
 
-    expect(unsubscribeA).toHaveBeenCalledTimes(0);
-    expect(unsubscribeB).toHaveBeenCalledTimes(0);
+      expect(unsubscribeA).toHaveBeenCalledTimes(0);
+      expect(unsubscribeB).toHaveBeenCalledTimes(0);
 
-    clearAllMocks();
+      clearAllMocks();
 
-    setB('foo');
+      setB('foo');
 
-    expect(effectCallCount0).toBe(0);
-    expect(effectCallCount1).toBe(1);
+      expect(effectCallCount0).toBe(0);
+      expect(effectCallCount1).toBe(1);
 
-    expect(valA).toHaveBeenCalledTimes(0);
-    expect(valB).toHaveBeenCalledWith('foo');
+      expect(valA).toHaveBeenCalledTimes(0);
+      expect(valB).toHaveBeenCalledWith('foo');
 
-    expect(unsubscribeA).toHaveBeenCalledTimes(0);
-    expect(unsubscribeB).toHaveBeenCalledWith('abc');
+      expect(unsubscribeA).toHaveBeenCalledTimes(0);
+      expect(unsubscribeB).toHaveBeenCalledWith('abc');
 
-    expect(subscriptionOrder).toEqual(['abc']);
+      expect(subscriptionOrder).toEqual(['abc']);
 
-    clearAllMocks();
+      clearAllMocks();
 
-    setA(43);
+      setA(43);
 
-    expect(effectCallCount0).toBe(1);
-    // Inner effect is recreated and re-runs when parent re-runs
-    expect(effectCallCount1).toBe(1);
+      expect(effectCallCount0).toBe(1);
+      // Inner effect is recreated and re-runs when parent re-runs
+      expect(effectCallCount1).toBe(1);
 
-    expect(valA).toHaveBeenCalledWith(43);
-    expect(valB).toHaveBeenCalledWith('foo');
+      expect(valA).toHaveBeenCalledWith(43);
+      expect(valB).toHaveBeenCalledWith('foo');
 
-    expect(unsubscribeA).toHaveBeenCalledWith(123);
-    // Inner effect cleanup is called when parent re-runs (before it's destroyed and recreated)
-    expect(unsubscribeB).toHaveBeenCalledWith('foo');
+      expect(unsubscribeA).toHaveBeenCalledWith(123);
+      // Inner effect cleanup is called when parent re-runs (before it's destroyed and recreated)
+      expect(unsubscribeB).toHaveBeenCalledWith('foo');
 
-    // Cleanup order: parent cleanup first, then child cleanup (child is destroyed before parent callback runs)
-    expect(subscriptionOrder).toEqual([123, 'foo']);
+      // Cleanup order: parent cleanup first, then child cleanup (child is destroyed before parent callback runs)
+      expect(subscriptionOrder).toEqual([123, 'foo']);
+    } finally {
+      outer.destroy();
+      destroySignal(a, b);
+    }
   });
 
   it('leaves no trace: subscriptions and counters return to their snapshot after teardown (TEST-010)', () => {
@@ -120,35 +144,43 @@ describe('unsubscribe as return function from effect callback', () => {
       });
     });
 
-    // The scenario is up and running: both counters and both queues grew
-    // relative to the snapshot. A balance without a swing proves nothing.
-    expect(getEffectsCount()).toBe(effectsCountBefore + 2);
-    expect(getSubscriptionCount(globalEffectQueue)).toBeGreaterThan(
-      effectSubscriptionsBefore,
-    );
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBeGreaterThan(
-      destroySubscriptionsBefore,
-    );
+    try {
+      // The scenario is up and running: both counters and both queues grew
+      // relative to the snapshot. A balance without a swing proves nothing.
+      expect(getEffectsCount()).toBe(effectsCountBefore + 2);
+      expect(getSubscriptionCount(globalEffectQueue)).toBeGreaterThan(
+        effectSubscriptionsBefore,
+      );
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBeGreaterThan(
+        destroySubscriptionsBefore,
+      );
 
-    setB('foo');
-    expect(innerRunCount).toBe(2);
+      setB('foo');
+      expect(innerRunCount).toBe(2);
 
-    setA(456);
-    expect(outerRunCount).toBe(2);
-    // The inner effect is recreated on every outer rerun.
-    expect(innerRunCount).toBe(3);
+      setA(456);
+      expect(outerRunCount).toBe(2);
+      // The inner effect is recreated on every outer rerun.
+      expect(innerRunCount).toBe(3);
 
-    outerEffect.destroy();
-    destroySignal(a, b);
+      // The teardown is the subject of this test, so it stays in the `try`
+      // with the assertions that read it; the `finally` only repeats it as an
+      // idempotent belt.
+      outerEffect.destroy();
+      destroySignal(a, b);
 
-    expect(getEffectsCount()).toBe(effectsCountBefore);
-    expect(getSignalsCount()).toBe(signalsCountBefore);
-    expect(getLinksCount()).toBe(linksCountBefore);
-    expect(getSubscriptionCount(globalEffectQueue)).toBe(
-      effectSubscriptionsBefore,
-    );
-    expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
-      destroySubscriptionsBefore,
-    );
+      expect(getEffectsCount()).toBe(effectsCountBefore);
+      expect(getSignalsCount()).toBe(signalsCountBefore);
+      expect(getLinksCount()).toBe(linksCountBefore);
+      expect(getSubscriptionCount(globalEffectQueue)).toBe(
+        effectSubscriptionsBefore,
+      );
+      expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+        destroySubscriptionsBefore,
+      );
+    } finally {
+      outerEffect.destroy();
+      destroySignal(a, b);
+    }
   });
 });
