@@ -511,6 +511,10 @@ describe('the published type surface', () => {
 
       const level: 'error' | 'warn' = seen.level;
       const source: SignalizeErrorPayload['source'] = seen.source;
+      // ARCH-001 added a member to that union, and the entry point is what
+      // publishes it — an annotation, so `tsc` is the one asserting here.
+      const multipleInstances: SignalizeErrorPayload['source'] =
+        'multiple-instances';
       const message: string = seen.message;
       const error: unknown = seen.error;
 
@@ -520,6 +524,7 @@ describe('the published type surface', () => {
       // A notice carries no error — no `Error` is invented to fill the field.
       expect(error).toBeUndefined();
       expect(noReporter).toBeUndefined();
+      expect(multipleInstances).toBe('multiple-instances');
     } finally {
       unsubscribe();
     }

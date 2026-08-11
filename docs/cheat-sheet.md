@@ -73,7 +73,8 @@ onEffectError(({error, effectId, phase}) => {});  // → unsubscribe
 // Everything with no caller to throw at, in one place
 onSignalizeError(({level, source, message, error}) => {});  // → unsubscribe
 // source: 'effect' | 'group-finalizer' | 'link-finalizer' | 'automap-finalizer'
-//       | 'link-count' | 'deprecation'   (may grow in a minor — use a default)
+//       | 'link-count' | 'deprecation' | 'multiple-instances'
+//                                       (may grow in a minor — use a default)
 // no handler → console.warn(message) / console.error(message, error), as before
 // a handler OWNS the message — deprecation notices included, so log them
 // error is absent on a notice

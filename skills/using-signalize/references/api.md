@@ -142,12 +142,13 @@ The synchronous case knows the same rule: a run overtaken by a re-entrant self-w
 onSignalizeError(({level, source, message, error}) => {}, priority?);  // → unsubscribe
 // level:  'error' | 'warn'
 // source: 'effect' | 'group-finalizer' | 'link-finalizer' | 'automap-finalizer'
-//       | 'link-count' | 'deprecation'   — may gain members in a minor release
+//       | 'link-count' | 'deprecation' | 'multiple-instances'
+//                                       — may gain members in a minor release
 // message: always there, verbatim what the console would have shown
 // error:   absent on a notice — none is invented to fill the field
 ```
 
-The general channel for what the library cannot throw at anyone: a teardown that threw inside the `FinalizationRegistry` callback of `SignalGroup`, `link()` or `SignalAutoMap`; the 1000-links threshold; the deprecation notices; and effect failures that no `onEffectError()` handler took. Without a handler every one of them goes to `console.warn(message)` / `console.error(message, error)` exactly as before — the channel takes nothing away from code that ignores it.
+The general channel for what the library cannot throw at anyone: a teardown that threw inside the `FinalizationRegistry` callback of `SignalGroup`, `link()` or `SignalAutoMap`; the 1000-links threshold; the deprecation notices; a second copy of the library loaded into the same process, which shares no signals, effects, groups or links with the first; and effect failures that no `onEffectError()` handler took. Without a handler every one of them goes to `console.warn(message)` / `console.error(message, error)` exactly as before — the channel takes nothing away from code that ignores it.
 
 With a handler, the console stays quiet and the handler owns the message, **deprecation notices included** — the one surprise here: a reporting handler that only forwards `level: 'error'` makes them invisible. Same two constraints as `onEffectError()` (synchronous or self-catching; a throwing handler stops the dispatch), and a throwing handler is caught rather than rethrown, because most call sites are registry callbacks where a throw kills the process. An effect failure never arrives twice: `onEffectError()` gets it first, this channel only when nobody listens there.
 

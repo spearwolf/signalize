@@ -1,5 +1,7 @@
 // Leaf module — it may import `@spearwolf/eventize`, `./constants.js`,
-// `./global-queues.js` and, type-only, `./types.js`. Nothing else, and
+// `./global-queues.js`, `./instances.js` and, type-only, `./types.js`. The
+// last line of this file registers the copy this module belongs to, and
+// `instances.ts` is a leaf below it that never imports back. Nothing else, and
 // `./effects.ts` least of all: `effects.ts` → `EffectImpl.ts` → `SignalGroup.ts`
 // is a chain of value imports, and `SignalGroup.ts` reports through this
 // module — a value import of `effects.ts` here would close that ring.
@@ -9,6 +11,7 @@
 import {emit, getSubscribedEventNames, on} from '@spearwolf/eventize';
 import {$signalizeError} from './constants.js';
 import {globalEffectQueue} from './global-queues.js';
+import {registerSignalizeInstance} from './instances.js';
 import type {SignalizeErrorCallback, SignalizeErrorPayload} from './types.js';
 
 /**
@@ -108,3 +111,8 @@ export const reportSignalizeError = (payload: SignalizeErrorPayload): void => {
   }
   logToConsole(payload);
 };
+
+// This module and no other: it sits in the graph of both entry points
+// (`./decorators` → `createSignal.ts` → here), it is a leaf, and
+// `reportSignalizeError` is exactly the function the record has to carry.
+registerSignalizeInstance(import.meta.url, reportSignalizeError);

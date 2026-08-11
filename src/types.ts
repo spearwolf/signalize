@@ -80,6 +80,8 @@ export interface SignalizeErrorPayload {
    *   end the process
    * - `link-count` — the 1000-links-on-one-source threshold, once per source
    * - `deprecation` — a deprecated call, usually once per process
+   * - `multiple-instances` — more than one copy of the library in one
+   *   process, reported once, when the second one loads
    *
    * New members may appear in a minor release: a `switch` over this needs a
    * `default`.
@@ -90,7 +92,8 @@ export interface SignalizeErrorPayload {
     | 'link-finalizer'
     | 'automap-finalizer'
     | 'link-count'
-    | 'deprecation';
+    | 'deprecation'
+    | 'multiple-instances';
   /**
    * Always present, and exactly the text the console would have shown without
    * a handler.

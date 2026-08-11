@@ -30,6 +30,11 @@ export const $autoMapResources = Symbol.for(
   '@spearwolf/signalize/autoMapResources',
 );
 
+// ARCH-001: the register in which two copies of this library find each other.
+// It carries no major version on purpose — a versioned key would never meet
+// the other copy, which is the whole point of looking.
+export const $signalizeInstances = Symbol.for('@spearwolf/signalize/instances');
+
 export const VALUE = 'value';
 export const MUTE = 'mute';
 export const UNMUTE = 'unmute';

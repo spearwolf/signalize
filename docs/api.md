@@ -325,6 +325,14 @@ used to go straight to the console, where no application could route it.
 | `automap-finalizer`  | The same for a collected `SignalAutoMap`.                        |
 | `link-count`         | 1000 links on one source signal — once per source.               |
 | `deprecation`        | A deprecated call: `SignalGroup.destroy()`, `SignalGroup#destroy`, `signalReader(callback)`. |
+| `multiple-instances` | More than one copy of the library in one process; once, when the second one loads. |
+
+`multiple-instances` is the one source a handler will usually **not** see.
+With two static imports both copies register while their modules are being
+evaluated — before the first line of application code runs — so the message
+goes to `console.error`, whatever is subscribed afterwards. Only a second copy
+pulled in later, via `await import()`, can meet a handler that is already
+there. Measured, both ways.
 
 What a handler changes, exactly:
 

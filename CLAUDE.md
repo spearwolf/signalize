@@ -40,7 +40,7 @@ Full command table in `AGENTS.md`.
 - **A new file in `src/` is invisible to consumers** until re-exported through `src/index.ts` (default entry) or `src/decorators.ts` (`./decorators` subpath).
 - Tests are `*.spec.ts` adjacent to the implementation; Vitest is rooted at `src/` only.
 - **pnpm 11 ignores the `pnpm` field in `package.json`** — settings live in `pnpm-workspace.yaml` (`allowBuilds` replaces `onlyBuiltDependencies`).
-- `sideEffects: false` — keep module top-levels side-effect-free so tree-shaking holds.
+- `sideEffects: false` — keep module top-levels side-effect-free so tree-shaking holds. Exactly one named exception exists, the ARCH-001 sentinel in the last line of `signalize-error.ts`; the full measurement, and what it costs, is in `AGENTS.md` → "No top-level side effects".
 
 ## Verifying subscription leaks
 

@@ -65,10 +65,17 @@ Effects subscribe to signal IDs they read; signals emit on change. Nothing else.
 
 **Symbol namespacing:** All internal `Symbol.for` keys use the `@spearwolf/signalize/` namespace
 prefix (`signal`, `effect`, `recall`, `destroySignal`, `createEffect`, `destroyEffect`,
-`effectError`) to prevent collisions with unrelated code. The namespace carries no major version so that two
-versions of the library loaded in the same process continue to recognize each other's signals —
-otherwise, a stray `Symbol.for('signal')` in application code would pass `isSignal()` with
-incorrect metadata.
+`effectError`, `instances`) to prevent collisions with unrelated code: without the prefix, a stray
+`Symbol.for('signal')` in application code would pass `isSignal()` with incorrect metadata. The
+namespace carries no major version, so the keys of two copies in one process are identical.
+
+**Two copies in one process do not work together.** They recognize each other's signals and
+nothing else: the queues, the effect stack and the link map are module state and exist once per
+copy. Measured — `isSignal()` returns `true` across the boundary, an effect from the other copy
+never runs again after its first run, and `destroySignal()` across it drives the calling copy's
+`getSignalsCount()` to `-1`. Since ARCH-001 this is no longer silent: loading the second copy is
+reported once through [`onSignalizeError()`](./api.md#onsignalizeerrorcb-priority---void) with
+`source: 'multiple-instances'` and the load paths of both copies (`src/instances.ts`).
 
 ## Priority
 

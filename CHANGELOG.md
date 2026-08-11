@@ -14,6 +14,10 @@
 - New `onSignalizeError(cb, priority?)` export: catches the diagnostics that have no caller to throw at — errors out of the `FinalizationRegistry` callbacks of `SignalGroup`, `link()` and `SignalAutoMap`, the deprecation notices, and the 1000-links threshold. The handler receives `{level, source, message, error?}` (CONS-001)
 - Without a registered handler every one of those messages stays verbatim on `console.warn`/`console.error`; **with** a handler the handler owns them, deprecation notices included (CONS-001)
 - An effect failure that no `onEffectError()` handler takes now goes to `onSignalizeError()` before it reaches the console (CONS-001)
+- Loading more than one copy of `@spearwolf/signalize` into one process is reported once, when the second copy loads, through `onSignalizeError()` with `source: 'multiple-instances'` and the load paths of every copy; without a handler the message goes to `console.error`. Two copies share no signals, effects, groups or links — `isSignal()` says `true` across the boundary and nothing else works (ARCH-001)
+- With two static imports both copies register during module evaluation, before any handler can exist, so that message always reaches `console.error`; only a copy loaded later via `await import()` can meet an `onSignalizeError()` handler (ARCH-001)
+- A copy that cannot write to the register — a squatter on the symbol, a frozen register, a frozen `globalThis` under SES `lockdown()` — stays silent instead of failing the `import` (ARCH-001)
+- `SignalizeErrorPayload['source']` has one more member: `'multiple-instances'` (ARCH-001)
 
 ### Bug Fixes
 
