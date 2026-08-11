@@ -137,7 +137,8 @@ const groupFinalizationRegistry = new FinalizationRegistry<
 
 /**
  * Get the current count of live SignalGroups.
- * Useful for debugging and detecting leaks (e.g. forgotten `clear()`/`delete()`).
+ * Useful for debugging and detecting leaks (e.g. a forgotten `clear()` or
+ * `delete()`).
  *
  * A group that was collected together with its host is not counted, even
  * before its resource finalizer has run: the husk is dropped on the way past.
@@ -274,14 +275,15 @@ export const SHARED_EMPTY_COLLECTIONS = {
 };
 
 /**
- * A container for managing the lifecycle of signals, effects, links, and child groups.
+ * A container for managing the lifecycle of signals, effects, links, and
+ * child groups.
  *
- * SignalGroups provide automatic cleanup - when a group is cleared, all attached
- * signals, effects, links, and child groups are destroyed. Groups can be nested
- * hierarchically for scoped lifecycle management.
+ * SignalGroups provide automatic cleanup - when a group is cleared, all
+ * attached signals, effects, links, and child groups are destroyed. Groups
+ * can be nested hierarchically for scoped lifecycle management.
  *
- * Use `SignalGroup.findOrCreate(object)` to create or retrieve a group associated
- * with any object, enabling component-based lifecycle management.
+ * Use `SignalGroup.findOrCreate(object)` to create or retrieve a group
+ * associated with any object, enabling component-based lifecycle management.
  */
 // Eventize injects EventizedObject members at runtime via eventize(this) in
 // the constructor — declaration merging tells TS the brand is present.
@@ -335,7 +337,8 @@ export class SignalGroup {
   #storeKey?: WeakRef<object>;
 
   /**
-   * Get an existing SignalGroup associated with an object, or undefined if none exists.
+   * Get an existing SignalGroup associated with an object, or undefined if
+   * none exists.
    * @param object - The object to look up
    * @returns The associated SignalGroup or undefined
    */
@@ -483,7 +486,8 @@ export class SignalGroup {
   }
 
   /**
-   * Attach a child group to this group. The child will be cleared when this group is cleared.
+   * Attach a child group to this group. The child will be cleared when this
+   * group is cleared.
    * @param group - The child group to attach
    * @returns The attached group
    */
@@ -550,7 +554,8 @@ export class SignalGroup {
   }
 
   /**
-   * Attach a signal to this group. The signal will be destroyed when the group is cleared.
+   * Attach a signal to this group. The signal will be destroyed when the
+   * group is cleared.
    * @param signal - The signal to attach
    * @returns The attached signal — the caller's own type, unchanged, so
    *   `group.attachSignal(createSignal(1))` still reads as `Signal<number>`
@@ -760,7 +765,8 @@ export class SignalGroup {
   }
 
   /**
-   * Check if a signal with the given name exists in this group or parent groups.
+   * Check if a signal with the given name exists in this group or in a
+   * parent group.
    * @param name - The signal name to check
    * @returns True if a signal with that name exists
    */
@@ -868,7 +874,8 @@ export class SignalGroup {
   }
 
   /**
-   * Attach an effect to this group. The effect will be destroyed when the group is cleared.
+   * Attach an effect to this group. The effect will be destroyed when the
+   * group is cleared.
    *
    * Takes both forms: the `Effect` that `createEffect()` hands out and the
    * internal instance behind it. The unwrapping happens here, so a consumer
@@ -947,7 +954,8 @@ export class SignalGroup {
   }
 
   /**
-   * Attach a link to this group. The link will be destroyed when the group is cleared.
+   * Attach a link to this group. The link will be destroyed when the group
+   * is cleared.
    *
    * A destroyed link takes itself out of the group again (MEM-002),
    * whichever route attached it — `link(…, {attach})`, `link.attach(obj)`
@@ -1021,8 +1029,8 @@ export class SignalGroup {
    * `getLinksCount()`) cannot answer whether a *group* is still holding a
    * member that is already dead — a destroyed effect is off the global books
    * long before the group lets go of it. This getter is the window for that
-   * question; `getGroupMemberCounts()` in `__testing__/assert-helpers.ts` is its only
-   * consumer, and no production code path reads it.
+   * question; `getGroupMemberCounts()` in `__testing__/assert-helpers.ts` is
+   * its only consumer, and no production code path reads it.
    *
    * @internal
    */
@@ -1137,8 +1145,9 @@ export class SignalGroup {
   }
 
   /**
-   * Clear this group, destroying all attached signals, effects, links, and child groups.
-   * Also removes this group from the global store and detaches from parent.
+   * Clear this group, destroying all attached signals, effects, links, and
+   * child groups. Also removes this group from the global store and detaches
+   * from parent.
    *
    * A throwing cleanup callback or `DESTROY` listener does not abort the
    * teardown: every failure is collected, the group is dismantled to the end

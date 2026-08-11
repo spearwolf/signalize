@@ -160,9 +160,7 @@ export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
       // Take the registration back out before decrementing: a signal that is
       // explicitly destroyed and *then* collected must not be counted down
       // twice. Deliberately not the `if (gLinksCount > 0)` belt-and-braces
-      // that `link.ts` carries next to its own `unregister()` — a second
-      // guard here would be a new branch in the one file that has no branch
-      // headroom left (12 of 14 covered against the 85 % tier), and it would
+      // that `link.ts` carries next to its own `unregister()` — that would
       // be a branch no test can drive in both directions. The token is
       // sufficient: it is checked synchronously, it removes the cell even if
       // the target has already been collected, and nobody can call this
@@ -183,12 +181,21 @@ export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
         //
         // The return value is dropped on purpose, and only for as long as
         // the frame above is opened unconditionally: it is then always
-        // `true`. The moment that opening becomes conditional — PERF-008
-        // wants to tie it to a per-signal-id subscriber count — this line
+        // `true`. The moment that opening becomes conditional, this line
         // turns into a silent swallow and needs the `if (!…) throw err;`
-        // the listener in `EffectImpl` carries. It cannot be written here
-        // ahead of time: the `throw` branch is unreachable today, and this
-        // is the file that sets tier 1 of the coverage thresholds.
+        // the listener in `EffectImpl` carries. Until then that guard
+        // belongs in neither `destroySignal()` nor `writeSignal()`: its
+        // `throw` branch is unreachable, so it would be dead code.
+        //
+        // That opening does not become conditional. PERF-008 proposed
+        // exactly this — tie it to a per-signal-id subscriber count — and
+        // was measured and closed on 2026-08-11 without a code change:
+        // removing the frame *entirely* buys 2.1 % on a write with no
+        // consumers, which is the ceiling, while the counter the finding
+        // recommends costs 17.2 %. This comment is the only record of that
+        // in the published package — the working is in the repo's
+        // `remediation-plan.md`, which is not shipped — so anyone who has
+        // the idea again finds the answer where they look for it.
         collectDeliveryError(err);
       } finally {
         endIsolatedDelivery(

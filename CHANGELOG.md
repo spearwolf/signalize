@@ -152,6 +152,9 @@
 - `bench/signal-write.bench.ts`'s baseline comment gains a third, dated measurement on `HEAD`, alongside the two it already carried, instead of overwriting either (READ-009)
 - `docs/architecture.md` now names all eleven `Symbol.for` keys and all 28 non-spec files of `src/`; `AGENTS.md`'s source file map and module-layering rule now mention `collect-errors.ts`, which neither listed before
 - Corrected the pnpm version (`11.20.0`), the `@spearwolf/eventize` peer dependency range (`^6.0.0`), and the published-tarball file count in `AGENTS.md` (48 files) — all had drifted from `package.json`/the built tree. The tarball's kB figures are dropped rather than corrected: `docs/`, `skills/`, `README.md` and `CHANGELOG.md` all ship in it and all move under ordinary documentation edits — measured, a throwaway 10-line diff shifted the size by ~0.1-0.2 kB, so a byte count recorded in a file that itself ships would already be stale by the next doc package
+- The two link-cost measurements in `src/link.ts` that disagreed eightfold are one dated measurement in one place; the second site points at it. They were the same benchmark run warm and cold, which is now stated (READ-010)
+- No comment in `src/` justifies a code decision with a coverage percentage or a threshold tier any more — the factual half of each argument stays, the number goes. `signal-core.ts` additionally records that PERF-008 was measured and rejected rather than pending, since that measurement exists nowhere else in the published package (READ-012)
+- `docs/api.md` documents the `TS7006` on `link(sig, (v) => …)` under `noImplicitAny` and the one-word workaround: annotate the parameter. The target type is a union with two call signatures, so TypeScript builds no contextual type for it
 
 ### Chores
 

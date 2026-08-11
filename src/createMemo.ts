@@ -216,8 +216,7 @@ export function createMemo<Type>(
     // No `return` and no `throw` behind this block: `throwCollectedErrors()`
     // always throws for a non-empty list, but its `: void` signature does not
     // say so, and only `strictNullChecks: false` keeps tsc from asking for a
-    // trailing return. A `throw err` here would be dead code — and dead code
-    // is a coverage failure in this file, which the config holds at 100 %.
+    // trailing return. A `throw err` here would be dead code.
     const errors: unknown[] = [err];
     if (options?.attach == null) {
       collect(errors, () => destroySignal(si));

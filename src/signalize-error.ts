@@ -5,7 +5,7 @@
 // `./effects.ts` least of all: `effects.ts` → `EffectImpl.ts` → `SignalGroup.ts`
 // is a chain of value imports, and `SignalGroup.ts` reports through this
 // module — a value import of `effects.ts` here would close that ring.
-// `rollup.config.mjs:38` fails the bundle on CIRCULAR_DEPENDENCY, so the
+// `rollup.config.mjs`'s CIRCULAR_DEPENDENCY branch fails the bundle, so the
 // mistake is caught, but only at `pnpm bundle`, not at `tsc`.
 
 import {emit, getSubscribedEventNames, on} from '@spearwolf/eventize';

@@ -455,6 +455,15 @@ again returns the existing link.
 The target receives the source's current value immediately (`touch()` on
 construction).
 
+> **Annotate a callback target's parameter.** `link(sig, (v) => …)` reports
+> `TS7006: Parameter 'v' implicitly has an 'any' type` under `noImplicitAny`,
+> even though `source` fixes the type. The target parameter is a union of
+> three types, two of which are callable — `SignalReader<T>` is itself a
+> function — and TypeScript builds no contextual type for a union with more
+> than one call signature. Write `link(sig, (v: number) => …)`; the
+> annotation is checked against the source as usual, so nothing is lost but
+> the inference.
+
 Calling `link()` again for a `(source, target)` pair that already has a link
 returns the existing instance — it does **not** create a second one. If that
 repeat call passes `options.attach`, the existing link is attached to that

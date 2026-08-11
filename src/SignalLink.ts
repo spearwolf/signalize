@@ -67,9 +67,9 @@ export abstract class SignalLink<ValueType = unknown> {
   // link that is merely dropped — never destroyed, so no DESTROY, no
   // teardown — still gets these handles run once it is collected. That is
   // why this is a symbol-keyed field and not a `#private` one: a private
-  // field is unreachable from `link.ts`. The held value stays safe because
-  // nothing in it points back at the link strongly — the handles reach the
-  // constructor closures, and those know the link only through a `WeakRef`.
+  // field is unreachable from `link.ts`. Why holding this array is safe —
+  // no strong path from it back to the link, or the registry would never
+  // fire — is argued once, at `gLinkFinalizer`.
   //
   // S7: `destroy()` runs the handles before `Object.freeze(this)`, but not
   // *because of* it — the freeze reaches neither the array object this field
@@ -514,7 +514,7 @@ export abstract class SignalLink<ValueType = unknown> {
     if (this.isDestroyed) return;
 
     // BUG-002: flag first, teardown second — same rule and the same
-    // reason as `EffectImpl.destroy()` (`src/EffectImpl.ts:804-807`).
+    // reason as `EffectImpl.destroy()`'s "flag first, unsubscribe second".
     // Everything below reaches application code: `emit(this, DESTROY,
     // this)` serves every listener, and an `on()` listener — unlike a
     // `once()` one — is still subscribed while it runs. One that calls

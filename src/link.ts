@@ -42,10 +42,21 @@ import type {ISignalImpl, SignalLike, SignalReader} from './types.js';
 // calling `link(src, freshCallback)` without ever tearing the old ones down
 // grows this map without bound — measured: 1000 orphaned links on a live
 // source stay 1000 after `gc()`, and each write to `src` gets linearly
-// slower with the backlog (64.5 ms for 1000 writes at that count, vs. 75 µs
-// warm / 116 µs cold with none). See `link()`'s "Lifetime" JSDoc below and
-// `getLinksCount()` for the counter that makes this measurable in
-// application code.
+// slower with the backlog.
+//
+// That measurement lives here and nowhere else (2026-08-11, Node 25.9,
+// `lib/` build, 1000 `set()` calls on one signal, medians over five
+// processes). With no links the cost has three regimes, and keeping them
+// apart is the whole of READ-010: 59 µs warm; 96 µs for a signal written
+// for the first time in an otherwise warm process; ~0.5 ms as the first
+// thing a fresh process does. With 1000 callback links: 55 ms warm, 60 ms
+// cold. The three figures this file used to carry — 75 µs "warm", 116 µs
+// "cold", 0.60 ms "with no links" — are one per regime, in that order, each
+// 20–30 % above what its own regime measures again today. They never
+// contradicted each other; they answered three questions while all claiming
+// to answer one, which is why only the warm number belongs near a hot path.
+// See `link()`'s "Lifetime" JSDoc below and `getLinksCount()` for the
+// counter that makes this measurable in application code.
 const gLinks = new WeakMap<
   ISignalImpl<any>,
   Map<object | Function, SignalLink<any>>
@@ -113,11 +124,9 @@ const gLinkFinalizer = new FinalizationRegistry<(() => void)[]>(
 
 // MEM-005: `gLinks` is weak on the source but strong on the inner Map, so
 // every link ever created against a still-reachable source stays alive — and
-// every write to that source pays for the backlog (measured: 1000 writes
-// cost 0.60 ms with no links, 58 ms with 1000). Dropping the `SignalLink`
-// and waiting for GC does not help; only the four explicit teardown routes
-// do. There is no dev-mode flag to hang this off and no runtime switch to
-// add (that would be public API), so it fires at most once per source
+// every write to that source pays for the backlog (measured at `gLinks`
+// above). There is no dev-mode flag to hang this off and no runtime switch
+// to add (that would be public API), so it fires at most once per source
 // signal, for good.
 //
 // A `WeakSet` rather than an equality test on the threshold: an application
@@ -338,9 +347,8 @@ export function unlink<ValueType>(
  * *together with* its source instead (dropped, never explicitly destroyed),
  * this count is eventually corrected too — nondeterministically, but these
  * days including those subscriptions (MEM-001); see the `gLinkFinalizer`
- * comment above `link()`. That path is still a backstop, not a fifth
- * teardown route on par with the four explicit ones: it emits no DESTROY,
- * detaches from no group and cannot be scheduled or observed.
+ * comment above `link()` for why that backstop is still not a fifth
+ * teardown route.
  */
 export function getLinksCount(source?: SignalLike<any>): number {
   if (source == null) {

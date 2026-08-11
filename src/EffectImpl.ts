@@ -114,9 +114,23 @@ const isThenable = (value: unknown): value is Promise<unknown> =>
  * array holding one entry per subscribed event name — and every live effect
  * subscribes to the queue by its own id — which is then scanned linearly.
  * A storm of failures across many effects is therefore quadratic. Acceptable
- * because this is the error path and errors are meant to be rare; if that
- * ever stops being true, cache the answer and invalidate it in
- * `onEffectError()`'s subscribe/unsubscribe.
+ * because this is the error path and errors are meant to be rare (PERF-005).
+ *
+ * If that ever stops being true, the shape matters. Caching the probe's
+ * *input* — the queue's set of subscribed event names — is the expensive
+ * one: six things write to that set (verified against the live queue), so
+ * all six would have to invalidate. The four named channels
+ * `onEffectError()`, `onCreateEffect()`, `onDestroyEffect()` and
+ * `onSignalizeError()`; every `EffectImpl`, which subscribes under its own
+ * id in the constructor and drops out in `destroy()`; and `batch.ts`'s
+ * catch-all listener, which registers as `*`. PERF-005 recommends the cheap
+ * shape instead — a handler counter kept by `onEffectError()` and its own
+ * unsubscribe, which nothing else on the queue can invalidate.
+ *
+ * Either way it is two sites, not one: `reportSignalizeError()` runs the
+ * same probe against the same queue for `$signalizeError` and measures the
+ * same quadratic (numbers in `onSignalizeError()`'s JSDoc), and stays
+ * uncached there on purpose.
  */
 const emitEffectError = (
   effect: EffectImpl,
@@ -153,8 +167,8 @@ const emitEffectError = (
  * The snapshot/prune pair of `#lostSignals` for a single dynamic run, with
  * the "may I commit" criterion that belongs to it.
  *
- * BUG-005: `readSignal()` reports a read only while no quiet frame is
- * open (`src/signal-core.ts:34`), so a run inside `beQuiet()` re-reads
+ * BUG-005: `signal-core.ts`'s `readSignal()` reports a read only while no
+ * quiet frame is open, so a run inside `beQuiet()` re-reads
  * nothing this instance can hear. Filling `#lostSignals` anyway and
  * pruning afterwards would therefore unsubscribe *every* dependency
  * the effect had — permanently: nothing wakes it again, `run()` finds
