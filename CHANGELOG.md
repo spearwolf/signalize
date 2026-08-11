@@ -150,6 +150,7 @@
 - Added `fast-check` as a devDependency for the new ordering property suite
 - Enabled Biome's `style/useImportType` rule and marked the 13 type-only cross-layer imports it found across 8 files as `import type`, with no effect on the emitted JavaScript (ARCH-003)
 - A consumer bundle that only uses `createSignal` no longer carries the effect subsystem: 17 087 → 10 539 B minified (5 790 → 3 868 gzip). `Signal.onChange()` and the deprecated `signalReader(callback)` reach `createEffect` through a registered hook instead of an import, and pull the subsystem back in as soon as they are used. A bundle using the full surface pays for the indirection: 25 573 → 25 835 B minified (+262, +1,0 %), 8 591 → 8 711 gzip (ARCH-002)
+- `EffectImpl.run()` is split into its static and its dynamic branch, and the snapshot/prune pair of `#lostSignals` now sits in a scope of its own that knows its own commit criterion. Behaviour, API and measured throughput are unchanged (READ-011)
 
 ### Tests
 

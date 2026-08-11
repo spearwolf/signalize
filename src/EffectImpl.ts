@@ -149,6 +149,60 @@ const emitEffectError = (
   });
 };
 
+/**
+ * The snapshot/prune pair of `#lostSignals` for a single dynamic run, with
+ * the "may I commit" criterion that belongs to it.
+ *
+ * BUG-005: `readSignal()` reports a read only while no quiet frame is
+ * open (`src/signal-core.ts:34`), so a run inside `beQuiet()` re-reads
+ * nothing this instance can hear. Filling `#lostSignals` anyway and
+ * pruning afterwards would therefore unsubscribe *every* dependency
+ * the effect had — permanently: nothing wakes it again, `run()` finds
+ * `shouldRun === false`, and it sits in `getEffectsCount()` as a deaf
+ * shell. Snapshot and prune are a matched pair; a run that could not
+ * record what it might lose must not throw anything away either.
+ * Taken once, up front, so both halves below decide by the same
+ * value.
+ *
+ * Both halves sit in {@link EffectImpl.runDynamicCallback}: the snapshot
+ * under `active`, the prune under {@link TrackedReadScope.mayCommit}.
+ */
+class TrackedReadScope {
+  readonly active: boolean;
+  readonly #readsBefore: number;
+  #completed = false;
+
+  constructor(active: boolean, readsBefore: number) {
+    this.active = active;
+    this.#readsBefore = readsBefore;
+  }
+
+  complete(): void {
+    this.#completed = true;
+  }
+
+  /**
+   * The second half of the BUG-006 note that stands at the `finally` in
+   * {@link EffectImpl.runDynamicCallback} — read that one first; the
+   * `though` below turns against it.
+   *
+   * A throw is only allowed to commit what the run actually got to
+   * see, though. `#lostSignals` starts out as *every* dependency and
+   * is emptied read by read, so a callback that throws before its
+   * first read leaves it complete — pruning there would read "not
+   * read anymore" off a run that never got as far as reading, and
+   * unsubscribe the lot. That is the deaf shell of BUG-005 again,
+   * reached from the other side: one transient failure and the effect
+   * never wakes again. A run that did read commits its partial set as
+   * before (that is BUG-006, and it heals on the next run because
+   * something is still subscribed); a completed run always commits,
+   * including the one that legitimately read nothing at all.
+   */
+  mayCommit(readsNow: number): boolean {
+    return this.active && (this.#completed || readsNow > this.#readsBefore);
+  }
+}
+
 // Eventize injects EventizedObject members at runtime via eventize(this) in
 // the constructor — declaration merging tells TS the brand is present.
 export interface EffectImpl extends EventizedObject {}
@@ -580,74 +634,9 @@ export class EffectImpl {
       const generation = ++this.#generation;
 
       if (this.hasStaticDeps()) {
-        // Re-declare before the callback, not after: a callback that throws
-        // must not cost the effect its subscriptions — the same reason the
-        // dynamic branch prunes in a `finally` (BUG-006). Idempotent, because
-        // `whenSignalIsRead()` subscribes only to ids it does not already
-        // hold, so an ordinary rerun changes nothing — it pays two property
-        // reads, a `#lostSignals.delete()`, a `#signals.has()` and a counter
-        // bump per declared dependency, which is measurable only against an
-        // empty callback. A run re-entered from inside this effect's own
-        // callback finds `#suppressAutoTracking` set and re-declares nothing
-        // — harmless, the outer run did it already.
-        this.saveSignalsFromDeps();
-        this.storeCleanupCallback(this.runWithoutAutoTracking(), generation);
+        this.runStaticCallback(generation);
       } else {
-        // BUG-005: `readSignal()` reports a read only while no quiet frame is
-        // open (`src/signal-core.ts:34`), so a run inside `beQuiet()` re-reads
-        // nothing this instance can hear. Filling `#lostSignals` anyway and
-        // pruning afterwards would therefore unsubscribe *every* dependency
-        // the effect had — permanently: nothing wakes it again, `run()` finds
-        // `shouldRun === false`, and it sits in `getEffectsCount()` as a deaf
-        // shell. Snapshot and prune are a matched pair; a run that could not
-        // record what it might lose must not throw anything away either.
-        // Taken once, up front, so both halves below decide by the same
-        // value.
-        const isTracking = !isQuiet();
-
-        if (isTracking) {
-          this.#lostSignals.clear();
-          for (const id of this.#signals) {
-            this.#lostSignals.add(id);
-          }
-        }
-
-        const readsBefore = this.#trackedReads;
-        let completed = false;
-
-        try {
-          this.storeCleanupCallback(
-            runWithinEffect(this, this.callback),
-            generation,
-          );
-          completed = true;
-        } finally {
-          // BUG-006: the callback is application code and may throw. Without
-          // this `finally` the prune was skipped while `shouldRun` was already
-          // `false` and the cleanup already consumed — the effect kept a live
-          // RECALL subscription on a signal it no longer reads, every write to
-          // which re-triggered it into (typically) the same throw. It also
-          // left `hasNoLiveSignals()` — and therefore the deferred
-          // self-destruction below — reading a dependency set that no run
-          // built. It healed on the next successful run, which a
-          // deterministically failing callback never has.
-          //
-          // A throw is only allowed to commit what the run actually got to
-          // see, though. `#lostSignals` starts out as *every* dependency and
-          // is emptied read by read, so a callback that throws before its
-          // first read leaves it complete — pruning there would read "not
-          // read anymore" off a run that never got as far as reading, and
-          // unsubscribe the lot. That is the deaf shell of BUG-005 again,
-          // reached from the other side: one transient failure and the effect
-          // never wakes again. A run that did read commits its partial set as
-          // before (that is BUG-006, and it heals on the next run because
-          // something is still subscribed); a completed run always commits,
-          // including the one that legitimately read nothing at all.
-          if (isTracking && (completed || this.#trackedReads > readsBefore)) {
-            this.cleanupLostSignals();
-            this.#destroyedSignals.clear();
-          }
-        }
+        this.runDynamicCallback(generation);
       }
     } finally {
       this.#runDepth--;
@@ -672,6 +661,57 @@ export class EffectImpl {
             emitEffectError(this, err, 'cleanup');
           }
         }
+      }
+    }
+  }
+
+  private runStaticCallback(generation: number): void {
+    // Re-declare before the callback, not after: a callback that throws
+    // must not cost the effect its subscriptions — the same reason the
+    // dynamic branch prunes in a `finally` (BUG-006). Idempotent, because
+    // `whenSignalIsRead()` subscribes only to ids it does not already
+    // hold, so an ordinary rerun changes nothing — it pays two property
+    // reads, a `#lostSignals.delete()`, a `#signals.has()` and a counter
+    // bump per declared dependency, which is measurable only against an
+    // empty callback. A run re-entered from inside this effect's own
+    // callback finds `#suppressAutoTracking` set and re-declares nothing
+    // — harmless, the outer run did it already.
+    this.saveSignalsFromDeps();
+    this.storeCleanupCallback(this.runWithoutAutoTracking(), generation);
+  }
+
+  private runDynamicCallback(generation: number): void {
+    const scope = new TrackedReadScope(!isQuiet(), this.#trackedReads);
+
+    // Guarded, because a run inside `beQuiet()` hears no reads and must
+    // therefore not snapshot either — see TrackedReadScope for what an
+    // unguarded snapshot costs the effect.
+    if (scope.active) {
+      this.#lostSignals.clear();
+      for (const id of this.#signals) {
+        this.#lostSignals.add(id);
+      }
+    }
+
+    try {
+      this.storeCleanupCallback(
+        runWithinEffect(this, this.callback),
+        generation,
+      );
+      scope.complete();
+    } finally {
+      // BUG-006: the callback is application code and may throw. Without
+      // this `finally` the prune was skipped while `shouldRun` was already
+      // `false` and the cleanup already consumed — the effect kept a live
+      // RECALL subscription on a signal it no longer reads, every write to
+      // which re-triggered it into (typically) the same throw. It also
+      // left `hasNoLiveSignals()` — and therefore the deferred
+      // self-destruction below — reading a dependency set that no run
+      // built. It healed on the next successful run, which a
+      // deterministically failing callback never has.
+      if (scope.mayCommit(this.#trackedReads)) {
+        this.cleanupLostSignals();
+        this.#destroyedSignals.clear();
       }
     }
   }
