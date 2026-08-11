@@ -22,6 +22,21 @@ export const findObjectSignalByName = <O extends object, K extends keyof O>(
 ): Signal<O[K]> | undefined =>
   g_objectStores.get(obj)?.signals?.get(name as any);
 
+/**
+ * The non-generic lookup the `@signal` decorator uses.
+ *
+ * `findObjectSignalByName` is keyed on `K extends keyof O`, which forces a
+ * caller holding a plain `string | symbol` to lie about it. This one takes
+ * the key as what it is and hands back a signal whose value type it cannot
+ * know.
+ *
+ * @internal
+ */
+export const findObjectSignal = (
+  obj: object,
+  name: string | symbol,
+): Signal<unknown> | undefined => g_objectStores.get(obj)?.signals?.get(name);
+
 export const findObjectSignals = <O extends object>(
   obj: O,
 ): Signal<unknown>[] | undefined => {

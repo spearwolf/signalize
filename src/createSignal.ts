@@ -157,14 +157,52 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
 }
 
 /**
+ * Create a new reactive signal from a factory, evaluated on the first read.
+ *
+ * `{lazy: true}` is required here, not optional, and it has to be statically
+ * `true` — that is the whole mechanism. A bare `createSignal<T>(fn)` has no
+ * overload to land on and is rejected instead of silently storing the
+ * function as the value (TYPE-002).
+ *
+ * This overload is declared **first** so a factory call wins the inference:
+ * `createSignal(() => 42, {lazy: true})` is a `Signal<number>`, not a
+ * `Signal<() => number>`.
+ *
+ * A params *variable* typed `SignalParams<T>` does not fit — that type says
+ * `lazy?: boolean`, which is not a promise that it is `true`. Write the
+ * literal, pin it (`{lazy: true} as const`), or annotate the variable
+ * `SignalParams<T> & {lazy: true}`. Spreading (`{...params}`) does *not*
+ * help: the spread keeps `lazy?: boolean`.
+ *
+ * @param initialValue - Factory evaluated on the first read
+ * @param params - Configuration, with a statically `true` `lazy`
+ * @returns A Signal object with get/set methods
+ */
+export function createSignal<Type = unknown>(
+  initialValue: () => Type,
+  params: SignalParams<Type> & {lazy: true},
+): Signal<Type>;
+/**
  * Create a new reactive signal with an optional initial value.
  *
  * If passed an existing signal, returns that signal without creating a new one.
  *
- * @param initialValue - Initial value, a function for lazy initialization, or an existing signal
- * @param params - Optional configuration (lazy, compare, beforeRead, attach)
+ * The params carry no condition: `SignalParams<Type>` unchanged, so a
+ * variable, a wrapper's pass-through argument or an inline literal all fit.
+ *
+ * A function reaching this overload is stored **as the value** — which is
+ * only possible when `Type` is itself a function type, either because it was
+ * named (`createSignal<() => number>(fn)`) or because it was inferred from
+ * the argument (`createSignal(fn)` is a `Signal<() => R>`).
+ *
+ * @param initialValue - Initial value, or an existing signal to pass through
+ * @param params - Optional configuration (compare, beforeRead, attach)
  * @returns A Signal object with get/set methods
  */
+export function createSignal<Type = unknown>(
+  initialValue?: Type | SignalLike<Type>,
+  params?: SignalParams<Type>,
+): Signal<Type>;
 export function createSignal<Type = unknown>(
   initialValue: Type | SignalLike<Type> | (() => Type) = undefined,
   params?: SignalParams<Type>,

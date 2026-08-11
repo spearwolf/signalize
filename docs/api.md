@@ -20,7 +20,7 @@ existing signal-like (then this very signal is returned, no new one created).
 
 | Field         | Type                          | Effect                                                              |
 | ------------- | ----------------------------- | ------------------------------------------------------------------- |
-| `lazy`        | `boolean` (default `false`)   | Treats `initial` as a factory; not evaluated until first read.      |
+| `lazy`        | `boolean` (default `false`)   | Treats `initial` as a factory; not evaluated until first read. Required for that form, and it has to be statically `true` — `createSignal<T>(fn)` without it does not compile, and neither does a params *variable* typed `SignalParams<T>` (see below). |
 | `compare`     | `(a, b) => boolean`           | Custom equality. `===` by default.                                  |
 | `beforeRead`  | `() => void`                  | Hook called before each tracked read (not on `.value`).             |
 | `attach`      | `object \| SignalGroup`       | Attaches the signal to a group; group lifecycle owns it.            |
@@ -32,7 +32,7 @@ existing signal-like (then this very signal is returned, no new one created).
 | `get(): T`        | Read **with** dependency tracking.                                                         |
 | `get(cb)`         | **Deprecated.** Internally creates an effect with no handle. Use `onChange()` instead.     |
 | `value` (getter)  | Read **without** dependency tracking.                                                      |
-| `set(v, params?)` | Write. `v` may be a value or, with `{lazy: true}`, a factory.                              |
+| `set(v, params?)` | Write. `v` may be a value or, with `{lazy: true}`, a factory — and only with it; a bare factory is a compile error. |
 | `value = v`       | Setter shortcut for `set(v)`.                                                              |
 | `touch()`         | Emit a change without changing the value.                                                  |
 | `onChange(cb)`    | Subscribe to changes. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect — an effect created inside it is a child effect and is destroyed on the next change (see below). |
@@ -44,11 +44,24 @@ existing signal-like (then this very signal is returned, no new one created).
 | Field    | Type      | Effect                                                  |
 | -------- | --------- | ------------------------------------------------------- |
 | `touch`  | `boolean` | If `true`, emit a notification even when the value is unchanged. |
-| `lazy`   | `boolean` | If `true`, store `value` as a factory; evaluate on next read. |
+| `lazy`   | `boolean` | If `true`, store `value` as a factory; evaluate on next read. Required for the factory form — `set(fn)` without it does not compile. |
 
 > ⚠️ **No updater function.** `set((v) => v + 1)` stores the function as the
-> value (TypeScript prevents this for typed code; runtime accepts it). Use
-> `set(sig.value + 1)` instead.
+> value. Use `set(sig.value + 1)` instead. Since TYPE-002 the nullary form
+> `set(() => 42)` is rejected too — a factory needs `{lazy: true}` — so both
+> shapes are compile errors and the storing behaviour is reachable only from
+> untyped JS.
+
+> ⚠️ **The factory form wants a literal `{lazy: true}`, not a variable.** Both
+> overload sets discriminate on the *value* argument, and the factory branch
+> only opens for a `lazy` that is statically `true`. `SignalParams<T>` and
+> `SignalWriterParams<T>` declare `lazy?: boolean`, so a variable of either
+> type keeps the branch shut and reports `TS2769` — even when it holds
+> `{lazy: true}`. Three things work: the inline literal, `{lazy: true} as
+> const`, and an annotation of `SignalParams<T> & {lazy: true}`. Spreading
+> (`{...params}`) does not — the spread keeps `lazy?: boolean`. The value
+> branch has no such condition: `createSignal(v, params)` and
+> `set(v, params)` take any options object, variable or literal.
 
 > On a muted or destroyed signal, `set()` still writes: the new value is stored
 > and subsequent reads return it — only the notification (including
@@ -673,7 +686,7 @@ Auto-creating `Map<string|symbol, Signal>`. Useful for prop-style dynamic keys.
 
 ```ts
 new SignalAutoMap()
-SignalAutoMap.fromProps<P>(obj: P, keys?: (keyof P)[])
+SignalAutoMap.fromProps<P>(obj: P, keys?: Extract<keyof P, string | symbol>[])
 ```
 
 ### Methods
@@ -682,8 +695,8 @@ SignalAutoMap.fromProps<P>(obj: P, keys?: (keyof P)[])
 | --------------------------------------- | ---------------------------------------------------------------------- |
 | `get<T>(key): Signal<T>`                | Returns existing signal or creates one (initial value `undefined`).    |
 | `has(key): boolean`                     | Membership check.                                                      |
-| `update(map: Map)`                      | Apply a `Map` of values; missing keys are created. Wrapped in `batch()`. |
-| `updateFromProps(obj, keys?)`           | Apply object props; missing keys created. Wrapped in `batch()`.        |
+| `update(map: Map<string \| symbol, unknown>)` | Apply a `Map` of values; missing keys are created. Wrapped in `batch()`. |
+| `updateFromProps(obj, keys?)`           | Apply object props; missing keys created. Wrapped in `batch()`. `keys` is restricted to `Extract<keyof T, string \| symbol>[]` — a numeric key cannot be named. |
 | `keys()` / `signals()` / `entries()`    | Iterators.                                                             |
 | `clear()`                               | Destroy all signals and empty the map.                                 |
 | `delete(key): boolean`                  | Destroy `key`'s signal and drop the entry; `true` if present.          |
@@ -735,7 +748,7 @@ Turns a class field declared with `accessor` into a per-instance signal.
 | `readAsValue` | `boolean` (default `false`)   | If `true`, the property getter returns the value **untracked** (`.value`). Otherwise it tracks (`.get()`). |
 | `compare`     | `(a, b) => boolean`           | Custom equality.                                                       |
 | `beforeRead`  | `() => void`                  | Hook on each tracked read.                                             |
-| `attach`      | `object \| SignalGroup`       | Override the default group (the instance).                             |
+| `attach`      | `object \| SignalGroup`       | An **additional** group. The instance group stays — the signal is a member of both, and destroying the additional group destroys the signal. |
 
 Each instance gets its own signal. The signal is registered in
 `SignalGroup.findOrCreate(this)` under `name`.
@@ -753,10 +766,10 @@ Exported from `@spearwolf/signalize`:
 | ---------------------------- | ---------------------------------------------------------------- |
 | `Signal<T>`                  | The reactive object returned by `createSignal()`.                |
 | `SignalReader<T>`            | The callable form of `signal.get` (also a `SignalLike<T>`).      |
-| `SignalWriter<T>`            | The callable form of `signal.set`.                               |
+| `SignalWriter<T>`            | The callable form of `signal.set`, as an overload pair: a value, or a factory with `{lazy: true}`. |
 | `SignalLike<T>`              | Branded interface — anything carrying `[$signal]`. `T` defaults to `unknown`. |
 | `SignalParams<T>`            | Options for `createSignal` (`lazy`, `compare`, `beforeRead`, `attach`). |
-| `SignalWriterParams<T>`      | Options for `set()` (extends `SignalParams`, adds `touch`).      |
+| `SignalWriterParams<T>`      | Options for `set()` (extends `SignalParams`, adds `touch`). Its `lazy?: boolean` is *not* narrow enough for the factory overload — that one wants a statically `true` `lazy`. |
 | `Effect`                     | The wrapper returned by `createEffect()`.                        |
 | `EffectOptions`              | Options for `createEffect`.                                      |
 | `EffectCallback`             | `() => void \| (() => void)`.                                    |

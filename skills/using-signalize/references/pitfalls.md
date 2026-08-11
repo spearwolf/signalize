@@ -4,13 +4,13 @@ Behaviours that surprise people (and models) coming from React, Solid, Vue or Mo
 
 ## Reading and writing
 
-**1 — `set()` takes a value, not an updater.** `signal.set((v) => v + 1)` stores the **function** as the value; it is never invoked. TypeScript rejects this on typed signals, but `any` and untyped paths slip through. Use `signal.set(signal.value + 1)`.
+**1 — `set()` takes a value, not an updater.** `signal.set((v) => v + 1)` stores the **function** as the value; it is never invoked. TypeScript rejects this on typed signals — and since TYPE-002 the nullary form `set(() => 42)` too, which needs `{lazy: true}` — but `any` and untyped paths slip through. Use `signal.set(signal.value + 1)`.
 
 **2 — `signal.get()` tracks, `signal.value` does not.** The single most common reactivity bug: writing `c.value` inside an effect callback when `c.get()` was meant produces an effect that runs once and never again. Conversely, `.value` is the correct tool for deliberately reading without subscribing.
 
 **3 — `beforeRead` fires on tracked reads only.** That includes `sig.get()` and the deprecated `sig.get(cb)` form. `.value` and `value(sig)` skip it. Do not put invariants there that must hold on *every* observation.
 
-**4 — Lazy is not sticky.** `createSignal(fn, {lazy: true})` stays lazy only until the first read. After a plain `set(v)` the signal is non-lazy; pass `{lazy: true}` again to restore it. And `set(fn)` *without* `{lazy: true}` stores the function as the value (see pitfall 1).
+**4 — Lazy is not sticky.** `createSignal(fn, {lazy: true})` stays lazy only until the first read. After a plain `set(v)` the signal is non-lazy; pass `{lazy: true}` again to restore it. And `set(fn)` *without* `{lazy: true}` no longer compiles at all: the factory overload requires the parameter. From untyped JS the old behaviour remains — the function lands in the signal as the value (see pitfall 1). The flag must also be statically `true`, so a params *variable* typed `SignalParams<T>`/`SignalWriterParams<T>` (`lazy?: boolean`) keeps the factory branch shut and reports `TS2769` even when it holds `{lazy: true}` — write the literal, `{lazy: true} as const`, or annotate `SignalParams<T> & {lazy: true}`; a spread does not help. The value branch takes any options object.
 
 **5 — `createSignal(otherSignal)` is a passthrough.** It returns the existing signal — no new signal, no counter increment. Useful for "accept a value or a signal" helpers; wrong if a copy was intended.
 

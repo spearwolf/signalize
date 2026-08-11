@@ -1,5 +1,5 @@
 import {createSignal} from './createSignal.js';
-import {findObjectSignalByName, storeAsObjectSignal} from './object-signals.js';
+import {findObjectSignal, storeAsObjectSignal} from './object-signals.js';
 import {SignalGroup} from './SignalGroup.js';
 import type {SignalParams} from './types.js';
 
@@ -10,6 +10,17 @@ export type SignalReaderDecoratorOptions = {
   name?: string | symbol;
 };
 
+/**
+ * Options of the `@signal` accessor decorator.
+ *
+ * `attach` names an **additional** group, it does not replace anything: the
+ * decorated signal is always attached to the group of the instance it lives
+ * on, and `attach` puts it into a second group on top of that. Both
+ * memberships are real — a `SignalGroup.destroy()` on the additional group
+ * destroys the signal. What the instance loses then is the reactivity, not
+ * the entry: `findObjectSignalNames()` still lists the name and the property
+ * getter still returns the last value.
+ */
 export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'> &
   SignalReaderDecoratorOptions & {
     readAsValue?: boolean;
@@ -20,12 +31,12 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
     _target: ClassAccessorDecoratorTarget<C, T>,
     context: ClassAccessorDecoratorContext<C, T>,
   ): ClassAccessorDecoratorResult<C, T> {
-    const name = (options?.name || context.name) as keyof C;
+    const name: string | symbol = options?.name || context.name;
     const readAsValue = Boolean(options?.readAsValue ?? false);
 
     return {
       get(this: C) {
-        const si = findObjectSignalByName(this, name);
+        const si = findObjectSignal(this, name);
         if (si) {
           return (readAsValue ? si.value : si.get()) as T;
         }
@@ -33,16 +44,13 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
       },
 
       set(this: C, value: T) {
-        findObjectSignalByName(this, name)?.set(value as any);
+        findObjectSignal(this, name)?.set(value);
       },
 
       init(this: C, value: T): T {
-        const si = createSignal<T>(value, options as any);
-        storeAsObjectSignal(this, name as string | symbol, si);
-        SignalGroup.findOrCreate(this).attachSignalByName(
-          name as string | symbol,
-          si,
-        );
+        const si = createSignal<T>(value, options);
+        storeAsObjectSignal(this, name, si);
+        SignalGroup.findOrCreate(this).attachSignalByName(name, si);
         return si.value;
       },
     };

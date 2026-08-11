@@ -9,7 +9,7 @@ import {createSignal, destroySignal, isSignal, muteSignal, unmuteSignal,
         getSignalsCount, value, touch} from '@spearwolf/signalize';
 
 const c = createSignal(0, {
-  lazy:       false,                // factory in initial when true
+  lazy:       false,                // a factory as initial value REQUIRES a literal lazy: true
   compare:    (a, b) => a === b,    // custom equality
   beforeRead: () => {/* hook */},   // tracked-read only
   attach:     obj,                  // SignalGroup lifecycle
@@ -188,7 +188,7 @@ class Foo {
     readAsValue: false,             // true → getter is .value (untracked)
     compare:     (a, b) => a === b,
     beforeRead:  () => {},
-    attach:      something,
+    attach:      something,         // an ADDITIONAL group; the instance group stays
   }) accessor count = 0;
 
   // no memo decorator — bind a memo to the instance group instead

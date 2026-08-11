@@ -51,9 +51,11 @@ describe('create lazy signal', () => {
       // BAD pattern: passing a function to set() does NOT work like React's setState
       // The function itself becomes the signal value, it is NOT called with the current value
       //
-      // Note: TypeScript correctly prevents `count.set((v: number) => v + 1)` because
-      // the type `(v: number) => number` doesn't match `number | (() => number)`.
-      // But this can still happen with `any` types or untyped code, so we test runtime behavior.
+      // Note: TypeScript rejects both shapes of this. The unary form
+      // `count.set((v: number) => v + 1)` never matched the parameter type,
+      // and since TYPE-002 the nullary form `count.set(() => 42)` is rejected
+      // too — a factory needs `{lazy: true}`. What is tested here is the
+      // runtime behaviour, which is reachable from untyped JS only.
       const updater = (v: number) => v + 1;
       (count.set as any)(updater);
 
@@ -105,7 +107,10 @@ describe('create lazy signal', () => {
       expect(val()).toBe('foo');
       expect(lazy0).toHaveBeenCalledTimes(1);
 
-      setValue(lazy1);
+      // Since TYPE-002 this call is not reachable from typed code: a bare
+      // factory has no overload to land on. The cast sits on the writer, not
+      // on the argument — the test holds the runtime behaviour for untyped JS.
+      (setValue as (v: unknown) => void)(lazy1);
 
       expect(val()).toBe(lazy1);
 

@@ -218,6 +218,52 @@ describe('@signal is a class accessor decorator', () => {
     }
   });
 
+  it('carries a function-valued accessor and a freely chosen name (TYPE-004)', () => {
+    // The two behaviours the five casts used to cover up: a function-valued
+    // accessor goes through the *value* overload of `SignalWriter` and is
+    // stored, not called; a freely chosen name is a name, not a property of
+    // the class. This is a behaviour test, not a regression guard for the
+    // casts themselves — put them back and it stays green, because they never
+    // changed what runs. TYPE-004 has no type witness to write: the lie sat
+    // in the body, never in a shipped signature (`lib/decorators.d.ts` is
+    // unchanged by the fix).
+    class Foo {
+      @signal() accessor cb: () => number = () => 1;
+      @signal({name: 'renamed'}) accessor other = 'x';
+    }
+
+    const foo = new Foo();
+    let eff: Effect;
+
+    try {
+      const seen: number[] = [];
+
+      eff = createEffect(() => {
+        seen.push(foo.cb());
+      });
+
+      expect(seen).toEqual([1]);
+
+      foo.cb = () => 2;
+
+      // The accessor stored the new function as a value — it was not called
+      // as a factory — and the effect saw the change.
+      expect(seen).toEqual([1, 2]);
+      expect(foo.cb()).toBe(2);
+
+      // The renamed one lives under its free name, not under `other`:
+      expect(findObjectSignalNames(foo).sort()).toEqual(['cb', 'renamed']);
+      expect(SignalGroup.get(foo).signal('renamed').value).toBe('x');
+
+      foo.other = 'y';
+      expect(foo.other).toBe('y');
+    } finally {
+      eff?.destroy();
+      destroyObjectSignals(foo);
+      SignalGroup.get(foo)?.clear();
+    }
+  });
+
   it('the property getter returns undefined once the object signals are destroyed', () => {
     class Foo {
       @signal() accessor foo = 1;

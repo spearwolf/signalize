@@ -65,8 +65,16 @@ Quirks:
 - **Laziness is not sticky.** Once written with a non-lazy `set(value)`, the
   signal stays non-lazy. To re-lazy, call `set(fn, {lazy: true})`.
 - **`set(fn)` without `{lazy: true}` stores the function as the value.** It is
-  not invoked. (TypeScript prevents this for typed code; with `any` you can
-  shoot yourself in the foot.)
+  not invoked. The compiler rejects that call outright — a factory has no
+  overload without `{lazy: true}` — so the behaviour described here is
+  reachable only from untyped JS or through `any`.
+- **`{lazy: true}` has to be visible at the call site.** A params *variable*
+  typed `SignalParams<T>`/`SignalWriterParams<T>` says `lazy?: boolean`, which
+  is not enough for the factory branch: `const p: SignalParams<number> =
+  {lazy: true}; createSignal(fn, p)` reports `TS2769`. Use the literal,
+  `{lazy: true} as const`, or annotate `SignalParams<T> & {lazy: true}` —
+  spreading (`{...p}`) does not help. Only the factory branch is affected;
+  `createSignal(v, p)` and `set(v, p)` take any options object.
 
 ## `createSignal(otherSignal)` is a passthrough
 

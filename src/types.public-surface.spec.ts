@@ -15,10 +15,15 @@ import {SignalAutoMap} from './SignalAutoMap.js';
 import {SignalGroup} from './SignalGroup.js';
 import type {SignalLink, ValueCallback} from './SignalLink.js';
 import {destroySignal, signalImpl} from './signal-core.js';
-import type {ISignalImpl, SignalLike} from './types.js';
+import type {
+  ISignalImpl,
+  SignalLike,
+  SignalParams,
+  SignalWriterParams,
+} from './types.js';
 
 /**
- * The witness for TYPE-001 and TYPE-003.
+ * The witness for TYPE-001, TYPE-002, TYPE-003 and TYPE-005.
  *
  * Everything this file guards is invisible to the rest of the gate: the
  * emitted JavaScript is unchanged, no other spec instantiates one of these
@@ -31,6 +36,11 @@ import type {ISignalImpl, SignalLike} from './types.js';
  * into a regression guard rather than decoration. They are checked by
  * `pnpm typecheck`, not by Vitest — the runtime assertions below exist so
  * the declarations are used (`noUnusedLocals`) and the values are real.
+ *
+ * One guard here runs the other way round: `leaves the value branch open to
+ * any params` holds calls that must **keep** compiling, and its regression
+ * proof is the mirror image — narrow the signature it names and the file
+ * stops compiling.
  */
 describe('the published type surface', () => {
   beforeEach(() => {
@@ -187,6 +197,133 @@ describe('the published type surface', () => {
       theLink.destroy();
       destroySignal(source, target);
       SignalGroup.delete(groupHost);
+    }
+  });
+
+  it('takes a factory only where {lazy: true} says so (TYPE-002)', () => {
+    const count = createSignal(0);
+
+    // @ts-expect-error TYPE-002: a bare factory has no overload to land on.
+    // It used to compile, store the function as the value, and leave `.value`
+    // claiming `number`.
+    const lied = createSignal<number>(() => 42);
+
+    // The two honest forms need no directive: the factory announces itself…
+    const lazily = createSignal(() => 42, {lazy: true});
+    // …or the signal really does hold a function, because `T` is one.
+    const holdsAFunction = createSignal<() => number>(() => 42);
+
+    try {
+      // @ts-expect-error TYPE-002: same lie on the writer side.
+      count.set(() => 7);
+
+      count.set(() => 7, {lazy: true});
+
+      expect(count.get()).toBe(7);
+      expect(lazily.get()).toBe(42);
+      expect(holdsAFunction.value()).toBe(42);
+      // The one the directive above kept out of typed code, seen from the
+      // runtime side: the function itself sits in the signal.
+      expect(typeof lied.value).toBe('function');
+    } finally {
+      destroySignal(count, lied, lazily, holdsAFunction);
+    }
+  });
+
+  it('leaves the value branch open to any params, variable or not (TYPE-002)', () => {
+    // The discrimination sits on the *value* argument, so the value branch
+    // puts no condition on its params at all — a variable, an explicit type
+    // argument and a wrapper's pass-through argument all fit. Not a directive
+    // test: this has to compile. Put a `lazy` condition back on the value
+    // overload of `createSignal`/`SignalWriter` and every call below reports
+    // TS2769 — which is exactly how the first two attempts at TYPE-002 broke.
+    const params: SignalParams<number> = {};
+    const fromVariable = createSignal(5, params);
+    const withExplicitType = createSignal<number>(6, params);
+
+    const make = <T>(v: T, p: SignalParams<T>) => createSignal(v, p);
+    const wrapped = make(7, params);
+
+    // Same on the writer side, including a params variable that holds a
+    // `lazy` — `false` is a legal thing to say about a value write.
+    const writerParams: SignalWriterParams<number> = {lazy: false};
+    const written = createSignal(0);
+
+    try {
+      written.set(8, writerParams);
+
+      expect(fromVariable.get()).toBe(5);
+      expect(withExplicitType.get()).toBe(6);
+      expect(wrapped.get()).toBe(7);
+      expect(written.get()).toBe(8);
+      // The value type survives the overload — no widening to `unknown`:
+      expect(fromVariable.value + 1).toBe(6);
+    } finally {
+      destroySignal(fromVariable, withExplicitType, wrapped, written);
+    }
+  });
+
+  it('refuses a factory whose {lazy: true} is only statically boolean (TYPE-002)', () => {
+    // `SignalParams<T>`/`SignalWriterParams<T>` declare `lazy?: boolean`, and
+    // `boolean` is not a promise that the flag is `true`. The factory branch
+    // therefore does not open for a variable of the published options type,
+    // however it was initialised — the runtime would be lazy here, the
+    // checker just cannot know it. This is the breaking edge of TYPE-002.
+    const lazyish: SignalParams<number> = {lazy: true};
+    const writerLazyish: SignalWriterParams<number> = {lazy: true};
+
+    // @ts-expect-error TYPE-002: `lazy?: boolean` does not reach `{lazy: true}`.
+    const refused = createSignal(() => 42, lazyish);
+
+    // The two measured repairs. `{...lazyish}` is *not* one of them — a spread
+    // keeps `lazy?: boolean` and reports TS2769 exactly as the variable does.
+    const pinned = createSignal(() => 42, {lazy: true} as const);
+    const annotated: SignalParams<number> & {lazy: true} = {lazy: true};
+    const viaAnnotation = createSignal(() => 42, annotated);
+
+    const count = createSignal(0);
+
+    try {
+      // @ts-expect-error TYPE-002: same on the writer side.
+      count.set(() => 7, writerLazyish);
+
+      count.set(() => 7, {lazy: true});
+
+      // Every one of them is lazy at runtime — including the refused call.
+      // The directive keeps it out of typed code, it does not change what
+      // the writer does with it.
+      expect(refused.get()).toBe(42);
+      expect(pinned.get()).toBe(42);
+      expect(viaAnnotation.get()).toBe(42);
+      expect(count.get()).toBe(7);
+    } finally {
+      destroySignal(refused, pinned, viaAnnotation, count);
+    }
+  });
+
+  it('takes only string and symbol keys (TYPE-005)', () => {
+    const map = new SignalAutoMap();
+    const numericObj = {1: 'a'} as Record<number, string>;
+
+    // @ts-expect-error TYPE-005: `Extract<number, string | symbol>` is
+    // `never`, which is what makes a numeric key unnameable here.
+    const numeric = SignalAutoMap.fromProps(numericObj, [1]);
+
+    try {
+      map.update(new Map<string, unknown>([['a', 1]]));
+
+      // @ts-expect-error TYPE-005: a numeric key would land in a map whose
+      // `keys()` promises `string | symbol`.
+      map.update(new Map<number, unknown>([[1, 'x']]));
+
+      // And there it is, the promise broken in plain sight — the string key
+      // and the numeric one, side by side, out of a `keys()` typed
+      // `string | symbol`:
+      expect([...map.keys()]).toEqual(['a', 1]);
+      expect([...numeric.keys()]).toEqual([1]);
+    } finally {
+      map.clear();
+      numeric.clear();
     }
   });
 });

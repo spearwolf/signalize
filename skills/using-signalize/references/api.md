@@ -53,7 +53,7 @@ There is no memo decorator — bind a memo to the instance group with `createMem
 
 ```ts
 const c = createSignal(0, {
-  lazy:       false,              // true → `initial` is a factory, evaluated on first read
+  lazy:       false,              // true → `initial` is a factory, evaluated on first read; REQUIRED for that form
   compare:    (a, b) => a === b,  // custom equality (default: ===)
   beforeRead: () => {},           // hook, tracked reads only (NOT on .value)
   attach:     obj,                // SignalGroup lifecycle
@@ -63,7 +63,7 @@ c.get();                    // tracked read — registers a dependency inside an
 c.value;                    // untracked read
 c.set(v);   c.value = v;    // write
 c.set(v, {touch: true});    // notify even when equal
-c.set(fn, {lazy: true});    // store a factory, evaluate on next read
+c.set(fn, {lazy: true});    // store a factory — literal `true` only, not a SignalParams variable
 c.touch();                  // force-notify
 c.destroy();
 c.muted = true;             // muted signals neither notify nor touch — set() still stores
@@ -282,7 +282,7 @@ class Foo {
     readAsValue: false,         // true → the property getter is .value (untracked)
     compare:     (a, b) => a === b,
     beforeRead:  () => {},
-    attach:      something,     // override the default group (the instance)
+    attach:      something,     // an ADDITIONAL group; the instance group stays
   }) accessor count = 0;
 
   // derived values are plain memos attached to the instance group

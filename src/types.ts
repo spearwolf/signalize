@@ -108,10 +108,43 @@ export interface SignalReader<T> extends SignalLike<T> {
   (callback?: ValueChangedCallback<T>): T;
 }
 
-export type SignalWriter<T> = (
-  value: T | (() => T),
-  params?: SignalWriterParams<T>,
-) => void;
+/**
+ * The callable form of `signal.set`, as an overload pair.
+ *
+ * - `set(value, params?)` stores the value. The params are the published
+ *   `SignalWriterParams<T>` unchanged — a variable, a wrapper's pass-through
+ *   argument, anything.
+ * - `set(factory, {lazy: true})` stores the factory and evaluates it on the
+ *   next read.
+ *
+ * **The discrimination is on the value argument, not on the params.** A
+ * factory is not a `T` (unless `T` is itself a function type), so it misses
+ * the value overload; and it only reaches the factory overload with a
+ * `lazy` that is statically `true`. That is what makes a bare `set(fn)` a
+ * compile error instead of a silent store-the-function (TYPE-002), without
+ * putting any condition on the params of the value branch — which is where
+ * two earlier attempts broke every caller holding a `SignalWriterParams<T>`
+ * variable.
+ *
+ * The value overload comes first on purpose. A signal whose `T` is itself a
+ * function type keeps taking its functions as values, not as factories.
+ *
+ * Two consequences worth knowing:
+ *
+ * - `set(fn, params)` where `params` is typed `SignalWriterParams<T>` does
+ *   **not** compile, because that type says `lazy?: boolean` and boolean is
+ *   not a promise that it is `true`. Write the literal (`set(fn, {lazy:
+ *   true})`), pin it (`{lazy: true} as const`), or annotate the variable
+ *   `SignalWriterParams<T> & {lazy: true}`. Spreading (`{...params}`) does
+ *   *not* help — the spread keeps `lazy?: boolean`.
+ * - `set(fn, {lazy: false})` matches no overload and is reported as
+ *   `TS2769: No overload matches this call` without naming `lazy`. Read it
+ *   as "a factory needs `{lazy: true}`".
+ */
+export interface SignalWriter<T> {
+  (value: T, params?: SignalWriterParams<T>): void;
+  (value: () => T, params: SignalWriterParams<T> & {lazy: true}): void;
+}
 
 export interface SignalParams<T> {
   lazy?: boolean;

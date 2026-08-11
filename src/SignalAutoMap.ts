@@ -54,22 +54,29 @@ export class SignalAutoMap {
   /**
    * Create a SignalAutoMap pre-populated with signals from an object's properties.
    * @param obj - The source object
-   * @param propKeys - Optional array of specific keys to include (defaults to all enumerable keys)
+   * @param propKeys - Optional array of specific keys to include (defaults to all enumerable keys).
+   *   Only `string` and `symbol` keys can be named: the map is keyed on
+   *   {@link SignalAutoMapKeyType}, so a numeric key collapses to `never` and
+   *   `TS2322: Type 'number' is not assignable to type 'never'` means exactly
+   *   that (TYPE-005).
    * @returns A new SignalAutoMap with signals for each property
    */
   static fromProps<PropsObjectType extends object>(
     obj: PropsObjectType,
-    propKeys?: (keyof PropsObjectType)[],
+    propKeys?: Extract<keyof PropsObjectType, SignalAutoMapKeyType>[],
   ): SignalAutoMap {
     const sm = new SignalAutoMap();
-    const entries = propKeys
+    // The annotation is load-bearing: inferred from the array literal, the
+    // element type would widen to include the property values and force a
+    // cast back onto `#create()`.
+    const entries: [SignalAutoMapKeyType, unknown][] = propKeys
       ? propKeys.map((key) => [key, obj[key]])
       : Object.entries(obj);
     for (const [key, value] of entries) {
       // Through `#create()`, not straight into `#signals`: an entry that
       // skipped the hook would behave differently from every other one
       // depending on where it came from.
-      sm.#create(key as any, value as unknown);
+      sm.#create(key, value);
     }
     return sm;
   }
@@ -259,13 +266,15 @@ export class SignalAutoMap {
   /**
    * Update multiple signals from a Map, batching all updates together.
    * Creates signals for keys that don't exist.
-   * @param props - Map of key-value pairs to update
+   * @param props - Map of key-value pairs to update. Keys are
+   *   {@link SignalAutoMapKeyType} — a `Map<number, …>` is rejected, because
+   *   `keys()` would afterwards claim `string | symbol` for it (TYPE-005).
    */
-  update(props: Map<any, unknown>): void {
+  update(props: Map<SignalAutoMapKeyType, unknown>): void {
     if (props.size) {
       batch(() => {
         for (const [key, val] of props.entries()) {
-          this.get(key as any).set(val);
+          this.get(key).set(val);
         }
       });
     }
@@ -275,13 +284,16 @@ export class SignalAutoMap {
    * Update multiple signals from an object's properties, batching all updates together.
    * Creates signals for keys that don't exist.
    * @param obj - The source object
-   * @param propKeys - Optional array of specific keys to update (defaults to all enumerable keys)
+   * @param propKeys - Optional array of specific keys to update (defaults to all enumerable keys).
+   *   Same restriction as {@link SignalAutoMap.fromProps}: only `string` and
+   *   `symbol` keys can be named, and a numeric one collapses to `never`
+   *   (TYPE-005).
    */
   updateFromProps<PropsObjType extends object>(
     obj: PropsObjType,
-    propKeys?: (keyof PropsObjType)[],
+    propKeys?: Extract<keyof PropsObjType, SignalAutoMapKeyType>[],
   ): void {
-    const entries = propKeys
+    const entries: [SignalAutoMapKeyType, unknown][] = propKeys
       ? propKeys.map((key) => [key, obj[key]])
       : Object.entries(obj);
     if (entries.length === 0) {
@@ -289,7 +301,7 @@ export class SignalAutoMap {
     }
     batch(() => {
       for (const [key, value] of entries) {
-        this.get(key as any).set(value);
+        this.get(key).set(value);
       }
     });
   }
