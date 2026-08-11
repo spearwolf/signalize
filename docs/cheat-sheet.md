@@ -132,7 +132,7 @@ getSignalGroupsCount();                     // live group count; collected group
 g.attachSignal(s); g.attachSignalByName('n', s);
 g.attachSignalByName('n', s2);  // rebind: destroys s unless attachSignal'd/other name
 g.attachSignalByName('n');      // releases the name the same way
-g.detachSignal(s); g.signal('n'); g.hasSignal('n');
+g.detachSignal(s); g.signal<T>('n'); g.hasSignal('n');  // no <T> → Signal<unknown>
 g.attachEffect(e); g.runEffects();  // attachEffect throws on a destroyed effect
 g.attachLink(l);   g.detachLink(l);  // a destroyed link takes itself out of the group
 g.attachGroup(c);  // throws on self or on a descendant
@@ -154,8 +154,8 @@ m.has('k');
 m.update(new Map([['k', 'v']]));         // batched
 m.updateFromProps({k: 'v'}, ['k']);      // batched
 for (const k of m.keys()) {}
-for (const s of m.signals()) {}
-for (const [k, s] of m.entries()) {}
+for (const s of m.signals()) {}          // Signal<unknown>
+for (const [k, s] of m.entries()) {}     // [key, Signal<unknown>]
 m.delete('k');                   // destroy that signal + drop the entry → boolean
 m.clear();
 ```
@@ -171,7 +171,7 @@ import {findObjectSignalByName, findObjectSignals, findObjectSignalNames,
         destroyObjectSignals} from '@spearwolf/signalize';
 
 findObjectSignalByName(obj, 'prop');
-findObjectSignals(obj);          // Signal[] | undefined
+findObjectSignals(obj);          // Signal<unknown>[] | undefined
 findObjectSignalNames(obj);      // (string|symbol)[] | undefined
 destroyObjectSignals(obj1, obj2);
 ```

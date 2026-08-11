@@ -624,13 +624,13 @@ receive it.
 
 | Method                                  | Purpose                                                                |
 | --------------------------------------- | ---------------------------------------------------------------------- |
-| `attachSignal(sig)`                     | Add a signal; group destroys it on `clear()`.                          |
-| `attachSignalByName(name, sig?)`        | Add and register a name. The name is the group's only hold on the signal unless `attachSignal()` was called for it too — so rebinding the name **destroys** the signal it displaces. Exempt: signals held by another name, and explicitly attached ones. Passing `undefined` releases the name the same way. |
-| `detachSignal(sig)`                     | Remove a signal (does **not** destroy it).                             |
+| `attachSignal(sig)`                     | Add a signal; group destroys it on `clear()`. Returns the argument with its own type intact — `Signal<number>` in, `Signal<number>` out. |
+| `attachSignalByName(name, sig?)`        | Add and register a name. The name is the group's only hold on the signal unless `attachSignal()` was called for it too — so rebinding the name **destroys** the signal it displaces. Exempt: signals held by another name, and explicitly attached ones. Passing `undefined` releases the name the same way — which is why the return type is the argument's own type *or* `undefined`. |
+| `detachSignal(sig)`                     | Remove a signal (does **not** destroy it). Returns the argument with its own type intact. |
 | `hasSignal(name)`                       | Lookup walks parent chain.                                             |
-| `signal<T>(name)`                       | Returns the named `Signal<T>` (parent fallback) or `undefined`.        |
+| `signal<T>(name)`                       | Returns the named `Signal<T>` (parent fallback) or `undefined`. Without a type argument that is `Signal<unknown>` — the group cannot know what a name holds. |
 | `attachEffect(eff)` / `runEffects()`    | Track an effect / run all attached and child effects. Throws on an already destroyed effect, like `attachSignal()` and `attachLink()`. A destroyed effect takes itself out of the group by itself. |
-| `attachLink(link)` / `detachLink(link)` | Track / untrack a link. A destroyed link takes itself out of the group, whichever route attached it. |
+| `attachLink(link)` / `detachLink(link)` | Track / untrack a link. A destroyed link takes itself out of the group, whichever route attached it. Both return the argument with its own type intact. |
 | `attachGroup(child)` / `detachGroup(child)` | Nest groups. `attachGroup()` throws when the edge would create a cycle — attaching a group to itself, or to one of its own descendants. |
 | `off()`                                 | Destroy attached effects/links and drop all external subscriptions on group signals — an external effect that survives the detach re-subscribes on its next run, static deps as well as dynamic ones; signals stay alive, the group remains reusable — except a memo signal `{attach}`ed inside an effect body, which belongs to that effect and dies with it. Child groups are `off()`'d recursively. Emits an `OFF` event. |
 | `clear()`                               | Destroy all attached signals / effects / links and child groups, detach from parent, remove from registry. |
@@ -711,7 +711,7 @@ Signals stored on a host object by name (used by `@signal`).
 | Function                                | Returns                                                                  |
 | --------------------------------------- | ------------------------------------------------------------------------ |
 | `findObjectSignalByName(obj, name)`     | `Signal<T> \| undefined`.                                                |
-| `findObjectSignals(obj)`                | `Signal[] \| undefined`.                                                 |
+| `findObjectSignals(obj)`                | `Signal<unknown>[] \| undefined`.                                        |
 | `findObjectSignalNames(obj)`            | `(string \| symbol)[] \| undefined`.                                     |
 | `destroyObjectSignals(...objs)`         | Destroy all signals attached to each object.                             |
 
@@ -754,14 +754,14 @@ Exported from `@spearwolf/signalize`:
 | `Signal<T>`                  | The reactive object returned by `createSignal()`.                |
 | `SignalReader<T>`            | The callable form of `signal.get` (also a `SignalLike<T>`).      |
 | `SignalWriter<T>`            | The callable form of `signal.set`.                               |
-| `SignalLike<T>`              | Branded interface — anything carrying `[$signal]`.               |
+| `SignalLike<T>`              | Branded interface — anything carrying `[$signal]`. `T` defaults to `unknown`. |
 | `SignalParams<T>`            | Options for `createSignal` (`lazy`, `compare`, `beforeRead`, `attach`). |
 | `SignalWriterParams<T>`      | Options for `set()` (extends `SignalParams`, adds `touch`).      |
 | `Effect`                     | The wrapper returned by `createEffect()`.                        |
 | `EffectOptions`              | Options for `createEffect`.                                      |
 | `EffectCallback`             | `() => void \| (() => void)`.                                    |
 | `CreateMemoOptions`          | Options for `createMemo`.                                        |
-| `SignalLink<T>`, `ValueCallback<T>` | Link types.                                               |
+| `SignalLink<T>`, `ValueCallback<T>` | Link types. `T` defaults to `unknown` in both.             |
 | `AbortSignalLike`            | Structural subset of `AbortSignal` accepted by `nextValue()` / `asyncValues()`. |
 | `CompareFunc<T>`             | `(a: T, b: T) => boolean`.                                       |
 | `BeforeReadFunc`             | `() => void`.                                                    |

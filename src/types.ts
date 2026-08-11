@@ -65,11 +65,23 @@ export type EffectErrorCallback = (payload: EffectErrorPayload) => void;
 export type CompareFunc<Type> = (a: Type, b: Type) => boolean;
 export type BeforeReadFunc = () => void;
 
-export interface SignalLike<Type = any> {
+/**
+ * The type parameter defaults to `unknown`: a bare `SignalLike` makes no claim
+ * about its value type. Name the type you mean — `SignalLike<number>`.
+ *
+ * Where "some signal, any value type" is the actual meaning — a parameter
+ * position, or a heterogeneous collection — `SignalLike<any>` is the right
+ * spelling, for callers as much as for this library. `SignalLike<Type>` is
+ * invariant in `Type` (`compare?: CompareFunc<Type>` is checked
+ * contravariantly under `strictFunctionTypes`), so `SignalLike<unknown>`
+ * there rejects every concrete `Signal<T>` handed to it.
+ */
+export interface SignalLike<Type = unknown> {
   [$signal]: ISignalImpl<Type>;
 }
 
-export interface ISignalImpl<Type = any> extends SignalLike<Type> {
+/** Same default as {@link SignalLike}: `unknown`, not `any`. */
+export interface ISignalImpl<Type = unknown> extends SignalLike<Type> {
   id: symbol;
   value: Type | undefined;
   valueFn: () => Type | undefined;

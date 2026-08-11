@@ -151,7 +151,7 @@ export const signalImpl = <Type = unknown>(
  *
  * @param signalLikes - Signals to destroy
  */
-export const destroySignal = (...signalLikes: SignalLike[]): void => {
+export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
   for (const sigLike of signalLikes) {
     const signal = signalImpl(sigLike);
     if (signal != null && !signal.destroyed) {
@@ -212,7 +212,9 @@ export const destroySignal = (...signalLikes: SignalLike[]): void => {
  *
  * @param signalLike - The signal to mute
  */
-export const muteSignal = <Type = any>(signalLike: SignalLike<Type>): void => {
+export const muteSignal = <Type = unknown>(
+  signalLike: SignalLike<Type>,
+): void => {
   const signal = signalImpl(signalLike);
   if (signal != null) {
     signal.muted = true;
@@ -223,7 +225,7 @@ export const muteSignal = <Type = any>(signalLike: SignalLike<Type>): void => {
  * Unmute a previously muted signal, restoring normal effect triggering.
  * @param signalLike - The signal to unmute
  */
-export const unmuteSignal = <Type = any>(
+export const unmuteSignal = <Type = unknown>(
   signalLike: SignalLike<Type>,
 ): void => {
   const signal = signalImpl(signalLike);

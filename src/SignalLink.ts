@@ -15,7 +15,8 @@ import {SignalGroup} from './SignalGroup.js';
 import {signalImpl} from './signal-core.js';
 import {AbortSignalLike, ISignalImpl, SignalLike} from './types.js';
 
-export type ValueCallback<ValueType = any> = (value: ValueType) => void;
+/** The value type defaults to `unknown`; annotate `ValueCallback<number>`. */
+export type ValueCallback<ValueType = unknown> = (value: ValueType) => void;
 
 /**
  * W1: the handle that cancels the read an `asyncValues()` iterator is
@@ -28,9 +29,16 @@ type PendingRead = {cancel?: () => void};
 // Eventize injects EventizedObject members at runtime via eventize(this) in
 // the constructor — declaration merging tells TS the brand is present.
 // biome-ignore lint/correctness/noUnusedVariables: declaration merging requires the same type-parameter name as the class
-export interface SignalLink<ValueType = any> extends EventizedObject {}
+export interface SignalLink<ValueType = unknown> extends EventizedObject {}
 
-export abstract class SignalLink<ValueType = any> {
+/**
+ * The value type defaults to `unknown`; a bare `SignalLink` claims nothing
+ * about the value it carries. Where "some link, any value type" is meant —
+ * a parameter position, a heterogeneous collection — `SignalLink<any>` is
+ * the right spelling, for callers as much as for this library: `ValueType`
+ * is invariant, so `SignalLink<unknown>` accepts no concrete link.
+ */
+export abstract class SignalLink<ValueType = unknown> {
   #muted = false;
 
   // Every subscription this link holds on one of the two permanent,
@@ -623,7 +631,9 @@ export abstract class SignalLink<ValueType = any> {
   }
 }
 
-export class SignalLinkToSignal<ValueType = any> extends SignalLink<ValueType> {
+export class SignalLinkToSignal<
+  ValueType = unknown,
+> extends SignalLink<ValueType> {
   readonly target: ISignalImpl<ValueType>;
 
   constructor(source: SignalLike<ValueType>, target: SignalLike<ValueType>) {
@@ -658,7 +668,7 @@ export class SignalLinkToSignal<ValueType = any> extends SignalLink<ValueType> {
 }
 
 export class SignalLinkToCallback<
-  ValueType = any,
+  ValueType = unknown,
 > extends SignalLink<ValueType> {
   readonly target: ValueCallback<ValueType>;
 

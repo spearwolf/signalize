@@ -529,9 +529,10 @@ export class SignalGroup {
   /**
    * Attach a signal to this group. The signal will be destroyed when the group is cleared.
    * @param signal - The signal to attach
-   * @returns The attached signal
+   * @returns The attached signal — the caller's own type, unchanged, so
+   *   `group.attachSignal(createSignal(1))` still reads as `Signal<number>`
    */
-  attachSignal(signal: SignalLike) {
+  attachSignal<S extends SignalLike<any>>(signal: S): S {
     const si = this.#addSignal(signal);
 
     if (si) {
@@ -541,7 +542,7 @@ export class SignalGroup {
     return signal;
   }
 
-  #addSignal(signal: SignalLike): ISignalImpl | undefined {
+  #addSignal(signal: SignalLike<any>): ISignalImpl | undefined {
     const si = signalImpl(signal);
 
     if (si?.destroyed) {
@@ -683,9 +684,13 @@ export class SignalGroup {
    *
    * @param name - The name to associate with the signal
    * @param signal - The signal to attach (or undefined to remove)
-   * @returns The attached signal
+   * @returns The attached signal — the caller's own type, unchanged — or
+   *   `undefined` when called without a signal to release the name
    */
-  attachSignalByName(name: SignalNameType, signal?: SignalLike) {
+  attachSignalByName<S extends SignalLike<any>>(
+    name: SignalNameType,
+    signal?: S,
+  ): S | undefined {
     if (signal) {
       const si = this.#addSignal(signal);
 
@@ -750,15 +755,23 @@ export class SignalGroup {
 
   /**
    * Get a signal by name from this group or parent groups.
+   *
+   * Without a type argument the result is `Signal<unknown>`: a group holds
+   * heterogeneous signals and cannot know what hides behind a name. Pass the
+   * type you expect — `group.signal<string>('theme')`.
+   *
    * @param name - The signal name to look up
    * @returns The Signal object or undefined if not found
    */
-  signal<Type = any>(name: SignalNameType): Signal<Type> | undefined {
+  signal<Type = unknown>(name: SignalNameType): Signal<Type> | undefined {
     if (this.#busy & BUSY_SIGNAL) return undefined;
     this.#busy |= BUSY_SIGNAL;
     try {
       return (
-        this.#namedSignals.get(name)?.object ?? this.#parentGroup?.signal(name)
+        // The map is keyed by name, not by type — this cast is the group
+        // admitting it takes the caller's word for the value type.
+        (this.#namedSignals.get(name)?.object as Signal<Type> | undefined) ??
+        this.#parentGroup?.signal<Type>(name)
       );
     } finally {
       this.#busy &= ~BUSY_SIGNAL;
@@ -768,9 +781,9 @@ export class SignalGroup {
   /**
    * Detach a signal from this group (does not destroy it).
    * @param signal - The signal to detach
-   * @returns The detached signal
+   * @returns The detached signal — the caller's own type, unchanged
    */
-  detachSignal(signal: SignalLike) {
+  detachSignal<S extends SignalLike<any>>(signal: S): S {
     const si = signalImpl(signal);
 
     if (si) {
@@ -900,9 +913,9 @@ export class SignalGroup {
    * or a direct `attachLink()` call.
    *
    * @param link - The link to attach
-   * @returns The attached link
+   * @returns The attached link — the caller's own type, unchanged
    */
-  attachLink(link: SignalLink<any>) {
+  attachLink<L extends SignalLink<any>>(link: L): L {
     if (link?.isDestroyed) {
       throw new Error('Cannot attach a destroyed link to a group');
     }
@@ -950,9 +963,9 @@ export class SignalGroup {
   /**
    * Detach a link from this group (does not destroy it).
    * @param link - The link to detach
-   * @returns The detached link
+   * @returns The detached link — the caller's own type, unchanged
    */
-  detachLink(link: SignalLink<any>) {
+  detachLink<L extends SignalLink<any>>(link: L): L {
     if (link) {
       this.#links.delete(link);
     }

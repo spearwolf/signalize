@@ -164,15 +164,19 @@ export class SignalAutoMap {
 
   /**
    * Get an iterator over all signals in the map.
+   *
+   * The map is heterogeneous, so the elements come out as `Signal<unknown>`.
    */
-  signals(): IterableIterator<Signal<any>> {
+  signals(): IterableIterator<Signal<unknown>> {
     return this.#signals.values();
   }
 
   /**
    * Get an iterator over [key, signal] pairs.
+   *
+   * The map is heterogeneous, so the signals come out as `Signal<unknown>`.
    */
-  entries(): IterableIterator<[SignalAutoMapKeyType, Signal<any>]> {
+  entries(): IterableIterator<[SignalAutoMapKeyType, Signal<unknown>]> {
     return this.#signals.entries();
   }
 

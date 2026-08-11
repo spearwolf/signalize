@@ -515,7 +515,9 @@ root.attachSignalByName('theme', createSignal('dark'));
 const child = SignalGroup.findOrCreate({});
 root.attachGroup(child);
 
-child.signal('theme');     // → falls through to root's 'theme'
+child.signal<string>('theme');  // → falls through to root's 'theme'
+// without the type argument the result is Signal<unknown>: a group holds
+// heterogeneous signals and cannot know what a name stands for
 ```
 
 Named lookup walks the parent chain.

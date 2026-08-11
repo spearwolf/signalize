@@ -24,7 +24,7 @@ export const findObjectSignalByName = <O extends object, K extends keyof O>(
 
 export const findObjectSignals = <O extends object>(
   obj: O,
-): Signal<any>[] | undefined => {
+): Signal<unknown>[] | undefined => {
   const signals = g_objectStores.get(obj)?.signals;
   if (signals) {
     return Array.from(signals.values());

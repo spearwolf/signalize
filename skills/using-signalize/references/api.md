@@ -211,7 +211,8 @@ SignalGroup.clear();                        // global reset
 getSignalGroupsCount();
 
 g.attachSignal(s);  g.attachSignalByName('n', s);  g.detachSignal(s);
-g.signal('n');      // walks the parent chain
+                    // all three hand the argument back with its own type
+g.signal<T>('n');   // walks the parent chain; without <T> it is Signal<unknown>
 g.hasSignal('n');
 g.attachEffect(e);  g.runEffects();  // attachEffect throws on a destroyed effect
 g.attachLink(l);    g.detachLink(l);  // a destroyed link takes itself out of the group
@@ -248,8 +249,8 @@ m.has('k');
 m.update(new Map([['k', 'v']]));     // batched
 m.updateFromProps(obj, ['k']);       // batched
 for (const k of m.keys()) {}
-for (const s of m.signals()) {}
-for (const [k, s] of m.entries()) {}
+for (const s of m.signals()) {}      // Signal<unknown>
+for (const [k, s] of m.entries()) {} // [key, Signal<unknown>]
 m.delete('k');                       // destroy that signal + drop the entry → boolean
 m.clear();
 ```
@@ -267,7 +268,7 @@ Signals stored on a host object and retrievable by property name — the mechani
 
 ```ts
 findObjectSignalByName(obj, 'prop');   // Signal<T> | undefined
-findObjectSignals(obj);                // Signal[] | undefined
+findObjectSignals(obj);                // Signal<unknown>[] | undefined
 findObjectSignalNames(obj);            // (string | symbol)[] | undefined
 destroyObjectSignals(obj1, obj2);      // signals only — full cleanup is SignalGroup.delete(obj)
 ```
