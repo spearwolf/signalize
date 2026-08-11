@@ -62,6 +62,50 @@ export interface EffectErrorPayload {
 
 export type EffectErrorCallback = (payload: EffectErrorPayload) => void;
 
+/**
+ * The single argument a {@link SignalizeErrorCallback} receives — one
+ * diagnostic that had no caller to throw at.
+ */
+export interface SignalizeErrorPayload {
+  /**
+   * Which console method the message would have gone to without a handler:
+   * `error` for a failure, `warn` for a notice.
+   */
+  readonly level: 'error' | 'warn';
+  /**
+   * Where the diagnostic came from:
+   * - `effect` — an effect failure nobody picked up via `onEffectError()`
+   * - `group-finalizer` / `link-finalizer` / `automap-finalizer` — a teardown
+   *   threw inside a `FinalizationRegistry` callback, where a rethrow would
+   *   end the process
+   * - `link-count` — the 1000-links-on-one-source threshold, once per source
+   * - `deprecation` — a deprecated call, usually once per process
+   *
+   * New members may appear in a minor release: a `switch` over this needs a
+   * `default`.
+   */
+  readonly source:
+    | 'effect'
+    | 'group-finalizer'
+    | 'link-finalizer'
+    | 'automap-finalizer'
+    | 'link-count'
+    | 'deprecation';
+  /**
+   * Always present, and exactly the text the console would have shown without
+   * a handler.
+   */
+  readonly message: string;
+  /**
+   * The failure, whatever was thrown. Absent for a notice (`level: 'warn'`) —
+   * no `Error` is invented just to fill the field, so test for `undefined`
+   * rather than assuming an object.
+   */
+  readonly error?: unknown;
+}
+
+export type SignalizeErrorCallback = (payload: SignalizeErrorPayload) => void;
+
 export type CompareFunc<Type> = (a: Type, b: Type) => boolean;
 export type BeforeReadFunc = () => void;
 

@@ -56,6 +56,7 @@ Framework-agnostic signal/effect/memo/link library. Synchronous reactivity. Buil
 | `RECALL` | Event triggering effect re-execution |
 | `$createEffect`, `$destroyEffect` | Effect lifecycle events |
 | `$effectError` | Rejection of an async effect/cleanup callback (see `onEffectError`) |
+| `$signalizeError` | Every diagnostic with no caller to throw at — finalizer failures, deprecation notices, the link threshold, and effect failures nobody took (see `onSignalizeError`) |
 | `$destroySignal` | Signal destruction event |
 
 ### Priorities
@@ -108,7 +109,7 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | --- | --- |
 | `index.ts` | Public API exports for `.` |
 | `decorators.ts` | `@signal` (TC39 standard decorator) — separate `./decorators` entry |
-| `constants.ts` | Symbols (`$signal`, `$effect`, `RECALL`, `$createEffect`, `$destroyEffect`, `$destroySignal`) |
+| `constants.ts` | Symbols (`$signal`, `$effect`, `RECALL`, `$createEffect`, `$destroyEffect`, `$effectError`, `$signalizeError`, `$destroySignal`) |
 | `types.ts` | TypeScript interfaces — the published ones *and* the implementation layer (`ISignalImpl`). Being in this file does not make a type public; `index.ts` decides, by name |
 | `Signal.ts` | `Signal<T>` class — thin wrapper around `SignalImpl` |
 | `signal-core.ts` | Leaf layer — `isSignal`, `destroySignal`, `muteSignal`, `unmuteSignal`, `getSignalsCount`, internal `signalImpl`, `readSignal`, `writeSignal`, `incSignalsCount`. Imports nothing above itself; every other module reaches signal primitives through here |
@@ -116,6 +117,7 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | `Effect.ts` | `Effect` class — wrapper around `EffectImpl` |
 | `EffectImpl.ts` | Core dependency tracking + rerun logic; the five options and deps types (`EffectOptions`, `EffectOptionsWithSignalDeps`, `EffectOptionsWithNameDeps`, `EffectDeps`, `SignalLikeDeps`), all re-exported from `index.ts` |
 | `effects.ts` | `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect`, `onEffectError`, `setMaxEffectDepth`, `getMaxEffectDepth` |
+| `signalize-error.ts` | Leaf layer — `onSignalizeError` plus the `@internal` `reportSignalizeError`. Every diagnostic with no caller to throw at goes through here; the console is its fallback, not its mechanism (CONS-001) |
 | `createMemo.ts` | `createMemo` — wraps signal + high-priority effect |
 | `link.ts` | `link`, `unlink`, `getLinksCount` |
 | `SignalLink.ts` | `SignalLink` (abstract), `SignalLinkToSignal`, `SignalLinkToCallback`, `ValueCallback` |
@@ -139,6 +141,7 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 - `signal-core.ts` is the leaf. It may import only `constants.ts`, `types.ts`, `bequiet.ts`, `global-queues.ts`, `globalEffectStack.ts`. Never `createSignal.ts`, `Signal.ts`, `SignalGroup.ts` or anything effect-related.
 - Everything that needs `signalImpl`, `isSignal`, `writeSignal` or `destroySignal` imports them from `signal-core.ts`, not from `createSignal.ts`.
 - `createSignal.ts` sits above and may reach up to `Signal.ts`, `SignalGroup.ts` and `effects.ts`.
+- `signalize-error.ts` is a leaf too, and has to stay one — every layer reports through it. It may import `@spearwolf/eventize`, `constants.ts`, `global-queues.ts` and, **type-only**, `types.ts`. Never `effects.ts`, `EffectImpl.ts` or `SignalGroup.ts`: `effects.ts` → `EffectImpl.ts` → `SignalGroup.ts` → `signalize-error.ts` is a chain of value imports, so a value import back into `effects.ts` closes the ring. `tsc` says nothing; `pnpm bundle` fails.
 
 Also avoid reading an imported binding at module-eval time across module boundaries (`export const x = SomeClass.method`). Delegate through a function instead — `effects.ts:createEffect` is the pattern. An eager read inside a cycle is what previously made `import('./lib/EffectImpl.js')` crash with a TDZ `ReferenceError`.
 
@@ -146,13 +149,14 @@ Also avoid reading an imported binding at module-eval time across module boundar
 
 **Signals**: `createSignal`, `destroySignal`, `isSignal`, `getSignalsCount`, `muteSignal`, `unmuteSignal`, `touch`, `value`
 **Effects**: `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect`, `onEffectError`, `setMaxEffectDepth`, `getMaxEffectDepth`
+**Diagnostics**: `onSignalizeError` — the channel for everything with no caller to throw at; `reportSignalizeError` stays `@internal` and is *not* published (`stripInternal` keeps it out of `lib/signalize-error.d.ts`)
 **Memos**: `createMemo`, `CreateMemoOptions`
 **Links**: `link`, `unlink`, `getLinksCount`, `SignalLink` (type), `ValueCallback`
 **Object Signals**: `destroyObjectSignals`, `findObjectSignalByName`, `findObjectSignalNames`, `findObjectSignals`
 **Groups**: `SignalGroup`, `getSignalGroupsCount`, `SignalAutoMap`, `SignalAutoMapKeyType`
 **Utilities**: `batch`, `beQuiet`, `isQuiet`, `hibernate`
 **Classes**: `Signal`, `Effect`, `SignalGroup`, `SignalAutoMap`
-**Types**: a **named list** in `index.ts` — eighteen names, everything in `types.ts` except `ISignalImpl`, which is the implementation layer and stays inside the module graph (API-007). Consumers reach the source of a link through `LinkSource<T>` instead.
+**Types**: a **named list** in `index.ts` — twenty names, everything in `types.ts` except `ISignalImpl`, which is the implementation layer and stays inside the module graph (API-007). Consumers reach the source of a link through `LinkSource<T>` instead.
 
 > **The list is named on purpose — do not turn it back into `export type *`.** A star republishes every future type in `types.ts` unasked, and nothing in `pnpm world` would report it: `compile` emits happily, `attw` reads module shape rather than signatures, and the suite runs against `src/`. The one guard is `src/types.public-surface.spec.ts`, which holds a `@ts-expect-error` over `import('./index.js').ISignalImpl<number>` — a star makes that directive stop failing and `tsc` reports the unused directive. **Adding a new published type therefore means adding its name to the list**, alphabetically. Marking the implementation layer `@internal` and letting `stripInternal` do the work is measured and rejected: it emits a `lib/` whose `types.d.ts` names `ISignalImpl` without declaring it (`TS2304`, plus `TS2305` in `Signal.d.ts`/`SignalLink.d.ts`) and no gate step sees it.
 
@@ -204,7 +208,7 @@ The test transform runs through **SWC**, not Vite's built-in oxc pass: `vitest.c
 
 No browser test run — no Playwright, no `@vitest/browser`, no jsdom/happy-dom, no browser job. Every job runs on `ubuntu-latest` (`ci.yml:13-17`, `main.yml:18-21`); `ci.yml`'s `test` job runs as a matrix over two Node versions (`ci.yml:22-25`), both still Node, not a browser engine. `main.yml`'s `test` job is the `ci.yml` workflow itself, called via `workflow_call`; `vitest.config.ts:97` sets `environment: 'node'`. This is a decision, not a gap:
 
-- **Why it holds:** `src/` uses no platform-dependent API. A `grep` across `src/*.ts` (specs excluded) for `node:`, `process.`, `Buffer`, `setTimeout`, `setInterval`, `queueMicrotask`, `structuredClone`, `globalThis` and `require(` turns up nothing but three comment lines, none of them code: `effects.ts:66` and `EffectImpl.ts:84` mention Node's unhandled-rejection behaviour in prose while explaining why an async effect's rejection is routed to `onEffectError()` instead of thrown; `SignalLink.ts:95` mentions "the whole process" while explaining why a link's self-reference goes through a `WeakRef` — a lifetime argument, not a rejection one. The only non-trivial runtime objects in use are `WeakRef` (`SignalLink.ts:116,506`, `SignalGroup.ts:165,262`, `SignalAutoMap.ts:82`) and `FinalizationRegistry` (`link.ts:86`, `SignalGroup.ts:59`, `signal-core.ts:34`, `SignalAutoMap.ts:21`), plus `console.error` and `console.warn` (`link.ts:237` warns once per source at 1000 links, MEM-005) — all plain ECMAScript, identical across engines.
+- **Why it holds:** `src/` uses no platform-dependent API. A `grep` across `src/*.ts` (specs excluded) for `node:`, `process.`, `Buffer`, `setTimeout`, `setInterval`, `queueMicrotask`, `structuredClone`, `globalThis` and `require(` turns up nothing but three comment lines, none of them code: `effects.ts:66` and `EffectImpl.ts:84` mention Node's unhandled-rejection behaviour in prose while explaining why an async effect's rejection is routed to `onEffectError()` instead of thrown; `SignalLink.ts:95` mentions "the whole process" while explaining why a link's self-reference goes through a `WeakRef` — a lifetime argument, not a rejection one. The only non-trivial runtime objects in use are `WeakRef` (`SignalLink.ts:116,506`, `SignalGroup.ts:165,262`, `SignalAutoMap.ts:82`) and `FinalizationRegistry` (`link.ts:86`, `SignalGroup.ts:59`, `signal-core.ts:34`, `SignalAutoMap.ts:21`), plus `console.error` and `console.warn`, which after CONS-001 live in one place: `signalize-error.ts` writes them as the fallback of `onSignalizeError()`, and `EffectImpl.ts:132` keeps one direct `console.error` for a handler that threw (reporting that on a handler channel would recurse) — all plain ECMAScript, identical across engines.
 - **Where the environment risk actually sits, and what already covers it:** in *resolution*, not *execution*. `attw --pack --profile esm-only` checks the `exports` map and shipped `.d.ts` in `bundler` mode — the resolution path a browser consumer actually takes — and `smoke/dist-smoke.test.ts` runs the built `dist/` for real. The TC39 decorator lowering that a browser's own bundler would perform is exercised by the smoke test's `tsc` pass, not by an engine.
 - **Why a browser run wouldn't add coverage anyway:** the one thing that could behave differently across engines is GC timing around `WeakRef`/`FinalizationRegistry`, and the 20 tests that exercise it depend on `--expose-gc` (`vitest.config.ts:126`), a flag no portable browser harness provides. A browser smoke test would skip exactly the tests whose answer it could change.
 

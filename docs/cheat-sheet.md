@@ -36,7 +36,8 @@ touch(c); touch([obj, 'prop']);  // notify
 
 ```ts
 import {createEffect, getEffectsCount, getMaxEffectDepth, onCreateEffect,
-        onDestroyEffect, onEffectError, setMaxEffectDepth} from '@spearwolf/signalize';
+        onDestroyEffect, onEffectError, onSignalizeError,
+        setMaxEffectDepth} from '@spearwolf/signalize';
 
 createEffect(() => {
   read(c.get());
@@ -65,9 +66,19 @@ setMaxEffectDepth(256); // default; getMaxEffectDepth() reads it back
 // but a throwing FIRST run destroys the effect and throws at createEffect()
 //   — unless {attach} holds it; same for createMemo() and its memo signal
 onEffectError(({error, effectId, phase}) => {});  // → unsubscribe
-// no handler → console.error instead of an unhandled rejection
+// no handler → onSignalizeError(), then console.error — never an unhandled rejection
 // handler MUST be sync or catch itself — nothing awaits it
 // handler throws → dispatch stops; lower-priority handlers miss the event
+
+// Everything with no caller to throw at, in one place
+onSignalizeError(({level, source, message, error}) => {});  // → unsubscribe
+// source: 'effect' | 'group-finalizer' | 'link-finalizer' | 'automap-finalizer'
+//       | 'link-count' | 'deprecation'   (may grow in a minor — use a default)
+// no handler → console.warn(message) / console.error(message, error), as before
+// a handler OWNS the message — deprecation notices included, so log them
+// error is absent on a notice
+// handler throws → caught: console.error(handler), then the payload at its own
+//   level — console.warn for a notice, so don't mock console.error alone
 ```
 
 ## Memos

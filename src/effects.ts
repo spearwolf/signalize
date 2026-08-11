@@ -94,10 +94,14 @@ export const onDestroyEffect = (
  * even with a full stack still present, so it lands here too, with
  * `phase: 'cleanup'`.
  *
- * As long as no handler is registered, such an error is written to
- * `console.error` with the effect id — it never becomes an unhandled
- * rejection, which since Node 15 would terminate the process. Registering a
- * handler replaces that log.
+ * As long as no handler is registered, such an error falls through to the
+ * general diagnostics channel — `onSignalizeError()` with `source: 'effect'`
+ * — and from there, with nobody listening at all, to `console.error` with the
+ * effect id. It never becomes an unhandled rejection, which since Node 15
+ * would terminate the process. Registering a handler here takes precedence
+ * over both, so no handler ever sees the same failure twice; what the general
+ * channel lacks is the structure — `effect`, `effectId` and `phase` are
+ * fields only here.
  *
  * **The handler must be synchronous or catch its own errors.** Nothing
  * awaits it, so a rejected promise coming out of it is an unhandled
@@ -114,8 +118,9 @@ export const onDestroyEffect = (
  * });
  * ```
  *
- * A handler that throws *synchronously* is caught: both its failure and the
- * original error go to `console.error`. But eventize stops the dispatch at
+ * A handler that throws *synchronously* is caught: its failure goes to
+ * `console.error`, and the original error takes the fallback route above —
+ * `onSignalizeError()`, then the console. But eventize stops the dispatch at
  * that point, so handlers registered with a lower priority never see the
  * event — keep handlers total, and give the one that must not be missed the
  * highest priority.

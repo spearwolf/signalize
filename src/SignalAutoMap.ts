@@ -5,6 +5,7 @@ import {createSignal} from './createSignal.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {Signal} from './Signal.js';
 import {signalImpl} from './signal-core.js';
+import {reportSignalizeError} from './signalize-error.js';
 
 export type SignalAutoMapKeyType = string | symbol;
 
@@ -25,12 +26,16 @@ const autoMapResourceFinalizer = new FinalizationRegistry<AutoMapResources>(
         unsubscribe();
       } catch (err) {
         // A throw out of a FinalizationRegistry callback has no caller to
-        // reach — it would take the process down. Same channel and same
-        // reason as the link and group finalizers.
-        console.error(
-          '[signalize] releasing the destroy-queue subscriptions of a collected SignalAutoMap failed:',
-          err,
-        );
+        // reach — it would take the process down. So it goes out on the
+        // named diagnostics channel (`onSignalizeError()`, console without a
+        // handler), same as the link and group finalizers.
+        reportSignalizeError({
+          level: 'error',
+          source: 'automap-finalizer',
+          message:
+            '[signalize] releasing the destroy-queue subscriptions of a collected SignalAutoMap failed:',
+          error: err,
+        });
       }
     }
     resources.unsubs.clear();

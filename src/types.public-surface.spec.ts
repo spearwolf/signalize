@@ -17,6 +17,8 @@ import {
   type EffectOptionsWithSignalDeps,
   onCreateEffect,
   onDestroyEffect,
+  onSignalizeError,
+  type SignalizeErrorPayload,
   type SignalLikeDeps,
 } from './index.js';
 import {link} from './link.js';
@@ -38,9 +40,18 @@ import type {
   SignalWriterParams,
 } from './types.js';
 
+// @ts-expect-error CONS-001: `reportSignalizeError` is internal — the entry
+// point publishes the subscribe function and nothing else. `stripInternal`
+// keeps it out of `lib/signalize-error.d.ts`; this keeps it out of the entry
+// point, which no other gate would notice.
+// The alias needs a use, or `noUnusedLocals` reports it — and the obvious
+// `export type {…}` is out: Biome's `noExportsInTest` forbids exporting from
+// a spec. So it is consumed by an annotation in the CONS-001 test below.
+type _NoReporter = typeof import('./index.js').reportSignalizeError;
+
 /**
- * The witness for TYPE-001, TYPE-002, TYPE-003, TYPE-005, API-001, API-002
- * and API-004.
+ * The witness for TYPE-001, TYPE-002, TYPE-003, TYPE-005, API-001, API-002,
+ * API-004 and CONS-001.
  *
  * Everything this file guards is invisible to the rest of the gate: the
  * emitted JavaScript is unchanged, no other spec instantiates one of these
@@ -470,6 +481,47 @@ describe('the published type surface', () => {
       unsubCreate();
       unsubDestroy();
       unsubWide();
+    }
+  });
+
+  it('publishes the diagnostics channel and its payload (CONS-001)', () => {
+    // Through the entry point, not the module: the re-export is half of what
+    // this package promises, and `src/index.ts` carries a by-name list that
+    // no step of `pnpm world` checks for completeness.
+    let seen: SignalizeErrorPayload | undefined;
+    // The use that keeps `_NoReporter` alive for `noUnusedLocals`; the
+    // directive on its declaration is the actual assertion.
+    const noReporter: _NoReporter = undefined;
+
+    // No annotation and no directive — the callback parameter is typed by the
+    // signature alone. Priority in second place, as everywhere in this
+    // library (API-002).
+    const unsubscribe = onSignalizeError((payload) => {
+      seen = payload;
+    }, 10);
+
+    try {
+      // The deprecated static is one of the eight call sites — nine counting
+      // the effect-channel fallback in `EffectImpl`; using it here
+      // keeps the witness on a real path rather than on the internal
+      // reporter, which the entry point does not hand out (see `_NoReporter`).
+      const host = {};
+      SignalGroup.findOrCreate(host);
+      SignalGroup.destroy(host);
+
+      const level: 'error' | 'warn' = seen.level;
+      const source: SignalizeErrorPayload['source'] = seen.source;
+      const message: string = seen.message;
+      const error: unknown = seen.error;
+
+      expect(level).toBe('warn');
+      expect(source).toBe('deprecation');
+      expect(message).toMatch(/SignalGroup\.destroy\(obj\) is deprecated/);
+      // A notice carries no error — no `Error` is invented to fill the field.
+      expect(error).toBeUndefined();
+      expect(noReporter).toBeUndefined();
+    } finally {
+      unsubscribe();
     }
   });
 

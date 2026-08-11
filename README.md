@@ -117,6 +117,9 @@ getSignalsCount, touch, value
 createEffect, getEffectsCount, onCreateEffect, onDestroyEffect, onEffectError,
 getMaxEffectDepth, setMaxEffectDepth
 
+// diagnostics
+onSignalizeError
+
 // memos
 createMemo
 

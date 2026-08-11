@@ -235,6 +235,7 @@ the parent's rerun.
 | `getMaxEffectDepth()`     | The current re-entrancy cap of an effect run (default `256`).                      |
 | `setMaxEffectDepth(n)`    | Raise or lower that cap globally, from the next run on. Throws unless `n` is a finite integer `>= 1`. |
 | `onEffectError(cb, priority?)` | Subscribe to effect failures with no caller left to throw at (async rejections, plus stale synchronous cleanups); returns an unsubscribe function. |
+| `onSignalizeError(cb, priority?)` | Subscribe to every diagnostic with no caller left to throw at — finalizer failures, deprecation notices, the link threshold, and effect failures nobody took via `onEffectError()`; returns an unsubscribe function. |
 
 ### `onEffectError(cb, priority?): () => void`
 
@@ -272,8 +273,10 @@ write.
 > handler can.** Node terminates the process on an unhandled rejection by
 > default, and an effect that fails on a fetch is the most ordinary thing in
 > the world, so the rejection is caught and reported instead. While no
-> handler is registered it goes to `console.error` with the effect id;
-> registering one replaces that log.
+> handler is registered it falls through to `onSignalizeError()` with
+> `source: 'effect'`, and with nobody listening there either it goes to
+> `console.error` with the effect id; registering a handler here replaces
+> both.
 >
 > **The handler itself must be synchronous or catch its own errors.** Nothing
 > awaits it: `onEffectError(async (p) => { await report(p); })` with a failing
@@ -281,14 +284,83 @@ write.
 > send in `.catch()`.
 
 > ⚠️ **A throwing handler stops the dispatch.** A synchronous `throw` out of a
-> handler does not escape — its failure and the original error both go to
-> `console.error` — but eventize aborts the dispatch there, so handlers with a
+> handler does not escape — its failure goes to `console.error`, the original
+> error takes the fallback route above — but eventize aborts the dispatch
+> there, so handlers with a
 > lower priority never see that event. One broken handler can blind the
 > monitoring registered behind it. Keep handlers total, and give the one that
 > must not miss anything the highest priority.
 
 `priority` is the eventize priority (higher runs first) when several handlers
 are registered.
+
+### `onSignalizeError(cb, priority?): () => void`
+
+```ts
+const unsubscribe = onSignalizeError(({level, source, message, error}) => {
+  report(message, {level, source, error});
+});
+```
+
+The general channel for everything the library has to say when there is
+nobody left to say it to. Some of it is a failure inside a
+`FinalizationRegistry` callback, where a `throw` becomes an
+`uncaughtException` and ends the process; some of it is a notice. All of it
+used to go straight to the console, where no application could route it.
+
+`cb` receives one `SignalizeErrorPayload`:
+
+| Field     | Type                        | Meaning                                                     |
+| --------- | --------------------------- | ------------------------------------------------------------ |
+| `level`   | `'error' \| 'warn'`         | Which console method the message would have gone to without a handler. |
+| `source`  | see below                   | Where the diagnostic came from. New members may appear in a minor release — a `switch` over it needs a `default`. |
+| `message` | `string`                    | Always present, and exactly the text the console would have shown. |
+| `error`   | `unknown \| undefined`      | The failure. **Absent for a notice** — no `Error` is invented to fill the field. |
+
+| `source`             | Raised by                                                        |
+| -------------------- | ---------------------------------------------------------------- |
+| `effect`             | An effect failure that no `onEffectError()` handler took.        |
+| `group-finalizer`    | A `SignalGroup` teardown threw in its registry callback.         |
+| `link-finalizer`     | Releasing a collected link's queue subscriptions threw.          |
+| `automap-finalizer`  | The same for a collected `SignalAutoMap`.                        |
+| `link-count`         | 1000 links on one source signal — once per source.               |
+| `deprecation`        | A deprecated call: `SignalGroup.destroy()`, `SignalGroup#destroy`, `signalReader(callback)`. |
+
+What a handler changes, exactly:
+
+1. **No handler.** Every message goes to the console as before — same text,
+   same argument shape. Nothing is taken away from code that does not know
+   this channel exists.
+2. **Handler registered.** The payload goes to the handler and the console
+   stays quiet. Whoever installs this owns the message, **deprecation notices
+   included** — if they should stay visible, log them.
+3. **Handler throws synchronously.** Caught. Two lines follow: the handler's
+   failure on `console.error`, then the original payload on the console method
+   its own `level` names — a notice lands on `console.warn`, so a test that
+   mocks `console.error` alone will not see it. Never a rethrow.
+4. **A throwing handler starves its siblings.** eventize ends the dispatch,
+   so lower-priority handlers never see the event — the payload still reaches
+   the console afterwards, so nothing is lost.
+5. **An `async` handler that rejects.** Nothing awaits it, so the rejection is
+   unhandled — the very thing this channel exists to prevent. Wrap the send in
+   `.catch()`, exactly as with `onEffectError()`.
+
+> ⚠️ **Installing a handler silences the deprecation notices.** They are
+> diagnostics with no caller too, so they travel this channel. That is the
+> one surprise here: a reporting handler that only forwards `level: 'error'`
+> makes them invisible.
+
+**Against `onEffectError()`.** Both stay. An effect failure is offered to
+`onEffectError()` first, with its structured payload (`effect`, `effectId`,
+`phase`), and only reaches `onSignalizeError()` when nobody listens there — so
+no handler ever sees the same failure twice. What arrives on the general
+channel carries the effect id and the phase inside `message` as text, not as
+fields. Take `onEffectError()` when you need them as fields, `onSignalizeError()`
+when you want one place for everything.
+
+`priority` is the eventize priority (higher runs first), in second place — as
+in every subscribe function of this library, not in eventize's own argument
+order.
 
 ---
 
@@ -393,7 +465,8 @@ backstop for links nobody can reach any more, and it can be neither scheduled
 nor observed. A long-lived source that keeps accumulating fresh links without
 ever tearing the old ones down grows this registry without bound, and every
 write to that source gets linearly slower as it grows. At 1000 links on one
-source, `link()` says so once, via `console.warn` — a diagnostic, not a
+source, `link()` says so once, via `console.warn` — or to `onSignalizeError()`
+with `source: 'link-count'`, if someone listens there. A diagnostic, not a
 limit: nothing is thrown and nothing is refused.
 
 ### `unlink(source, target?)`
@@ -643,8 +716,8 @@ the GC path does not deliver; `getSignalsCount()` still comes back down, because
 each signal corrects the counter from its own finalizer. FR firing is
 non-deterministic in any case — explicit `delete()` / `group.clear()` remains the
 one path you can schedule. If that teardown throws, the error is reported via
-`console.error` and never re-raised: a registry callback has no caller left to
-receive it.
+`onSignalizeError()` — `console.error` while nobody listens there — and never
+re-raised: a registry callback has no caller left to receive it.
 
 ### Instance
 
@@ -679,7 +752,8 @@ The five walks over the group graph — `hasSignal()`, `signal()`, `runEffects()
 > one unchanged, several as an `AggregateError` whose `errors` array holds
 > them in teardown order. The one place they are not raised is the
 > `FinalizationRegistry` path described above, where they go to
-> `console.error` instead.
+> `onSignalizeError()` instead — and to `console.error` while nobody is
+> listening there.
 
 Destroying a signal directly — `signal.destroy()` or `destroySignal(sig)` —
 also takes it out of the group that held it, name included: `hasSignal(name)`
@@ -793,6 +867,8 @@ Exported from `@spearwolf/signalize`:
 | `CreateMemoOptions`          | Options for `createMemo`.                                        |
 | `SignalLink<T>`, `ValueCallback<T>` | Link types. `T` defaults to `unknown` in both.             |
 | `LinkSource<T>`              | The narrow read-only view of a link's source signal: `id`, `value`, `muted`, `destroyed`. |
+| `SignalizeErrorPayload`      | The single argument an `onSignalizeError()` handler receives: `{level, source, message, error?}`. |
+| `SignalizeErrorCallback`     | `(payload: SignalizeErrorPayload) => void`.                      |
 | `AbortSignalLike`            | Structural subset of `AbortSignal` accepted by `nextValue()` / `asyncValues()`. |
 | `CompareFunc<T>`             | `(a: T, b: T) => boolean`.                                       |
 | `BeforeReadFunc`             | `() => void`.                                                    |

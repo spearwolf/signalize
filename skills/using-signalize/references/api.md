@@ -20,6 +20,8 @@ getSignalsCount, touch, value
 // effects
 createEffect, getEffectsCount, onCreateEffect, onDestroyEffect, onEffectError,
 getMaxEffectDepth, setMaxEffectDepth
+// diagnostics
+onSignalizeError
 // memos
 createMemo
 // links
@@ -38,6 +40,7 @@ Signal, Effect
 //   EffectOptions, EffectOptionsWithSignalDeps, EffectOptionsWithNameDeps,
 //   EffectDeps, SignalLikeDeps, EffectCallback, CreateMemoOptions, LinkOptions,
 //   EffectErrorPayload, EffectErrorPhase, EffectErrorCallback, FailingEffect,
+//   SignalizeErrorPayload, SignalizeErrorCallback,
 //   SignalLink, ValueCallback, LinkSource, SignalAutoMapKeyType, AbortSignalLike,
 //   CompareFunc, BeforeReadFunc, VoidFunc, ValueChangedCallback
 ```
@@ -125,13 +128,28 @@ onEffectError(({error, effect, effectId, phase}) => {}, priority?);  // → unsu
 // phase: 'callback' | 'cleanup';  effect: FailingEffect = {id, destroy()}
 ```
 
-Reports failures that have no caller left to throw at: rejections of `async` effect callbacks and `async` cleanups are the common case, plus a cleanup that throws synchronously when its throw can no longer reach a legitimate caller — a superseded run, an effect already destroyed, or one destroying itself as its own run winds down (pitfall 11b): it throws with a full stack present and still lands here. Without a handler they go to `console.error` with the effect id instead of becoming unhandled rejections. Every other synchronous throw propagates to whoever triggered the run — but only after every other effect of that same write has run; several failures of one write arrive as an `AggregateError` in delivery order.
+Reports failures that have no caller left to throw at: rejections of `async` effect callbacks and `async` cleanups are the common case, plus a cleanup that throws synchronously when its throw can no longer reach a legitimate caller — a superseded run, an effect already destroyed, or one destroying itself as its own run winds down (pitfall 11b): it throws with a full stack present and still lands here. Without a handler they fall through to `onSignalizeError()` with `source: 'effect'`, and with nobody there either to `console.error` with the effect id — never to an unhandled rejection. Every other synchronous throw propagates to whoever triggered the run — but only after every other effect of that same write has run; several failures of one write arrive as an `AggregateError` in delivery order.
 
 Two constraints on the handler: it must be **synchronous or catch its own errors** (nothing awaits it, so `onEffectError(async p => { await report(p) })` with a failing `report` crashes the process exactly as before), and a synchronous throw out of it **stops the dispatch**, so lower-priority handlers miss that event.
 
 The cleanup an `async` callback resolves to runs **late** — right when the promise settles — when the effect has re-run or been destroyed in the meantime (pitfall 11a). Nothing is awaited before the next run.
 
 The synchronous case knows the same rule: a run overtaken by a re-entrant self-write hands its cleanup over at once instead of losing it (pitfall 9).
+
+### Every other diagnostic with no caller
+
+```ts
+onSignalizeError(({level, source, message, error}) => {}, priority?);  // → unsubscribe
+// level:  'error' | 'warn'
+// source: 'effect' | 'group-finalizer' | 'link-finalizer' | 'automap-finalizer'
+//       | 'link-count' | 'deprecation'   — may gain members in a minor release
+// message: always there, verbatim what the console would have shown
+// error:   absent on a notice — none is invented to fill the field
+```
+
+The general channel for what the library cannot throw at anyone: a teardown that threw inside the `FinalizationRegistry` callback of `SignalGroup`, `link()` or `SignalAutoMap`; the 1000-links threshold; the deprecation notices; and effect failures that no `onEffectError()` handler took. Without a handler every one of them goes to `console.warn(message)` / `console.error(message, error)` exactly as before — the channel takes nothing away from code that ignores it.
+
+With a handler, the console stays quiet and the handler owns the message, **deprecation notices included** — the one surprise here: a reporting handler that only forwards `level: 'error'` makes them invisible. Same two constraints as `onEffectError()` (synchronous or self-catching; a throwing handler stops the dispatch), and a throwing handler is caught rather than rethrown, because most call sites are registry callbacks where a throw kills the process. An effect failure never arrives twice: `onEffectError()` gets it first, this channel only when nobody listens there.
 
 ## Memos
 
@@ -166,7 +184,8 @@ unlink(src, target);   unlink(src);             // drop one, or all links from s
 getLinksCount();       getLinksCount(src);
 // unlink(src) tears every link down, then reports — several failures as an AggregateError
 // held until destroy()/unlink()/{attach} clears/source|target dies — a link on a still-live source is never reclaimed by GC alone
-// link() warns once per source (console.warn) at 1000 links on that source
+// link() warns once per source at 1000 links on that source — console.warn, or
+//   onSignalizeError() with source: 'link-count' if a handler is registered
 
 con.lastValue;  con.isMuted;  con.isDestroyed;
 con.mute();  con.unmute();  con.toggleMute();

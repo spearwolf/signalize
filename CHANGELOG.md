@@ -11,6 +11,9 @@
 - `SignalAutoMap#delete(key)` destroys the signal for that key and removes the entry, returning `true` if the key was in the map — previously only `clear()` could tear anything down (MEM-009)
 - `link()` warns once per source signal, via `console.warn`, as soon as 1000 links hang off that one source — the point where the register is more likely unbounded than intended, and where a write to that source already costs two orders of magnitude more than it did empty. The warning names the four teardown routes (`destroy()`, `unlink()`, a cleared `{attach}` group, destroying source or target) and `getLinksCount(source)`; nothing is thrown and no link is refused (MEM-005, audit 2026-08-07)
 - `Signal#destroyed` and `Effect#destroyed`: `boolean` getters that say whether the primitive is still alive. `SignalLink` keeps `isDestroyed` — the spelling is consistent per class, and does not change in the middle of one. Nothing is taken away (API-008)
+- New `onSignalizeError(cb, priority?)` export: catches the diagnostics that have no caller to throw at — errors out of the `FinalizationRegistry` callbacks of `SignalGroup`, `link()` and `SignalAutoMap`, the deprecation notices, and the 1000-links threshold. The handler receives `{level, source, message, error?}` (CONS-001)
+- Without a registered handler every one of those messages stays verbatim on `console.warn`/`console.error`; **with** a handler the handler owns them, deprecation notices included (CONS-001)
+- An effect failure that no `onEffectError()` handler takes now goes to `onSignalizeError()` before it reaches the console (CONS-001)
 
 ### Bug Fixes
 

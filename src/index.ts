@@ -38,6 +38,7 @@ export {
   muteSignal,
   unmuteSignal,
 } from './signal-core.js';
+export {onSignalizeError} from './signalize-error.js';
 export {touch} from './touch.js';
 // A list, not a star (API-007): `ISignalImpl` is the implementation layer and
 // stays inside the module graph — `LinkSource` is what a consumer gets instead.
@@ -53,6 +54,8 @@ export type {
   FailingEffect,
   LinkSource,
   NonThenable,
+  SignalizeErrorCallback,
+  SignalizeErrorPayload,
   SignalLike,
   SignalParams,
   SignalReader,

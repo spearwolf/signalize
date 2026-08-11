@@ -17,6 +17,8 @@ import {
 } from './SignalGroup.js';
 import type {SignalLink} from './SignalLink.js';
 import {getSignalsCount} from './signal-core.js';
+import {onSignalizeError} from './signalize-error.js';
+import type {SignalizeErrorPayload} from './types.js';
 
 // `globalThis.gc` is only available when Node is launched with --expose-gc
 // (the `gc` project in vitest.config.ts, which `pnpm test` also runs, and
@@ -224,6 +226,105 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
       errorSpy.mockRestore();
       // The finalizer swallows the throwing cleanup; a direct `clear()`
       // does not, and it is the one that runs if the group is still here.
+      try {
+        group.clear();
+      } catch {
+        /* ignore */
+      }
+    }
+  });
+
+  it('routes a throwing FR teardown to an onSignalizeError handler', async () => {
+    const baselineGroups = getSignalGroupsCount();
+    const errorSpy: MockInstance = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const seen: SignalizeErrorPayload[] = [];
+    const unsubscribe = onSignalizeError((payload) => {
+      seen.push(payload);
+    });
+
+    let host: object | null = {marker: 'fr-routed-cleanup'};
+    const group = SignalGroup.findOrCreate(host);
+    createEffect(
+      () => () => {
+        throw new Error('cleanup boom routed');
+      },
+      {attach: host},
+    );
+
+    try {
+      host = null;
+
+      for (
+        let i = 0;
+        i < 20 && getSignalGroupsCount() > baselineGroups;
+        i += 1
+      ) {
+        await forceGc();
+      }
+
+      expect(getSignalGroupsCount()).toBe(baselineGroups);
+      expect(seen).toHaveLength(1);
+      expect(seen[0].source).toBe('group-finalizer');
+      expect(seen[0].level).toBe('error');
+      expect((seen[0].error as Error).message).toBe('cleanup boom routed');
+      // The whole point: with a handler in place the message is the
+      // handler's, not the console's.
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      unsubscribe();
+      errorSpy.mockRestore();
+      try {
+        group.clear();
+      } catch {
+        /* ignore */
+      }
+    }
+  });
+
+  it('a throwing handler in the FR callback does not kill the process', async () => {
+    const baselineGroups = getSignalGroupsCount();
+    const errorSpy: MockInstance = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const unsubscribe = onSignalizeError(() => {
+      throw new Error('handler boom in FR');
+    });
+
+    let host: object | null = {marker: 'fr-throwing-handler'};
+    const group = SignalGroup.findOrCreate(host);
+    createEffect(
+      () => () => {
+        throw new Error('cleanup boom under a throwing handler');
+      },
+      {attach: host},
+    );
+
+    try {
+      host = null;
+
+      for (
+        let i = 0;
+        i < 20 && getSignalGroupsCount() > baselineGroups;
+        i += 1
+      ) {
+        await forceGc();
+      }
+
+      // Reaching this line at all is half the assertion: a throw out of the
+      // FR callback is an uncaughtException and takes the process with it.
+      expect(getSignalGroupsCount()).toBe(baselineGroups);
+      expect(errorSpy).toHaveBeenCalledTimes(2);
+      expect((errorSpy.mock.calls[0][1] as Error).message).toBe(
+        'handler boom in FR',
+      );
+      expect((errorSpy.mock.calls[1][1] as Error).message).toBe(
+        'cleanup boom under a throwing handler',
+      );
+    } finally {
+      unsubscribe();
+      errorSpy.mockRestore();
       try {
         group.clear();
       } catch {

@@ -139,8 +139,9 @@ groups. Clearing a group destroys everything in it.
   moved, 2000 listeners staying on the queue for 1000 collected groups.
   Explicit `SignalGroup.delete(obj)` or `group.clear()` in cleanup remains
   the reliable path, and the only one that fires `DESTROY`. A teardown that
-  throws inside a registry callback is reported via `console.error` rather
-  than re-raised — there is no caller in that job to throw at.
+  throws inside a registry callback is reported via `onSignalizeError()` —
+  `console.error` while nobody listens there — rather than re-raised: there is
+  no caller in that job to throw at.
 
 ## Decorators
 

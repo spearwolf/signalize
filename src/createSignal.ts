@@ -9,6 +9,7 @@ import {
   signalImpl,
   writeSignal,
 } from './signal-core.js';
+import {reportSignalizeError} from './signalize-error.js';
 import type {
   BeforeReadFunc,
   CompareFunc,
@@ -29,9 +30,12 @@ let signalReaderCallbackDeprecationWarned = false;
 function warnSignalReaderCallbackDeprecated(): void {
   if (signalReaderCallbackDeprecationWarned) return;
   signalReaderCallbackDeprecationWarned = true;
-  console.warn(
-    'signalReader(callback) is deprecated and will be removed in a future release. Use Signal.onChange(callback) instead — it returns an unsubscribe function for proper cleanup.',
-  );
+  reportSignalizeError({
+    level: 'warn',
+    source: 'deprecation',
+    message:
+      'signalReader(callback) is deprecated and will be removed in a future release. Use Signal.onChange(callback) instead — it returns an unsubscribe function for proper cleanup.',
+  });
 }
 
 const createSignalReader = <Type>(

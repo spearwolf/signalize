@@ -9,6 +9,7 @@ import {
   ValueCallback,
 } from './SignalLink.js';
 import {signalImpl} from './signal-core.js';
+import {reportSignalizeError} from './signalize-error.js';
 import {ISignalImpl, SignalLike, SignalReader} from './types.js';
 
 // Weak on the source signal: the search always goes through the source, so
@@ -91,12 +92,16 @@ const gLinkFinalizer = new FinalizationRegistry<(() => void)[]>(
         unsubscribe();
       } catch (err) {
         // A throw out of a FinalizationRegistry callback has no caller to
-        // reach — it would take the process down. Same channel and same
-        // reason as `SignalGroup`'s finalizer.
-        console.error(
-          '[signalize] link: releasing the queue subscriptions of a collected link failed',
-          err,
-        );
+        // reach — it would take the process down. So it goes out on the
+        // named diagnostics channel (`onSignalizeError()`, console without a
+        // handler), same as `SignalGroup`'s finalizer.
+        reportSignalizeError({
+          level: 'error',
+          source: 'link-finalizer',
+          message:
+            '[signalize] link: releasing the queue subscriptions of a collected link failed',
+          error: err,
+        });
       }
     }
     queueUnsubscribes.length = 0;
@@ -174,8 +179,10 @@ export interface LinkOptions {
  * but that is a backstop for a link nobody can reach any more, not a
  * teardown you can schedule.)
  *
- * Warns once per source signal, via `console.warn`, as soon as 1000 links
- * hang off it — the point where the linear cost of a write to that source
+ * Warns once per source signal — via `console.warn`, or through
+ * `onSignalizeError()` with `source: 'link-count'` where a handler is
+ * registered — as soon as 1000 links
+ * hang off it: the point where the linear cost of a write to that source
  * has grown two orders of magnitude (measured) and an unbounded register is
  * the likelier explanation than intent. Diagnostic only: nothing is thrown
  * and nothing is refused.
@@ -235,9 +242,11 @@ export function link<ValueType>(
     !gWarnedSources.has(sourceSignal)
   ) {
     gWarnedSources.add(sourceSignal);
-    console.warn(
-      `[signalize] link(): ${links.size} links on a single source signal. A link is held until destroy(), unlink(), a cleared {attach} group, or the destruction of source/target — garbage collection alone does not reclaim one on a live source. If this is a hot path creating fresh callbacks, tear the old links down; getLinksCount(source) is the number to watch.`,
-    );
+    reportSignalizeError({
+      level: 'warn',
+      source: 'link-count',
+      message: `[signalize] link(): ${links.size} links on a single source signal. A link is held until destroy(), unlink(), a cleared {attach} group, or the destruction of source/target — garbage collection alone does not reclaim one on a live source. If this is a hot path creating fresh callbacks, tear the old links down; getLinksCount(source) is the number to watch.`,
+    });
   }
 
   // MEM-010: unlike `attachEffect()`'s hook above, the damage here is

@@ -5,6 +5,9 @@ export const $destroySignal = Symbol.for('@spearwolf/signalize/destroySignal');
 export const $createEffect = Symbol.for('@spearwolf/signalize/createEffect');
 export const $destroyEffect = Symbol.for('@spearwolf/signalize/destroyEffect');
 export const $effectError = Symbol.for('@spearwolf/signalize/effectError');
+export const $signalizeError = Symbol.for(
+  '@spearwolf/signalize/signalizeError',
+);
 
 // MEM-001: a `SignalLink`'s handles for its own subscriptions on the two
 // module-level global queues. Symbol-keyed rather than a `#private` field

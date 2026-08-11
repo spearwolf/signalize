@@ -15,6 +15,7 @@ import {globalDestroySignalQueue} from './global-queues.js';
 import {Signal} from './Signal.js';
 import {SignalLink} from './SignalLink.js';
 import {destroySignal, signalImpl} from './signal-core.js';
+import {reportSignalizeError} from './signalize-error.js';
 import {ISignalImpl, SignalLike} from './types.js';
 
 // Lookup map: user-object → SignalGroup. WeakMap so that user objects are not
@@ -64,12 +65,16 @@ const groupResourceFinalizer = new FinalizationRegistry<GroupResources>(
         unsubscribe();
       } catch (err) {
         // A throw out of a FinalizationRegistry callback has no caller to
-        // reach — it would take the process down. Same channel and same
-        // reason as `clearGroupFromFinalizer` below.
-        console.error(
-          '[signalize] releasing the destroy-queue subscriptions of a collected SignalGroup failed:',
-          err,
-        );
+        // reach — it would take the process down. So it goes out on the
+        // named diagnostics channel (`onSignalizeError()`, console without a
+        // handler), same as `clearGroupFromFinalizer` below.
+        reportSignalizeError({
+          level: 'error',
+          source: 'group-finalizer',
+          message:
+            '[signalize] releasing the destroy-queue subscriptions of a collected SignalGroup failed:',
+          error: err,
+        });
       }
     }
     resources.unsubs.clear();
@@ -89,8 +94,10 @@ const groupResourceFinalizer = new FinalizationRegistry<GroupResources>(
 // and it throws into a FinalizationRegistry job — a context with no caller.
 // An `uncaughtException` there takes the whole process down. Re-throwing
 // here would just be that crash again, and swallowing silently would be
-// worse still: a throwing cleanup would stay invisible forever. So it gets
-// reported instead, never re-thrown. This is the one path in the package
+// worse still: a throwing cleanup would stay invisible forever. So it goes
+// out on the named diagnostics channel instead, never re-thrown — an
+// `onSignalizeError()` handler can route it, and without one it lands on
+// `console.error` as it always did. This is the one path in the package
 // where `clear()` runs without a caller at all — everywhere else the caller
 // gets its error unchanged.
 /**
@@ -105,10 +112,13 @@ export const clearGroupFromFinalizer = (group: SignalGroup): void => {
   try {
     group.clear();
   } catch (err) {
-    console.error(
-      '[signalize] a SignalGroup teardown threw in the FinalizationRegistry callback, where no caller can catch it:',
-      err,
-    );
+    reportSignalizeError({
+      level: 'error',
+      source: 'group-finalizer',
+      message:
+        '[signalize] a SignalGroup teardown threw in the FinalizationRegistry callback, where no caller can catch it:',
+      error: err,
+    });
   }
 };
 
@@ -368,9 +378,12 @@ export class SignalGroup {
   }
 
   static destroy(object: object) {
-    console.warn(
-      'SignalGroup.destroy(obj) is deprecated. Use SignalGroup.delete(obj) instead.',
-    );
+    reportSignalizeError({
+      level: 'warn',
+      source: 'deprecation',
+      message:
+        'SignalGroup.destroy(obj) is deprecated. Use SignalGroup.delete(obj) instead.',
+    });
     SignalGroup.delete(object);
   }
 
@@ -1023,9 +1036,12 @@ export class SignalGroup {
   }
 
   destroy() {
-    console.warn(
-      'SignalGroup#destroy is deprecated. Use SignalGroup#clear instead.',
-    );
+    reportSignalizeError({
+      level: 'warn',
+      source: 'deprecation',
+      message:
+        'SignalGroup#destroy is deprecated. Use SignalGroup#clear instead.',
+    });
     this.clear();
   }
 
@@ -1113,7 +1129,8 @@ export class SignalGroup {
    * unchanged, several as an `AggregateError` holding them in teardown order.
    * This matters most where nobody is listening: `clear()` also runs from the
    * FinalizationRegistry callback, out of reach of any application try/catch —
-   * there, the error is reported via `console.error` instead of escaping.
+   * there, the error is reported via `onSignalizeError()`, and to
+   * `console.error` while nobody listens, instead of escaping.
    */
   clear() {
     if (this.#busy & BUSY_CLEAR) return;

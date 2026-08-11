@@ -32,6 +32,7 @@ import {
 import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 import {SignalGroup} from './SignalGroup.js';
 import {signalImpl} from './signal-core.js';
+import {reportSignalizeError} from './signalize-error.js';
 import type {
   EffectCallback,
   EffectErrorPayload,
@@ -101,8 +102,13 @@ const isThenable = (value: unknown): value is Promise<unknown> =>
  * out on the global effect queue where `onEffectError()` handlers pick it up.
  *
  * With no handler registered it would vanish silently, and a silent swallow
- * is worse than the crash we came from, so it falls back to `console.error`.
- * A handler that throws is treated the same way: reported, never re-raised.
+ * is worse than the crash we came from, so it falls back to the general
+ * diagnostics channel — `onSignalizeError()` handlers get it with
+ * `source: 'effect'`, and with nobody listening there either it reaches
+ * `console.error` as before. That fallback carries the effect id and the
+ * phase inside the message text, not as fields; only `onEffectError()` hands
+ * them out structured. A handler that throws is treated the same way:
+ * reported, never re-raised.
  *
  * Note the cost of the handler probe: `getSubscribedEventNames()` builds an
  * array holding one entry per subscribed event name — and every live effect
@@ -135,10 +141,12 @@ const emitEffectError = (
     }
   }
 
-  console.error(
-    `[signalize] unhandled rejection in the ${phase} of effect ${effect.id.toString()}:`,
+  reportSignalizeError({
+    level: 'error',
+    source: 'effect',
+    message: `[signalize] unhandled rejection in the ${phase} of effect ${effect.id.toString()}:`,
     error,
-  );
+  });
 };
 
 // Eventize injects EventizedObject members at runtime via eventize(this) in

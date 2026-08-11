@@ -186,8 +186,9 @@ createEffect(() => {
 ```
 
 - A rejecting `async` callback (or `async` cleanup) is not left as an unhandled
-  rejection. It goes to `onEffectError(cb)`, or to `console.error` while no
-  handler is registered. See [api.md](./api.md#top-level-helpers).
+  rejection. It goes to `onEffectError(cb)`, then to `onSignalizeError(cb)`
+  with `source: 'effect'`, and to `console.error` while nobody listens on
+  either. See [api.md](./api.md#top-level-helpers).
 - The handler must be synchronous or catch its own errors — nothing awaits it,
   so an `async` handler whose own promise rejects lands back at square one:
 
@@ -268,9 +269,10 @@ try {
   own failure, once.
 - A throwing `link()` callback is **not** an effect and does end the delivery.
   The failures collected before it are re-raised together with it.
-- This does **not** go through `onEffectError()`. That channel is for
-  failures with no caller left to throw at — async rejections and stale
-  cleanups. Here the write is the caller, so catch at the write.
+- This does **not** go through `onEffectError()` — nor through
+  `onSignalizeError()`. Both channels are for failures with no caller left to
+  throw at — async rejections, stale cleanups, finalizer teardowns. Here the
+  write is the caller, so catch at the write.
 
 ## Recursion guard
 
@@ -600,7 +602,8 @@ log.unmute();
   them for as long as `src` lives; `getLinksCount(src)` is the number to
   watch. Once 1000 links hang off one source, `link()` reads this paragraph
   back to you at runtime — one `console.warn` per source signal, then never
-  again for that source.
+  again for that source. With an `onSignalizeError()` handler registered it
+  arrives there instead, with `source: 'link-count'`.
 - Repeated `link()` calls with different `attach` groups don't replace or drop
   the extra attach — the existing link is attached to *every* group it was
   ever `link()`'d or `.attach()`'d with, and dies with whichever one clears
