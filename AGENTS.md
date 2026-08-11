@@ -119,7 +119,7 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | `createMemo.ts` | `createMemo` — wraps signal + high-priority effect |
 | `link.ts` | `link`, `unlink`, `getLinksCount` |
 | `SignalLink.ts` | `SignalLink` (abstract), `SignalLinkToSignal`, `SignalLinkToCallback`, `ValueCallback` |
-| `SignalGroup.ts` | `SignalGroup` lifecycle container |
+| `SignalGroup.ts` | `SignalGroup` lifecycle container — nine of its eleven member containers start out as module-level shared empty stand-ins and are only allocated on first write (PERF-004); every read path treats them as ordinary empty collections |
 | `SignalAutoMap.ts` | `SignalAutoMap`, `SignalAutoMapKeyType` — auto-creating signal map |
 | `globalEffectStack.ts` | Effect execution context stack (`getCurrentEffect()`) |
 | `global-queues.ts` | The four global eventize buses |

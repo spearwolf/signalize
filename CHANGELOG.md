@@ -122,6 +122,7 @@
 - An effect run outside a batch flush no longer emits on `globalEffectCalledQueue`, the queue only a running flush listens on (PERF-003, audit 2026-08-08)
 - A signal write with ten dependent effects runs about a third faster — `bench/signal-write.bench.ts`, 373,783 → 510,935 ops/s (PERF-001, PERF-003, audit 2026-08-08)
 - `{batchWrites: true}` no longer costs a memo without a dependent effect anything worth measuring — `bench/memo.bench.ts`, 756,036 → 2,244,935 ops/s, within 5 % of the default (PERF-002, audit 2026-08-08)
+- An empty `SignalGroup` retains 1081 instead of 2513 bytes: nine of its eleven member containers are only allocated on first write (PERF-004, audit 2026-08-08)
 
 ### Documentation
 

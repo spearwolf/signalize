@@ -188,6 +188,80 @@ const BUSY_CLEAR = 1 << 4;
 const CYCLE_REJECTED =
   'Cannot attach a group to one of its own descendants: this would create a cycle in the group graph';
 
+// PERF-004: die selten benutzten Container entstehen erst beim ersten
+// Schreiben. Bis dahin zeigt das Feld auf einen modulweit geteilten
+// leeren Stellvertreter — nicht auf `undefined`.
+//
+// Das ist der ganze Grund für die Bauart: jeder Lesepfad bleibt
+// unverändert. `.size` ist 0, `.has()`/`.get()` antworten wie ein leerer
+// Container, `.delete()` und `.clear()` sind No-ops, Iteration liefert
+// nichts. Damit halten drei Zusagen von selbst, die `undefined` je
+// einzeln brechen würde: `memberCounts` antwortet weiter mit 0; die
+// `once(…, DESTROY, Priority.Max, …)`-Hooks aus `attachEffect()` und
+// `attachLink()` — das Erste, was beim Zerstören eines Members läuft,
+// vor jedem Anwendungs-Listener — können nicht am Kopf einer
+// eventize-Zustellung werfen und sie damit für alle abbrechen; und ein
+// Hook, der nach einem `clear()` feuert, findet weiterhin etwas vor.
+//
+// Die Stellvertreter weisen jeden Schreibzugriff zurück, der sie
+// nicht-leer machen würde. Eine vergessene Übernahme würde sonst einen
+// Container füllen, den sich sämtliche SignalGroups des Prozesses
+// teilen — der lauteste Fehlschlag ist hier der billigste.
+const SHARED_EMPTY_WRITE =
+  'internal error: a shared empty stand-in collection was written to';
+
+class EmptySet extends Set<any> {
+  add(): never {
+    throw new Error(SHARED_EMPTY_WRITE);
+  }
+}
+class EmptyMap extends Map<any, any> {
+  set(): never {
+    throw new Error(SHARED_EMPTY_WRITE);
+  }
+}
+class EmptyWeakMap extends WeakMap<object, any> {
+  set(): never {
+    throw new Error(SHARED_EMPTY_WRITE);
+  }
+}
+class EmptyWeakSet extends WeakSet<object> {
+  add(): never {
+    throw new Error(SHARED_EMPTY_WRITE);
+  }
+}
+
+const EMPTY_SET: Set<any> = new EmptySet();
+const EMPTY_MAP: Map<any, any> = new EmptyMap();
+const EMPTY_WEAK_MAP: WeakMap<any, any> = new EmptyWeakMap();
+const EMPTY_WEAK_SET: WeakSet<any> = new EmptyWeakSet();
+
+const ownSet = <T>(collection: Set<T>): Set<T> =>
+  collection === EMPTY_SET ? new Set<T>() : collection;
+const ownMap = <K, V>(collection: Map<K, V>): Map<K, V> =>
+  collection === EMPTY_MAP ? new Map<K, V>() : collection;
+const ownWeakMap = <K extends object, V>(
+  collection: WeakMap<K, V>,
+): WeakMap<K, V> =>
+  collection === EMPTY_WEAK_MAP ? new WeakMap<K, V>() : collection;
+const ownWeakSet = <T extends object>(collection: WeakSet<T>): WeakSet<T> =>
+  collection === EMPTY_WEAK_SET ? new WeakSet<T>() : collection;
+
+/**
+ * @internal Test seam for the four stand-ins above.
+ *
+ * Their `add`/`set` overrides are unreachable from every other route, and
+ * an unreachable method is one nobody notices when it stops throwing.
+ * `src/index.ts` re-exports `SignalGroup.ts` by name, so this stays out
+ * of the public entry point.
+ */
+export const SHARED_EMPTY_COLLECTIONS = {
+  set: EMPTY_SET,
+  map: EMPTY_MAP,
+  weakMap: EMPTY_WEAK_MAP,
+  weakSet: EMPTY_WEAK_SET,
+};
+
 /**
  * A container for managing the lifecycle of signals, effects, links, and child groups.
  *
@@ -203,34 +277,34 @@ const CYCLE_REJECTED =
 export interface SignalGroup extends EventizedObject {}
 
 export class SignalGroup {
-  readonly #groups = new Set<SignalGroup>();
+  #groups: Set<SignalGroup> = EMPTY_SET;
 
   readonly #signals = new Set<ISignalImpl>();
-  readonly #namedSignals = new Map<SignalNameType, ISignalImpl>();
+  #namedSignals: Map<SignalNameType, ISignalImpl> = EMPTY_MAP;
 
-  readonly #signalKeys = new WeakMap<ISignalImpl<any>, Set<SignalNameType>>();
-  readonly #otherSignals = new Map<SignalNameType, Set<ISignalImpl>>();
+  #signalKeys: WeakMap<ISignalImpl<any>, Set<SignalNameType>> = EMPTY_WEAK_MAP;
+  #otherSignals: Map<SignalNameType, Set<ISignalImpl>> = EMPTY_MAP;
 
   // Signals handed to the public `attachSignal()`. They stay group-owned even
   // when a name they are bound to is rebound to another signal — signals that
   // only ever arrived through `attachSignalByName()` do not.
-  readonly #directSignals = new Set<ISignalImpl>();
+  #directSignals: Set<ISignalImpl> = EMPTY_SET;
 
   readonly #effects = new Set<EffectImpl>();
 
   // One `globalDestroySignalQueue` unsubscribe handle per attached signal
   // (MEM-002): the group has to hear about a signal it holds being destroyed,
   // or a long-lived group accumulates dead SignalImpls until `clear()`.
-  readonly #signalDestroySubscriptions = new Map<ISignalImpl, () => void>();
+  #signalDestroySubscriptions: Map<ISignalImpl, () => void> = EMPTY_MAP;
 
   // MEM-003: symbol-keyed rather than `#private` for the same reason as
   // `$queueUnsubscribes` in `SignalLink` — the module-level finalizer and
   // guard have to reach it, a `#` field is out of their reach, and a public
   // named field would be new API surface.
   /** @internal */
-  readonly [$groupResources]: GroupResources = {unsubs: new Set()};
+  readonly [$groupResources]: GroupResources = {unsubs: EMPTY_SET};
 
-  readonly #links = new Set<SignalLink<any>>();
+  #links: Set<SignalLink<any>> = EMPTY_SET;
 
   // MEM-002: which links this group has already registered its DESTROY
   // counter-edge for. Not `#links.has(link)` as the guard: `detachLink()` is
@@ -238,7 +312,7 @@ export class SignalGroup {
   // cycle would append another listener. And not a second `Set` either: that
   // would be a new strong holder for exactly the links `detachLink()` just
   // released.
-  readonly #linksWithDestroyHook = new WeakSet<SignalLink<any>>();
+  #linksWithDestroyHook: WeakSet<SignalLink<any>> = EMPTY_WEAK_SET;
 
   #parentGroup?: SignalGroup;
 
@@ -273,10 +347,14 @@ export class SignalGroup {
       throw new Error('Cannot create a group with a null object');
     }
     // PERF-002: check the store before constructing. The field initializers
-    // alone allocate four Sets, two Maps and a WeakMap, so `new
-    // SignalGroup(object)` on a cache hit built and discarded all of that
-    // just to have the constructor's own `store.has()` check hand back the
-    // existing instance. Checked here first, this path is a plain WeakMap
+    // alone allocated five Sets, three Maps, a WeakMap and a WeakSet, plus
+    // the `[$groupResources]` wrapper object, so `new SignalGroup(object)`
+    // on a cache hit built and discarded all of that just to have the
+    // constructor's own `store.has()` check hand back the existing
+    // instance. Since PERF-004 the cache-miss side allocates three of them
+    // — `#signals`, `#effects` and the wrapper — the other nine fields
+    // point at the shared empty stand-ins until something writes to them.
+    // Checked here first, this path is a plain WeakMap
     // lookup on a hit. The constructor's `store.has()` check (and the
     // `instanceof SignalGroup` early return) stay in place as the
     // authoritative safety net — for direct/re-entrant construction and for
@@ -420,7 +498,7 @@ export class SignalGroup {
       }
     }
 
-    this.#groups.add(group);
+    (this.#groups = ownSet(this.#groups)).add(group);
 
     if (group.#parentGroup && group.#parentGroup !== this) {
       group.#parentGroup.#groups.delete(group);
@@ -457,7 +535,7 @@ export class SignalGroup {
     const si = this.#addSignal(signal);
 
     if (si) {
-      this.#directSignals.add(si);
+      (this.#directSignals = ownSet(this.#directSignals)).add(si);
     }
 
     return signal;
@@ -515,8 +593,11 @@ export class SignalGroup {
             }
           },
         );
-        this.#signalDestroySubscriptions.set(si, unsubscribe);
-        this[$groupResources].unsubs.add(unsubscribe);
+        (this.#signalDestroySubscriptions = ownMap(
+          this.#signalDestroySubscriptions,
+        )).set(si, unsubscribe);
+        const resources = this[$groupResources];
+        (resources.unsubs = ownSet(resources.unsubs)).add(unsubscribe);
       }
     }
 
@@ -613,19 +694,25 @@ export class SignalGroup {
         this.#displaceFromName(name, previous);
       }
 
-      this.#namedSignals.set(name, si);
+      (this.#namedSignals = ownMap(this.#namedSignals)).set(name, si);
 
       const otherSignals = this.#otherSignals.get(name);
       if (otherSignals) {
         otherSignals.add(si);
       } else {
-        this.#otherSignals.set(name, new Set([si]));
+        (this.#otherSignals = ownMap(this.#otherSignals)).set(
+          name,
+          new Set([si]),
+        );
       }
 
       if (this.#signalKeys.has(si)) {
         this.#signalKeys.get(si)!.add(name);
       } else {
-        this.#signalKeys.set(si, new Set([name]));
+        (this.#signalKeys = ownWeakMap(this.#signalKeys)).set(
+          si,
+          new Set([name]),
+        );
       }
     } else {
       // Release *this* name from every signal listed under it — not the
@@ -731,7 +818,10 @@ export class SignalGroup {
             // preserves insertion order).
             let previous: ISignalImpl | undefined;
             for (const s of otherSignals) previous = s;
-            this.#namedSignals.set(name, previous!);
+            (this.#namedSignals = ownMap(this.#namedSignals)).set(
+              name,
+              previous!,
+            );
           }
         }
       }
@@ -818,13 +908,15 @@ export class SignalGroup {
     }
 
     if (link) {
-      this.#links.add(link);
+      (this.#links = ownSet(this.#links)).add(link);
       // Guarded because eventize's own dedup can't help: `isSimilar()` only
       // covers `LISTENER_IS_OBJ` and `LISTENER_IS_NAMED_FUNC` listeners. A
       // plain function is neither, so even the same function reference
       // registered twice yields two subscriptions.
       if (!this.#linksWithDestroyHook.has(link)) {
-        this.#linksWithDestroyHook.add(link);
+        (this.#linksWithDestroyHook = ownWeakSet(
+          this.#linksWithDestroyHook,
+        )).add(link);
         // MEM-002: the counter-edge to `attachEffect()`'s hook. It lives
         // here rather than in `SignalLink.attach()` because `attachLink()`
         // is the common passage of both routes — `link({attach})` and

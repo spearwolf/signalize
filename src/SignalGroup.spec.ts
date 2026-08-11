@@ -16,7 +16,12 @@ import {
   globalSignalQueue,
 } from './global-queues.js';
 import {link} from './link.js';
-import {$groupResources, $setParentGroup, SignalGroup} from './SignalGroup.js';
+import {
+  $groupResources,
+  $setParentGroup,
+  SHARED_EMPTY_COLLECTIONS,
+  SignalGroup,
+} from './SignalGroup.js';
 import {SignalLinkToCallback} from './SignalLink.js';
 
 // Nothing attached to a group may survive its teardown on the global queues.
@@ -2157,6 +2162,156 @@ describe('SignalGroup', () => {
       } finally {
         signal1.destroy();
         signal2.destroy();
+        group.clear();
+      }
+    });
+  });
+
+  describe('lazy member collections (PERF-004)', () => {
+    it('the shared empty stand-ins refuse every write', () => {
+      // The stand-ins are shared by every SignalGroup in the process, so a
+      // forgotten `own*()` call would not corrupt one group, it would
+      // corrupt all of them at once. These four throws are what turns that
+      // into an immediate, loud failure instead of a slow one.
+      const key = {};
+
+      expect(() => SHARED_EMPTY_COLLECTIONS.set.add(key)).toThrow(
+        /shared empty stand-in/,
+      );
+      expect(() => SHARED_EMPTY_COLLECTIONS.map.set(key, key)).toThrow(
+        /shared empty stand-in/,
+      );
+      expect(() => SHARED_EMPTY_COLLECTIONS.weakMap.set(key, key)).toThrow(
+        /shared empty stand-in/,
+      );
+      expect(() => SHARED_EMPTY_COLLECTIONS.weakSet.add(key)).toThrow(
+        /shared empty stand-in/,
+      );
+
+      expect(SHARED_EMPTY_COLLECTIONS.set.size).toBe(0);
+      expect(SHARED_EMPTY_COLLECTIONS.map.size).toBe(0);
+    });
+
+    it("one group's first attach leaves every other group untouched", () => {
+      const a = SignalGroup.findOrCreate({});
+      const b = SignalGroup.findOrCreate({});
+      const child = SignalGroup.findOrCreate({});
+      const direct = createSignal(1);
+      const named = createSignal(2);
+      const source = createSignal(3);
+      const target = createSignal(0);
+      const signalLink = link(source, target);
+
+      try {
+        // b is created first and never written to: whatever the writes on a
+        // touch, b is the group that would show it.
+        a.attachGroup(child);
+        a.attachSignal(direct);
+        a.attachSignalByName('name', named);
+        a.attachLink(signalLink);
+
+        expect(getGroupMemberCounts(b)).toEqual(NO_GROUP_MEMBERS);
+        expect(b.hasSignal('name')).toBe(false);
+        expect(b.signal('name')).toBeUndefined();
+      } finally {
+        signalLink.destroy();
+        source.destroy();
+        target.destroy();
+        direct.destroy();
+        named.destroy();
+        child.clear();
+        b.clear();
+        a.clear();
+      }
+    });
+
+    it('a group that never held anything survives clear(), off() and a second clear()', () => {
+      const group = SignalGroup.findOrCreate({});
+
+      try {
+        group.clear();
+        expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+
+        group.off();
+        expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+
+        group.clear();
+        expect(getGroupMemberCounts(group)).toEqual(NO_GROUP_MEMBERS);
+      } finally {
+        group.clear();
+      }
+    });
+
+    it('a DESTROY hook that fires after clear() still finds its collection', () => {
+      // The trap this rebuild could have set: `clear()` handing a field back
+      // to the shared stand-in would make the `once(…, DESTROY,
+      // Priority.Max, …)` hooks throw at the head of an eventize delivery,
+      // and eventize ends a delivery at the first throwing listener — every
+      // application DESTROY listener would go away empty-handed. The
+      // takeover is one-way for exactly this reason.
+      //
+      // `detachLink()` is the one route that outlives a `clear()`: it takes
+      // a *live* link back out of `#links` while `#linksWithDestroyHook`
+      // keeps the link (that is the whole point of the WeakSet guard), so
+      // the hook is still registered and fires whenever the link is
+      // destroyed — here long after the group was dismantled. An effect has
+      // no such route: `clear()` destroys it, and its hook runs inside the
+      // teardown rather than after it, which the second half checks.
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(0);
+      const source = createSignal(1);
+      const target = createSignal(0);
+
+      const effect = createEffect(() => {
+        signal.get();
+      });
+      const signalLink = link(source, target);
+
+      let effectListener = 0;
+      let linkListener = 0;
+
+      try {
+        group.attachEffect(effect[$effect]);
+        group.attachLink(signalLink);
+        group.detachLink(signalLink);
+
+        on(effect[$effect], DESTROY, () => {
+          effectListener += 1;
+        });
+        on(signalLink, DESTROY, () => {
+          linkListener += 1;
+        });
+
+        expect(() => group.clear()).not.toThrow();
+
+        expect(
+          effectListener,
+          'the effect hook ran inside clear() and let the application listener through',
+        ).toBe(1);
+        expect(linkListener, 'the detached link is still alive').toBe(0);
+
+        expect(() => signalLink.destroy()).not.toThrow();
+
+        expect(
+          linkListener,
+          'the link DESTROY listener ran once, after clear()',
+        ).toBe(1);
+
+        // The other half of the hook's job: it does not merely fail to
+        // throw, it actually takes the link back out. "No throw" is the
+        // loud half — under this design the quiet half is the one worth
+        // stating, because a `delete()` that ran into the void would leave
+        // the group holding a dead link and say nothing about it.
+        expect(
+          getGroupMemberCounts(group).links,
+          'the group is not holding the destroyed link',
+        ).toBe(0);
+      } finally {
+        effect.destroy();
+        signalLink.destroy();
+        signal.destroy();
+        source.destroy();
+        target.destroy();
         group.clear();
       }
     });
