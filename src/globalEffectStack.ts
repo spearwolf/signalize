@@ -1,4 +1,4 @@
-import {EffectImpl} from './EffectImpl.js';
+import type {EffectImpl} from './EffectImpl.js';
 import type {EffectCallback, VoidFunc} from './types.js';
 
 const globalEffectStack: EffectImpl[] = [];

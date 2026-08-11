@@ -144,6 +144,7 @@
 - `SignalGroup.findOrCreate()` checks `store.get(object)` before constructing, instead of unconditionally building a full `SignalGroup` (four `Set`s, two `Map`s, a `WeakMap`, `WeakRef`, `FinalizationRegistry.register`, `eventize(this)`) and discarding it on every cache hit. The private constructor's own `store.has()` check stays in place as a safety net for direct/re-entrant construction, it just no longer carries the common case (PERF-002)
 - `SignalAutoMap.updateFromProps()` now computes its entries and returns before opening a `batch()` when there are none, matching the guard `update()` already had for an empty `Map` (PERF-004)
 - Added `fast-check` as a devDependency for the new ordering property suite
+- Enabled Biome's `style/useImportType` rule and marked the 13 type-only cross-layer imports it found across 8 files as `import type`, with no effect on the emitted JavaScript (ARCH-003)
 
 ### Tests
 

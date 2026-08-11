@@ -3,7 +3,7 @@ import {batch} from './batch.js';
 import {$autoMapResources} from './constants.js';
 import {createSignal} from './createSignal.js';
 import {globalDestroySignalQueue} from './global-queues.js';
-import {Signal} from './Signal.js';
+import type {Signal} from './Signal.js';
 import {signalImpl} from './signal-core.js';
 import {reportSignalizeError} from './signalize-error.js';
 

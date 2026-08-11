@@ -1,4 +1,4 @@
-import {Signal} from './Signal.js';
+import type {Signal} from './Signal.js';
 import {destroySignal} from './signal-core.js';
 
 interface ObjectStore {

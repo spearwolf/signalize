@@ -61,7 +61,7 @@
       "style": {
         "noParameterAssign": "off",
         "noNonNullAssertion": "off",
-        "useImportType": "off",
+        "useImportType": "error",
         "noUselessElse": "off"
       },
       "correctness": {

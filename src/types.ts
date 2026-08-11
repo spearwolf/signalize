@@ -1,6 +1,6 @@
 import type {$signal} from './constants.js';
 import type {Signal} from './Signal.js';
-import {SignalGroup} from './SignalGroup.js';
+import type {SignalGroup} from './SignalGroup.js';
 
 export type VoidFunc = () => void;
 export type EffectCallback = VoidFunc | (() => VoidFunc);

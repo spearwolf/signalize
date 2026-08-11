@@ -10,13 +10,13 @@ import {
 import {collect, throwCollectedErrors} from './collect-errors.js';
 import {$effect, DESTROY, OFF} from './constants.js';
 import type {Effect} from './Effect.js';
-import {EffectImpl} from './EffectImpl.js';
+import type {EffectImpl} from './EffectImpl.js';
 import {globalDestroySignalQueue} from './global-queues.js';
-import {Signal} from './Signal.js';
-import {SignalLink} from './SignalLink.js';
+import type {Signal} from './Signal.js';
+import type {SignalLink} from './SignalLink.js';
 import {destroySignal, signalImpl} from './signal-core.js';
 import {reportSignalizeError} from './signalize-error.js';
-import {ISignalImpl, SignalLike} from './types.js';
+import type {ISignalImpl, SignalLike} from './types.js';
 
 // Lookup map: user-object → SignalGroup. WeakMap so that user objects are not
 // kept alive by the registry — once the user object is unreachable, its entry

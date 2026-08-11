@@ -1,6 +1,6 @@
 import {once} from '@spearwolf/eventize';
 import {$effect, DESTROY} from './constants.js';
-import {EffectImpl} from './EffectImpl.js';
+import type {EffectImpl} from './EffectImpl.js';
 import type {VoidFunc} from './types.js';
 
 const noop = () => {};

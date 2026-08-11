@@ -1,16 +1,16 @@
 import {once, Priority} from '@spearwolf/eventize';
 import {collect, throwCollectedErrors} from './collect-errors.js';
 import {$queueUnsubscribes, DESTROY} from './constants.js';
-import {Signal} from './Signal.js';
+import type {Signal} from './Signal.js';
 import {
-  SignalLink,
+  type SignalLink,
   SignalLinkToCallback,
   SignalLinkToSignal,
-  ValueCallback,
+  type ValueCallback,
 } from './SignalLink.js';
 import {signalImpl} from './signal-core.js';
 import {reportSignalizeError} from './signalize-error.js';
-import {ISignalImpl, SignalLike, SignalReader} from './types.js';
+import type {ISignalImpl, SignalLike, SignalReader} from './types.js';
 
 // Weak on the source signal: the search always goes through the source, so
 // there is no need to iterate `gLinks` itself, and a WeakMap ties the *set*

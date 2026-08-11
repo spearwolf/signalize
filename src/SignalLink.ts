@@ -13,7 +13,12 @@ import {$queueUnsubscribes, DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
 import {signalImpl} from './signal-core.js';
-import {AbortSignalLike, ISignalImpl, LinkSource, SignalLike} from './types.js';
+import type {
+  AbortSignalLike,
+  ISignalImpl,
+  LinkSource,
+  SignalLike,
+} from './types.js';
 
 /** The value type defaults to `unknown`; annotate `ValueCallback<number>`. */
 export type ValueCallback<ValueType = unknown> = (value: ValueType) => void;
