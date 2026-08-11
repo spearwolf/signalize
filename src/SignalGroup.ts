@@ -377,6 +377,15 @@ export class SignalGroup {
     return store.get(object) ?? new SignalGroup(object);
   }
 
+  /**
+   * Delete and clear the group associated with an object, and warn about it.
+   *
+   * Behaves exactly like {@link SignalGroup.delete}, plus a `deprecation`
+   * notice on every call.
+   *
+   * @deprecated Use {@link SignalGroup.delete} instead.
+   * @param object - The object whose group should be deleted, or the group
+   */
   static destroy(object: object) {
     reportSignalizeError({
       level: 'warn',
@@ -1035,6 +1044,14 @@ export class SignalGroup {
     };
   }
 
+  /**
+   * Tear down all subscriptions of this group, and warn about it.
+   *
+   * Behaves exactly like {@link SignalGroup#clear} — the group itself
+   * survives and stays usable — plus a `deprecation` notice on every call.
+   *
+   * @deprecated Use {@link SignalGroup#clear} instead.
+   */
   destroy() {
     reportSignalizeError({
       level: 'warn',

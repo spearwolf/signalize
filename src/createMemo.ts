@@ -7,6 +7,7 @@ import {globalDestroySignalQueue} from './global-queues.js';
 import {getCurrentEffect} from './globalEffectStack.js';
 import {SignalGroup} from './SignalGroup.js';
 import {destroySignal, signalImpl} from './signal-core.js';
+import {reportSignalizeError} from './signalize-error.js';
 import type {SignalReader} from './types.js';
 
 /**
@@ -15,7 +16,13 @@ import type {SignalReader} from './types.js';
 export interface CreateMemoOptions {
   /** Attach the memo to a SignalGroup for lifecycle management */
   attach?: object | SignalGroup;
-  /** Optional name for the memo when attached to a group */
+  /**
+   * Optional name for the memo when attached to a group.
+   *
+   * Only has meaning together with `attach` — a name is a slot inside a
+   * group. Passed on its own it does nothing, and every such call is
+   * reported through `onSignalizeError()` with `source: 'ignored-option'`.
+   */
   name?: string | symbol;
   /** If true, the memo won't compute until first read (default: false) */
   lazy?: boolean;
@@ -115,6 +122,16 @@ export function createMemo<Type>(
       } else {
         group.attachSignal(si);
       }
+    } else if (options?.name != null) {
+      // A name only exists inside a group, so without `attach` there is
+      // nowhere to file it and the option does nothing. Reported on every
+      // call, not once per process: this is a misspelled call, not a
+      // deprecation notice.
+      reportSignalizeError({
+        level: 'warn',
+        source: 'ignored-option',
+        message: `createMemo({name: ${String(options.name)}}) without {attach} is ignored: a name only exists within a SignalGroup. Pass {attach} as well, or drop the name.`,
+      });
     }
 
     const useBatch = options?.batchWrites ?? false;

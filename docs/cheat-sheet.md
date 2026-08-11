@@ -73,7 +73,7 @@ onEffectError(({error, effectId, phase}) => {});  // → unsubscribe
 // Everything with no caller to throw at, in one place
 onSignalizeError(({level, source, message, error}) => {});  // → unsubscribe
 // source: 'effect' | 'group-finalizer' | 'link-finalizer' | 'automap-finalizer'
-//       | 'link-count' | 'deprecation' | 'multiple-instances'
+//       | 'link-count' | 'deprecation' | 'multiple-instances' | 'ignored-option'
 //                                       (may grow in a minor — use a default)
 // no handler → console.warn(message) / console.error(message, error), as before
 // a handler OWNS the message — deprecation notices included, so log them
@@ -91,7 +91,8 @@ const m = createMemo(() => a.get() * 2, {
   lazy:         false,   // true: recompute on read; effects do NOT re-run
   priority:     1000,
   attach:       obj,
-  name:         'm',     // group registration
+  name:         'm',     // group registration — without attach it does nothing
+                          // and is reported ('ignored-option'), every call
   batchWrites:  false,   // true only if computer() itself writes OTHER signals —
                           // costs a full flush per recompute once the memo has a
                           // dependent effect (~3x); free without one — not the default

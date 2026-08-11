@@ -35,7 +35,7 @@ existing signal-like (then this very signal is returned, no new one created).
 | `set(v, params?)` | Write. `v` may be a value or, with `{lazy: true}`, a factory — and only with it; a bare factory is a compile error. |
 | `value = v`       | Setter shortcut for `set(v)`.                                                              |
 | `touch()`         | Emit a change without changing the value.                                                  |
-| `onChange(cb)`    | Subscribe to changes. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect — an effect created inside it is a child effect and is destroyed on the next change (see below). |
+| `onChange(cb)`    | Subscribe to changes. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect, so it does **not** fire on subscribe — an effect created inside it is a child effect and is destroyed on the next change (see below). |
 | `muted`           | `boolean` getter/setter — pause/resume notifications. Writes still store their value.      |
 | `destroyed`       | `boolean` getter — `true` once the signal has been destroyed. It stays usable as a plain value container; it just no longer notifies. |
 | `destroy()`       | Destroy the signal (alias for `destroySignal(this)`).                                      |
@@ -326,6 +326,7 @@ used to go straight to the console, where no application could route it.
 | `link-count`         | 1000 links on one source signal — once per source.               |
 | `deprecation`        | A deprecated call: `SignalGroup.destroy()`, `SignalGroup#destroy`, `signalReader(callback)`. |
 | `multiple-instances` | More than one copy of the library in one process; once, when the second one loads. |
+| `ignored-option`     | An option that does nothing in the combination it was passed in: `createMemo({name})` without `attach`. Every call. |
 
 `multiple-instances` is the one source a handler will usually **not** see.
 With two static imports both copies register while their modules are being
@@ -395,7 +396,7 @@ first compute then happens on the first read, at which point the reader exists.
 | `lazy`     | `boolean`                     | `false`      | If `false`, the memo eagerly recomputes on dep change (acts as a computed signal). If `true`, recomputes on read only. |
 | `priority` | `number`                      | `1000`       | Higher than default effects so memos resolve first in a flush.               |
 | `attach`   | `object \| SignalGroup`       | `—`          | Lifecycle group.                                                             |
-| `name`     | `string \| symbol`            | `—`          | Name within the attached group (`group.signal(name)`).                       |
+| `name`     | `string \| symbol`            | `—`          | Name within the attached group (`group.signal(name)`). Without `attach` it does nothing and is reported via `onSignalizeError()` (`source: 'ignored-option'`) on every such call. |
 | `batchWrites` | `boolean`                   | `false`      | Wrap the recompute in `batch()`. Groups side-effect writes with the memo's own; costs a full flush once the memo has a downstream effect. See below. |
 
 **Eager (default) vs lazy.** Effects that depend on a memo only re-run if the
@@ -865,6 +866,8 @@ Exported from `@spearwolf/signalize`:
 | `SignalLike<T>`              | Internal brand that only `createSignal()` produces. `$signal` is not exported, so the type is inspectable but not implementable from the outside — use `isSignal(v)` to recognise one. `T` defaults to `unknown`. |
 | `SignalParams<T>`            | Options for `createSignal` (`lazy`, `compare`, `beforeRead`, `attach`). |
 | `SignalWriterParams<T>`      | Options for `set()` (extends `SignalParams`, adds `touch`). Its `lazy?: boolean` is *not* narrow enough for the factory overload — that one wants a statically `true` `lazy`. |
+| `SignalValueParams`          | The `{touch?: boolean}` half of `SignalWriterParams`, on its own.  |
+| `NonThenable<T>`             | `T` unless `T` is promise-like, in which case `never`. What makes an `async` callback a compile error in `batch()` and `beQuiet()`. |
 | `Effect`                     | The wrapper returned by `createEffect()`.                        |
 | `EffectOptions`              | The wide options form the `EffectImpl` constructor takes. A `createEffect()` call site refuses it (`TS2769`) — its `dependencies` may hold names while `attach` stays optional. Name one of the two below instead. |
 | `EffectOptionsWithSignalDeps` | Options whose `dependencies` hold only `SignalLike` entries; `attach` optional. |
@@ -873,7 +876,13 @@ Exported from `@spearwolf/signalize`:
 | `SignalLikeDeps`             | `SignalLike<any>[]` — the positional deps array without names. |
 | `EffectCallback`             | `() => void \| (() => void)`.                                    |
 | `CreateMemoOptions`          | Options for `createMemo`.                                        |
+| `EffectErrorPayload`         | The single argument an `onEffectError()` handler receives: `{effect, effectId, error, phase}`. |
+| `EffectErrorPhase`           | `'callback' \| 'cleanup'` — which half of the effect run failed. |
+| `EffectErrorCallback`        | `(payload: EffectErrorPayload) => void`.                         |
+| `FailingEffect`              | The narrow view of the failed effect inside that payload: `id` and `destroy()`, nothing else. |
 | `SignalLink<T>`, `ValueCallback<T>` | Link types. `T` defaults to `unknown` in both.             |
+| `LinkOptions`                | Options for `link()` (`attach`).                                 |
+| `SignalAutoMapKeyType`       | `string \| symbol` — the key type a `SignalAutoMap` accepts.     |
 | `LinkSource<T>`              | The narrow read-only view of a link's source signal: `id`, `value`, `muted`, `destroyed`. |
 | `SignalizeErrorPayload`      | The single argument an `onSignalizeError()` handler receives: `{level, source, message, error?}`. |
 | `SignalizeErrorCallback`     | `(payload: SignalizeErrorPayload) => void`.                      |

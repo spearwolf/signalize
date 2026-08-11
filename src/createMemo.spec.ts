@@ -13,7 +13,8 @@ import {createEffect, getEffectsCount, onCreateEffect} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
 import {destroySignal, getSignalsCount, signalImpl} from './signal-core.js';
-import type {SignalReader} from './types.js';
+import {onSignalizeError} from './signalize-error.js';
+import type {SignalizeErrorPayload, SignalReader} from './types.js';
 
 describe('createMemo', () => {
   beforeEach(() => {
@@ -774,6 +775,69 @@ describe('createMemo', () => {
         );
       } finally {
         destroySignal(dep, inner, outer);
+      }
+    });
+  });
+
+  describe('{name} without {attach} (API-009)', () => {
+    it('reports every such call, not once per process', () => {
+      const seen: SignalizeErrorPayload[] = [];
+      const unsubscribe = onSignalizeError((payload) => {
+        seen.push(payload);
+      });
+
+      const memos: SignalReader<number>[] = [];
+
+      try {
+        // Three calls, three notices. This is what separates the option from
+        // a deprecation notice, which a module-level flag silences after the
+        // first one (`createSignal.ts`) — such a flag would also outlive the
+        // test that installed it and leave the rest of the suite untested.
+        for (const name of ['first', 'second', 'third']) {
+          memos.push(createMemo(() => 42, {name}));
+        }
+
+        expect(seen).toHaveLength(3);
+        expect(seen.map((p) => p.source)).toEqual([
+          'ignored-option',
+          'ignored-option',
+          'ignored-option',
+        ]);
+        // Each notice names its own call, not the first one's.
+        expect(seen[0].message).toMatch(/first/);
+        expect(seen[1].message).toMatch(/second/);
+        expect(seen[2].message).toMatch(/third/);
+
+        expect(seen[0].level).toBe('warn');
+        expect(seen[0].message).toMatch(/attach/);
+        // A notice carries no error.
+        expect(seen[0].error).toBeUndefined();
+      } finally {
+        unsubscribe();
+        destroySignal(...memos);
+      }
+    });
+
+    it('stays quiet when {attach} is given too', () => {
+      const seen: SignalizeErrorPayload[] = [];
+      const unsubscribe = onSignalizeError((payload) => {
+        seen.push(payload);
+      });
+
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+
+      try {
+        const memo = createMemo(() => 42, {name: 'answer', attach: host});
+
+        expect(seen).toHaveLength(0);
+        // `signal(name)` hands back the Signal object; the memo's reader is
+        // that object's `get`.
+        expect(group.signal('answer')?.get).toBe(memo);
+      } finally {
+        unsubscribe();
+        group.clear();
+        SignalGroup.delete(host);
       }
     });
   });

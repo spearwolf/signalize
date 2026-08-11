@@ -21,7 +21,7 @@ Framework-agnostic signal/effect/memo/link library. Synchronous reactivity. Buil
 | Effect | `createEffect()` | Function that auto-reruns when tracked signals change |
 | Memo | `createMemo()` | Cached derived signal — internally a signal driven by a high-priority effect |
 | Link | `link()` | Explicit one-way data flow between signals (or signal → callback) |
-| SignalGroup | `new SignalGroup()` | Lifecycle bundle — destroy group → destroys all attached signals/effects/links |
+| SignalGroup | `SignalGroup.findOrCreate(obj)` | Lifecycle bundle — destroy group → destroys all attached signals/effects/links |
 | Object Signal | `@signal` decorator + `findObjectSignal*()` | Signal stored on a host object, retrievable by property name |
 
 ## Architecture

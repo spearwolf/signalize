@@ -27,6 +27,10 @@ const idCreator = new UniqIdGen('si');
 
 let signalReaderCallbackDeprecationWarned = false;
 
+// Module-private, so no `.d.ts` carries it and a deprecation tag here would
+// reach no editor. The consumer-visible declaration of this same deprecation
+// is the callback overload of `SignalReader` in `types.ts`, which does carry
+// the tag.
 function warnSignalReaderCallbackDeprecated(): void {
   if (signalReaderCallbackDeprecationWarned) return;
   signalReaderCallbackDeprecationWarned = true;

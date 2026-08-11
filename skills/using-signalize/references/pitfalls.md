@@ -89,9 +89,11 @@ createEffect(() => {
 
 **19 — Decorator signals live in the instance's group.** `@signal` registers against `SignalGroup.findOrCreate(this)`. Full cleanup is `SignalGroup.delete(this)`; `destroyObjectSignals(this)` clears signals only and leaves attached effects and links running.
 
+**19a — `createMemo({name})` without `{attach}` does nothing, and says so.** A name is a slot inside a `SignalGroup`, so without a group there is nowhere to file it. The call is not refused and the memo works; the ignored name is reported through `onSignalizeError()` with `source: 'ignored-option'` — on every such call, not once per process — and reaches `console.warn` while nobody listens there. Pass `{attach}` as well, or drop the name.
+
 ## Deprecated surface
 
-**20 — `signal.get(callback)` is deprecated.** It creates an internal effect with no unsubscribe handle, so only destroying the signal cleans it up, and it emits a once-per-process `console.warn` — which an `onSignalizeError()` handler takes over (`source: 'deprecation'`), silencing the console. Use `sig.onChange(cb)`, which returns an unsubscribe function.
+**20 — `signal.get(callback)` is deprecated.** It creates an internal effect with no unsubscribe handle, so only destroying the signal cleans it up, and it emits a once-per-process `console.warn` — which an `onSignalizeError()` handler takes over (`source: 'deprecation'`), silencing the console. Use `sig.onChange(cb)`, which returns an unsubscribe function. The callback overload of `SignalReader` carries an `@deprecated` tag, so an editor strikes the form through at the call site; the plain `sig.get()` is a second overload and stays unmarked. `SignalGroup.destroy()` and `SignalGroup#destroy` carry the tag too.
 
 ## Working inside the signalize repo
 

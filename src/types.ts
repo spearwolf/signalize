@@ -82,6 +82,8 @@ export interface SignalizeErrorPayload {
    * - `deprecation` — a deprecated call, usually once per process
    * - `multiple-instances` — more than one copy of the library in one
    *   process, reported once, when the second one loads
+   * - `ignored-option` — an option that does nothing in the combination it
+   *   was passed in, reported on every such call
    *
    * New members may appear in a minor release: a `switch` over this needs a
    * `default`.
@@ -93,7 +95,8 @@ export interface SignalizeErrorPayload {
     | 'automap-finalizer'
     | 'link-count'
     | 'deprecation'
-    | 'multiple-instances';
+    | 'multiple-instances'
+    | 'ignored-option';
   /**
    * Always present, and exactly the text the console would have shown without
    * a handler.
@@ -197,17 +200,28 @@ export interface ISignalImpl<Type = unknown> extends SignalLike<Type> {
   object: Signal<Type>;
 }
 
+/**
+ * The callable form of `signal.get`, as an overload pair.
+ *
+ * **The deprecated callback signature comes first, and that order is load
+ * bearing.** A generic inference over an overloaded function type picks the
+ * *last* signature, so with the plain read last, `vi.fn(reader)` and every
+ * higher-order wrapper keep inferring a zero-argument call. Put the good one
+ * first and the same code breaks with `TS2554: Expected 1 arguments, but got
+ * 0` — measured, both ways. Whoever tidies this order up breaks consumer
+ * code no suite here covers.
+ */
 export interface SignalReader<T> extends SignalLike<T> {
   /**
-   * Read the signal value.
-   *
-   * @param callback - **Deprecated.** Passing a callback creates an internal
-   *   effect but returns no handle, so the only way to clean it up is to
-   *   destroy the signal itself. Use {@link Signal.onChange} instead, which
-   *   returns an unsubscribe function. The callback form will be removed in
-   *   a future release.
+   * @deprecated Passing a callback creates an internal effect but returns
+   *   no handle, so the only way to clean it up is to destroy the signal
+   *   itself. Use {@link Signal.onChange} instead, which returns an
+   *   unsubscribe function. The callback form will be removed in a future
+   *   release.
    */
-  (callback?: ValueChangedCallback<T>): T;
+  (callback: ValueChangedCallback<T>): T;
+  /** Read the signal value, registering a dependency in a running effect. */
+  (): T;
 }
 
 /**

@@ -13,7 +13,7 @@ queue, no virtual graph.
 | **Effect**      | `createEffect()`  | Function that re-runs when tracked signals change.                          |
 | **Memo**        | `createMemo()`    | Cached derived signal — internally a signal driven by a high-priority effect. |
 | **Link**        | `link()`          | Explicit one-way data flow: `signal → signal` or `signal → callback`.       |
-| **SignalGroup** | `new SignalGroup()` | Lifecycle bundle. Clearing the group destroys everything attached to it.  |
+| **SignalGroup** | `SignalGroup.findOrCreate(obj)` | Lifecycle bundle. Clearing the group destroys everything attached to it.  |
 
 ## Reactivity flow
 

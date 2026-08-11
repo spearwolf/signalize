@@ -737,3 +737,9 @@ const unsub = sig.onChange((value) => onChange(value));
 // ...
 unsub();
 ```
+
+The callback form is a separate overload of `SignalReader` and carries an
+`@deprecated` tag, so an editor strikes through `sig.get(cb)` while the plain
+`sig.get()` stays unmarked. Same for `SignalGroup.destroy()` and
+`SignalGroup#destroy`, whose replacements are `SignalGroup.delete()` and
+`group.clear()`.

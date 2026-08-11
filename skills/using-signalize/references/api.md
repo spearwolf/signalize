@@ -37,6 +37,7 @@ Signal, Effect
 
 // type-only re-exports (no runtime value):
 //   SignalReader, SignalWriter, SignalLike, SignalParams, SignalWriterParams,
+//   SignalValueParams, NonThenable,
 //   EffectOptions, EffectOptionsWithSignalDeps, EffectOptionsWithNameDeps,
 //   EffectDeps, SignalLikeDeps, EffectCallback, CreateMemoOptions, LinkOptions,
 //   EffectErrorPayload, EffectErrorPhase, EffectErrorCallback, FailingEffect,
@@ -73,7 +74,7 @@ c.touch();                  // force-notify
 c.destroy();
 c.muted = true;             // muted signals neither notify nor touch — set() still stores
 c.destroyed;                // true once destroyed — still holds its value, just silent
-const off = c.onChange((v) => {});   // → unsubscribe function
+const off = c.onChange((v) => {});   // → unsubscribe; does NOT fire on subscribe
 ```
 
 Top-level helpers:
@@ -142,7 +143,7 @@ The synchronous case knows the same rule: a run overtaken by a re-entrant self-w
 onSignalizeError(({level, source, message, error}) => {}, priority?);  // → unsubscribe
 // level:  'error' | 'warn'
 // source: 'effect' | 'group-finalizer' | 'link-finalizer' | 'automap-finalizer'
-//       | 'link-count' | 'deprecation' | 'multiple-instances'
+//       | 'link-count' | 'deprecation' | 'multiple-instances' | 'ignored-option'
 //                                       — may gain members in a minor release
 // message: always there, verbatim what the console would have shown
 // error:   absent on a notice — none is invented to fill the field

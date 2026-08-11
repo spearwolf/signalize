@@ -515,6 +515,8 @@ describe('the published type surface', () => {
       // publishes it — an annotation, so `tsc` is the one asserting here.
       const multipleInstances: SignalizeErrorPayload['source'] =
         'multiple-instances';
+      // API-009 added the next one, the same way and for the same reason.
+      const ignoredOption: SignalizeErrorPayload['source'] = 'ignored-option';
       const message: string = seen.message;
       const error: unknown = seen.error;
 
@@ -525,6 +527,7 @@ describe('the published type surface', () => {
       expect(error).toBeUndefined();
       expect(noReporter).toBeUndefined();
       expect(multipleInstances).toBe('multiple-instances');
+      expect(ignoredOption).toBe('ignored-option');
     } finally {
       unsubscribe();
     }
