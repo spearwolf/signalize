@@ -34,8 +34,8 @@ touch(c); touch([obj, 'prop']);  // notify
 ## Effects
 
 ```ts
-import {createEffect, getEffectsCount, onCreateEffect,
-        onDestroyEffect, onEffectError} from '@spearwolf/signalize';
+import {createEffect, getEffectsCount, getMaxEffectDepth, onCreateEffect,
+        onDestroyEffect, onEffectError, setMaxEffectDepth} from '@spearwolf/signalize';
 
 createEffect(() => {
   read(c.get());
@@ -55,7 +55,7 @@ const eff = createEffect(cb, {autorun: false});
 eff.run(); eff.destroy();
 
 // Recursion guard
-EffectImpl.maxDepth = 256;
+setMaxEffectDepth(256); // default; getMaxEffectDepth() reads it back
 
 // self-write: each nested run's cleanup runs at once when superseded — none is dropped
 // async: cleanup of a superseded run runs LATE (on settle), rejections are reported
@@ -133,7 +133,7 @@ g.attachSignal(s); g.attachSignalByName('n', s);
 g.attachSignalByName('n', s2);  // rebind: destroys s unless attachSignal'd/other name
 g.attachSignalByName('n');      // releases the name the same way
 g.detachSignal(s); g.signal<T>('n'); g.hasSignal('n');  // no <T> → Signal<unknown>
-g.attachEffect(e); g.runEffects();  // attachEffect throws on a destroyed effect
+g.attachEffect(e); g.runEffects();  // e: the Effect from createEffect() or the impl; throws on a destroyed one
 g.attachLink(l);   g.detachLink(l);  // a destroyed link takes itself out of the group
 g.attachGroup(c);  // throws on self or on a descendant
 g.detachGroup(c);

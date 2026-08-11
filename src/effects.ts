@@ -3,7 +3,7 @@ import {$createEffect, $destroyEffect, $effectError} from './constants.js';
 import type {Effect} from './Effect.js';
 import {EffectImpl} from './EffectImpl.js';
 import {globalEffectQueue} from './global-queues.js';
-import type {EffectErrorCallback} from './types.js';
+import type {EffectErrorCallback, FailingEffect} from './types.js';
 
 /**
  * Create a reactive effect that automatically tracks signal dependencies
@@ -13,11 +13,11 @@ import type {EffectErrorCallback} from './types.js';
  * to create a "static" effect that must be triggered manually via effect.run().
  *
  * If a callback writes to a signal it depends on, the effect re-enters
- * itself synchronously. The recursion depth is bounded by
- * `EffectImpl.maxDepth` (default 256); exceeding it throws instead of
- * silently overflowing the JS stack. Tune the cap via
- * `EffectImpl.maxDepth = N` only if the recursion is intentional —
- * normally the cycle should be broken (e.g. by guarding the write).
+ * itself synchronously. The recursion depth is bounded by the global cap
+ * (default 256); exceeding it throws instead of silently overflowing the
+ * JS stack. Tune the cap via {@link setMaxEffectDepth} only if the
+ * recursion is intentional — normally the cycle should be broken (e.g. by
+ * guarding the write).
  *
  * A throw out of the very first run — the autorun this call performs itself —
  * is the one case in which an effect does not survive its own failure, and
@@ -44,21 +44,42 @@ export const createEffect: typeof EffectImpl.createEffect = (
 
 /**
  * Subscribe to effect creation events. Called whenever a new effect is created.
- * @param args - Event handler arguments (callback and optional priority)
+ *
+ * What arrives is the real instance behind the `Effect` wrapper, typed down
+ * to the two members an observer may touch — its id and the option to tear
+ * it down. Anything beyond that is implementation, and a handler that asks
+ * for more is refused rather than served.
+ *
+ * @param callback - Receives the created effect as a {@link FailingEffect}
+ * @param priority - Optional eventize priority; higher runs first
  * @returns Unsubscribe function
  */
-export const onCreateEffect = (...args: unknown[]) =>
-  // @ts-ignore
-  on(globalEffectQueue, $createEffect, ...args);
+export const onCreateEffect = (
+  callback: (effect: FailingEffect) => void,
+  priority?: number,
+): (() => void) =>
+  priority == null
+    ? on(globalEffectQueue, $createEffect, callback)
+    : on(globalEffectQueue, $createEffect, priority, callback);
 
 /**
  * Subscribe to effect destruction events. Called whenever an effect is destroyed.
- * @param args - Event handler arguments (callback and optional priority)
+ *
+ * As with {@link onCreateEffect}, what arrives is the real instance typed
+ * down to the two members an observer may touch. It is already destroyed by
+ * the time the handler sees it — `run()` on it does nothing.
+ *
+ * @param callback - Receives the destroyed effect as a {@link FailingEffect}
+ * @param priority - Optional eventize priority; higher runs first
  * @returns Unsubscribe function
  */
-export const onDestroyEffect = (...args: unknown[]) =>
-  // @ts-ignore
-  on(globalEffectQueue, $destroyEffect, ...args);
+export const onDestroyEffect = (
+  callback: (effect: FailingEffect) => void,
+  priority?: number,
+): (() => void) =>
+  priority == null
+    ? on(globalEffectQueue, $destroyEffect, callback)
+    : on(globalEffectQueue, $destroyEffect, priority, callback);
 
 /**
  * Subscribe to errors that an effect could not throw at anyone.
@@ -110,6 +131,40 @@ export const onEffectError = (
   priority == null
     ? on(globalEffectQueue, $effectError, callback)
     : on(globalEffectQueue, $effectError, priority, callback);
+
+/**
+ * Raise or lower the re-entrancy cap of an effect run.
+ *
+ * An effect whose callback synchronously writes a signal it depends on
+ * re-enters its own run. Beyond `n` levels the run throws a descriptive
+ * `Error` naming the effect id and the limit, instead of dying in a native
+ * stack overflow. The default is 256 — well above realistic fixpoint
+ * iterations, well below the JS stack limit on common engines.
+ *
+ * The cap is global and applies from the next run on; it is not per effect.
+ * Raise it only where the recursion is intentional — the usual repair is to
+ * break the cycle.
+ *
+ * @param n - The new cap: a finite integer >= 1
+ * @throws If `n` is not a finite integer >= 1
+ */
+export const setMaxEffectDepth = (n: number): void => {
+  // A new function may be loud about a caller's mistake without breaking
+  // anyone: `0` would make every run throw, `Infinity` would remove the very
+  // cap this function administers. `Number.isInteger` settles NaN, Infinity
+  // and fractions in one check.
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(
+      `[signalize] setMaxEffectDepth: expected a finite integer >= 1, got ${String(n)}`,
+    );
+  }
+  EffectImpl.maxDepth = n;
+};
+
+/**
+ * The current re-entrancy cap of an effect run. See {@link setMaxEffectDepth}.
+ */
+export const getMaxEffectDepth = (): number => EffectImpl.maxDepth;
 
 /**
  * Get the current count of active (non-destroyed) effects.

@@ -143,7 +143,9 @@ Should the rollback itself fail (an
 `onDestroyEffect()` handler or a cleanup throwing), both failures arrive
 together as an `AggregateError`, creation error first.
 
-**`options`** *(`EffectOptions`)*:
+**`options`** *(the call site takes `EffectOptionsWithSignalDeps` or
+`EffectOptionsWithNameDeps`; `EffectOptions` is the wide form the
+`EffectImpl` constructor takes and is refused here)*:
 
 | Field          | Type                                | Default | Effect                                                                                                |
 | -------------- | ----------------------------------- | ------- | ----------------------------------------------------------------------------------------------------- |
@@ -193,8 +195,9 @@ the parent's rerun.
 
 > ⚠️ **Recursion guard.** If a callback writes to a signal it depends on,
 > `run()` re-enters synchronously. The depth is capped by
-> `EffectImpl.maxDepth` (default `256`); beyond that a descriptive `Error`
-> is thrown. Tune via `EffectImpl.maxDepth = N`, but prefer breaking the cycle.
+> the global cap (default `256`); beyond that a descriptive `Error`
+> is thrown. Read it with `getMaxEffectDepth()` and tune it with
+> `setMaxEffectDepth(n)`, but prefer breaking the cycle.
 
 ### `Effect` instance
 
@@ -225,8 +228,10 @@ the parent's rerun.
 | Function                  | Purpose                                                                            |
 | ------------------------- | ---------------------------------------------------------------------------------- |
 | `getEffectsCount()`       | Live effect count.                                                                 |
-| `onCreateEffect(cb)`      | Subscribe to effect-create events; returns an unsubscribe function.                |
-| `onDestroyEffect(cb)`     | Subscribe to effect-destroy events; returns an unsubscribe function. The effect passed to `cb` is already destroyed — `run()` on it does nothing. |
+| `onCreateEffect(cb, priority?)`  | Subscribe to effect-create events; returns an unsubscribe function. `cb` receives a `FailingEffect` — the real instance, typed down to `{id, destroy()}`. |
+| `onDestroyEffect(cb, priority?)` | Subscribe to effect-destroy events; returns an unsubscribe function. `cb` receives a `FailingEffect`, already destroyed — `run()` on it does nothing. |
+| `getMaxEffectDepth()`     | The current re-entrancy cap of an effect run (default `256`).                      |
+| `setMaxEffectDepth(n)`    | Raise or lower that cap globally, from the next run on. Throws unless `n` is a finite integer `>= 1`. |
 | `onEffectError(cb, priority?)` | Subscribe to effect failures with no caller left to throw at (async rejections, plus stale synchronous cleanups); returns an unsubscribe function. |
 
 ### `onEffectError(cb, priority?): () => void`
@@ -642,7 +647,7 @@ receive it.
 | `detachSignal(sig)`                     | Remove a signal (does **not** destroy it). Returns the argument with its own type intact. |
 | `hasSignal(name)`                       | Lookup walks parent chain.                                             |
 | `signal<T>(name)`                       | Returns the named `Signal<T>` (parent fallback) or `undefined`. Without a type argument that is `Signal<unknown>` — the group cannot know what a name holds. |
-| `attachEffect(eff)` / `runEffects()`    | Track an effect / run all attached and child effects. Throws on an already destroyed effect, like `attachSignal()` and `attachLink()`. A destroyed effect takes itself out of the group by itself. |
+| `attachEffect(eff)` / `runEffects()`    | Track an effect / run all attached and child effects. `eff` is the `Effect` from `createEffect()` or the internal instance — the method unwraps and gives the argument back with its own type, like `attachSignal()` and `attachLink()`. Throws on an already destroyed effect in either shape. A destroyed effect takes itself out of the group by itself. |
 | `attachLink(link)` / `detachLink(link)` | Track / untrack a link. A destroyed link takes itself out of the group, whichever route attached it. Both return the argument with its own type intact. |
 | `attachGroup(child)` / `detachGroup(child)` | Nest groups. `attachGroup()` throws when the edge would create a cycle — attaching a group to itself, or to one of its own descendants. |
 | `off()`                                 | Destroy attached effects/links and drop all external subscriptions on group signals — an external effect that survives the detach re-subscribes on its next run, static deps as well as dynamic ones; signals stay alive, the group remains reusable — except a memo signal `{attach}`ed inside an effect body, which belongs to that effect and dies with it. Child groups are `off()`'d recursively. Emits an `OFF` event. |
@@ -771,7 +776,11 @@ Exported from `@spearwolf/signalize`:
 | `SignalParams<T>`            | Options for `createSignal` (`lazy`, `compare`, `beforeRead`, `attach`). |
 | `SignalWriterParams<T>`      | Options for `set()` (extends `SignalParams`, adds `touch`). Its `lazy?: boolean` is *not* narrow enough for the factory overload — that one wants a statically `true` `lazy`. |
 | `Effect`                     | The wrapper returned by `createEffect()`.                        |
-| `EffectOptions`              | Options for `createEffect`.                                      |
+| `EffectOptions`              | The wide options form the `EffectImpl` constructor takes. A `createEffect()` call site refuses it (`TS2769`) — its `dependencies` may hold names while `attach` stays optional. Name one of the two below instead. |
+| `EffectOptionsWithSignalDeps` | Options whose `dependencies` hold only `SignalLike` entries; `attach` optional. |
+| `EffectOptionsWithNameDeps`  | Options whose `dependencies` may hold string/symbol names; `attach` required, because the lookup needs a group. |
+| `EffectDeps`                 | `(SignalLike<any> \| string \| symbol)[]` — the positional deps array in its wide form. |
+| `SignalLikeDeps`             | `SignalLike<any>[]` — the positional deps array without names. |
 | `EffectCallback`             | `() => void \| (() => void)`.                                    |
 | `CreateMemoOptions`          | Options for `createMemo`.                                        |
 | `SignalLink<T>`, `ValueCallback<T>` | Link types. `T` defaults to `unknown` in both.             |

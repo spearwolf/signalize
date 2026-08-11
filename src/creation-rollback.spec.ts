@@ -41,8 +41,8 @@ describe('a creation that throws leaves nothing behind (P1, P2)', () => {
       const boom = new Error('boom');
 
       let impl: EffectImpl | undefined;
-      const unsubCreate = onCreateEffect((created: EffectImpl) => {
-        impl = created;
+      const unsubCreate = onCreateEffect((created) => {
+        impl = created as EffectImpl;
       });
 
       // Snapshot behind the capture handler: it subscribes to the effect
@@ -100,8 +100,8 @@ describe('a creation that throws leaves nothing behind (P1, P2)', () => {
       const boom = new Error('boom');
 
       let impl: EffectImpl | undefined;
-      const unsubCreate = onCreateEffect((created: EffectImpl) => {
-        impl = created;
+      const unsubCreate = onCreateEffect((created) => {
+        impl = created as EffectImpl;
       });
 
       const effectQueueBefore = getSubscriptionCount(globalEffectQueue);
@@ -136,8 +136,8 @@ describe('a creation that throws leaves nothing behind (P1, P2)', () => {
       const boom = new Error('handler boom');
 
       let impl: EffectImpl | undefined;
-      const unsubCreate = onCreateEffect((created: EffectImpl) => {
-        impl = created;
+      const unsubCreate = onCreateEffect((created) => {
+        impl = created as EffectImpl;
       });
       const unsubThrow = onCreateEffect(() => {
         throw boom;
@@ -174,8 +174,8 @@ describe('a creation that throws leaves nothing behind (P1, P2)', () => {
       const reporterBoom = new Error('reporter boom');
 
       let impl: EffectImpl | undefined;
-      const unsubCreate = onCreateEffect((created: EffectImpl) => {
-        impl = created;
+      const unsubCreate = onCreateEffect((created) => {
+        impl = created as EffectImpl;
       });
       const unsubDestroy = onDestroyEffect(() => {
         throw reporterBoom;
@@ -221,8 +221,8 @@ describe('a creation that throws leaves nothing behind (P1, P2)', () => {
       let runs = 0;
 
       let impl: EffectImpl | undefined;
-      const unsubCreate = onCreateEffect((created: EffectImpl) => {
-        impl = created;
+      const unsubCreate = onCreateEffect((created) => {
+        impl = created as EffectImpl;
       });
 
       let caught: unknown;
@@ -380,8 +380,8 @@ describe('a creation that throws leaves nothing behind (P1, P2)', () => {
       const boom = new Error('memo boom');
 
       let impl: EffectImpl | undefined;
-      const unsubCreate = onCreateEffect((created: EffectImpl) => {
-        impl = created;
+      const unsubCreate = onCreateEffect((created) => {
+        impl = created as EffectImpl;
       });
 
       const effectQueueBefore = getSubscriptionCount(globalEffectQueue);
@@ -416,8 +416,8 @@ describe('a creation that throws leaves nothing behind (P1, P2)', () => {
       const destroyBoom = new Error('destroy boom');
 
       let impl: EffectImpl | undefined;
-      const unsubCreate = onCreateEffect((created: EffectImpl) => {
-        impl = created;
+      const unsubCreate = onCreateEffect((created) => {
+        impl = created as EffectImpl;
       });
       const unsubDestroyQueue = on(globalDestroySignalQueue, () => {
         throw destroyBoom;

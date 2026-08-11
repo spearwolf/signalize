@@ -114,8 +114,8 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | `signal-core.ts` | Leaf layer — `isSignal`, `destroySignal`, `muteSignal`, `unmuteSignal`, `getSignalsCount`, internal `signalImpl`, `readSignal`, `writeSignal`, `incSignalsCount`. Imports nothing above itself; every other module reaches signal primitives through here |
 | `createSignal.ts` | `SignalImpl`, `createSignal` — the factory layer on top of `signal-core.ts` |
 | `Effect.ts` | `Effect` class — wrapper around `EffectImpl` |
-| `EffectImpl.ts` | Core dependency tracking + rerun logic; `EffectOptions` interface |
-| `effects.ts` | `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect`, `onEffectError` |
+| `EffectImpl.ts` | Core dependency tracking + rerun logic; the five options and deps types (`EffectOptions`, `EffectOptionsWithSignalDeps`, `EffectOptionsWithNameDeps`, `EffectDeps`, `SignalLikeDeps`), all re-exported from `index.ts` |
+| `effects.ts` | `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect`, `onEffectError`, `setMaxEffectDepth`, `getMaxEffectDepth` |
 | `createMemo.ts` | `createMemo` — wraps signal + high-priority effect |
 | `link.ts` | `link`, `unlink`, `getLinksCount` |
 | `SignalLink.ts` | `SignalLink` (abstract), `SignalLinkToSignal`, `SignalLinkToCallback`, `ValueCallback` |
@@ -145,7 +145,7 @@ Also avoid reading an imported binding at module-eval time across module boundar
 ## Public API (what `index.ts` re-exports)
 
 **Signals**: `createSignal`, `destroySignal`, `isSignal`, `getSignalsCount`, `muteSignal`, `unmuteSignal`, `touch`, `value`
-**Effects**: `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect`, `onEffectError`
+**Effects**: `createEffect`, `getEffectsCount`, `onCreateEffect`, `onDestroyEffect`, `onEffectError`, `setMaxEffectDepth`, `getMaxEffectDepth`
 **Memos**: `createMemo`, `CreateMemoOptions`
 **Links**: `link`, `unlink`, `getLinksCount`, `SignalLink` (type), `ValueCallback`
 **Object Signals**: `destroyObjectSignals`, `findObjectSignalByName`, `findObjectSignalNames`, `findObjectSignals`

@@ -299,8 +299,8 @@ describe('createMemo', () => {
       // afterwards would never fire and the signal would leak silently.
       const trigger = createSignal(0);
 
-      const unsubscribe = onCreateEffect((effect: EffectImpl) => {
-        if (effect.priority === Priority.C) {
+      const unsubscribe = onCreateEffect((effect) => {
+        if ((effect as EffectImpl).priority === Priority.C) {
           effect.destroy();
         }
       });

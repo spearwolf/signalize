@@ -108,7 +108,8 @@ describe('EffectImpl.destroy() teardown order', () => {
 
       const seen: EffectImpl[] = [];
 
-      unsubscribe = onDestroyEffect((impl: EffectImpl) => {
+      unsubscribe = onDestroyEffect((effect) => {
+        const impl = effect as EffectImpl;
         seen.push(impl);
         impl.run();
       });
@@ -198,7 +199,7 @@ describe('EffectImpl.destroy() teardown order', () => {
 
     let handlerCalls = 0;
 
-    const unsubscribe = onDestroyEffect((destroyed: EffectImpl) => {
+    const unsubscribe = onDestroyEffect((destroyed) => {
       ++handlerCalls;
       destroyed.destroy();
     });
@@ -471,7 +472,7 @@ describe('EffectImpl.destroy() teardown order', () => {
 
     let runs = 0;
 
-    const unsubscribe = onCreateEffect((impl: EffectImpl) => {
+    const unsubscribe = onCreateEffect((impl) => {
       impl.destroy();
     });
     try {

@@ -74,7 +74,8 @@ In complex interactive front-ends—such as **3D configurators, real-time dashbo
 - **Inline propagation** — `set()` runs every dependent effect before it
   returns. No scheduler, no microtask, no virtual graph.
 - **Priority-ordered effects** — numeric priority (memos at `1000`, regular
-  effects at `0`); runaway loops fail loud at `maxDepth = 256`.
+  effects at `0`); runaway loops fail loud at `maxDepth = 256`, moved with
+  `setMaxEffectDepth(n)`.
 - **Auto-tracked dependencies** — subscribe on read, unsubscribe when no
   longer read; nested effects tear down before their parent re-runs.
 - **Lifecycle bundles** — `SignalGroup` ties signals, effects, and links to
@@ -113,7 +114,8 @@ createSignal, destroySignal, isSignal, muteSignal, unmuteSignal,
 getSignalsCount, touch, value
 
 // effects
-createEffect, getEffectsCount, onCreateEffect, onDestroyEffect, onEffectError
+createEffect, getEffectsCount, onCreateEffect, onDestroyEffect, onEffectError,
+getMaxEffectDepth, setMaxEffectDepth
 
 // memos
 createMemo

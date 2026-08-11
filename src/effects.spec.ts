@@ -5,9 +5,17 @@ import {
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {createSignal} from './createSignal.js';
-import {EffectImpl, type EffectOptions} from './EffectImpl.js';
-import {createEffect, getEffectsCount, onDestroyEffect} from './effects.js';
+import type {EffectOptions} from './EffectImpl.js';
+import {
+  createEffect,
+  getEffectsCount,
+  onCreateEffect,
+  onDestroyEffect,
+} from './effects.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
+// Through the entry point on purpose: the re-export is half of what API-003
+// promises, and only an import from here can witness it.
+import {getMaxEffectDepth, setMaxEffectDepth} from './index.js';
 import {SignalGroup} from './SignalGroup.js';
 import {destroySignal} from './signal-core.js';
 
@@ -321,8 +329,10 @@ describe('createEffect', () => {
   });
 
   it('runaway self-triggering effect throws once maxDepth is exceeded', () => {
-    const originalMaxDepth = EffectImpl.maxDepth;
-    EffectImpl.maxDepth = 8;
+    const before = getMaxEffectDepth();
+    // The default is quoted in five documents and asserted nowhere (API-003).
+    expect(before).toBe(256);
+    setMaxEffectDepth(8);
 
     const {get: count, set: setCount} = createSignal(0);
 
@@ -333,8 +343,53 @@ describe('createEffect', () => {
         });
       }).toThrow(/maxDepth=8/);
     } finally {
-      EffectImpl.maxDepth = originalMaxDepth;
+      setMaxEffectDepth(before);
       destroySignal(count);
+    }
+  });
+
+  it('setMaxEffectDepth() refuses a cap that is not a positive integer (API-003)', () => {
+    const before = getMaxEffectDepth();
+
+    try {
+      expect(() => setMaxEffectDepth(0)).toThrow(/integer >= 1/);
+      expect(() => setMaxEffectDepth(1.5)).toThrow(/integer >= 1/);
+      expect(() => setMaxEffectDepth(Number.POSITIVE_INFINITY)).toThrow(
+        /integer >= 1/,
+      );
+      expect(getMaxEffectDepth()).toBe(before);
+    } finally {
+      setMaxEffectDepth(before);
+    }
+  });
+
+  it('onCreateEffect/onDestroyEffect deliver in priority order (API-002)', () => {
+    // The promise `CHANGELOG.md` makes as a breaking change: priority sits in
+    // second place, exactly where `onEffectError()` has always had it. Both
+    // handlers of a pair subscribe in low-then-high order, so registration
+    // order alone would produce `['low', 'high']` — only the priority
+    // argument actually reaching `on()` flips it. Drop that argument in
+    // `effects.ts`, or swap it into eventize's own `(cb, priority)` slot,
+    // and these two assertions go red. Measured: they do.
+    const created: string[] = [];
+    const destroyed: string[] = [];
+
+    const unsubCreateLow = onCreateEffect(() => created.push('low'));
+    const unsubCreateHigh = onCreateEffect(() => created.push('high'), 10);
+    const unsubDestroyLow = onDestroyEffect(() => destroyed.push('low'));
+    const unsubDestroyHigh = onDestroyEffect(() => destroyed.push('high'), 10);
+
+    try {
+      const effect = createEffect(() => {}, {autorun: false});
+      effect.destroy();
+
+      expect(created).toEqual(['high', 'low']);
+      expect(destroyed).toEqual(['high', 'low']);
+    } finally {
+      unsubCreateLow();
+      unsubCreateHigh();
+      unsubDestroyLow();
+      unsubDestroyHigh();
     }
   });
 

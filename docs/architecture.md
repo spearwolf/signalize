@@ -44,7 +44,8 @@ created. The declared deps are subscribed separately, from `createEffect()`.
 `signal.set()` triggers all dependent effects before the next line of user code
 runs. Predictable, but it's also why the library guards against recursion:
 an effect that synchronously writes to a signal it depends on re-enters
-`run()`. Up to `EffectImpl.maxDepth` (default 256) levels are tolerated;
+`run()`. Up to `getMaxEffectDepth()` (default 256) levels are tolerated —
+`setMaxEffectDepth(n)` moves the cap;
 beyond that, `run()` throws a descriptive `Error` instead of overflowing the
 JS stack.
 

@@ -46,6 +46,17 @@ export type EffectDeps = (SignalLike<any> | string | symbol)[];
 /** Deps array containing only SignalLike entries — no group needed. */
 export type SignalLikeDeps = SignalLike<any>[];
 
+/**
+ * The wide form of the effect options — what the `EffectImpl` constructor
+ * takes, not what a `createEffect()` call site accepts.
+ *
+ * Its `dependencies` may hold names while `attach` stays optional, and that
+ * is exactly the pairing the four `createEffect()` overloads forbid: a name
+ * without a group throws at runtime. A caller holding an options object in a
+ * variable therefore names {@link EffectOptionsWithSignalDeps} or
+ * {@link EffectOptionsWithNameDeps}; passing a variable of this type reports
+ * `TS2769`.
+ */
 export interface EffectOptions {
   autorun?: boolean;
   dependencies?: EffectDeps;
@@ -152,8 +163,10 @@ export class EffectImpl {
    * 256 is well above realistic legitimate fixpoint iterations and well
    * below the JS stack limit on common engines.
    *
-   * Tune via `EffectImpl.maxDepth = N` if you intentionally need deeper
-   * recursion — but prefer breaking the cycle.
+   * This property is the storage, not the way in: it is unexported, and the
+   * `exports` map bars deep imports. Read and write it through
+   * `setMaxEffectDepth()` / `getMaxEffectDepth()` — and only where the
+   * recursion is intentional, since breaking the cycle is the usual repair.
    */
   static maxDepth = 256;
 
@@ -530,7 +543,7 @@ export class EffectImpl {
       throw new Error(
         `[signalize] Effect ${this.id.toString()} exceeded maxDepth=${EffectImpl.maxDepth}: ` +
           'an effect callback recursively re-triggered itself (likely by writing a signal it depends on). ' +
-          'Break the cycle, or raise EffectImpl.maxDepth if the recursion is intentional.',
+          'Break the cycle, or raise the cap with setMaxEffectDepth(n) if the recursion is intentional.',
       );
     }
 

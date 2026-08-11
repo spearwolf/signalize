@@ -4,6 +4,8 @@
 
 ### Features
 
+- New `setMaxEffectDepth(n)` / `getMaxEffectDepth()` exports make the recursion cap reachable from outside for the first time — `EffectImpl` is exported from no entry point and the `exports` map bars deep imports, so the `EffectImpl.maxDepth = N` recommended by six documentation sites was unusable. `setMaxEffectDepth()` throws unless `n` is a finite integer `>= 1` (API-003)
+- The five options and deps types of `createEffect()` — `EffectOptions`, `EffectOptionsWithSignalDeps`, `EffectOptionsWithNameDeps`, `EffectDeps`, `SignalLikeDeps` — are importable from `@spearwolf/signalize`. `docs/api.md` listed `EffectOptions` as exported while `import type` failed with `TS2305` (API-004)
 - New `onEffectError(cb, priority?)` export: subscribes to rejections of `async` effect and cleanup callbacks, which cannot be thrown at a caller. The handler receives `{error, effect, effectId, phase}` (ASYNC-001)
 - `createMemo(fn, {batchWrites})`: new option (default `false`) to wrap the memo's recompute write in `batch()`. Only needed when `fn` itself writes to other signals as a side effect — the default trades that grouping away, see the Breaking Changes entry below (PERF-001)
 - `SignalAutoMap#delete(key)` destroys the signal for that key and removes the entry, returning `true` if the key was in the map — previously only `clear()` could tear anything down (MEM-009)
@@ -181,6 +183,9 @@
 
 ### Breaking Changes
 
+- `SignalGroup#attachEffect(eff)` now takes the `Effect` that `createEffect()` returns and gives the argument back with its own type; a wrapper that previously only got in with `as any` is unwrapped on the way. A **destroyed** wrapper now throws instead of being quietly accepted, and an attached wrapper takes itself out of the group on `destroy()` instead of staying in it until `clear()` (API-001)
+- The callbacks of `onCreateEffect()` and `onDestroyEffect()` are typed `(effect: FailingEffect) => void` instead of `(...args: unknown[])`; a handler demanding a wider parameter is rejected, and the eventize-native subscribe forms (`onCreateEffect(priority, cb)`, `onCreateEffect(listenerObject)`) are no longer part of the contract — priority now sits in second place, as it does on `onEffectError()` (API-002)
+- The recursion guard's message names `setMaxEffectDepth(n)` instead of `raise EffectImpl.maxDepth`; code matching on the message text needs updating — the `maxDepth=N` part is unchanged (API-003)
 - **Removed the `@memo` decorator** and its `MemoDecoratorOptions` type from `@spearwolf/signalize/decorators`. Syntax and semantics were not settled — replace `@memo() foo() {...}` with a class field `foo = createMemo(() => ..., {attach: this})`, which is eager by default. `createMemo()` itself is unchanged
 - The cleanup an `async` effect callback resolves to is no longer picked up lazily at the next run or at `destroy()` — the promise returned by the callback is followed as soon as it settles instead. The cleanup of the current run is stored and never lost; the cleanup of a superseded or destroyed run runs right then, as soon as its promise settles, rather than being stored at all (ASYNC-002)
 - Internal `Symbol.for` keys now use the `@spearwolf/signalize/` namespace (`signal`, `effect`, `recall`, `destroySignal`, `createEffect`, `destroyEffect`) to prevent collisions with unrelated code. Pre-fix versions will not recognize signals created by post-fix versions, but all post-fix versions recognize each other (BUG-006, audit 2026-08-06)

@@ -3,12 +3,21 @@ export {beQuiet, isQuiet} from './bequiet.js';
 export {type CreateMemoOptions, createMemo} from './createMemo.js';
 export {createSignal} from './createSignal.js';
 export {Effect} from './Effect.js';
+export type {
+  EffectDeps,
+  EffectOptions,
+  EffectOptionsWithNameDeps,
+  EffectOptionsWithSignalDeps,
+  SignalLikeDeps,
+} from './EffectImpl.js';
 export {
   createEffect,
   getEffectsCount,
+  getMaxEffectDepth,
   onCreateEffect,
   onDestroyEffect,
   onEffectError,
+  setMaxEffectDepth,
 } from './effects.js';
 export {hibernate} from './hibernate.js';
 export * from './link.js';

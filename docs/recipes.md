@@ -275,13 +275,13 @@ try {
 ## Recursion guard
 
 If an effect callback writes to a signal it depends on, `run()` re-enters
-itself synchronously. Tolerated up to `EffectImpl.maxDepth = 256` levels;
-beyond that, it throws:
+itself synchronously. Tolerated up to `getMaxEffectDepth()` levels, 256 by
+default; beyond that, it throws:
 
 ```
 [signalize] Effect Symbol(ef…) exceeded maxDepth=256: an effect callback
 recursively re-triggered itself (likely by writing a signal it depends on).
-Break the cycle, or raise EffectImpl.maxDepth if the recursion is intentional.
+Break the cycle, or raise the cap with setMaxEffectDepth(n) if the recursion is intentional.
 ```
 
 Prefer breaking the cycle — guard the write, use `beQuiet()` for self-writes,

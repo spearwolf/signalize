@@ -18,7 +18,8 @@ Decorators are **TC39 standard** form — no `experimentalDecorators`, and the `
 createSignal, destroySignal, isSignal, muteSignal, unmuteSignal,
 getSignalsCount, touch, value
 // effects
-createEffect, getEffectsCount, onCreateEffect, onDestroyEffect, onEffectError
+createEffect, getEffectsCount, onCreateEffect, onDestroyEffect, onEffectError,
+getMaxEffectDepth, setMaxEffectDepth
 // memos
 createMemo
 // links
@@ -34,7 +35,8 @@ Signal, Effect
 
 // type-only re-exports (no runtime value):
 //   SignalReader, SignalWriter, SignalLike, SignalParams, SignalWriterParams,
-//   EffectOptions, EffectCallback, CreateMemoOptions, LinkOptions,
+//   EffectOptions, EffectOptionsWithSignalDeps, EffectOptionsWithNameDeps,
+//   EffectDeps, SignalLikeDeps, EffectCallback, CreateMemoOptions, LinkOptions,
 //   EffectErrorPayload, EffectErrorPhase, EffectErrorCallback, FailingEffect,
 //   SignalLink, ValueCallback, SignalAutoMapKeyType, AbortSignalLike,
 //   CompareFunc, BeforeReadFunc, VoidFunc, ValueChangedCallback
@@ -107,10 +109,11 @@ String/symbol dependency names require `attach` — the pairing is checked at co
 
 ```ts
 getEffectsCount();
-onCreateEffect((eff) => {});   // → unsubscribe
-onDestroyEffect((eff) => {});  // → unsubscribe
+onCreateEffect((eff) => {}, priority?);   // → unsubscribe; eff: FailingEffect = {id, destroy()}
+onDestroyEffect((eff) => {}, priority?);  // → unsubscribe; eff: FailingEffect, already destroyed
 
-EffectImpl.maxDepth = 256;     // synchronous self-write recursion guard
+setMaxEffectDepth(256);        // synchronous self-write recursion guard; default 256
+getMaxEffectDepth();           // reads it back
 ```
 
 ### Effect errors and async callbacks
@@ -214,7 +217,8 @@ g.attachSignal(s);  g.attachSignalByName('n', s);  g.detachSignal(s);
                     // all three hand the argument back with its own type
 g.signal<T>('n');   // walks the parent chain; without <T> it is Signal<unknown>
 g.hasSignal('n');
-g.attachEffect(e);  g.runEffects();  // attachEffect throws on a destroyed effect
+g.attachEffect(e);  g.runEffects();  // e: the Effect from createEffect() or the impl;
+                    // hands the argument back, throws on a destroyed one
 g.attachLink(l);    g.detachLink(l);  // a destroyed link takes itself out of the group
 g.attachGroup(child);  g.detachGroup(child);
 g.off();            // destroy attached effects/links, drop external subs, KEEP signals — not an in-effect {attach} memo's

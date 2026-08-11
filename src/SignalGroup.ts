@@ -8,7 +8,8 @@ import {
   Priority,
 } from '@spearwolf/eventize';
 import {collect, throwCollectedErrors} from './collect-errors.js';
-import {DESTROY, OFF} from './constants.js';
+import {$effect, DESTROY, OFF} from './constants.js';
+import type {Effect} from './Effect.js';
 import {EffectImpl} from './EffectImpl.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {Signal} from './Signal.js';
@@ -847,21 +848,39 @@ export class SignalGroup {
   /**
    * Attach an effect to this group. The effect will be destroyed when the group is cleared.
    *
+   * Takes both forms: the `Effect` that `createEffect()` hands out and the
+   * internal instance behind it. The unwrapping happens here, so a consumer
+   * no longer needs `as any` to call a documented method (API-001).
+   *
    * A destroyed effect takes itself out of the group again (MEM-002) —
    * without that, a long-lived group with effect churn keeps every dead
-   * `EffectImpl` and its callback closure alive until `clear()`.
+   * `EffectImpl` and its callback closure alive until `clear()`. Because the
+   * bookkeeping below hangs on the unwrapped instance, that also holds for a
+   * wrapper: its `destroy()` reaches the same DESTROY the hook listens to.
    *
    * Throws on an effect that is already destroyed (CONS-006), the same rule
    * `#addSignal()` and `attachLink()` already apply: its DESTROY has fired
    * and `off(this)` has run, so the counter-hook below never fires again —
    * the group would carry the corpse and its callback closure until
-   * `clear()`.
+   * `clear()`. One message covers three shapes of the same mistake — a dead
+   * instance, a dead wrapper, and nothing at all — because they are one
+   * error class, and a second wording would be a second promise.
    *
-   * @param effect - The effect to attach
-   * @returns The attached effect
+   * @param effect - The effect to attach: the wrapper or the instance
+   * @returns The attached effect — the caller's own type, unchanged
    */
-  attachEffect(effect: EffectImpl) {
-    if (effect?.destroyed) {
+  attachEffect<E extends Effect | EffectImpl>(effect: E): E {
+    // `$effect in effect`, not `instanceof Effect`: the latter needs a value
+    // import of `Effect.ts`, which imports `EffectImpl.ts`, which imports
+    // this file — `rollup.config.mjs` aborts on CIRCULAR_DEPENDENCY. The
+    // property survives on a destroyed wrapper (set to `undefined`, not
+    // deleted), so `in` still recognises it and `impl` falls to `undefined`.
+    const impl: EffectImpl | undefined =
+      effect != null && $effect in effect
+        ? (effect as Effect)[$effect]
+        : (effect as EffectImpl);
+
+    if (impl == null || impl.destroyed) {
       throw new Error('Cannot attach a destroyed effect to a group');
     }
 
@@ -870,8 +889,8 @@ export class SignalGroup {
     // A function is neither, so `once()` re-adds it every call — held
     // reference or fresh arrow, same result. Unguarded, a repeated
     // `attachEffect(sameEffect)` would grow the DESTROY list without bound.
-    if (!this.#effects.has(effect)) {
-      this.#effects.add(effect);
+    if (!this.#effects.has(impl)) {
+      this.#effects.add(impl);
       // MEM-009: the counter-edge to `attachLink()`'s hook (see its comment
       // at `Priority.Max` above). On normal priority, a higher-priority
       // application `DESTROY` listener that throws aborts eventize's
@@ -880,8 +899,8 @@ export class SignalGroup {
       // guarantee reaches exactly as far as the priority does — a listener
       // registered at `Priority.Max` *before* this one still wins the tie
       // and can still swallow it; every ordinary priority is covered.
-      once(effect, DESTROY, Priority.Max, () => {
-        this.#effects.delete(effect);
+      once(impl, DESTROY, Priority.Max, () => {
+        this.#effects.delete(impl);
       });
     }
     return effect;

@@ -706,6 +706,64 @@ describe('SignalGroup', () => {
       }
     });
 
+    it('attachEffect() lets go of an attached wrapper when it is destroyed (API-001, MEM-002)', () => {
+      // The half of API-001 no compiler sees: before the unwrapping, a
+      // wrapper pushed in with `as any` was stored as-is, and the DESTROY
+      // hook waited on an object that never fires it — the group kept the
+      // dead effect until `clear()`. Measured against the old code this
+      // assertion read 1.
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(0);
+
+      const effect = createEffect(() => {
+        signal.get();
+      });
+
+      try {
+        group.attachEffect(effect);
+        expect(getGroupMemberCounts(group).effects).toBe(1);
+
+        effect.destroy();
+
+        expect(
+          getGroupMemberCounts(group).effects,
+          'the wrapper took itself out, just like the impl does',
+        ).toBe(0);
+      } finally {
+        signal.destroy();
+        group.clear();
+      }
+    });
+
+    it('attachEffect() refuses a destroyed wrapper, like a destroyed impl (API-001, CONS-006)', () => {
+      // The other half: `Effect` has no `destroyed` getter, so the CONS-006
+      // guard read `undefined` on a wrapper and waved the corpse through.
+      // Now the method unwraps first and asks the instance.
+      const group = SignalGroup.findOrCreate({});
+      const signal = createSignal(0);
+
+      const effect = createEffect(() => {
+        signal.get();
+      });
+
+      try {
+        effect.destroy();
+        assertEffectsCount(0, 'the effect is gone before the attach');
+
+        expect(() => group.attachEffect(effect)).toThrow(
+          'Cannot attach a destroyed effect to a group',
+        );
+
+        expect(
+          getGroupMemberCounts(group).effects,
+          'the group did not take the corpse',
+        ).toBe(0);
+      } finally {
+        signal.destroy();
+        group.clear();
+      }
+    });
+
     it('runEffects() runs all effects in the group', () => {
       const group = SignalGroup.findOrCreate({});
       const signal = createSignal(0);

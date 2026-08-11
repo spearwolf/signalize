@@ -4,6 +4,21 @@ import {
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {createSignal} from './createSignal.js';
+import type {Effect} from './Effect.js';
+import type {EffectImpl} from './EffectImpl.js';
+// The three effect-surface tests import through the entry point on purpose:
+// the re-export is half of what API-002 and API-004 promise, and a module
+// import would witness the signature while missing the delivery.
+import {
+  createEffect,
+  type EffectDeps,
+  type EffectOptions,
+  type EffectOptionsWithNameDeps,
+  type EffectOptionsWithSignalDeps,
+  onCreateEffect,
+  onDestroyEffect,
+  type SignalLikeDeps,
+} from './index.js';
 import {link} from './link.js';
 import {
   destroyObjectSignals,
@@ -23,7 +38,8 @@ import type {
 } from './types.js';
 
 /**
- * The witness for TYPE-001, TYPE-002, TYPE-003 and TYPE-005.
+ * The witness for TYPE-001, TYPE-002, TYPE-003, TYPE-005, API-001, API-002
+ * and API-004.
  *
  * Everything this file guards is invisible to the rest of the gate: the
  * emitted JavaScript is unchanged, no other spec instantiates one of these
@@ -324,6 +340,133 @@ describe('the published type surface', () => {
     } finally {
       map.clear();
       numeric.clear();
+    }
+  });
+
+  it('attachEffect takes the wrapper and gives it back (API-001)', () => {
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+    const effect = createEffect(() => {}, {autorun: false});
+
+    // Declared, never called. `{}` carries no `[$effect]`, so the unwrapping
+    // takes it for an instance, and `undefined.destroyed` is not truthy —
+    // the guard lets it in and the next `clear()` dies with `TypeError:
+    // effect.destroy is not a function`. Still true after this package: the
+    // type is the whole defence here, which is why the call lives in type
+    // position only. The runtime assertion below is there for
+    // `noUnusedLocals`, nothing more.
+    const rejected = () => {
+      // @ts-expect-error API-001: a value that is neither shape stays out.
+      group.attachEffect({});
+    };
+
+    try {
+      // The positive half, and the one that catches a narrowing back to
+      // `EffectImpl`: no directive, so it has to keep compiling.
+      const back: Effect = group.attachEffect(effect);
+
+      // @ts-expect-error API-001: what comes back is the caller's own type,
+      // not the unwrapped instance — this catches a return flattened to `any`.
+      const wrong: EffectImpl = group.attachEffect(effect);
+
+      expect(back).toBe(effect);
+      expect(wrong).toBe(effect);
+      expect(typeof rejected).toBe('function');
+    } finally {
+      effect.destroy();
+      SignalGroup.delete(host);
+    }
+  });
+
+  it('types the two subscribe callbacks (API-002)', () => {
+    const seen: symbol[] = [];
+
+    // No annotation and no directive: under `noImplicitAny` these two used
+    // to be TS7006, which is the form `docs/api.md` shows.
+    const unsubCreate = onCreateEffect((eff) => {
+      seen.push(eff.id);
+    });
+    const unsubDestroy = onDestroyEffect((eff) => {
+      seen.push(eff.id);
+    });
+
+    // @ts-expect-error API-002: the callback is handed a `FailingEffect`;
+    // a handler demanding more is refused — parameters are checked
+    // contravariantly, and that is exactly what `(...args: unknown[])`
+    // used to wave through.
+    const unsubWide = onCreateEffect((eff: EffectImpl) => {
+      void eff.callback;
+    });
+
+    // The second half of the signature — priority in second place — is a
+    // behaviour promise, not a type one, and is guarded where behaviour
+    // belongs: `onCreateEffect/onDestroyEffect deliver in priority order`
+    // in `effects.spec.ts`.
+
+    try {
+      const effect = createEffect(() => {}, {autorun: false});
+      effect.destroy();
+
+      expect(seen).toHaveLength(2);
+    } finally {
+      unsubCreate();
+      unsubDestroy();
+      unsubWide();
+    }
+  });
+
+  it('names the option types at the call site (API-004)', () => {
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+    const source = createSignal(1);
+    group.attachSignalByName('n', source);
+
+    const narrow: EffectOptionsWithSignalDeps = {
+      autorun: false,
+      dependencies: [source],
+    };
+    const deps: SignalLikeDeps = [source];
+    const wide: EffectOptions = {autorun: false};
+
+    // The two name-carrying forms. A name is resolved through a group, so
+    // `attach` is required here and optional in the two above — that is the
+    // whole reason there are five names rather than two.
+    const named: EffectOptionsWithNameDeps = {
+      autorun: false,
+      dependencies: ['n'],
+      attach: host,
+    };
+    const wideDeps: EffectDeps = ['n'];
+
+    const fromOptions = createEffect(() => {}, narrow);
+    const fromDeps = createEffect(() => {}, deps, {autorun: false});
+    const fromNamed = createEffect(() => {}, named);
+    const fromWideDeps = createEffect(() => {}, wideDeps, {
+      autorun: false,
+      attach: host,
+    });
+
+    // @ts-expect-error API-004: the wide form reaches no overload. Its
+    // `dependencies?: EffectDeps` may hold names while `attach` stays
+    // optional — the one pairing the four overloads forbid, because a name
+    // without a group throws at runtime. The repair is one of the two
+    // narrow names above, not a fifth overload.
+    const fromWide = createEffect(() => {}, wide);
+
+    try {
+      expect(
+        [fromOptions, fromDeps, fromNamed, fromWideDeps, fromWide].every(
+          Boolean,
+        ),
+      ).toBe(true);
+    } finally {
+      fromOptions.destroy();
+      fromDeps.destroy();
+      fromNamed.destroy();
+      fromWideDeps.destroy();
+      fromWide.destroy();
+      SignalGroup.delete(host);
+      destroySignal(source);
     }
   });
 });
