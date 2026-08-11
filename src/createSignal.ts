@@ -1,5 +1,5 @@
 import {$signal} from './constants.js';
-import {createEffect} from './effects.js';
+import {requireCreateEffect} from './effect-hook.js';
 import {Signal} from './Signal.js';
 import {SignalGroup} from './SignalGroup.js';
 import {
@@ -47,7 +47,7 @@ const createSignalReader = <Type>(
     }
     if (callback) {
       warnSignalReaderCallbackDeprecated();
-      createEffect(() => {
+      requireCreateEffect()(() => {
         if (!signal.destroyed) {
           readSignal(signal.id);
         }

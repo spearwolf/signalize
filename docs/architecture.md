@@ -179,6 +179,7 @@ TC39 standard form (`accessor` keyword, stage-3 semantics).
 | `signal-core.ts`           | Leaf primitives: `isSignal`, `destroySignal`, `signalImpl`, `writeSignal` |
 | `Signal.ts` / `createSignal.ts` | `Signal<T>` wrapper + `SignalImpl` core                |
 | `Effect.ts` / `EffectImpl.ts`   | `Effect` wrapper + tracking/rerun core                 |
+| `effect-hook.ts`           | Leaf holding the internal `createEffect` placeholder — `effects.ts` fills it, `Signal.onChange()` reads it, so a signal-only bundle drops the effect subsystem |
 | `createMemo.ts`            | `createMemo` — wraps signal + high-priority effect          |
 | `link.ts` / `SignalLink.ts`| `link()` / `unlink()` and link classes                      |
 | `SignalGroup.ts`           | Lifecycle container                                         |

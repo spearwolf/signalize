@@ -1,5 +1,5 @@
 import {$signal} from './constants.js';
-import {createEffect} from './effects.js';
+import {requireCreateEffect} from './effect-hook.js';
 import {destroySignal} from './signal-core.js';
 import {touch} from './touch.js';
 import type {
@@ -35,7 +35,7 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
   }
 
   onChange(action: (val: ValueType) => any): VoidFunc {
-    const {destroy} = createEffect(() => {
+    const {destroy} = requireCreateEffect()(() => {
       return action(this.value);
     }, [this.get]);
     return destroy;

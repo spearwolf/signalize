@@ -2,6 +2,7 @@ import {on} from '@spearwolf/eventize';
 import {$createEffect, $destroyEffect, $effectError} from './constants.js';
 import type {Effect} from './Effect.js';
 import {EffectImpl} from './EffectImpl.js';
+import {setCreateEffectHook} from './effect-hook.js';
 import {globalEffectQueue} from './global-queues.js';
 import type {EffectErrorCallback, FailingEffect} from './types.js';
 
@@ -177,3 +178,12 @@ export const getMaxEffectDepth = (): number => EffectImpl.maxDepth;
  * @returns The number of active effects
  */
 export const getEffectsCount = (): number => EffectImpl.count;
+
+// The edge that ARCH-002 was about, turned around: `Signal.onChange()` and the
+// deprecated `signalReader(callback)` used to import this module, which drags
+// `EffectImpl`, `SignalGroup` and `batch` into every bundle that only wanted
+// `createSignal`. Now they read the hook and this line fills it. It is
+// load-bearing — without it `requireCreateEffect()` throws — and it belongs
+// here, in the one module that knows `createEffect` without being imported
+// for it.
+setCreateEffectHook(createEffect);
