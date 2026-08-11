@@ -80,8 +80,8 @@ const m = createMemo(() => a.get() * 2, {
   attach:       obj,
   name:         'm',     // group registration
   batchWrites:  false,   // true only if computer() itself writes OTHER signals —
-                          // costs one Batch instance per recompute (none if a
-                          // batch is already open) — why it is not the default
+                          // costs a full flush per recompute once the memo has a
+                          // dependent effect (~3x); free without one — not the default
 });
 m();                 // SignalReader
 ```

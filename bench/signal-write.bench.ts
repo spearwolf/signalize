@@ -56,4 +56,26 @@ for (const n of [1, 10, 100]) {
  * The 0 -> 1 subscriber drop (~4.8x) is the eventize on/emit round trip;
  * from there it scales roughly linearly with subscriber count, as expected
  * for a synchronous fan-out with no batching.
+ *
+ * Package 17 (PERF-001, PERF-002, PERF-003 — no error array per rerun, no
+ * flush for an empty batch, no emit on `globalEffectCalledQueue` outside a
+ * flush), measured 2026-08-11 on commit 8cc46e9 against the same tree with
+ * all three guards.
+ *
+ * Method, so the numbers are reproducible: `pnpm bench signal-write`, this
+ * file in full, with the options it declares (none — Vitest's 500 ms
+ * default), baseline and patched tree alternating within one session, median
+ * of five runs each. Neighbour interference is not a problem in this file:
+ * every case owns its signal and its effects, and four alternating full runs
+ * per variant stayed inside 1-3 % — ops/sec (hz):
+ *
+ *   write, fans out to 1     1,913,515 -> 2,287,486  (+20 %)
+ *   write, fans out to 10      373,783 ->   510,935  (+37 %)
+ *   write, fans out to 100      40,004 ->    54,633  (+37 %)
+ *
+ * `write, no consumers` is deliberately not listed as a result: none of the
+ * three guards is on its path (it has no effect at all), and it moved by
+ * -2 % here and by over 10 % in either direction across samples taken in
+ * separate sessions. That case measures code layout and machine mood, not
+ * this change.
  */

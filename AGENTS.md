@@ -45,7 +45,7 @@ Framework-agnostic signal/effect/memo/link library. Synchronous reactivity. Buil
 | `globalSignalQueue` | Signal value changes: `emit(queue, signalId, newValue)` |
 | `globalEffectQueue` | Effect lifecycle: `$createEffect`, `$destroyEffect`, `RECALL` |
 | `globalDestroySignalQueue` | Signal destruction (cleanup signal) |
-| `globalEffectCalledQueue` | Batch deduplication tracking |
+| `globalEffectCalledQueue` | Batch deduplication tracking — emitted on only while a batch flush is running (PERF-003) |
 
 ### Key symbols (`src/constants.ts`)
 

@@ -246,6 +246,68 @@ describe('batch', () => {
     }
   });
 
+  it('an effect that ran inside an outer flush, after a nested batch closed, is not run a second time by that flush (PERF-003)', () => {
+    const a = createSignal(0);
+    const b = createSignal(0);
+    const c = createSignal(0);
+
+    const runs: string[] = [];
+
+    // Runs first in the flush, and does two things while the outer flush
+    // is still open: it opens a nested batch that has something to flush,
+    // and then writes unbatched — `Batch.current` is undefined during a
+    // flush, so `observer` runs right there.
+    const driver = createEffect(
+      () => {
+        a.get();
+        runs.push('driver');
+        batch(() => {
+          c.set(c.value + 1);
+        });
+        b.set(b.value + 100);
+      },
+      {priority: 10},
+    );
+
+    const observer = createEffect(
+      () => {
+        b.get();
+        runs.push('observer');
+      },
+      {priority: 0},
+    );
+
+    // Load-bearing, not scenery: it is what gives the nested batch something
+    // to flush. Without it that batch finds an empty queue, returns early
+    // (PERF-002) and never touches the depth counter — and this test would
+    // pass even with a flag in place of the counter.
+    const inner = createEffect(() => {
+      c.get();
+      runs.push('inner');
+    });
+
+    try {
+      runs.length = 0;
+
+      batch(() => {
+        a.set(1);
+        b.set(2);
+      });
+
+      expect(
+        runs.filter((r) => r === 'observer').length,
+        'the outer flush must still know that observer already ran',
+      ).toBe(1);
+    } finally {
+      driver.destroy();
+      observer.destroy();
+      inner.destroy();
+      destroySignal(a);
+      destroySignal(b);
+      destroySignal(c);
+    }
+  });
+
   describe('rejects thenable-returning callbacks (ASYNC-003)', () => {
     it('throws when the callback is an async function, instead of silently unbatching writes after the first await', async () => {
       const {get: a, set: setA} = createSignal(0);

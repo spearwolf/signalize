@@ -296,7 +296,7 @@ first compute then happens on the first read, at which point the reader exists.
 | `priority` | `number`                      | `1000`       | Higher than default effects so memos resolve first in a flush.               |
 | `attach`   | `object \| SignalGroup`       | `—`          | Lifecycle group.                                                             |
 | `name`     | `string \| symbol`            | `—`          | Name within the attached group (`group.signal(name)`).                       |
-| `batchWrites` | `boolean`                   | `false`      | Wrap the recompute in `batch()`. Groups side-effect writes with the memo's own; costs an allocation. See below. |
+| `batchWrites` | `boolean`                   | `false`      | Wrap the recompute in `batch()`. Groups side-effect writes with the memo's own; costs a full flush once the memo has a downstream effect. See below. |
 
 **Eager (default) vs lazy.** Effects that depend on a memo only re-run if the
 memo value changes. With `lazy: true` the memo is not evaluated on dep change,
@@ -309,11 +309,17 @@ read and return, not write) — the batch then groups those writes with the
 memo's own write so a downstream effect depending on both sees one
 consistent run instead of one per write with a torn intermediate value.
 
-That grouping costs an allocation: one `Batch` instance per recompute that is
-not already inside another batch, on a path that otherwise allocates nothing.
-(Inside an open batch, `batch()` reuses it and allocates nothing at all.) That
-is the whole cost today, and it is why the default is `false` — every memo
-would pay it, while side-effect-writing callbacks are the exception.
+What that grouping costs depends on whether anything downstream reacts. A
+memo with no dependent effect defers nothing, and since PERF-002 a batch with
+an empty queue skips its flush entirely — measured, `batchWrites: true` is then
+within single-digit percent of the default (it used to be about 2.5x slower).
+As soon as the memo *has* a dependent effect, the recompute pays a complete
+flush for that single deferred effect: a `Set`, an array, two temporary queue
+subscriptions, a delivery frame, and one dispatch through eventize instead of
+a direct call — measured at roughly 3x the cost of a recompute under the
+default. That is why the default is `false`: the price lands exactly where
+the option is used, and it only pays off when one recompute would otherwise
+trigger the same downstream effect more than once.
 
 It used to cost read freshness as well: a *composed* memo read from inside a
 `batchWrites: true` callback while dirty came back stale, permanently so for a

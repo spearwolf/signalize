@@ -58,7 +58,7 @@ All cross-cutting communication uses four global eventize buses
 | `globalSignalQueue`         | Signal value changes (`emit(queue, signalId, value)`) |
 | `globalDestroySignalQueue`  | Signal destruction                          |
 | `globalEffectQueue`         | Effect lifecycle (`$createEffect`, `$destroyEffect`, `RECALL`) and async failures (`$effectError`) |
-| `globalEffectCalledQueue`   | Batch deduplication                         |
+| `globalEffectCalledQueue`   | Batch deduplication — emitted on only while a batch flush is running |
 
 Effects subscribe to signal IDs they read; signals emit on change. Nothing else.
 

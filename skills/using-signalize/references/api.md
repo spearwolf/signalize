@@ -137,11 +137,13 @@ const m = createMemo(() => a.get() * 2, {
   attach:       obj,
   name:         'm',     // group registration name
   batchWrites:  false,   // true only if the computer itself writes OTHER signals as
-                          // a side effect. Costs an allocation: one Batch instance
-                          // per recompute, on a path that otherwise allocates
-                          // nothing — none at all if a batch is already open, since
-                          // batch() reuses it. Side-effect writes are the exception,
-                          // so the default leaves that cost unpaid. Reading a
+                          // a side effect. Costs a full flush per recompute — but
+                          // only once the memo has a dependent effect: measured at
+                          // roughly 3x the default, while a memo nobody depends on
+                          // defers nothing and skips the flush for free. Side-effect
+                          // writes are the exception, so the default leaves that
+                          // cost unpaid, and it pays off only when one recompute
+                          // would otherwise trigger the same effect twice. Reading a
                           // composed memo from inside such a callback is fine: a
                           // memo's read hook recomputes past the open batch, so it
                           // comes back fresh under either setting. (One level — a

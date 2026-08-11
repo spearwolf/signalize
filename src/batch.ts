@@ -9,6 +9,31 @@ import {RECALL} from './constants.js';
 import {globalEffectCalledQueue, globalEffectQueue} from './global-queues.js';
 import type {NonThenable, VoidFunc} from './types.js';
 
+/*
+ * How deep we are inside `Batch#run()`.
+ *
+ * A counter, not a flag, and it brackets *more* than the two temporary
+ * subscriptions below, not less: an effect callback may open a batch of
+ * its own, whose flush is a second, nested `run()` with its own dedup
+ * set — while the outer flush's subscription is still live. A flag would
+ * report "no flush" the moment the inner one closed, and every effect
+ * that ran directly after that would go unrecorded and be run a second
+ * time by the outer flush. A superfluous emit is free; a missing one is
+ * a duplicate effect run.
+ */
+let g_flushDepth = 0;
+
+/**
+ * Whether a batch flush is currently delivering.
+ *
+ * The one reason `EffectImpl` emits on `globalEffectCalledQueue` at all:
+ * that queue has exactly one subscriber, installed by `Batch#run()` for
+ * the duration of a flush. Outside one, the emit walks eventize's
+ * dispatch for zero listeners, on the hottest path in the library.
+ * @internal
+ */
+export const isFlushingBatch = (): boolean => g_flushDepth > 0;
+
 class Batch {
   static current?: Batch;
 
@@ -73,10 +98,37 @@ class Batch {
     }
   }
 
+  /**
+   * Deliver a RECALL to every effect id in the queue, deduplicated, in
+   * priority order.
+   *
+   * The early return is exactly equivalent to running the body on an empty
+   * queue: the loop iterates zero times, so between `beginIsolatedDelivery()`
+   * and `endIsolatedDelivery()` only the two `on()` calls and their
+   * unsubscribe would happen. Nothing can be collected in a frame nothing is
+   * delivered from, and a subscription that is installed and removed without
+   * an emit in between is not observable from the outside.
+   *
+   * It is here because an empty queue is the normal case for every batch
+   * whose writes did not reach a single effect: `SignalAutoMap.update()` on
+   * unobserved props, a `{batchWrites: true}` memo without a downstream
+   * effect, and every defensive `batch()` in application code. Those used to
+   * pay for a `Set`, an array and two subscriptions to deliver nothing
+   * (PERF-002).
+   */
   run() {
+    if (this.delayedEffects.length === 0) return;
+
     const alreadyBeenCalled = new Set<symbol>();
 
     const unsubscribe: VoidFunc[] = [];
+    // Raised before the first subscription exists and lowered after the last
+    // one is gone — deliberately wider than the subscription window, see
+    // `g_flushDepth` above. Outside the `try`, with only
+    // `beginIsolatedDelivery()` in between: that is an array push and cannot
+    // throw today, the same argument `flush()` makes for its own frame. If it
+    // ever can, the increment moves inside.
+    g_flushDepth++;
     const outerErrors = beginIsolatedDelivery();
     try {
       unsubscribe.push(
@@ -114,8 +166,13 @@ class Batch {
       } finally {
         // Nested, because closing the frame is not optional: an `unsub()`
         // that threw would otherwise leave the module state one level deep
-        // for the rest of the process.
-        endIsolatedDelivery(outerErrors, 'flushing a batch of signal writes');
+        // for the rest of the process. The depth counter gets the same
+        // treatment one level further out, for the same reason.
+        try {
+          endIsolatedDelivery(outerErrors, 'flushing a batch of signal writes');
+        } finally {
+          g_flushDepth--;
+        }
       }
     }
   }
@@ -185,6 +242,13 @@ export function batch<T>(callback: () => NonThenable<T>): void {
   // Created on the first failure, never on the happy path: `batch()` sits in
   // front of every grouped write and the overwhelming majority of calls
   // collect nothing. Same reasoning as the delivery frame's array.
+  //
+  // Worth a good deal more since `run()` returns early on an empty queue: the
+  // eager version (a `const errors: unknown[] = []` plus an unconditional
+  // `throwCollectedErrors()`) measured about 10 % slower on an empty
+  // `batch()` — 18.6 against 16.6 Mops/s, median of six interleaved runs —
+  // where before that early return the same allocation disappeared in the
+  // flush's own cost.
   let errors: unknown[] | undefined;
 
   try {

@@ -30,14 +30,18 @@ export interface CreateMemoOptions {
    * deduplicated run instead of one per write with a torn intermediate
    * state (some signals updated, others not yet).
    *
-   * That grouping costs an allocation, and that is now the whole price: one
-   * `Batch` instance per recompute, on a path that otherwise allocates
-   * nothing. Only for a recompute that is not already inside another batch,
-   * though — `batch()` reuses an open one and allocates nothing then. Which
-   * is why the default stays `false`: reading other memos from inside a
-   * `callback` (composed memos) is normal use, writing to unrelated signals
-   * as a side effect is the exception, and the ordinary memo should not pay
-   * for the exception (PERF-001).
+   * What that grouping costs depends on whether anything reacts. A memo
+   * without a dependent effect defers nothing, and a batch with an empty
+   * queue skips its flush entirely (PERF-002) — `true` then measures within
+   * a few percent of the default, where it used to be 2.5x slower. With a
+   * dependent effect the recompute pays a whole flush for that one deferred
+   * effect: a `Set`, an array, two temporary queue subscriptions, a delivery
+   * frame and a dispatch through eventize instead of a direct call, measured
+   * at roughly 3x a recompute under the default. Which is why the default
+   * stays `false`: the cost lands exactly where the option is used, and it
+   * only pays off when one recompute would otherwise trigger the same
+   * downstream effect more than once — writing to unrelated signals from a
+   * `callback` is the exception, and the ordinary memo should not pay for it.
    *
    * The other half of that reasoning is gone. `true` used to mean that a
    * memo read from inside `callback` while dirty came back with its *stale*

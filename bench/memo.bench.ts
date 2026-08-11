@@ -145,4 +145,26 @@ describe('memo recompute, with a dependent effect', () => {
  * the ceiling this delta approaches as the rest of the recompute gets
  * cheaper, not a number these two should match. Confirms PERF-001 against a
  * real recompute instead of noise either way.
+ *
+ * Package 17 (PERF-001, PERF-002, PERF-003), measured 2026-08-11 on commit
+ * 8cc46e9 against the same tree with all three guards.
+ *
+ * Method, so the numbers are reproducible: one `pnpm bench memo -t "<case>"`
+ * per case — *not* a full run of this file, which shifts its own neighbours
+ * by up to 20 % (a case untouched by the change read -6 % that way) — with
+ * the options this file declares (none — Vitest's 500 ms default), baseline
+ * and patched tree alternating within one session, median of three runs
+ * each. Case names as they appear here, ops/sec (hz):
+ *
+ *   write source, memo recomputes                  1,962,074 -> 2,360,227
+ *   … memo (batchWrites: true) …, no dependent eff.  756,036 -> 2,244,935
+ *   … memo (default) …, effect reacts              1,208,494 -> 1,572,036
+ *   … memo (batchWrites: true) …, effect reacts      510,550 ->   549,365
+ *
+ * The interesting row is the second: without a dependent effect there is
+ * nothing to defer, so PERF-002's early return skips the whole flush and
+ * `{batchWrites: true}` lands within 5 % of the default instead of a factor
+ * of 2.6 behind it. The reason the default is still `false` is the fourth
+ * row: with a dependent effect the flush really runs, and a whole flush for
+ * a single deferred effect stays ~2.9x a plain recompute.
  */

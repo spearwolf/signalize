@@ -321,10 +321,13 @@ const doubled = createMemo(
 Without `batchWrites`, a downstream effect depending on both `doubled` and
 `flag` sees two separate runs — the first with `flag` already updated but
 `doubled` still at its old value. `batchWrites: true` restores the one-run
-grouping, at a cost that is now purely an allocation: one `Batch` instance per
-recompute that is not already inside another batch, on a path that otherwise
-allocates nothing. That is why the default is `false` — every memo would pay
-it, and a `computer` that writes other signals is the exception, not the rule.
+grouping, and the price for it is a full flush per recompute — a `Set`, an
+array, two temporary queue subscriptions and one dispatch through eventize
+for a single deferred effect, measured at roughly 3x a recompute under the
+default. (Without a dependent effect there is nothing to defer and the flush
+is skipped entirely, so the option then costs practically nothing.) That is
+why the default is `false` — every memo with a dependent effect would pay it,
+and a `computer` that writes other signals is the exception, not the rule.
 
 Reading a *composed* memo from inside such a callback is safe, and used to
 not be:

@@ -62,4 +62,28 @@ describe('batch() around a single write', () => {
  *   after:  write without batch()   2,496,550 hz
  *   (batch() is ~3.6-4.0x slower than a raw write across both runs — run-to-
  *   run noise on this machine, not a regression from this package)
+ *
+ * Package 17 (PERF-001, PERF-002, PERF-003), measured 2026-08-11 on commit
+ * 8cc46e9 against the same tree with all three guards. Method: `pnpm bench
+ * batch.bench`, this file in full, with the options it declares (none —
+ * Vitest's 500 ms default), baseline and patched tree alternating within one
+ * session, median of five runs each — ops/sec (hz):
+ *
+ *   write inside batch()        679,469 ->   712,210  (+5 %)
+ *   write without batch()     2,485,489 -> 3,189,668  (+28 %)
+ *
+ * Note what this file cannot show. PERF-002 skips the flush when a batch
+ * deferred nothing, and *both* cases here keep an effect subscribed, so the
+ * queue is never empty and that early return never fires: the +5 % is the
+ * other two guards inside the flush, and the number to watch is that it does
+ * not go *down*. The cases PERF-002 is about — an empty `batch()`, and a
+ * batch whose writes reach no effect — do not exist in this file or anywhere
+ * in `bench/`. They were measured (629 ns -> 50 ns and 712 ns -> 120 ns) in a
+ * throwaway copy outside the repo and are **not** reproducible from here; the
+ * decision not to add them permanently belongs to the review of this suite's
+ * scope, not to a performance fix.
+ *
+ * The pairing this file exists for widens as a side effect: `batch()` around
+ * a single write went from ~3.7x to ~4.5x the cost of the raw write, because
+ * the raw write got faster and the flush around it did not.
  */

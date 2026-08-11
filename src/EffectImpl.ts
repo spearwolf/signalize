@@ -7,7 +7,7 @@ import {
   on,
   once,
 } from '@spearwolf/eventize';
-import {getCurrentBatch} from './batch.js';
+import {getCurrentBatch, isFlushingBatch} from './batch.js';
 import {isQuiet} from './bequiet.js';
 import {
   collect,
@@ -541,7 +541,13 @@ export class EffectImpl {
 
       this.shouldRun = false;
 
-      emit(globalEffectCalledQueue, this.id, this.id);
+      // Only a running flush listens on that queue (PERF-003), and it is the
+      // only thing the emit is for: telling the flush this effect has already
+      // run so it is not recalled a second time. Outside a flush the emit was
+      // an eventize dispatch for zero listeners, on every single effect run.
+      if (isFlushingBatch()) {
+        emit(globalEffectCalledQueue, this.id, this.id);
+      }
 
       // Bumped here, not at the top of run(): the callbacks must be numbered
       // in the order they are *invoked*. A cleanup above can re-enter run()
@@ -854,8 +860,18 @@ export class EffectImpl {
    * destroyed under its own guard, the errors are collected, and only
    * afterwards re-raised — one error unchanged, several as an
    * `AggregateError`.
+   *
+   * The early return is exactly equivalent to running the body on an empty
+   * list: the loop below iterates zero times, `childEffects.length = 0` on
+   * an empty array is a no-op, and `throwCollectedErrors()` returns
+   * immediately for an empty list. It is here because `#run()` calls this
+   * method on *every* rerun while the overwhelming majority of effects never
+   * have a child — without it, each rerun allocated an error array and paid
+   * a call for nothing (PERF-001).
    */
   private destroyChildEffects(): void {
+    if (this.childEffects.length === 0) return;
+
     const errors: unknown[] = [];
     this.collectDestroyChildEffects(errors);
     throwCollectedErrors(errors, 'destroying an effect');
