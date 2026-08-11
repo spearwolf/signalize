@@ -55,7 +55,7 @@ function assertThresholdGlobsMatch(thresholds: Record<string, unknown>): void {
 
   if (covered.size === 0) {
     throw new Error(
-      `[vitest.config.ts] coverage.include matches no file: ${coverageInclude.join(', ')}`,
+      `[vitest.config.ts] coverage.include matches no files: ${coverageInclude.join(', ')}`,
     );
   }
 
@@ -107,8 +107,8 @@ export default defineConfig({
      * Two projects, one run. The GC suites need `--expose-gc`, and that flag
      * only survives in a forked worker — so they get their own project here
      * instead of a second config that is invoked separately and, until now,
-     * measured separately. `pnpm test` runs all 411 tests and produces a
-     * single coverage map over both, which is what makes the per-file
+     * measured separately. `pnpm test` runs both projects in one pass and
+     * produces a single coverage map over both, which is what makes the per-file
      * thresholds below mean anything: the FinalizationRegistry callbacks in
      * link.ts and SignalGroup.ts are reachable from the gc project alone.
      */

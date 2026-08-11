@@ -196,7 +196,7 @@ describe('SignalAutoMap', () => {
     }
   });
 
-  it('updateFromProps() with empty object does nothing (PERF-004)', () => {
+  it('updateFromProps() with empty object does nothing (PERF-004, 2026-07 audit)', () => {
     // NOTE this is not a regression test for the PERF-004 guard itself: an
     // empty `updateFromProps({})` behaved identically before the fix — it
     // opened a `batch()` whose loop body never ran, so there was no write

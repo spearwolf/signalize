@@ -147,6 +147,11 @@
 - The concept tables in `AGENTS.md` and `docs/architecture.md` no longer name the private `SignalGroup` constructor as the way to create a group — following them earned a `TS2673`. `SignalGroup.findOrCreate(obj)` is the documented way (API-005, audit 2026-08-08)
 - The types table in `docs/api.md` lists the eight exported types it had been missing: `NonThenable`, `SignalValueParams`, `EffectErrorPhase`, `EffectErrorPayload`, `EffectErrorCallback`, `FailingEffect`, `LinkOptions` and `SignalAutoMapKeyType` (audit follow-up, package 23)
 - Corrected what the `@signal` decorator's `attach` option does: it names an **additional** group, it does not override the instance group. The signal is a member of both, and destroying the additional group destroys the signal — the instance keeps the entry and the last value, but loses the reactivity (TYPE-004, audit 2026-08-08)
+- Every `datei:zeile`-style reference to source or config across `AGENTS.md`, `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`, `docs/` and `skills/` is replaced by a symbol name — 16 of the 23 pointed at the wrong line. `AGENTS.md`'s own module-layering section shows why: its `EffectImpl.ts` line reference has been carried forward, and gone stale, twice since Package 24 (READ-009, CONS-010)
+- The GC test counts and file lists scattered across `CLAUDE.md`, `CONTRIBUTING.md`, `README.md`, `AGENTS.md` and `vitest.config.ts`'s own comments (13, "nine", 20, 411 tests, two spec files) are replaced by "all `src/**/*.gc.spec.ts`" — the number drifts on every new test, the wording doesn't (CONS-010)
+- `bench/signal-write.bench.ts`'s baseline comment gains a third, dated measurement on `HEAD`, alongside the two it already carried, instead of overwriting either (READ-009)
+- `docs/architecture.md` now names all eleven `Symbol.for` keys and all 28 non-spec files of `src/`; `AGENTS.md`'s source file map and module-layering rule now mention `collect-errors.ts`, which neither listed before
+- Corrected the pnpm version (`11.20.0`), the `@spearwolf/eventize` peer dependency range (`^6.0.0`), and the published-tarball file count in `AGENTS.md` (48 files) — all had drifted from `package.json`/the built tree. The tarball's kB figures are dropped rather than corrected: `docs/`, `skills/`, `README.md` and `CHANGELOG.md` all ship in it and all move under ordinary documentation edits — measured, a throwaway 10-line diff shifted the size by ~0.1-0.2 kB, so a byte count recorded in a file that itself ships would already be stale by the next doc package
 
 ### Chores
 
@@ -198,6 +203,8 @@
 - `dist/` ships sourcemaps with the source embedded; `lib/` no longer ships a declaration map that points at files the package does not contain (BUILD-007)
 - `engines.node` lowered from `>=24.13` to `>=22` — no construct in `src/` needs anything newer, and Node 22 stays in LTS until 2027 (BUILD-009)
 - CI runs the full gate as a matrix over Node 22 and Node 24, so the declared floor is exercised instead of asserted (BUILD-009)
+- New `pnpm check:refs` (`scripts/check-doc-refs.mjs`), wired into `pnpm check` and therefore into `pnpm world` and CI: fails the build if `AGENTS.md`, `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`, `docs/**/*.md` or `skills/**/*.md` contain a `datei:zeile` reference. `remediation-plan.md` and `CHANGELOG.md` are exempt — they are history, entitled to point at where a line used to be (READ-009, CONS-010)
+- Removed the dead `/* eslint-disable no-console */` from `scripts/publishPackage.cjs` — ESLint left the project in v0.28, Biome has no matching rule directive and none is needed here
 
 ### Breaking Changes
 

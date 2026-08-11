@@ -579,7 +579,7 @@ describe('createMemo', () => {
     });
   });
 
-  describe('batchWrites option (PERF-001)', () => {
+  describe('batchWrites option (PERF-001, 2026-07 audit)', () => {
     // The memo effect used to unconditionally wrap `si.set(callback())` in
     // `batch()`. Two consequences follow from that, pulling in opposite
     // directions — this describe block covers both:

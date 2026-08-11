@@ -10,6 +10,13 @@ import {batch, createEffect, createSignal} from '../src/index.js';
  * `Batch#run`, and the extra indirection. This bench pairs the batched and
  * unbatched write so that overhead is directly readable as the delta
  * between the two numbers, not something to eyeball across separate runs.
+ *
+ * Deliberately not measured here: an empty `batch()`, a batch whose writes
+ * reach no effect, and a static-deps effect's rerun. All three are cheap by
+ * construction (early returns / no subscription to walk) and a case that
+ * only proves an early return is fast would be measuring the compiler, not
+ * this library — see the PERF-002 discussion in remediation-plan.md package
+ * 29a for the numbers that were tried and rejected as a permanent fixture.
  */
 
 describe('batch() around a single write', () => {

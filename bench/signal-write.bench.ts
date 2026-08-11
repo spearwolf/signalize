@@ -44,7 +44,8 @@ for (const n of [1, 10, 100]) {
 }
 
 /*
- * Baseline (reference point for package 12 / PERF-001, PERF-002, PERF-004),
+ * Baseline (reference point for package 12 / PERF-001, PERF-002, PERF-004,
+ * 2026-07 audit — a different PERF-001/PERF-002 than Package 17's below),
  * measured on commit 5cb75f4, single run, one dev laptop — ops/sec (hz),
  * not a gate, just "was it in this ballpark before":
  *
@@ -78,4 +79,23 @@ for (const n of [1, 10, 100]) {
  * -2 % here and by over 10 % in either direction across samples taken in
  * separate sessions. That case measures code layout and machine mood, not
  * this change.
+ *
+ * Package 29a (2026-08-11), measured on HEAD — several commits past Package
+ * 17, including READ-011's `EffectImpl.run()` refactor and CONS-001's new
+ * diagnostics channel. Same method: `pnpm bench signal-write`, this file in
+ * full, median of five runs, ops/sec (hz):
+ *
+ *   write, no consumers        11,890,299 hz
+ *   write, fans out to 1        2,529,830 hz
+ *   write, fans out to 10         558,768 hz
+ *   write, fans out to 100         62,100 hz
+ *
+ * All three fan-out cases sit 9-14 % above the Package 17 numbers above
+ * (2,287,486 / 510,935 / 54,633 hz). `write, no consumers` stayed inside its
+ * own five-run spread here (11.59M-12.20M, ~5 %), consistent with the >10 %
+ * cross-session drift already called out for that case above. Whether the
+ * gap on the other three reflects the commits since Package 17 or plain
+ * session noise on this machine is not established by one five-run pass —
+ * that needs the same alternating-runs protocol Package 17 used, not this
+ * one.
  */

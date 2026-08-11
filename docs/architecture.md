@@ -65,7 +65,8 @@ Effects subscribe to signal IDs they read; signals emit on change. Nothing else.
 
 **Symbol namespacing:** All internal `Symbol.for` keys use the `@spearwolf/signalize/` namespace
 prefix (`signal`, `effect`, `recall`, `destroySignal`, `createEffect`, `destroyEffect`,
-`effectError`, `instances`) to prevent collisions with unrelated code: without the prefix, a stray
+`effectError`, `signalizeError`, `queueUnsubscribes`, `autoMapResources`, `instances`) to prevent
+collisions with unrelated code: without the prefix, a stray
 `Symbol.for('signal')` in application code would pass `isSignal()` with incorrect metadata. The
 namespace carries no major version, so the keys of two copies in one process are identical.
 
@@ -177,9 +178,13 @@ TC39 standard form (`accessor` keyword, stage-3 semantics).
 | `index.ts`                 | Public entry — re-exports the `.` API surface               |
 | `decorators.ts`            | `@signal` (subpath entry `./decorators`)                    |
 | `signal-core.ts`           | Leaf primitives: `isSignal`, `destroySignal`, `signalImpl`, `writeSignal` |
+| `collect-errors.ts`        | Leaf below `signal-core.ts` — teardown error collection plus the isolated-delivery frame `writeSignal()` uses |
 | `Signal.ts` / `createSignal.ts` | `Signal<T>` wrapper + `SignalImpl` core                |
 | `Effect.ts` / `EffectImpl.ts`   | `Effect` wrapper + tracking/rerun core                 |
+| `effects.ts`               | `createEffect` plus lifecycle hooks: `onCreateEffect`, `onDestroyEffect`, `onEffectError`, the max-depth setting |
 | `effect-hook.ts`           | Leaf holding the internal `createEffect` placeholder — `effects.ts` fills it, `Signal.onChange()` reads it, so a signal-only bundle drops the effect subsystem |
+| `signalize-error.ts`       | Leaf — `onSignalizeError`, the fallback diagnostics channel every layer reports through (CONS-001) |
+| `instances.ts`             | Leaf below `signalize-error.ts` — the multi-copy sentinel that reports when a second copy of the library loads (ARCH-001) |
 | `createMemo.ts`            | `createMemo` — wraps signal + high-priority effect          |
 | `link.ts` / `SignalLink.ts`| `link()` / `unlink()` and link classes                      |
 | `SignalGroup.ts`           | Lifecycle container                                         |
@@ -190,5 +195,6 @@ TC39 standard form (`accessor` keyword, stage-3 semantics).
 | `batch.ts`, `bequiet.ts`, `hibernate.ts`, `touch.ts`, `value.ts` | Context modes & helpers |
 | `constants.ts`             | Symbols (`$signal`, `$effect`, `RECALL`, …)                 |
 | `types.ts`                 | Public TypeScript types                                     |
+| `UniqIdGen.ts`             | Symbol-based unique ID generator (`Symbol('si1')`, `Symbol('ef1')`) |
 
 Generated artefacts (`lib/`, `dist/`) are not edited by hand.

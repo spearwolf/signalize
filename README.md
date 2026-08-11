@@ -315,7 +315,7 @@ The package ships an agent skill at [`skills/using-signalize/`](./skills/using-s
 
 ## Development
 
-The package manager is **pnpm** (`pnpm@11.17.0`); `npm install` is not supported
+The package manager is **pnpm** (`pnpm@11.20.0`); `npm install` is not supported
 here. Node `>=22` builds and tests the repo; see
 [CONTRIBUTING.md](./CONTRIBUTING.md) for what the toolchain expects.
 
@@ -331,8 +331,8 @@ pnpm install
 | `pnpm test <file>` | A single spec, e.g. `pnpm test createSignal.spec.ts` |
 | `pnpm test -t "<name>"` | Only tests whose name matches |
 | `pnpm test:watch` | Vitest in watch mode |
-| `pnpm test:gc` | Runs every file serially with `--expose-gc` applied to the whole suite, not just the two GC spec files — not what makes the GC suite run, `pnpm test` already does that |
-| `pnpm test:smoke` | Runs `smoke/dist-smoke.test.ts` on plain Node (`node --test`) against the already-built `dist/`/`lib/` — no Vitest, no `src/`. It's the only test where **tsc**, not SWC, lowers a `@signal() accessor` application |
+| `pnpm test:gc` | Runs every file serially with `--expose-gc` applied to the whole suite, not just `src/**/*.gc.spec.ts` — not what makes the GC suite run, `pnpm test` already does that |
+| `pnpm test:smoke` | Runs `smoke/dist-smoke.test.ts` on plain Node (`node --test`) against the built `dist/`, type-checked against the `lib/*.d.ts` — no Vitest, no `src/`. It's the only test where **tsc**, not SWC, lowers a `@signal() accessor` application |
 | `pnpm smoke` | Builds (`pnpm dist`) and then runs `test:smoke` — one command, no stale artifact |
 | `pnpm checkPkgTypes` | `attw --pack --profile esm-only` — checks the `exports` map and shipped `.d.ts` across the resolution modes that apply to an ESM-only package |
 | `pnpm bench` | Runs the microbenchmark suite in `bench/` |

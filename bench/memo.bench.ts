@@ -37,8 +37,9 @@ describe('memo recompute, no dependent effect', () => {
   });
 
   // Paired with {batchWrites: true} (reproduces the old unconditional
-  // batch()) so the PERF-001 delta is readable even without a dependent
-  // effect — see the baseline comment below for why it is small here.
+  // batch()) so the PERF-001 (2026-07 audit) delta is readable even without
+  // a dependent effect — see the baseline comment below for why it is small
+  // here.
   const sourceBatched = createSignal(0);
   const doubledBatched = createMemo(() => sourceBatched.get() * 2, {
     batchWrites: true,
@@ -61,16 +62,16 @@ describe('memo recompute, no dependent effect', () => {
 /*
  * Hot path #3b — memo recompute *with* a dependent effect.
  *
- * PERF-001 is about the batch() machinery in `Batch#run()`: a queue drained
- * through two temporary listeners on `globalEffectQueue` /
+ * PERF-001 (2026-07 audit) is about the batch() machinery in `Batch#run()`:
+ * a queue drained through two temporary listeners on `globalEffectQueue` /
  * `globalEffectCalledQueue`, redispatching each deferred effect id. That
  * machinery only does anything when there is something to defer — a
  * downstream effect subscribed to the memo's own signal. The suite above
- * has none, so it never exercises that path (see PERF-001 note in the
- * baseline comment below). This suite does: {batchWrites: true} forces the
- * old unconditional batch() back on and is paired against the default so
- * the deferred-dispatch overhead PERF-001 is about is directly readable as
- * the delta between the two numbers.
+ * has none, so it never exercises that path (see PERF-001 (2026-07 audit)
+ * note in the baseline comment below). This suite does: {batchWrites: true}
+ * forces the old unconditional batch() back on and is paired against the
+ * default so the deferred-dispatch overhead PERF-001 (2026-07 audit) is
+ * about is directly readable as the delta between the two numbers.
  */
 
 describe('memo recompute, with a dependent effect', () => {
@@ -119,7 +120,7 @@ describe('memo recompute, with a dependent effect', () => {
  *   read memo (cached)                                  ~17,243,551 hz
  *
  * First trustworthy measurement, `.get()` fix applied, same machine, same
- * session, immediately before/after the PERF-001 change — "before" reproduced
+ * session, immediately before/after the PERF-001 (2026-07 audit) change — "before" reproduced
  * via `{batchWrites: true}` on identical code, not a separate old commit:
  *
  * No dependent effect (`memo recompute, no dependent effect`):
@@ -131,7 +132,7 @@ describe('memo recompute, with a dependent effect', () => {
  *   real recompute now.)
  *
  * With a dependent effect (`memo recompute, with a dependent effect`) — the
- * case PERF-001 is actually about, since only here does `Batch#run()` have a
+ * case PERF-001 (2026-07 audit) is actually about, since only here does `Batch#run()` have a
  * delayed effect to redispatch through its two temporary queue listeners:
  *   batchWrites: true (old default, forced back on):   506,934 hz
  *   default (no batchWrites):                         1,333,333 hz  (~2.63x)
@@ -143,8 +144,8 @@ describe('memo recompute, with a dependent effect', () => {
  * with-effect case — the dependent effect's own run), diluting the
  * batch-only savings without changing its absolute size. batch.bench.ts is
  * the ceiling this delta approaches as the rest of the recompute gets
- * cheaper, not a number these two should match. Confirms PERF-001 against a
- * real recompute instead of noise either way.
+ * cheaper, not a number these two should match. Confirms PERF-001 (2026-07
+ * audit) against a real recompute instead of noise either way.
  *
  * Package 17 (PERF-001, PERF-002, PERF-003), measured 2026-08-11 on commit
  * 8cc46e9 against the same tree with all three guards.
