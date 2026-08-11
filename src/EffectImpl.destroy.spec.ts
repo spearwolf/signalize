@@ -804,4 +804,52 @@ describe('EffectImpl.destroy() teardown order', () => {
       }
     });
   });
+
+  describe('Effect#destroyed (API-008)', () => {
+    it('flips once the wrapper tears its effect down', () => {
+      const {get: a} = createSignal(0);
+      const effect = createEffect(() => {
+        a();
+      });
+
+      try {
+        expect(effect.destroyed, 'a live effect').toBe(false);
+
+        effect.destroy();
+
+        // First branch: `destroy()` cleared `[$effect]`, so the getter
+        // answers from the missing reference alone.
+        expect(effect[$effect]).toBeUndefined();
+        expect(effect.destroyed, 'and a dead one').toBe(true);
+      } finally {
+        effect.destroy();
+        destroySignal(a);
+      }
+    });
+
+    it('is true for a wrapper whose effect died before it was handed out', () => {
+      const {get: a} = createSignal(0);
+      const unsubscribe = onCreateEffect((eff) => {
+        eff.destroy();
+      });
+      let effect: Effect;
+
+      try {
+        effect = createEffect(() => {
+          a();
+        });
+
+        // Second branch: the `once(effect, DESTROY, …)` in the `Effect`
+        // constructor is installed *after* DESTROY already fired, so it
+        // never runs and `[$effect]` stays occupied — the getter has to ask
+        // the implementation.
+        expect(effect[$effect], 'the reference survived').toBeDefined();
+        expect(effect.destroyed, 'the effect did not').toBe(true);
+      } finally {
+        unsubscribe();
+        effect?.destroy();
+        destroySignal(a);
+      }
+    });
+  });
 });

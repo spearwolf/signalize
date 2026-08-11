@@ -37,6 +37,7 @@ existing signal-like (then this very signal is returned, no new one created).
 | `touch()`         | Emit a change without changing the value.                                                  |
 | `onChange(cb)`    | Subscribe to changes. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect — an effect created inside it is a child effect and is destroyed on the next change (see below). |
 | `muted`           | `boolean` getter/setter — pause/resume notifications. Writes still store their value.      |
+| `destroyed`       | `boolean` getter — `true` once the signal has been destroyed. It stays usable as a plain value container; it just no longer notifies. |
 | `destroy()`       | Destroy the signal (alias for `destroySignal(this)`).                                      |
 
 `set(value, params)` accepts the union of `SignalParams<T>` and:
@@ -205,6 +206,7 @@ the parent's rerun.
 | ---------- | ---------------------------------------------------------------------------------------- |
 | `run()`    | Run the callback if dependencies have changed since the last run; otherwise no-op. Inside a `batch()`, queues the effect — and the queued run is carried out when the batch closes, `{autorun: false}` or not. |
 | `destroy()`| Mark the effect destroyed, drop subscriptions, notify, then run cleanup and destroy child effects. |
+| `destroyed`| `boolean` getter — `true` once the effect is gone, however it was destroyed: through this wrapper, through its group, or before `createEffect()` handed the wrapper out. |
 
 > **Teardown order.** `destroy()` marks the effect as destroyed and
 > unsubscribes it from all queues **before** it emits its destroy events and
@@ -421,7 +423,7 @@ eventually corrected too — nondeterministically, but subscriptions included
 | Member                  | Description                                                              |
 | ----------------------- | ------------------------------------------------------------------------ |
 | `lastValue`             | Last value announced — see the note below on re-entrant propagation.     |
-| `source`                | Underlying source signal impl.                                           |
+| `source`                | The source signal, as a narrow read-only view (`LinkSource<T>`): `id`, `value`, `muted`, `destroyed`. |
 | `isMuted` / `isDestroyed` | State flags.                                                           |
 | `mute()` / `unmute()`   | Pause / resume propagation.                                              |
 | `toggleMute()`          | Flip mute state; returns the new state.                                  |
@@ -433,6 +435,12 @@ eventually corrected too — nondeterministically, but subscriptions included
 
 The link is destroyed automatically when `source` or `target` (if it's a
 signal) is destroyed.
+
+> **On the spelling.** This class names its state flags `isMuted` /
+> `isDestroyed`; `Signal` names its pair `muted` / `destroyed`, and `Effect`
+> — which has no mute concept at all — names its one flag `destroyed`. Each
+> class is consistent with itself; the spelling never changes in the middle
+> of one.
 
 ### `nextValue(options?)` / `asyncValues(stop?, options?)`
 
@@ -772,7 +780,7 @@ Exported from `@spearwolf/signalize`:
 | `Signal<T>`                  | The reactive object returned by `createSignal()`.                |
 | `SignalReader<T>`            | The callable form of `signal.get` (also a `SignalLike<T>`).      |
 | `SignalWriter<T>`            | The callable form of `signal.set`, as an overload pair: a value, or a factory with `{lazy: true}`. |
-| `SignalLike<T>`              | Branded interface — anything carrying `[$signal]`. `T` defaults to `unknown`. |
+| `SignalLike<T>`              | Internal brand that only `createSignal()` produces. `$signal` is not exported, so the type is inspectable but not implementable from the outside — use `isSignal(v)` to recognise one. `T` defaults to `unknown`. |
 | `SignalParams<T>`            | Options for `createSignal` (`lazy`, `compare`, `beforeRead`, `attach`). |
 | `SignalWriterParams<T>`      | Options for `set()` (extends `SignalParams`, adds `touch`). Its `lazy?: boolean` is *not* narrow enough for the factory overload — that one wants a statically `true` `lazy`. |
 | `Effect`                     | The wrapper returned by `createEffect()`.                        |
@@ -784,6 +792,7 @@ Exported from `@spearwolf/signalize`:
 | `EffectCallback`             | `() => void \| (() => void)`.                                    |
 | `CreateMemoOptions`          | Options for `createMemo`.                                        |
 | `SignalLink<T>`, `ValueCallback<T>` | Link types. `T` defaults to `unknown` in both.             |
+| `LinkSource<T>`              | The narrow read-only view of a link's source signal: `id`, `value`, `muted`, `destroyed`. |
 | `AbortSignalLike`            | Structural subset of `AbortSignal` accepted by `nextValue()` / `asyncValues()`. |
 | `CompareFunc<T>`             | `(a: T, b: T) => boolean`.                                       |
 | `BeforeReadFunc`             | `() => void`.                                                    |

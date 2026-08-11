@@ -26,6 +26,24 @@ export class Effect {
    */
   runImmediately = () => this[$effect]?.runImmediately();
 
+  /**
+   * Whether this effect has been destroyed.
+   *
+   * True as soon as the effect is gone — through `destroy()` on this
+   * wrapper, through its group, or because an `onCreateEffect()` handler
+   * destroyed it before `createEffect()` even handed the wrapper out. A
+   * destroyed effect no longer reacts and `run()` is a no-op.
+   *
+   * That handler is the only route to the second case: a first run that
+   * throws also destroys the effect, but it rethrows out of
+   * `createEffect()` — with `{attach}` as without — so the caller gets the
+   * error instead of a wrapper and has nothing to ask (measured).
+   */
+  get destroyed(): boolean {
+    const effect = this[$effect];
+    return effect == null || effect.destroyed;
+  }
+
   destroy = () => {
     this[$effect]?.destroy();
     this[$effect] = undefined;
@@ -36,8 +54,9 @@ export class Effect {
    *
    * Handles the edge case a plain `once(effect, DESTROY, cb)` on the wrapped
    * instance cannot: the effect may already be destroyed by the time this is
-   * called — e.g. an `onCreateEffect()` handler, or the effect's own first
-   * run, destroyed it before `createEffect()` even returned this wrapper.
+   * called — an `onCreateEffect()` handler destroyed it before
+   * `createEffect()` even returned this wrapper (the first run destroying
+   * itself does not reach here: it throws out of `createEffect()` instead).
    * `DESTROY` was already emitted then, so a fresh subscription would never
    * fire and the caller's cleanup would silently never happen. Here, an
    * already-destroyed effect (or one whose wrapper reference is already

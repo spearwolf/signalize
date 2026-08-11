@@ -109,7 +109,7 @@ Subscribe-on-read happens inside `EffectImpl.whenSignalIsRead` (single subscript
 | `index.ts` | Public API exports for `.` |
 | `decorators.ts` | `@signal` (TC39 standard decorator) — separate `./decorators` entry |
 | `constants.ts` | Symbols (`$signal`, `$effect`, `RECALL`, `$createEffect`, `$destroyEffect`, `$destroySignal`) |
-| `types.ts` | Public TypeScript interfaces |
+| `types.ts` | TypeScript interfaces — the published ones *and* the implementation layer (`ISignalImpl`). Being in this file does not make a type public; `index.ts` decides, by name |
 | `Signal.ts` | `Signal<T>` class — thin wrapper around `SignalImpl` |
 | `signal-core.ts` | Leaf layer — `isSignal`, `destroySignal`, `muteSignal`, `unmuteSignal`, `getSignalsCount`, internal `signalImpl`, `readSignal`, `writeSignal`, `incSignalsCount`. Imports nothing above itself; every other module reaches signal primitives through here |
 | `createSignal.ts` | `SignalImpl`, `createSignal` — the factory layer on top of `signal-core.ts` |
@@ -152,7 +152,9 @@ Also avoid reading an imported binding at module-eval time across module boundar
 **Groups**: `SignalGroup`, `getSignalGroupsCount`, `SignalAutoMap`, `SignalAutoMapKeyType`
 **Utilities**: `batch`, `beQuiet`, `isQuiet`, `hibernate`
 **Classes**: `Signal`, `Effect`, `SignalGroup`, `SignalAutoMap`
-**Types**: everything from `types.ts`
+**Types**: a **named list** in `index.ts` — eighteen names, everything in `types.ts` except `ISignalImpl`, which is the implementation layer and stays inside the module graph (API-007). Consumers reach the source of a link through `LinkSource<T>` instead.
+
+> **The list is named on purpose — do not turn it back into `export type *`.** A star republishes every future type in `types.ts` unasked, and nothing in `pnpm world` would report it: `compile` emits happily, `attw` reads module shape rather than signatures, and the suite runs against `src/`. The one guard is `src/types.public-surface.spec.ts`, which holds a `@ts-expect-error` over `import('./index.js').ISignalImpl<number>` — a star makes that directive stop failing and `tsc` reports the unused directive. **Adding a new published type therefore means adding its name to the list**, alphabetically. Marking the implementation layer `@internal` and letting `stripInternal` do the work is measured and rejected: it emits a `lib/` whose `types.d.ts` names `ISignalImpl` without declaring it (`TS2304`, plus `TS2305` in `Signal.d.ts`/`SignalLink.d.ts`) and no gate step sees it.
 
 **Subpath `@spearwolf/signalize/decorators`** (`src/decorators.ts`): `signal`, `SignalDecoratorOptions`, `SignalReaderDecoratorOptions`. There is no memo decorator — class-bound memos are `createMemo(..., {attach: this})`. Decorators are TC39 standard (no `experimentalDecorators`); use the `accessor` keyword.
 
@@ -228,6 +230,7 @@ What would overturn this: the first line in `src/` that touches a DOM or Node-on
 | Change | Touch |
 | --- | --- |
 | New `Signal` method | `types.ts` interface → `SignalImpl` in `createSignal.ts` → `Signal.ts` wrapper → tests in adjacent `*.spec.ts` |
+| New published type | `types.ts` → **add the name to the type-export list in `index.ts`** (it is a list, not a star — see "Public API") → a `@ts-expect-error` witness in `types.public-surface.spec.ts` if the type carries a promise no other test would catch |
 | New effect option | `EffectOptions` in `EffectImpl.ts` → handle in constructor / `createEffect` → tests in `effects.spec.ts` (or new `effects.<feature>.spec.ts`) |
 | New utility function | `src/<name>.ts` → re-export in `src/index.ts` → adjacent `<name>.spec.ts` |
 | Modifying core reactivity | Read `EffectImpl.ts` (subscribe paths) + `signal-core.ts` (emit paths) + `global-queues.ts`; add subscription-count assertions to tests |

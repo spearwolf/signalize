@@ -24,6 +24,7 @@ c.set(v,  {touch: true});      // notify even if equal
 
 c.touch(); c.destroy();
 c.muted = true;    c.muted = false;   // muted: set() still stores, nobody is notified
+c.destroyed;       // true once destroyed — still a value container, just silent
 c.onChange(cb);    // → unsubscribe()
 
 isSignal(x); getSignalsCount();   // live = created, not destroyed, still reachable
@@ -52,7 +53,7 @@ createEffect(cb, [c]);                 // shorthand → static
 createEffect(cb, ['name'], {attach: obj}); // by name (group lookup)
 
 const eff = createEffect(cb, {autorun: false});
-eff.run(); eff.destroy();
+eff.run(); eff.destroy(); eff.destroyed;
 
 // Recursion guard
 setMaxEffectDepth(256); // default; getMaxEffectDepth() reads it back

@@ -13,7 +13,7 @@ import {$queueUnsubscribes, DESTROY, MUTE, UNMUTE, VALUE} from './constants.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {SignalGroup} from './SignalGroup.js';
 import {signalImpl} from './signal-core.js';
-import {AbortSignalLike, ISignalImpl, SignalLike} from './types.js';
+import {AbortSignalLike, ISignalImpl, LinkSource, SignalLike} from './types.js';
 
 /** The value type defaults to `unknown`; annotate `ValueCallback<number>`. */
 export type ValueCallback<ValueType = unknown> = (value: ValueType) => void;
@@ -96,7 +96,16 @@ export abstract class SignalLink<ValueType = unknown> {
   // the counter above it.
   #emittedGeneration = 0;
 
-  readonly source: ISignalImpl<ValueType>;
+  /**
+   * The signal this link reads from.
+   *
+   * The view is deliberately narrow (API-007): {@link LinkSource} exposes
+   * `id`, `value`, `muted` and `destroyed` and nothing else. At runtime this
+   * *is* the signal implementation, it is simply no longer typed as one — a
+   * link is a one-way read connection, not a second handle to drive its own
+   * source. Whoever needs to write holds the `Signal` the link was made from.
+   */
+  readonly source: LinkSource<ValueType>;
 
   /**
    * The last value this link actually announced — i.e. the value of the

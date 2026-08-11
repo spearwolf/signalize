@@ -32,6 +32,7 @@ import type {SignalLink, ValueCallback} from './SignalLink.js';
 import {destroySignal, signalImpl} from './signal-core.js';
 import type {
   ISignalImpl,
+  LinkSource,
   SignalLike,
   SignalParams,
   SignalWriterParams,
@@ -125,16 +126,21 @@ describe('the published type surface', () => {
       const bare: SignalLike = source;
       const named: SignalLike<number> = source;
 
-      // @ts-expect-error TYPE-001: `SignalLink` is `SignalLink<unknown>` now.
+      // API-007 gave this line back: with `source` narrowed to `LinkSource`,
+      // `SignalLink<T>` carries `Type` in covariant positions only, so a
+      // `SignalLink<number>` is a `SignalLink<unknown>` again. The TYPE-001
+      // promise it used to witness now rides on the next two lines instead.
       const bareLink: SignalLink = theLink;
+      // @ts-expect-error TYPE-001: …and it carries `unknown`, not `any`.
+      const stillUnknown: string = bareLink.lastValue;
       const namedLink: SignalLink<number> = theLink;
 
       // @ts-expect-error TYPE-001: `ValueCallback` is `ValueCallback<unknown>`.
       const bareCallback: ValueCallback = (v: number) => seen.push(v);
       const namedCallback: ValueCallback<number> = (v) => seen.push(v);
 
-      // @ts-expect-error TYPE-001: `ISignalImpl` is published through
-      // `export type * from './types.js'`, so its default is public too.
+      // @ts-expect-error TYPE-001: module-internal now (API-007), default
+      // still `unknown`.
       const bareImpl: ISignalImpl = signalImpl(source);
       const namedImpl: ISignalImpl<number> = signalImpl(source);
 
@@ -144,6 +150,7 @@ describe('the published type surface', () => {
       expect(bare).toBe(source);
       expect(named).toBe(source);
       expect(bareLink).toBe(theLink);
+      expect(stillUnknown).toBe(theLink.lastValue);
       expect(namedLink).toBe(theLink);
       expect(bareImpl).toBe(namedImpl);
       expect(seen).toEqual([7, 8]);
@@ -213,6 +220,57 @@ describe('the published type surface', () => {
       theLink.destroy();
       destroySignal(source, target);
       SignalGroup.delete(groupHost);
+    }
+  });
+
+  it('keeps the implementation layer out of the entry point and off the link (API-007)', () => {
+    const source = createSignal(1);
+    const target = createSignal(0);
+    const theLink = link(source, target);
+
+    try {
+      // The directive sits on a one-line type alias with an inline
+      // `import('./index.js')` on purpose: it catches exactly one `TS2694`,
+      // and a multi-line `import type {…}` would report at the specifier
+      // line rather than at the statement the directive covers.
+      // @ts-expect-error API-007: `ISignalImpl` is module-internal now — the
+      // entry point does not hand the implementation layer out any more.
+      type PublicImpl = import('./index.js').ISignalImpl<number>;
+      const stillReachableInside: PublicImpl = signalImpl(source);
+
+      const narrow: LinkSource<number> = theLink.source;
+
+      // @ts-expect-error API-007: no writer on the narrow view.
+      const writer = theLink.source.writer;
+      // @ts-expect-error API-007: no reader either.
+      const reader = theLink.source.reader;
+      // @ts-expect-error API-007: and no way back to the Signal wrapper.
+      const object = theLink.source.object;
+      // @ts-expect-error API-007: nor to the lazy factory.
+      const valueFn = theLink.source.valueFn;
+
+      const id: symbol = narrow.id;
+      const val: number = narrow.value;
+      const muted: boolean = narrow.muted;
+      const gone: boolean = narrow.destroyed;
+
+      expect(typeof id).toBe('symbol');
+      expect(val).toBe(1);
+      expect(muted).toBe(false);
+      expect(gone).toBe(false);
+
+      // What the rebuild does *not* do: the runtime object is untouched, it
+      // is only typed down. `link.source` still *is* the implementation.
+      expect(stillReachableInside).toBe(theLink.source);
+      expect(typeof writer).toBe('function');
+      expect(typeof reader).toBe('function');
+      expect(object).toBe(source);
+      // A non-lazy signal has no factory — expecting a function here would
+      // be a red test.
+      expect(valueFn).toBeUndefined();
+    } finally {
+      theLink.destroy();
+      destroySignal(source, target);
     }
   });
 

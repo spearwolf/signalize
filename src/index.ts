@@ -39,5 +39,27 @@ export {
   unmuteSignal,
 } from './signal-core.js';
 export {touch} from './touch.js';
-export type * from './types.js';
+// A list, not a star (API-007): `ISignalImpl` is the implementation layer and
+// stays inside the module graph — `LinkSource` is what a consumer gets instead.
+// `export type *` would also publish every future type in `types.ts` unasked.
+export type {
+  AbortSignalLike,
+  BeforeReadFunc,
+  CompareFunc,
+  EffectCallback,
+  EffectErrorCallback,
+  EffectErrorPayload,
+  EffectErrorPhase,
+  FailingEffect,
+  LinkSource,
+  NonThenable,
+  SignalLike,
+  SignalParams,
+  SignalReader,
+  SignalValueParams,
+  SignalWriter,
+  SignalWriterParams,
+  ValueChangedCallback,
+  VoidFunc,
+} from './types.js';
 export {value} from './value.js';

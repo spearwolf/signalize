@@ -75,12 +75,67 @@ export type BeforeReadFunc = () => void;
  * invariant in `Type` (`compare?: CompareFunc<Type>` is checked
  * contravariantly under `strictFunctionTypes`), so `SignalLike<unknown>`
  * there rejects every concrete `Signal<T>` handed to it.
+ *
+ * The brand is internal and stays that way: `$signal` is exported from no
+ * entry point, so this interface is inspectable from the outside but not
+ * implementable. Only `createSignal()` produces one. Rebuilding the key by
+ * hand does not satisfy the type either — `Symbol.for(…)` in a class member
+ * position earns `TS1166`, and the class then still fails `TS2420` for the
+ * missing `[$signal]`. Use `isSignal(v)` to recognise one.
  */
 export interface SignalLike<Type = unknown> {
   [$signal]: ISignalImpl<Type>;
 }
 
-/** Same default as {@link SignalLike}: `unknown`, not `any`. */
+/**
+ * What a link lets a consumer see of the signal it reads from.
+ *
+ * The value passed is the real signal implementation — the same object
+ * the library works with — but it is typed down to the four read-only
+ * members an observer has any business touching. The implementation
+ * interface stays unpublished for the same reason the effect one does
+ * (see {@link FailingEffect}): `valueFn`, `reader`, `writer` and
+ * `object` are the machinery, and handing them out through a link would
+ * make a one-way read connection a second way to drive its own source.
+ * Whoever needs to write holds the `Signal` the link was made from.
+ *
+ * Keep every member read-only and function-free. `Type` appears in `value`
+ * and nowhere else — a covariant position only — which is what makes
+ * `SignalLink<Type>` covariant. Adding `compare`, `beforeRead` or `writer`
+ * here takes both the encapsulation and that covariance back.
+ */
+export interface LinkSource<Type = unknown> {
+  /** Unique signal id — the key both global queues route on. */
+  readonly id: symbol;
+  /**
+   * The source's current value, untracked: the stored property, read
+   * without running the source's `beforeRead` hook.
+   *
+   * Only a source that computes on read is affected — a `createMemo(fn,
+   * {lazy: true})`, whose recompute hangs off that hook, or a
+   * `createSignal(v, {beforeRead})` of the caller's own. For a lazy memo
+   * this is what the last recompute stored: `undefined` while none has
+   * run, the previous value once a dependency has changed. Calling the
+   * source's own reader runs the hook; `value()` reads the property raw,
+   * exactly as this does. A plain signal is always current — `set()`
+   * stores at once, only the notification waits. An eager memo is too,
+   * outside a batch: inside an open one it recomputes from this same hook
+   * at the read, so the property trails until something reads it.
+   */
+  readonly value: Type | undefined;
+  /** Whether the source is muted — see `muteSignal()`. */
+  readonly muted: boolean;
+  /** Whether the source has been destroyed. */
+  readonly destroyed: boolean;
+}
+
+/**
+ * Same default as {@link SignalLike}: `unknown`, not `any`.
+ *
+ * Implementation layer: this interface is exported inside the module graph
+ * but not from any entry point (see `src/index.ts`). Consumers who used to
+ * reach it through `SignalLink#source` take {@link LinkSource} instead.
+ */
 export interface ISignalImpl<Type = unknown> extends SignalLike<Type> {
   id: symbol;
   value: Type | undefined;

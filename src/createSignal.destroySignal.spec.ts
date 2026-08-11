@@ -670,4 +670,22 @@ describe('destroySignal', () => {
       }
     });
   });
+
+  it('lets the signal itself say whether it is gone (API-008)', () => {
+    const sig = createSignal(1);
+
+    try {
+      expect(sig.destroyed, 'a fresh signal is alive').toBe(false);
+
+      destroySignal(sig);
+
+      expect(sig.destroyed, 'and admits it once it is gone').toBe(true);
+
+      // Being destroyed is not being unusable: it stays a plain value
+      // container, it just stops notifying.
+      expect(sig.value, 'still holds its value').toBe(1);
+    } finally {
+      destroySignal(sig);
+    }
+  });
 });

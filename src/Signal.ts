@@ -49,6 +49,17 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
     this[$signal].muted = mute;
   }
 
+  /**
+   * Whether this signal has been destroyed.
+   *
+   * A destroyed signal stays usable as a plain value container — `set()`
+   * stores, reads return — it just no longer notifies. There is no way
+   * back; see `destroySignal()`.
+   */
+  get destroyed(): boolean {
+    return this[$signal].destroyed;
+  }
+
   touch() {
     touch(this);
   }

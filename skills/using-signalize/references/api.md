@@ -38,7 +38,7 @@ Signal, Effect
 //   EffectOptions, EffectOptionsWithSignalDeps, EffectOptionsWithNameDeps,
 //   EffectDeps, SignalLikeDeps, EffectCallback, CreateMemoOptions, LinkOptions,
 //   EffectErrorPayload, EffectErrorPhase, EffectErrorCallback, FailingEffect,
-//   SignalLink, ValueCallback, SignalAutoMapKeyType, AbortSignalLike,
+//   SignalLink, ValueCallback, LinkSource, SignalAutoMapKeyType, AbortSignalLike,
 //   CompareFunc, BeforeReadFunc, VoidFunc, ValueChangedCallback
 ```
 
@@ -69,6 +69,7 @@ c.set(fn, {lazy: true});    // store a factory — literal `true` only, not a Si
 c.touch();                  // force-notify
 c.destroy();
 c.muted = true;             // muted signals neither notify nor touch — set() still stores
+c.destroyed;                // true once destroyed — still holds its value, just silent
 const off = c.onChange((v) => {});   // → unsubscribe function
 ```
 
@@ -103,6 +104,7 @@ createEffect(cb, ['name'], {attach: obj});   // names resolved against the group
 const eff = createEffect(cb, {autorun: false});
 eff.run();       // runs only if a tracked dep changed since the last run
 eff.destroy();
+eff.destroyed;   // true once the effect is gone, however it was destroyed
 ```
 
 String/symbol dependency names require `attach` — the pairing is checked at compile time.
