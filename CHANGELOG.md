@@ -170,6 +170,7 @@
 - Every spec file now checks all three global counters — effects, signals, links — in `beforeEach`/`afterEach`, instead of only the subset that used to be there; five files stay short of that by design, each documented in place (see `AGENTS.md`)
 - The five spec files that had no counter guard at all closed ten leaking tests first — 8 effects and 18 signals across `createMemo`, `batch`, `createSignal.lazy`, `unsubscribeEffect` and `createSignal.compareFn` — before gaining one
 - Those same five files picked up 34 new `finally` teardown blocks for resources that used to sit unguarded behind the assertions (36 total, 2 pre-existing)
+- The position of `shouldRun = false` relative to the cleanup call inside `EffectImpl.run()` is pinned: moving it ahead of `runCleanupCallback()` now fails exactly one test — a direct `run()` from within a cleanup used to disappear silently — instead of passing unnoticed
 
 ### Build System
 

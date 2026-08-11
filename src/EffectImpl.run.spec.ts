@@ -292,4 +292,33 @@ describe('EffectImpl.run() lifecycle', () => {
       destroySignal(n);
     }
   });
+
+  it('a cleanup that calls run() itself still finds the run due', () => {
+    const {get: a, set: setA} = createSignal(0);
+    let runs = 0;
+    let bounce = true;
+
+    const effect = createEffect(() => {
+      a();
+      runs++;
+      return () => {
+        if (bounce) {
+          bounce = false;
+          effect.run();
+        }
+      };
+    });
+
+    try {
+      expect(runs).toBe(1);
+      setA(1);
+      expect(
+        runs,
+        'the direct run() from the cleanup ran the callback, so shouldRun was still true when the cleanup ran',
+      ).toBe(3);
+    } finally {
+      effect.destroy();
+      destroySignal(a);
+    }
+  });
 });
