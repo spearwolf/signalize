@@ -4,7 +4,7 @@ import {createEffect, createMemo, createSignal} from '../src/index.js';
 /*
  * Hot path #3 — memo recompute, no dependent effect.
  *
- * A memo is a signal driven by a Priority.C effect (see createMemo.ts), so
+ * A memo is a signal driven by a Priority.C effect (see create-memo.ts), so
  * writing its source signal already triggers the recompute synchronously —
  * no separate read is needed to force it. This measures exactly that:
  * source write -> memo body re-run -> derived signal write.

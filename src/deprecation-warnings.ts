@@ -25,7 +25,7 @@ export type DeprecationKey =
   | 'SignalGroup#destroy';
 
 // A plain allocation with no observable effect, tree-shakeable like anything
-// else — the same argument `DEFAULT_EQUALS` in `createSignal.ts` carries.
+// else — the same argument `DEFAULT_EQUALS` in `create-signal.ts` carries.
 // This is *not* a third exception to `sideEffects: false`; see AGENTS.md.
 const gWarnedKeys = new Set<DeprecationKey>();
 

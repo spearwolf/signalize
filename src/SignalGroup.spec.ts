@@ -7,8 +7,8 @@ import {
   NO_GROUP_MEMBERS,
 } from './__testing__/assert-helpers.js';
 import {$effect, DESTROY, OFF} from './constants.js';
-import {createMemo} from './createMemo.js';
-import {createSignal} from './createSignal.js';
+import {createMemo} from './create-memo.js';
+import {createSignal} from './create-signal.js';
 import {createEffect} from './effects.js';
 import {
   globalDestroySignalQueue,
@@ -208,7 +208,7 @@ describe('SignalGroup', () => {
       // above already spent this call site's single notice, and the gate in
       // `deprecation-warnings.ts` is module-scoped, so nothing is left for
       // these two calls. Before CONS-004 they produced two more notices.
-      // Same shape as `createSignal.deprecation.spec.ts`'s second test.
+      // Same shape as `create-signal.deprecation.spec.ts`'s second test.
       const seen: SignalizeErrorPayload[] = [];
       const unsubscribe = onSignalizeError((payload) => {
         seen.push(payload);

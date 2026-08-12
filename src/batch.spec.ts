@@ -5,8 +5,8 @@ import {
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {batch, getCurrentBatch} from './batch.js';
-import {createMemo} from './createMemo.js';
-import {createSignal} from './createSignal.js';
+import {createMemo} from './create-memo.js';
+import {createSignal} from './create-signal.js';
 import {createEffect} from './effects.js';
 import {globalEffectCalledQueue, globalEffectQueue} from './global-queues.js';
 import {destroySignal} from './signal-core.js';

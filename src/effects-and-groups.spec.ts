@@ -3,7 +3,7 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {signal} from './decorators.js';
 import {createEffect, destroyObjectSignals, destroySignal} from './index.js';
 

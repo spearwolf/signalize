@@ -5,7 +5,7 @@ import {
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {$effect} from './constants.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {createEffect, onEffectError} from './effects.js';
 import {globalEffectQueue} from './global-queues.js';
 import {destroySignal} from './signal-core.js';

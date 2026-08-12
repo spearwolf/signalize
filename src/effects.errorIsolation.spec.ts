@@ -6,7 +6,7 @@ import {
 } from './__testing__/assert-helpers.js';
 import {batch} from './batch.js';
 import {$effect, RECALL} from './constants.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {createEffect, getEffectsCount} from './effects.js';
 import {globalEffectQueue, globalSignalQueue} from './global-queues.js';
 import {link} from './link.js';

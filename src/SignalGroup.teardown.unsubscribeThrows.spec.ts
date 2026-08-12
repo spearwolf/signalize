@@ -12,7 +12,7 @@ import {
   getGroupMemberCounts,
   NO_GROUP_MEMBERS,
 } from './__testing__/assert-helpers.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import {$groupResources, SignalGroup} from './SignalGroup.js';
 import {destroySignal, signalImpl} from './signal-core.js';

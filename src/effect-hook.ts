@@ -2,7 +2,7 @@
 // Nothing else, and `./effects.js` or `./EffectImpl.js` least of all: those
 // modules write this placeholder, so a value import back would close exactly
 // the ring this module exists to open (ARCH-002). `Signal.ts` and
-// `createSignal.ts` read it, `effects.ts` fills it on module evaluation.
+// `create-signal.ts` read it, `effects.ts` fills it on module evaluation.
 
 import type {Effect} from './Effect.js';
 import type {EffectCallback, SignalLike} from './types.js';
@@ -26,7 +26,7 @@ let g_createEffect: CreateEffectHook | undefined;
  *
  * Called once, from the last line of `effects.ts`. That module is the only
  * one that knows `createEffect` without anybody having to import it for this
- * purpose, which is the whole point: `Signal.ts` and `createSignal.ts` reach
+ * purpose, which is the whole point: `Signal.ts` and `create-signal.ts` reach
  * the effect subsystem without an import edge to it, so a consumer bundle
  * that never touches `onChange()` or `signalReader(callback)` leaves the
  * subsystem behind.

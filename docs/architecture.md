@@ -179,20 +179,20 @@ TC39 standard form (`accessor` keyword, stage-3 semantics).
 | `decorators.ts`            | `@signal` (subpath entry `./decorators`)                    |
 | `signal-core.ts`           | Leaf primitives: `isSignal`, `destroySignal`, `signalImpl`, `writeSignal` |
 | `collect-errors.ts`        | Leaf below `signal-core.ts` — teardown error collection plus the isolated-delivery frame `writeSignal()` uses |
-| `Signal.ts` / `createSignal.ts` | `Signal<T>` wrapper + `SignalImpl` core                |
+| `Signal.ts` / `create-signal.ts` | `Signal<T>` wrapper + `SignalImpl` core               |
 | `Effect.ts` / `EffectImpl.ts`   | `Effect` wrapper + tracking/rerun core                 |
 | `effects.ts`               | `createEffect` plus lifecycle hooks: `onCreateEffect`, `onDestroyEffect`, `onEffectError`, the max-depth setting |
 | `effect-hook.ts`           | Leaf holding the internal `createEffect` placeholder — `effects.ts` fills it, `Signal.onChange()` reads it, so a signal-only bundle drops the effect subsystem |
 | `signalize-error.ts`       | Leaf — `onSignalizeError`, the fallback diagnostics channel every layer reports through (CONS-001) |
 | `instances.ts`             | Leaf below `signalize-error.ts` — the multi-copy sentinel that reports when a second copy of the library loads (ARCH-001) |
-| `createMemo.ts`            | `createMemo` — wraps signal + high-priority effect          |
+| `create-memo.ts`           | `createMemo` — wraps signal + high-priority effect          |
 | `link.ts` / `SignalLink.ts`| `link()` / `unlink()` and link classes                      |
 | `SignalGroup.ts`           | Lifecycle container                                         |
 | `SignalAutoMap.ts`         | Auto-creating `Map<key, Signal>`                            |
 | `object-signals.ts`        | Signals attached to host objects (used by decorators)       |
-| `globalEffectStack.ts`     | Effect execution context stack                              |
+| `global-effect-stack.ts`   | Effect execution context stack                              |
 | `global-queues.ts`         | The four global eventize buses                              |
-| `batch.ts`, `bequiet.ts`, `hibernate.ts`, `touch.ts`, `value.ts` | Context modes & helpers |
+| `batch.ts`, `be-quiet.ts`, `hibernate.ts`, `touch.ts`, `value.ts` | Context modes & helpers |
 | `constants.ts`             | Symbols (`$signal`, `$effect`, `RECALL`, …)                 |
 | `types.ts`                 | Public TypeScript types                                     |
 | `UniqIdGen.ts`             | Symbol-based unique ID generator (`Symbol('si1')`, `Symbol('ef1')`) |

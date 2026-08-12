@@ -11,7 +11,7 @@ import {
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {$effect, DESTROY} from './constants.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import type {Effect} from './Effect.js';
 import type {EffectImpl} from './EffectImpl.js';
 import {

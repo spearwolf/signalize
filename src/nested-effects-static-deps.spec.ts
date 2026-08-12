@@ -5,14 +5,14 @@ import {
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {$effect} from './constants.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {createEffect, getEffectsCount} from './effects.js';
+import {getCurrentEffect} from './global-effect-stack.js';
 import {
   globalDestroySignalQueue,
   globalEffectQueue,
   globalSignalQueue,
 } from './global-queues.js';
-import {getCurrentEffect} from './globalEffectStack.js';
 import {hibernate} from './hibernate.js';
 import {destroySignal} from './signal-core.js';
 

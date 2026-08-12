@@ -10,8 +10,8 @@ import {
   getGroupMemberCounts,
   NO_GROUP_MEMBERS,
 } from './__testing__/assert-helpers.js';
-import {createMemo} from './createMemo.js';
-import {createSignal} from './createSignal.js';
+import {createMemo} from './create-memo.js';
+import {createSignal} from './create-signal.js';
 import type {EffectImpl} from './EffectImpl.js';
 import {createEffect, onCreateEffect, onDestroyEffect} from './effects.js';
 import {

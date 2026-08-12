@@ -4,7 +4,7 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import type {Effect} from './Effect.js';
 import {createEffect, getEffectsCount} from './effects.js';
 import {globalDestroySignalQueue, globalEffectQueue} from './global-queues.js';

@@ -6,8 +6,8 @@ import {
   getGroupMemberCounts,
   NO_GROUP_MEMBERS,
 } from './__testing__/assert-helpers.js';
-import {createMemo} from './createMemo.js';
-import {createSignal} from './createSignal.js';
+import {createMemo} from './create-memo.js';
+import {createSignal} from './create-signal.js';
 import type {Effect} from './Effect.js';
 import type {EffectImpl} from './EffectImpl.js';
 import {createEffect, getEffectsCount, onCreateEffect} from './effects.js';
@@ -792,7 +792,7 @@ describe('createMemo', () => {
       try {
         // Three calls, three notices. This is what separates the option from
         // a deprecation notice, which a module-level flag silences after the
-        // first one (`createSignal.ts`) — such a flag would also outlive the
+        // first one (`create-signal.ts`) — such a flag would also outlive the
         // test that installed it and leave the rest of the suite untested.
         for (const name of ['first', 'second', 'third']) {
           memos.push(createMemo(() => 42, {name}));

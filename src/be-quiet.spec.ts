@@ -3,8 +3,8 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
-import {beQuiet, isQuiet} from './bequiet.js';
-import {createSignal} from './createSignal.js';
+import {beQuiet, isQuiet} from './be-quiet.js';
+import {createSignal} from './create-signal.js';
 import {createEffect} from './effects.js';
 import {destroySignal} from './signal-core.js';
 import {touch} from './touch.js';
@@ -92,7 +92,7 @@ describe('beQuiet', () => {
     // The counter behind `beQuiet()` is module state, so a frame that is
     // not closed on the way out is not a local mistake: every later write
     // in the process stays muted and every effect stays deaf. Drop the
-    // `finally` in `src/bequiet.ts` and this test is the only one that
+    // `finally` in `src/be-quiet.ts` and this test is the only one that
     // notices.
     const {get: a, set: setA} = createSignal(0);
 

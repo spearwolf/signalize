@@ -1,5 +1,5 @@
 import {getSubscriptionCount} from '@spearwolf/eventize';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import type {Signal} from './Signal.js';
 import {destroySignal, getSignalsCount} from './signal-core.js';

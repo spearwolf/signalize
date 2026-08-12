@@ -354,7 +354,7 @@ pnpm install
 | Task | Runs |
 | --- | --- |
 | `pnpm test` | Vitest, with coverage gate. Runs the `unit` and `gc` projects together — the GC suite runs here too, not just under `test:gc` |
-| `pnpm test <file>` | A single spec, e.g. `pnpm test createSignal.spec.ts` |
+| `pnpm test <file>` | A single spec, e.g. `pnpm test create-signal.spec.ts` |
 | `pnpm test -t "<name>"` | Only tests whose name matches |
 | `pnpm test:watch` | Vitest in watch mode |
 | `pnpm test:gc` | Runs every file serially with `--expose-gc` applied to the whole suite, not just `src/**/*.gc.spec.ts` — not what makes the GC suite run, `pnpm test` already does that |

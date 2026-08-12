@@ -4,11 +4,11 @@ import {
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {batch, getCurrentBatch} from './batch.js';
-import {beQuiet, clearBeQuiet, getBeQuietCount, isQuiet} from './bequiet.js';
-import {createSignal} from './createSignal.js';
+import {beQuiet, clearBeQuiet, getBeQuietCount, isQuiet} from './be-quiet.js';
+import {createSignal} from './create-signal.js';
 import {EffectImpl} from './EffectImpl.js';
 import {createEffect} from './effects.js';
-import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
+import {getCurrentEffect, runWithinEffect} from './global-effect-stack.js';
 import {hibernate} from './hibernate.js';
 import {destroySignal} from './signal-core.js';
 

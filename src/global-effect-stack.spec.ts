@@ -4,7 +4,7 @@ import {
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {EffectImpl} from './EffectImpl.js';
-import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
+import {getCurrentEffect, runWithinEffect} from './global-effect-stack.js';
 
 const NOOP = () => {};
 
@@ -58,7 +58,7 @@ describe('globalEffectStack', () => {
       // The stack is module state. An effect left on it after a throwing
       // callback is picked up by the next top-level signal read, which then
       // subscribes a corpse. Drop the `finally` in
-      // `src/globalEffectStack.ts` and this test is one of the two that
+      // `src/global-effect-stack.ts` and this test is one of the two that
       // notice.
       const effect = new EffectImpl(NOOP);
 

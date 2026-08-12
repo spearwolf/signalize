@@ -3,7 +3,7 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import type {Effect} from './Effect.js';
 import type {EffectImpl} from './EffectImpl.js';
 // The three effect-surface tests import through the entry point on purpose:

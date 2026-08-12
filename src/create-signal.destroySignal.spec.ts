@@ -13,8 +13,8 @@ import {
 } from './__testing__/assert-helpers.js';
 import {batch} from './batch.js';
 import {$effect, DESTROY} from './constants.js';
-import {createMemo} from './createMemo.js';
-import {createSignal} from './createSignal.js';
+import {createMemo} from './create-memo.js';
+import {createSignal} from './create-signal.js';
 import {createEffect, onEffectError} from './effects.js';
 import {globalSignalQueue} from './global-queues.js';
 import {link} from './link.js';

@@ -4,9 +4,9 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
-import {beQuiet} from './bequiet.js';
+import {beQuiet} from './be-quiet.js';
 import {OFF} from './constants.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {createEffect} from './effects.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {link} from './link.js';

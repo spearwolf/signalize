@@ -7,7 +7,7 @@ import {
   once,
 } from '@spearwolf/eventize';
 import {getCurrentBatch, isFlushingBatch} from './batch.js';
-import {isQuiet} from './bequiet.js';
+import {isQuiet} from './be-quiet.js';
 import {
   collect,
   collectDeliveryError,
@@ -23,13 +23,13 @@ import {
 } from './constants.js';
 import {Effect} from './Effect.js';
 import {hasEffectErrorHandler} from './effect-error-handlers.js';
+import {getCurrentEffect, runWithinEffect} from './global-effect-stack.js';
 import {
   globalDestroySignalQueue,
   globalEffectCalledQueue,
   globalEffectQueue,
   globalSignalQueue,
 } from './global-queues.js';
-import {getCurrentEffect, runWithinEffect} from './globalEffectStack.js';
 import {SignalGroup} from './SignalGroup.js';
 import {signalImpl} from './signal-core.js';
 import {reportSignalizeError} from './signalize-error.js';
@@ -485,7 +485,7 @@ export class EffectImpl {
    *
    * A destroyed dependency is skipped. `whenSignalIsRead()` cannot tell the
    * difference, but the dynamic path can and does — `signalReader` reports
-   * a read only while the signal is alive (`createSignal.ts`). Without the
+   * a read only while the signal is alive (`create-signal.ts`). Without the
    * same guard here, a dependency that was soft-detached and *then*
    * destroyed would be re-subscribed on the next run: the effect stopped
    * listening for that signal's destruction when it detached, so it never

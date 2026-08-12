@@ -150,6 +150,6 @@ export const reportSignalizeError = (payload: SignalizeErrorPayload): void => {
 };
 
 // This module and no other: it sits in the graph of both entry points
-// (`./decorators` → `createSignal.ts` → here), it is a leaf, and
+// (`./decorators` → `create-signal.ts` → here), it is a leaf, and
 // `reportSignalizeError` is exactly the function the record has to carry.
 registerSignalizeInstance(import.meta.url, reportSignalizeError);

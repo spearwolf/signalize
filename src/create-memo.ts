@@ -1,10 +1,10 @@
 import {once, Priority} from '@spearwolf/eventize';
 import {batch} from './batch.js';
 import {collect, throwCollectedErrors} from './collect-errors.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {createEffect} from './effects.js';
+import {getCurrentEffect} from './global-effect-stack.js';
 import {globalDestroySignalQueue} from './global-queues.js';
-import {getCurrentEffect} from './globalEffectStack.js';
 import {SignalGroup} from './SignalGroup.js';
 import {destroySignal, signalImpl} from './signal-core.js';
 import {reportSignalizeError} from './signalize-error.js';

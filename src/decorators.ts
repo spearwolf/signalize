@@ -1,4 +1,4 @@
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {findObjectSignal, storeAsObjectSignal} from './object-signals.js';
 import {SignalGroup} from './SignalGroup.js';
 import type {SignalParams} from './types.js';

@@ -4,7 +4,7 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {SignalGroup} from './SignalGroup.js';
 import {destroySignal} from './signal-core.js';
 import {onSignalizeError} from './signalize-error.js';

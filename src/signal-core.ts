@@ -1,13 +1,13 @@
 import {emit} from '@spearwolf/eventize';
-import {isQuiet} from './bequiet.js';
+import {isQuiet} from './be-quiet.js';
 import {
   beginIsolatedDelivery,
   collectDeliveryError,
   endIsolatedDelivery,
 } from './collect-errors.js';
 import {$signal} from './constants.js';
+import {getCurrentEffect} from './global-effect-stack.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
-import {getCurrentEffect} from './globalEffectStack.js';
 import type {ISignalImpl, SignalLike, SignalValueParams} from './types.js';
 
 // The keep of the signal graph: everything in here may be called from any

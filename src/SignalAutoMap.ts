@@ -1,7 +1,7 @@
 import {on} from '@spearwolf/eventize';
 import {batch} from './batch.js';
 import {$autoMapResources} from './constants.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {globalDestroySignalQueue} from './global-queues.js';
 import type {Signal} from './Signal.js';
 import {signalImpl} from './signal-core.js';

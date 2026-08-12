@@ -15,7 +15,7 @@ const coverageThresholds = {
   branches: 85,
   functions: 96,
   lines: 98,
-  'src/**/!(EffectImpl|SignalGroup|SignalLink|SignalAutoMap|collect-errors|createSignal|link|signal-core).ts':
+  'src/**/!(EffectImpl|SignalGroup|SignalLink|SignalAutoMap|collect-errors|create-signal|link|signal-core).ts':
     {statements: 100, branches: 100, functions: 100, lines: 100},
   'src/{SignalLink,SignalAutoMap,collect-errors}.ts': {
     statements: 100,

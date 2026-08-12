@@ -53,17 +53,17 @@ src/
 ├── constants.ts       # Symbols ($signal, $effect, RECALL, etc.)
 ├── types.ts           # TypeScript interfaces
 ├── Signal.ts          # Signal class (public wrapper)
-├── createSignal.ts    # SignalImpl class, createSignal()
+├── create-signal.ts   # SignalImpl class, createSignal()
 ├── Effect.ts          # Effect class (public wrapper)
 ├── EffectImpl.ts      # Core effect implementation
 ├── effects.ts         # createEffect(), lifecycle hooks
-├── createMemo.ts      # createMemo()
+├── create-memo.ts     # createMemo()
 ├── link.ts            # link(), unlink()
 ├── SignalLink.ts      # SignalLink classes
 ├── SignalGroup.ts     # SignalGroup class
 ├── SignalAutoMap.ts   # SignalAutoMap class
 ├── batch.ts           # batch() function
-├── bequiet.ts         # beQuiet(), isQuiet()
+├── be-quiet.ts        # beQuiet(), isQuiet()
 ├── hibernate.ts       # hibernate()
 ├── decorators.ts      # @signal decorator
 └── *.spec.ts          # Test files (adjacent to implementation)
@@ -84,10 +84,10 @@ src/
 **Adding a new Signal method:**
 
 1. Add method signature to `types.ts` (if interface-based)
-2. Implement in `SignalImpl` class in `createSignal.ts`
+2. Implement in `SignalImpl` class in `create-signal.ts`
 3. Expose via `Signal` class in `Signal.ts`
 4. Export from `index.ts` if standalone function
-5. Add tests in `createSignal.spec.ts`
+5. Add tests in `create-signal.spec.ts`
 
 **Adding a new Effect option:**
 
@@ -121,7 +121,7 @@ pnpm test
 pnpm test:watch
 
 # Run specific test file
-pnpm test createSignal.spec.ts
+pnpm test create-signal.spec.ts
 
 # Run every file serially with --expose-gc applied to the whole suite, not
 # just src/**/*.gc.spec.ts (those already run under plain `pnpm test` too,

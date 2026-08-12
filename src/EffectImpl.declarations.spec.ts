@@ -3,7 +3,7 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {EffectImpl} from './EffectImpl.js';
 import {createEffect, onCreateEffect} from './effects.js';
 import type {FailingEffect} from './types.js';

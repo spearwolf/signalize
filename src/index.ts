@@ -12,9 +12,9 @@
 // tsc erases types, and no reflection reaches them — so it rests on this
 // rule and on the witnesses in `types.public-surface.spec.ts`.
 export {batch} from './batch.js';
-export {beQuiet, isQuiet} from './bequiet.js';
-export {type CreateMemoOptions, createMemo} from './createMemo.js';
-export {createSignal} from './createSignal.js';
+export {beQuiet, isQuiet} from './be-quiet.js';
+export {type CreateMemoOptions, createMemo} from './create-memo.js';
+export {createSignal} from './create-signal.js';
 export {Effect} from './Effect.js';
 export type {
   EffectDeps,

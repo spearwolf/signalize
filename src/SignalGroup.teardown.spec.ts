@@ -8,7 +8,7 @@ import {
   NO_GROUP_MEMBERS,
 } from './__testing__/assert-helpers.js';
 import {DESTROY, OFF} from './constants.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {signal} from './decorators.js';
 import {createEffect, getEffectsCount} from './effects.js';
 import {globalDestroySignalQueue} from './global-queues.js';

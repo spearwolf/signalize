@@ -4,7 +4,7 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {destroySignal} from './signal-core.js';
 import {touch} from './touch.js';
 

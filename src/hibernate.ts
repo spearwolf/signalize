@@ -1,10 +1,10 @@
 import {clearBatch, getCurrentBatch, restoreBatch} from './batch.js';
-import {clearBeQuiet, getBeQuietCount, restoreBeQuiet} from './bequiet.js';
+import {clearBeQuiet, getBeQuietCount, restoreBeQuiet} from './be-quiet.js';
 import {
   clearGlobalEffectStack,
   getGlobalEffectStackSnapshot,
   restoreGlobalEffectStack,
-} from './globalEffectStack.js';
+} from './global-effect-stack.js';
 import type {NonThenable} from './types.js';
 
 /**

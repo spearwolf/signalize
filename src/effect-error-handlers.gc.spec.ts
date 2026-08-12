@@ -1,6 +1,6 @@
 import {getSubscribedEventNames} from '@spearwolf/eventize';
 import {$effectError} from './constants.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {
   getEffectErrorHandlerCount,
   hasEffectErrorHandler,

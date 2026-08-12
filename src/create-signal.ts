@@ -38,7 +38,7 @@ const idCreator = new UniqIdGen('si');
 // `attach` nor on this list fails `tsc` at `_checkPassthroughListCoversSignalParams`,
 // not silently on the passthrough. Type-only — `declare const` erases on
 // emit, so it costs nothing at runtime and nothing in the `.d.ts` (measured
-// against `lib/createSignal.js` and `lib/createSignal.d.ts`, both after
+// against `lib/create-signal.js` and `lib/create-signal.d.ts`, both after
 // `pnpm compile`), and it needs no `export` to be checked: `tsc` evaluates a
 // generic the moment it is referenced, whether or not the declaration using
 // it is itself read afterwards.
@@ -60,7 +60,7 @@ declare const _checkPassthroughListCoversSignalParams: _AssertTrue<_PassthroughL
 // call. `CompareFunc<any>` assigns to `CompareFunc<Type>` (measured clean
 // under `tsc --noEmit`), so no cast is needed. Not a `sideEffects: false`
 // exception — a plain allocation with no observable effect, tree-shakeable
-// like anything else, and `createSignal.ts` is already loaded by any bundle
+// like anything else, and `create-signal.ts` is already loaded by any bundle
 // that creates a signal.
 const DEFAULT_EQUALS: CompareFunc<any> = (a, b) => a === b;
 

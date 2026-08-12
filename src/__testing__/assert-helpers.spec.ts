@@ -1,4 +1,4 @@
-import {createSignal} from '../createSignal.js';
+import {createSignal} from '../create-signal.js';
 import {createEffect} from '../effects.js';
 import {destroySignal} from '../signal-core.js';
 import {

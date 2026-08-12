@@ -8,7 +8,7 @@ import {
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {$effect, $effectError} from './constants.js';
-import {createSignal} from './createSignal.js';
+import {createSignal} from './create-signal.js';
 import {
   getEffectErrorHandlerCount,
   hasEffectErrorHandler,
