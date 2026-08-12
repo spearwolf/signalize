@@ -7,6 +7,11 @@ import type {SignalParams} from './types.js';
 // https://github.com/microsoft/TypeScript/pull/50820
 
 export type SignalReaderDecoratorOptions = {
+  /**
+   * The name the signal is filed under in the instance's group. Defaults to
+   * the property name, and an empty string means exactly that default, not
+   * an empty name.
+   */
   name?: string | symbol;
 };
 

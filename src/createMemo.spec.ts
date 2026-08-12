@@ -4,6 +4,7 @@ import {
   assertLinksCount,
   assertSignalsCount,
   getGroupMemberCounts,
+  NO_GROUP_MEMBERS,
 } from './__testing__/assert-helpers.js';
 import {createMemo} from './createMemo.js';
 import {createSignal} from './createSignal.js';
@@ -834,6 +835,53 @@ describe('createMemo', () => {
         // `signal(name)` hands back the Signal object; the memo's reader is
         // that object's `get`.
         expect(group.signal('answer')?.get).toBe(memo);
+      } finally {
+        unsubscribe();
+        group.clear();
+        SignalGroup.delete(host);
+      }
+    });
+  });
+
+  describe('an empty {name} is no name (CONS-015)', () => {
+    it('reports nothing without {attach}', () => {
+      const seen: SignalizeErrorPayload[] = [];
+      const unsubscribe = onSignalizeError((payload) => {
+        seen.push(payload);
+      });
+
+      let memo: SignalReader<number>;
+
+      try {
+        memo = createMemo(() => 42, {name: ''});
+
+        expect(seen).toHaveLength(0);
+      } finally {
+        unsubscribe();
+        destroySignal(memo);
+      }
+    });
+
+    it('joins the group unnamed with {attach}', () => {
+      const seen: SignalizeErrorPayload[] = [];
+      const unsubscribe = onSignalizeError((payload) => {
+        seen.push(payload);
+      });
+
+      const host = {};
+      const group = SignalGroup.findOrCreate(host);
+
+      try {
+        const memo = createMemo(() => 42, {name: '', attach: host});
+
+        expect(seen).toHaveLength(0);
+        expect(group.signal('')).toBeUndefined();
+        expect(getGroupMemberCounts(group)).toEqual({
+          ...NO_GROUP_MEMBERS,
+          signals: 1,
+          effects: 1,
+        });
+        void memo;
       } finally {
         unsubscribe();
         group.clear();

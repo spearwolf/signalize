@@ -287,4 +287,19 @@ describe('@signal is a class accessor decorator', () => {
       destroyObjectSignals(foo);
     }
   });
+
+  it('an empty {name} falls back to the property name (CONS-015)', () => {
+    class Foo {
+      @signal({name: ''}) accessor bar = 23;
+    }
+
+    const foo = new Foo();
+    try {
+      expect(findObjectSignalNames(foo)).toEqual(['bar']);
+      expect(SignalGroup.get(foo).signal('bar').value).toBe(23);
+      expect(SignalGroup.get(foo).signal('')).toBeUndefined();
+    } finally {
+      destroyObjectSignals(foo);
+    }
+  });
 });

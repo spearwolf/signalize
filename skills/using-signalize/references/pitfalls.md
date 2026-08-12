@@ -89,7 +89,7 @@ createEffect(() => {
 
 **19 — Decorator signals live in the instance's group.** `@signal` registers against `SignalGroup.findOrCreate(this)`. Full cleanup is `SignalGroup.delete(this)`; `destroyObjectSignals(this)` clears signals only and leaves attached effects and links running.
 
-**19a — `createMemo({name})` without `{attach}` does nothing, and says so.** A name is a slot inside a `SignalGroup`, so without a group there is nowhere to file it. The call is not refused and the memo works; the ignored name is reported through `onSignalizeError()` with `source: 'ignored-option'` — on every such call, not once per process — and reaches `console.warn` while nobody listens there. Pass `{attach}` as well, or drop the name.
+**19a — `createMemo({name})` without `{attach}` does nothing, and says so.** A name is a slot inside a `SignalGroup`, so without a group there is nowhere to file it. The call is not refused and the memo works; the ignored name is reported through `onSignalizeError()` with `source: 'ignored-option'` — on every such call, not once per process — and reaches `console.warn` while nobody listens there. Pass `{attach}` as well, or drop the name. An empty string is not a name and is not reported: `{name: ''}` is the same call as one without `name`, in both directions.
 
 ## Deprecated surface
 

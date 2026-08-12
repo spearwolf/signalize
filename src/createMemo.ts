@@ -22,6 +22,12 @@ export interface CreateMemoOptions {
    * Only has meaning together with `attach` — a name is a slot inside a
    * group. Passed on its own it does nothing, and every such call is
    * reported through `onSignalizeError()` with `source: 'ignored-option'`.
+   *
+   * An empty string is *no name*, not an empty one: `{name: ''}` behaves
+   * exactly like a call without `name` — with `attach` the memo joins the
+   * group unnamed and is not reachable through `group.signal('')`, without
+   * `attach` nothing is reported. Only the empty string is degenerate; a
+   * symbol is always a name, `Symbol('')` included.
    */
   name?: string | symbol;
   /** If true, the memo won't compute until first read (default: false) */
@@ -111,18 +117,24 @@ export function createMemo<Type>(
   // and its effect — so there is nothing to take back; same rule and same
   // condition as in createEffect().
   try {
+    // CONS-015: an empty name is no name at all. `''` is the only falsy
+    // value the `string | symbol` type admits besides null/undefined, so
+    // one truthy test settles both branches below at once — the same rule
+    // `decorators.ts` applies with `options?.name || context.name`.
+    const name = options?.name || undefined;
+
     const group =
       options?.attach != null
         ? SignalGroup.findOrCreate(options.attach)
         : undefined;
 
     if (group != null) {
-      if (options?.name) {
-        group.attachSignalByName(options.name, si);
+      if (name != null) {
+        group.attachSignalByName(name, si);
       } else {
         group.attachSignal(si);
       }
-    } else if (options?.name != null) {
+    } else if (name != null) {
       // A name only exists inside a group, so without `attach` there is
       // nowhere to file it and the option does nothing. Reported on every
       // call, not once per process: this is a misspelled call, not a
@@ -130,7 +142,7 @@ export function createMemo<Type>(
       reportSignalizeError({
         level: 'warn',
         source: 'ignored-option',
-        message: `createMemo({name: ${String(options.name)}}) without {attach} is ignored: a name only exists within a SignalGroup. Pass {attach} as well, or drop the name.`,
+        message: `createMemo({name: ${String(name)}}) without {attach} is ignored: a name only exists within a SignalGroup. Pass {attach} as well, or drop the name.`,
       });
     }
 

@@ -326,7 +326,7 @@ used to go straight to the console, where no application could route it.
 | `link-count`         | 1000 links on one source signal — once per source.               |
 | `deprecation`        | A deprecated call: `SignalGroup.destroy()`, `SignalGroup#destroy`, `signalReader(callback)`. |
 | `multiple-instances` | More than one copy of the library in one process; once, when the second one loads. |
-| `ignored-option`     | An option that does nothing in the combination it was passed in: `createMemo({name})` without `attach`. Every call. |
+| `ignored-option`     | An option that does nothing in the combination it was passed in: `createMemo({name})` with a non-empty name and without `attach`. Every call. |
 
 `multiple-instances` is the one source a handler will usually **not** see.
 With two static imports both copies register while their modules are being
@@ -396,7 +396,7 @@ first compute then happens on the first read, at which point the reader exists.
 | `lazy`     | `boolean`                     | `false`      | If `false`, the memo eagerly recomputes on dep change (acts as a computed signal). If `true`, recomputes on read only. |
 | `priority` | `number`                      | `1000`       | Higher than default effects so memos resolve first in a flush.               |
 | `attach`   | `object \| SignalGroup`       | `—`          | Lifecycle group.                                                             |
-| `name`     | `string \| symbol`            | `—`          | Name within the attached group (`group.signal(name)`). Without `attach` it does nothing and is reported via `onSignalizeError()` (`source: 'ignored-option'`) on every such call. |
+| `name`     | `string \| symbol`            | `—`          | Name within the attached group (`group.signal(name)`). Without `attach` it does nothing and is reported via `onSignalizeError()` (`source: 'ignored-option'`) on every such call. An empty string counts as no name at all and behaves exactly like omitting the option, with and without `attach`. |
 | `batchWrites` | `boolean`                   | `false`      | Wrap the recompute in `batch()`. Groups side-effect writes with the memo's own; costs a full flush once the memo has a downstream effect. See below. |
 
 **Eager (default) vs lazy.** Effects that depend on a memo only re-run if the

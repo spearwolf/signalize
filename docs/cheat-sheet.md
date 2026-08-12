@@ -93,6 +93,7 @@ const m = createMemo(() => a.get() * 2, {
   attach:       obj,
   name:         'm',     // group registration — without attach it does nothing
                           // and is reported ('ignored-option'), every call
+                          // '' counts as no name — same as omitting it
   batchWrites:  false,   // true only if computer() itself writes OTHER signals —
                           // costs a full flush per recompute once the memo has a
                           // dependent effect (~3x); free without one — not the default

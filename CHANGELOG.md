@@ -108,6 +108,7 @@
 - A throwing `onCreateEffect()` handler gets the same rollback: it sits two lines ahead of the first run and left exactly the same behind (audit follow-up, package 7b)
 - `createMemo()` no longer leaks its memo signal — and, through the entry above, its internal effect — when the first compute throws. The signal is created before the effect and has no holder until the `return` that never happens, so without `{attach}` it was unreachable and permanently counted. With `{attach}` both stay in the group, which is what `clear()` is for (audit follow-up, package 7b)
 - `createMemo(fn, {name})` without `{attach}` reports the ignored name through `onSignalizeError()` with `source: 'ignored-option'`, on every such call, instead of dropping it in silence. A name is a slot inside a `SignalGroup`; without one there is nowhere to file it (API-009, audit 2026-08-08)
+- `createMemo(fn, {name: ''})` no longer reports the empty name as an ignored option when `{attach}` is missing. An empty name is no name in either branch now — with `attach` the memo has always joined the group unnamed, without it the call was the only one of the two to complain (CONS-015)
 
 #### Links
 

@@ -160,7 +160,7 @@ const m = createMemo(() => a.get() * 2, {
   lazy:         false,   // true → recompute on read; dependent effects do NOT re-run
   priority:     1000,
   attach:       obj,
-  name:         'm',     // group registration name
+  name:         'm',     // group registration name ('' = no name)
   batchWrites:  false,   // true only if the computer itself writes OTHER signals as
                           // a side effect. Costs a full flush per recompute — but
                           // only once the memo has a dependent effect: measured at
