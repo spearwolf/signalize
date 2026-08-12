@@ -11,7 +11,7 @@ import {createSignal, destroySignal, isSignal, muteSignal, unmuteSignal,
 const c = createSignal(0, {
   lazy:       false,                // a factory as initial value REQUIRES a literal lazy: true
   compare:    (a, b) => a === b,    // custom equality
-  beforeRead: () => {/* hook */},   // tracked-read only
+  beforeRead: () => {/* hook */},   // every reader read, tracked or not; NOT on .value
   attach:     obj,                  // SignalGroup lifecycle
 });                                 // no key beyond these four — name the type if it has one
 

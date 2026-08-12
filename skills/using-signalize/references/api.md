@@ -61,7 +61,7 @@ There is no memo decorator — bind a memo to the instance group with `createMem
 const c = createSignal(0, {
   lazy:       false,              // true → `initial` is a factory, evaluated on first read; REQUIRED for that form
   compare:    (a, b) => a === b,  // custom equality (default: ===)
-  beforeRead: () => {},           // hook, tracked reads only (NOT on .value)
+  beforeRead: () => {},           // every reader read, tracked or not (NOT on .value/value())
   attach:     obj,                // SignalGroup lifecycle
 });                               // no key beyond these four — name the params type if yours has one
 

@@ -25,7 +25,7 @@ see the passthrough box below the table). Omitted, or passed an explicit
 | ------------- | ----------------------------- | ------------------------------------------------------------------- |
 | `lazy`        | `boolean` (default `false`)   | Treats `initial` as a factory; not evaluated until first read. Required for that form, and it has to be statically `true` — `createSignal<T>(fn)` without it does not compile, and neither does a params *variable* typed `SignalParams<T>` (see below). Reserved for it, too: `createSignal(v, {lazy: true})` on a plain value is a compile error rather than a `TypeError` on the next read. |
 | `compare`     | `(a, b) => boolean`           | Custom equality. `===` by default.                                  |
-| `beforeRead`  | `() => void`                  | Hook called before each tracked read (not on `.value`).             |
+| `beforeRead`  | `() => void`                  | Called before every read that goes through the reader — tracked or not, so `beQuiet()` does not suppress it. Skipped by `.value`, `value()` and a `readAsValue: true` accessor, which bypass the reader. |
 | `attach`      | `object \| SignalGroup`       | Attaches the signal to a group; group lifecycle owns it.            |
 
 > ⚠️ **A passthrough configures nothing.** `createSignal(existingSignal,
@@ -81,7 +81,7 @@ see the passthrough box below the table). Omitted, or passed an explicit
 | `destroyed`       | `boolean` getter — `true` once the signal has been destroyed. It stays usable as a plain value container; it just no longer notifies. |
 | `destroy()`       | Destroy the signal (alias for `destroySignal(this)`).                                      |
 
-`set(value, params)` accepts the union of `SignalParams<T>` and:
+`set(value, params)` takes `SignalWriterParams<T>` — `SignalParams<T>`, the four fields in the table above, plus `touch`. Two of them read differently on a write than on a construction:
 
 | Field    | Type      | Effect                                                  |
 | -------- | --------- | ------------------------------------------------------- |
@@ -217,7 +217,7 @@ see the passthrough box below the table). Omitted, or passed an explicit
 | `muteSignal(sig)`              | Suppress notifications without destroying; reads and writes keep working. |
 | `unmuteSignal(sig)`            | Resume notifications. Does not replay writes made while muted.         |
 | `getSignalsCount()`            | Count of live signals — created, not destroyed, still reachable. Self-corrects once a dropped signal is collected, at a time you cannot observe or force (debugging / leak checks). |
-| `value(sig \| [obj, key])`     | Untracked read (signal or `[host, name]`). Throws `TypeError` on anything else. |
+| `value(sig \| [obj, key])`     | Untracked read (signal or `[host, name]`). Throws `TypeError` on anything else. Skips `beforeRead`; `beQuiet(() => sig.get())` does not. |
 | `touch(sig \| [obj, key])`     | Force a notify. Throws `TypeError` on anything else.                   |
 
 > **A non-signal argument.** Three functions object to one: `link()`, `touch()` and `value()` throw a `TypeError` prefixed with `[signalize] <fn>:`. Four do not: `destroySignal()`, `muteSignal()`, `unmuteSignal()` and `unlink()` do nothing and report nothing — they are teardown-shaped, and a teardown that refuses an argument it does not recognise is harder to use than one that shrugs. `getLinksCount(notASignal)` answers `0`, the same answer a signal without links gives. Do not read that silence as confirmation that the argument was a signal; `isSignal(v)` is the way to ask.
@@ -1011,7 +1011,7 @@ Turns a class field declared with `accessor` into a per-instance signal.
 | `name`        | `string \| symbol`            | Override the registered name (defaults to the field name).             |
 | `readAsValue` | `boolean` (default `false`)   | If `true`, the property getter returns the value **untracked** (`.value`). Otherwise it tracks (`.get()`). |
 | `compare`     | `(a, b) => boolean`           | Custom equality.                                                       |
-| `beforeRead`  | `() => void`                  | Hook on each tracked read.                                             |
+| `beforeRead`  | `() => void`                  | Hook on every read through the reader — which, with `readAsValue: true` above, is never: that getter reads `.value` and bypasses it. |
 | `attach`      | `object \| SignalGroup`       | An **additional** group. The instance group stays — the signal is a member of both, and destroying the additional group destroys the signal. |
 
 Each instance gets its own signal. The signal is registered in
@@ -1033,7 +1033,7 @@ Exported from `@spearwolf/signalize`:
 | `SignalWriter<T>`            | The callable form of `signal.set`, as an overload pair: a value — with params that name only declared options and never a statically `true` `lazy` — or a factory with `{lazy: true}`. |
 | `SignalLike<T>`              | Internal brand that only `createSignal()` produces. `$signal` is not exported, so the type is inspectable but not implementable from the outside — use `isSignal(v)` to recognise one. `T` defaults to `unknown`. |
 | `SignalParams<T>`            | Options for `createSignal` (`lazy`, `compare`, `beforeRead`, `attach`). On the value branch it is also the exact bound: no statically `true` `lazy`, and no key beyond these four. |
-| `SignalWriterParams<T>`      | Options for `set()` (extends `SignalParams`, adds `touch`). Its `lazy?: boolean` is *not* narrow enough for the factory overload — that one wants a statically `true` `lazy`. |
+| `SignalWriterParams<T>`      | Options for `set()` — `SignalParams<T>` plus `touch`, joined by `extends`, not a union. On the value branch it is the exact bound, the same way `SignalParams<T>` is for `createSignal`: no key beyond these five, and no statically `true` `lazy` — that one belongs to the factory overload, and `lazy?: boolean` here is not narrow enough for it. |
 | `SignalValueParams`          | The `{touch?: boolean}` half of `SignalWriterParams`, on its own.  |
 | `NonThenable<T>`             | `T` unless `T` is promise-like, in which case `never`. What makes an `async` callback a compile error in `batch()`, `beQuiet()` and `hibernate()`. |
 | `Effect`                     | The wrapper returned by `createEffect()`.                        |
