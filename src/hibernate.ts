@@ -5,6 +5,7 @@ import {
   getGlobalEffectStackSnapshot,
   restoreGlobalEffectStack,
 } from './globalEffectStack.js';
+import type {NonThenable} from './types.js';
 
 /**
  * Execute a callback in a "hibernation" state where all previous context states
@@ -18,9 +19,17 @@ import {
  *
  * This function is stackable - nested hibernate() calls work correctly.
  *
- * @param callback - The function to execute in hibernation state
+ * `callback` must be synchronous, and its signature rejects anything typed
+ * to return a `Promise`/`PromiseLike` at `tsc` time: an `async` callback
+ * returns its pending promise at the first `await`, the `finally` below
+ * restores the saved batch, quiet counter and effect stack right there, and
+ * everything past that `await` runs outside the hibernation it was written
+ * inside. The same narrowing `batch()` and `beQuiet()` carry; as with
+ * `beQuiet()`, there is no runtime check for a duck-typed thenable.
+ *
+ * @param callback - Synchronous function to execute in hibernation state
  */
-export function hibernate<T>(callback: () => T): T {
+export function hibernate<T>(callback: () => NonThenable<T>): T {
   // Save current states
   const savedBatch = getCurrentBatch();
   const savedBeQuietCount = getBeQuietCount();

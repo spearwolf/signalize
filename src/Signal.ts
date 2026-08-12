@@ -34,11 +34,14 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
   /**
    * The write, as a callable writer.
    *
-   * `set(value, params?)` stores a value; `set(factory, {lazy: true})` stores
-   * a factory and evaluates it on the next read. The `lazy` must be
-   * statically `true` — a bare `set(fn)` is a compile error rather than a
-   * silent store-the-function. See {@link SignalWriter} for why the
-   * discrimination sits on the value argument.
+   * `set(value, params?)` stores a value — with params that name only
+   * declared options and never a statically `true` `lazy`, which belongs to
+   * the other branch and is a compile error here; `set(factory, {lazy:
+   * true})` stores a factory and evaluates it on the next read. The `lazy`
+   * must be statically `true` — a bare `set(fn)` is a compile error rather
+   * than a silent store-the-function. See {@link SignalWriter} for why the
+   * discrimination sits on the value argument, and for the nine params
+   * shapes those two conditions cost.
    */
   get set(): SignalWriter<ValueType> {
     return this[$signal].writer;

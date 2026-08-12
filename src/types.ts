@@ -7,10 +7,14 @@ export type EffectCallback = VoidFunc | (() => VoidFunc);
 export type ValueChangedCallback<T> = (value: T) => VoidFunc | void;
 
 /**
- * A type that is not a `Promise`/thenable. Used to narrow `batch()`'s
- * callback so an `async` function (or anything else returning a thenable)
- * is rejected by `tsc` before it ever runs — see `batch()`'s JSDoc for why
- * an async callback cannot work there at all.
+ * A type that is not a `Promise`/thenable. Used to narrow the callbacks of
+ * `batch()`, `beQuiet()` and `hibernate()` so an `async` function (or
+ * anything else returning a thenable) is rejected by `tsc` before it ever
+ * runs: each of those three frames is closed by a `finally` that fires when
+ * the callback returns its pending promise at the first `await`, leaving
+ * everything past that point outside the frame it appears to be in. See
+ * each function's JSDoc for its own version of that; only `batch()` also
+ * checks for a duck-typed thenable at runtime.
  */
 export type NonThenable<T> = T extends PromiseLike<unknown> ? never : T;
 
@@ -227,9 +231,12 @@ export interface SignalReader<T> extends SignalLike<T> {
 /**
  * The callable form of `signal.set`, as an overload pair.
  *
- * - `set(value, params?)` stores the value. The params are the published
- *   `SignalWriterParams<T>` unchanged — a variable, a wrapper's pass-through
- *   argument, anything.
+ * - `set(value, params?)` stores the value. Its params are the published
+ *   `SignalWriterParams<T>` and nothing wider: a statically `true` `lazy`
+ *   closes this branch (BUG-014), and a key the type does not declare is
+ *   refused outright. A literal, a `SignalWriterParams<T>` variable and a
+ *   pass-through argument of that type all pass it; see "What it costs"
+ *   below for the shapes that do not.
  * - `set(factory, {lazy: true})` stores the factory and evaluates it on the
  *   next read.
  *
@@ -237,28 +244,113 @@ export interface SignalReader<T> extends SignalLike<T> {
  * factory is not a `T` (unless `T` is itself a function type), so it misses
  * the value overload; and it only reaches the factory overload with a
  * `lazy` that is statically `true`. That is what makes a bare `set(fn)` a
- * compile error instead of a silent store-the-function (TYPE-002), without
- * putting any condition on the params of the value branch — which is where
- * two earlier attempts broke every caller holding a `SignalWriterParams<T>`
+ * compile error instead of a silent store-the-function (TYPE-002). The one
+ * condition the value branch does put on its params is the mirror of that
+ * flag and nothing beyond it — two earlier attempts at TYPE-002 put a wider
+ * one there and broke every caller holding a `SignalWriterParams<T>`
  * variable.
  *
  * The value overload comes first on purpose. A signal whose `T` is itself a
  * function type keeps taking its functions as values, not as factories.
  *
- * Two consequences worth knowing:
+ * Three consequences worth knowing:
  *
  * - `set(fn, params)` where `params` is typed `SignalWriterParams<T>` does
  *   **not** compile, because that type says `lazy?: boolean` and boolean is
  *   not a promise that it is `true`. Write the literal (`set(fn, {lazy:
  *   true})`), pin it (`{lazy: true} as const`), or annotate the variable
- *   `SignalWriterParams<T> & {lazy: true}`. Spreading (`{...params}`) does
- *   *not* help — the spread keeps `lazy?: boolean`.
+ *   `SignalWriterParams<T> & {lazy: true}`. A fourth form qualifies without
+ *   looking like it: `{lazy: flag}` where control flow has already narrowed
+ *   `flag` to `true` — a `const flag: boolean = true` does exactly that,
+ *   declared `boolean` or not. Spreading (`{...params}`) does *not* help —
+ *   the spread keeps `lazy?: boolean`.
  * - `set(fn, {lazy: false})` matches no overload and is reported as
  *   `TS2769: No overload matches this call` without naming `lazy`. Read it
  *   as "a factory needs `{lazy: true}`".
+ * - `set(v, {lazy: true})` — a plain value carrying the factory flag — is
+ *   `TS2769` as well, to be read as "a value is not stored lazily, a factory
+ *   is". It used to compile, put the value where the factory belongs, and
+ *   leave the next read to die with `TypeError: this.valueFn is not a
+ *   function` (BUG-014). Only a *statically* true `lazy` is refused; a
+ *   `SignalWriterParams<T>` variable that happens to hold `{lazy: true}`
+ *   still passes, which is the TYPE-002 boundary above seen from the other
+ *   side.
+ *
+ * **The `Record<Exclude<…>, never>` on the value params is load bearing, and
+ * it is not free.** Inferring `P` from the argument costs the excess property
+ * check — a type parameter is checked against its constraint, and freshness
+ * does not survive that step — so without the clause `set(5, {lasy: true})`
+ * and `set(5, {comapre: fn})` compile: measured against the generated
+ * `.d.ts`, both were `TS2769` before this overload turned generic, and
+ * `createSignal` rejects them to this day. A misspelled `lazy` buying silence
+ * on the branch this signature exists to close is the worst of the two. The
+ * clause forbids the stray keys directly instead of relying on freshness, and
+ * an intersection of the params type with `P` does **not** restore the check
+ * — also measured.
+ *
+ * **The index-signature guard in front of it is load bearing too.** For a
+ * params type carrying an index signature, `keyof P` *is* `string` (or
+ * `number`, or `symbol`), so `Record<Exclude<keyof P, …>, never>` demands
+ * that every key be `never` and the call fails without a single stray key in
+ * it — `{[k: string]: unknown}`, `SignalWriterParams<T> & Record<string,
+ * unknown>` and `x as Record<string, any>` all broke that way, and all three
+ * are callers doing nothing wrong. The `string extends keyof P` test spots
+ * that shape and exempts it; its `number` and `symbol` twins were measured to
+ * have the same hole and carry the same test. The exemption buys a typo no
+ * silence, which is measured rather than argued — a fresh literal *can* carry
+ * an index signature, through a computed key or the spread of such a
+ * variable, and `set(5, {[k]: 1, lasy: true})` is `TS2769` either way: with
+ * the exactness clause deleted outright as much as with it, because the
+ * constraint check catches that shape on its own.
+ *
+ * Only those three key kinds are tested, so a *pattern* index signature — one
+ * whose key is a template literal type such as `data-${string}` — is not
+ * exempt: `string` does not extend that pattern, no branch fires, and the
+ * clause refuses it. Deliberate: a fourth branch for a shape this rare is not
+ * worth the length it adds here. It is the ninth entry in the list below.
+ *
+ * **What it costs.** Nine shapes, all legal before the narrowing, all a loud
+ * `TS2769`, and all repaired by naming the params type — annotate the
+ * variable `SignalWriterParams<T>` or assert it at the call site. A spread
+ * repairs none of them: `{...opts}` drops freshness, not keys (measured).
+ *
+ * From the exactness clause, eight. The rule behind them is not "extends" or
+ * "inferred" but simply: a params type whose key set reaches past `keyof
+ * SignalWriterParams<T>`, whether the extra key is required or optional,
+ * declared or inferred.
+ *
+ * - an interface that *extends* `SignalWriterParams<T>` with fields of its own
+ * - a variable whose inferred type carries a stray key (`const o = {touch:
+ *   true, comapre: fn}`)
+ * - an unrelated annotated type with an *optional* stray key (`{touch?:
+ *   boolean; label?: string}`)
+ * - an intersection (`SignalWriterParams<T> & {mine: string}`)
+ * - a class instance with a field beyond the options
+ * - the rest object of a destructuring
+ * - a pass-through wrapper generic in its own params (`<Q extends
+ *   SignalWriterParams<T>>(q: Q) => sig.set(v, q)`) — here the repair is to
+ *   drop the type parameter and call the argument `SignalWriterParams<T>`
+ * - a *pattern* index signature — a key typed as a template literal, e.g.
+ *   `data-${string}` or `on${string}` — the one index shape the guard above
+ *   does not reach, as an annotation, an intersection or a `Record` alike
+ *
+ * From the `lazy` clause, one: `{lazy: flag}` with `flag` narrowed to `true`,
+ * the fourth statically-true form named above. `{lazy: flag as boolean}`
+ * widens it back, or name the params type like everywhere else.
  */
 export interface SignalWriter<T> {
-  (value: T, params?: SignalWriterParams<T>): void;
+  <P extends SignalWriterParams<T>>(
+    value: T,
+    params?: P &
+      (P['lazy'] extends true ? never : unknown) &
+      (string extends keyof P
+        ? unknown
+        : number extends keyof P
+          ? unknown
+          : symbol extends keyof P
+            ? unknown
+            : Record<Exclude<keyof P, keyof SignalWriterParams<T>>, never>),
+  ): void;
   (value: () => T, params: SignalWriterParams<T> & {lazy: true}): void;
 }
 

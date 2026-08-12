@@ -8,13 +8,16 @@ import type {Effect} from './Effect.js';
 import type {EffectImpl} from './EffectImpl.js';
 // The three effect-surface tests import through the entry point on purpose:
 // the re-export is half of what API-002 and API-004 promise, and a module
-// import would witness the signature while missing the delivery.
+// import would witness the signature while missing the delivery. The
+// ASYNC-004 witness rides on the same reasoning for `hibernate`/`NonThenable`.
 import {
   createEffect,
   type EffectDeps,
   type EffectOptions,
   type EffectOptionsWithNameDeps,
   type EffectOptionsWithSignalDeps,
+  hibernate,
+  type NonThenable,
   onCreateEffect,
   onDestroyEffect,
   onSignalizeError,
@@ -316,12 +319,14 @@ describe('the published type surface', () => {
   });
 
   it('leaves the value branch open to any params, variable or not (TYPE-002)', () => {
-    // The discrimination sits on the *value* argument, so the value branch
-    // puts no condition on its params at all — a variable, an explicit type
-    // argument and a wrapper's pass-through argument all fit. Not a directive
-    // test: this has to compile. Put a `lazy` condition back on the value
-    // overload of `createSignal`/`SignalWriter` and every call below reports
-    // TS2769 — which is exactly how the first two attempts at TYPE-002 broke.
+    // The discrimination sits on the *value* argument. For `createSignal` the
+    // value branch puts no condition on its params at all; for `set` the only
+    // condition is a statically `true` `lazy` (BUG-014) — everything else
+    // passes it, a variable, an explicit type argument and a wrapper's
+    // pass-through argument alike. Not a directive test: this has to compile.
+    // Put a wider `lazy` condition on the value overload of
+    // `createSignal`/`SignalWriter` and every call below reports TS2769 —
+    // which is exactly how the first two attempts at TYPE-002 broke.
     const params: SignalParams<number> = {};
     const fromVariable = createSignal(5, params);
     const withExplicitType = createSignal<number>(6, params);
@@ -334,13 +339,20 @@ describe('the published type surface', () => {
     const writerParams: SignalWriterParams<number> = {lazy: false};
     const written = createSignal(0);
 
+    const writeThrough = <T>(sig: Signal<T>, v: T, p: SignalWriterParams<T>) =>
+      sig.set(v, p);
+
     try {
       written.set(8, writerParams);
+      written.set(9, {lazy: false});
+      written.set(10, {...writerParams});
+      written.set(11, {touch: true, compare: (a, b) => a === b});
+      writeThrough(written, 12, writerParams);
 
       expect(fromVariable.get()).toBe(5);
       expect(withExplicitType.get()).toBe(6);
       expect(wrapped.get()).toBe(7);
-      expect(written.get()).toBe(8);
+      expect(written.get()).toBe(12);
       // The value type survives the overload — no widening to `unknown`:
       expect(fromVariable.value + 1).toBe(6);
     } finally {
@@ -383,6 +395,115 @@ describe('the published type surface', () => {
       expect(count.get()).toBe(7);
     } finally {
       destroySignal(refused, pinned, viaAnnotation, count);
+    }
+  });
+
+  it('refuses a lazy flag on a value write (BUG-014)', () => {
+    const count = createSignal(0);
+    const pinned = {lazy: true} as const;
+    const annotated: SignalWriterParams<number> & {lazy: true} = {lazy: true};
+
+    try {
+      // @ts-expect-error BUG-014: a value is not a factory. This used to
+      // compile, store 5 in `valueFn`, and leave the next read to die.
+      count.set(5, {lazy: true});
+      // @ts-expect-error BUG-014: pinning the literal changes nothing.
+      count.set(5, pinned);
+      // @ts-expect-error BUG-014: nor does annotating the variable.
+      count.set(5, annotated);
+
+      // The damage the type now prevents, from the runtime side:
+      expect(() => count.get()).toThrow(TypeError);
+
+      // A plain write repairs it — the lazy flag is cleared on the value path.
+      count.set(6);
+      expect(count.get()).toBe(6);
+    } finally {
+      destroySignal(count);
+    }
+  });
+
+  it('keeps a stray key out of the value branch (BUG-014)', () => {
+    // The generic `P` that closes the branch for a statically true `lazy`
+    // would otherwise take the excess property check with it: an inferred
+    // type parameter is checked against its constraint, and freshness does
+    // not survive that. The exactness clause on the params puts the check
+    // back. It matters most for the typo it catches first — `lasy` is the
+    // neighbour of the very flag this package is about, and `createSignal`
+    // has always rejected both spellings.
+    const count = createSignal(0);
+
+    try {
+      // @ts-expect-error BUG-014: `comapre` is not `compare`.
+      count.set(5, {touch: true, comapre: (a: number, b: number) => a === b});
+      // @ts-expect-error BUG-014: `lasy` is not `lazy` — the one typo that
+      // would otherwise buy silence on the branch this package closes.
+      count.set(6, {lasy: true, touch: true});
+
+      // Both wrote their value; only the misspelled option did nothing.
+      expect(count.get()).toBe(6);
+    } finally {
+      destroySignal(count);
+    }
+  });
+
+  it('lets a params object with an index signature through (BUG-014)', () => {
+    // The other side of the exactness clause, and the reason it is guarded:
+    // for a params type carrying an index signature `keyof P` *is* `string`
+    // (or `number`, or `symbol`), so `Record<Exclude<keyof P, …>, never>`
+    // would demand that every key be `never` and refuse a caller who did
+    // nothing wrong — no stray key in sight. Not a directive test: these have
+    // to compile. The guard is three branches and each one is witnessed
+    // below, measured by deleting one branch at a time: without the `string`
+    // branch `widened` and `asserted` report TS2769, without the `number`
+    // branch `numeric` does, without the `symbol` branch `bySymbol` does.
+    // Delete the guard outright and all five do — `loose` only holds that
+    // last, blunter form of the rollback, because with a branch still present
+    // the conditional stays deferred and `P` falls back to its constraint.
+    //
+    // The guard cannot buy a typo any silence, which is measured rather than
+    // argued: a literal *can* carry an index signature — a computed key or
+    // the spread of such a variable gives it one — and `set(5, {[k]: 1, lasy:
+    // true})` is still TS2769, with the exactness clause deleted outright as
+    // much as with it. The constraint check catches those on its own.
+    const count = createSignal(0);
+    const loose: {[k: string]: unknown} = {touch: true};
+    const widened: SignalWriterParams<number> & Record<string, unknown> = {
+      touch: true,
+    };
+    const asserted = {touch: true} as Record<string, any>;
+    const numeric: {[k: number]: unknown} = {};
+    const bySymbol: Record<symbol, unknown> = {};
+
+    try {
+      count.set(5, loose);
+      count.set(6, widened);
+      count.set(7, asserted);
+      count.set(8, numeric);
+      count.set(9, bySymbol);
+
+      expect(count.get()).toBe(9);
+    } finally {
+      destroySignal(count);
+    }
+  });
+
+  it('refuses an async callback in hibernate() (ASYNC-004)', () => {
+    const sig = createSignal(21);
+
+    try {
+      // @ts-expect-error ASYNC-004: the saved batch, quiet counter and effect
+      // stack are restored by the `finally` at the first `await`, so
+      // everything after it runs outside hibernation.
+      const pending = hibernate(async () => sig.get());
+      expect(pending).toBeInstanceOf(Promise);
+
+      // The documented repair for a generic pass-through wrapper, which the
+      // narrowing breaks the same way it breaks `beQuiet()`'s:
+      const through = <T>(fn: () => NonThenable<T>): T => hibernate(fn);
+      expect(through(() => sig.get())).toBe(21);
+    } finally {
+      destroySignal(sig);
     }
   });
 

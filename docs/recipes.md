@@ -73,8 +73,32 @@ Quirks:
   is not enough for the factory branch: `const p: SignalParams<number> =
   {lazy: true}; createSignal(fn, p)` reports `TS2769`. Use the literal,
   `{lazy: true} as const`, or annotate `SignalParams<T> & {lazy: true}` —
-  spreading (`{...p}`) does not help. Only the factory branch is affected;
-  `createSignal(v, p)` and `set(v, p)` take any options object.
+  spreading (`{...p}`) does not help. A fourth spelling qualifies without
+  looking like one: `{lazy: flag}` where control flow has narrowed `flag` to
+  `true`, as a `const flag: boolean = true` does. A params *variable* of those
+  types stays welcome on the value branch of both — `createSignal(v, p)` and
+  `set(v, p)` compile, whatever `p` holds at runtime. What `set` turns away
+  there is every one of those four statically-`true` forms: on a plain value
+  each is `TS2769`, because the flag promises a factory and a value is not one.
+- **`set()` also names its options exactly, and `createSignal()` does not.**
+  `set` forbids undeclared keys in the signature, so it catches them in a
+  variable as well as in a literal; `createSignal` relies on freshness and
+  catches them only in a literal — `createSignal(5, myOpts)` with `interface
+  MyOpts extends SignalParams<number> {label: string}` compiles, `set(5,
+  myOpts)` does not. That exactness is what keeps `set(5, {lasy: true})` an
+  error, and it costs nine shapes that used to compile: an interface extending
+  the params type, a variable with an inferred stray key, an unrelated type
+  with an *optional* stray key, an intersection, a class instance with an extra
+  field, a destructuring rest object, a wrapper generic in its own params
+  (`<Q extends SignalWriterParams<T>>(q: Q) => sig.set(v, q)`), a *pattern*
+  index signature whose key is a template literal type such as
+  `data-${string}`, and `{lazy: flag}` with `flag` narrowed to `true`. Each is
+  a loud `TS2769`; the repair is to name the params type — annotate the
+  variable `SignalWriterParams<T>` or assert it at the call, and for the
+  wrapper type the argument `SignalWriterParams<T>` instead of constraining a
+  type parameter. A spread repairs none of them. A params object with a plain
+  `string`, `number` or `symbol` index signature (`Record<string, unknown>` and
+  the two others) is exempt and passes — only the pattern key is not.
 
 ## `createSignal(otherSignal)` is a passthrough
 

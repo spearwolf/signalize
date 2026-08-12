@@ -15,6 +15,7 @@ import {
   createSignal,
   type Effect,
   findObjectSignals,
+  hibernate,
   type Signal,
   SignalGroup,
 } from '@spearwolf/signalize';
@@ -131,6 +132,33 @@ test("the shipped declarations hand back beQuiet()'s result", () => {
   // the quiet frame closes at the first `await`. If that narrowing is
   // ever lost, tsc fails on the unused directive (TS2578).
   beQuiet(async () => sig.get());
+
+  sig.destroy();
+});
+
+test('the shipped declarations refuse a lazy value write and an async hibernate', () => {
+  const sig = createSignal(21);
+
+  // @ts-expect-error BUG-014: `{lazy: true}` on a value write is refused by
+  // the shipped declarations. If that narrowing is ever lost, tsc fails on
+  // the unused directive (TS2578) and this suite never runs.
+  sig.set(5, {lazy: true});
+
+  // The directive keeps it out of typed code, it does not stop it running —
+  // so repair the signal before reading it.
+  sig.set(5);
+  assert.equal(sig.get(), 5);
+
+  // @ts-expect-error BUG-014: the generic params of the value overload must
+  // not cost the excess property check — `lasy` is the typo that would buy
+  // silence on exactly the branch this narrowing closes.
+  sig.set(6, {lasy: true, touch: true});
+  assert.equal(sig.get(), 6);
+
+  // @ts-expect-error ASYNC-004: an async callback is refused, the same
+  // narrowing beQuiet() carries above.
+  const pending = hibernate(async () => sig.get());
+  assert.ok(pending instanceof Promise);
 
   sig.destroy();
 });

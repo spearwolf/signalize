@@ -32,7 +32,7 @@ existing signal-like (then this very signal is returned, no new one created).
 | `get(): T`        | Read **with** dependency tracking.                                                         |
 | `get(cb)`         | **Deprecated.** Internally creates an effect with no handle. Use `onChange()` instead.     |
 | `value` (getter)  | Read **without** dependency tracking.                                                      |
-| `set(v, params?)` | Write. `v` may be a value or, with `{lazy: true}`, a factory — and only with it; a bare factory is a compile error. |
+| `set(v, params?)` | Write. `v` may be a value or, with `{lazy: true}`, a factory — and only with it; a bare factory is a compile error, and so is a plain value carrying `{lazy: true}`. |
 | `value = v`       | Setter shortcut for `set(v)`.                                                              |
 | `touch()`         | Emit a change without changing the value.                                                  |
 | `onChange(cb)`    | Subscribe to changes. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect, so it does **not** fire on subscribe — an effect created inside it is a child effect and is destroyed on the next change (see below). |
@@ -45,7 +45,7 @@ existing signal-like (then this very signal is returned, no new one created).
 | Field    | Type      | Effect                                                  |
 | -------- | --------- | ------------------------------------------------------- |
 | `touch`  | `boolean` | If `true`, emit a notification even when the value is unchanged. |
-| `lazy`   | `boolean` | If `true`, store `value` as a factory; evaluate on next read. Required for the factory form — `set(fn)` without it does not compile. |
+| `lazy`   | `boolean` | If `true`, store `value` as a factory; evaluate on next read. Required for the factory form — `set(fn)` without it does not compile — and reserved for it: `set(v, {lazy: true})` on a plain value does not compile either. |
 
 > ⚠️ **No updater function.** `set((v) => v + 1)` stores the function as the
 > value. Use `set(sig.value + 1)` instead. Since TYPE-002 the nullary form
@@ -58,11 +58,50 @@ existing signal-like (then this very signal is returned, no new one created).
 > only opens for a `lazy` that is statically `true`. `SignalParams<T>` and
 > `SignalWriterParams<T>` declare `lazy?: boolean`, so a variable of either
 > type keeps the branch shut and reports `TS2769` — even when it holds
-> `{lazy: true}`. Three things work: the inline literal, `{lazy: true} as
-> const`, and an annotation of `SignalParams<T> & {lazy: true}`. Spreading
-> (`{...params}`) does not — the spread keeps `lazy?: boolean`. The value
-> branch has no such condition: `createSignal(v, params)` and
-> `set(v, params)` take any options object, variable or literal.
+> `{lazy: true}`. Four spellings satisfy it: the inline literal, `{lazy: true}
+> as const`, an annotation of `SignalParams<T> & {lazy: true}`, and — the one
+> nobody writes on purpose — `{lazy: flag}` where control flow has narrowed
+> `flag` to `true`, which a `const flag: boolean = true` already does.
+> Spreading (`{...params}`) does not — the spread keeps `lazy?: boolean`.
+
+> ⚠️ **`set()` reserves that flag for the factory, and names its options
+> exactly.** A params *variable* typed `SignalParams<T>` or
+> `SignalWriterParams<T>` stays welcome on the value branch of both
+> constructors: `createSignal(v, params)` and `set(v, params)` compile whatever
+> the variable holds at runtime, for the same reason it does not open the
+> factory branch — `lazy?: boolean` promises nothing either way. What `set`
+> turns away there is each of the four statically-`true` spellings above, every
+> one a `TS2769` on a plain value, because that flag promises a factory
+> (BUG-014) — and any params type whose keys reach past
+> `SignalWriterParams<T>`.
+>
+> The two constructors are **not** symmetric on that second point.
+> `createSignal` still relies on freshness, so it catches a stray key only in
+> an object *literal*: `createSignal(5, {lazy: false, labell: 'x'})` is an
+> error, while `createSignal(5, myOpts)` with `interface MyOpts extends
+> SignalParams<number> {label: string}` compiles, and so does a variable whose
+> inferred type picked up the stray key. `set` forbids the keys in the
+> signature itself, so it catches the variable too: `set(5, myOpts)` does not
+> compile.
+>
+> **That exactness is what keeps `set(5, {lasy: true})` an error, and it costs
+> nine shapes that used to compile.** Eight come from the key rule — an
+> interface extending the params type, a variable with an inferred stray key,
+> an unrelated type with an *optional* stray key, an intersection
+> (`SignalWriterParams<T> & {mine: string}`), a class instance with a field
+> beyond the options, the rest object of a destructuring, a pass-through
+> wrapper generic in its own params (`<Q extends SignalWriterParams<T>>(q: Q)
+> => sig.set(v, q)`), and a *pattern* index signature, whose key is a template
+> literal type such as `data-${string}`. The ninth comes from the flag:
+> `{lazy: flag}` with `flag` narrowed to `true`. Each is a loud `TS2769`, and
+> the repair is to name the params type — annotate the variable
+> `SignalWriterParams<T>` or assert it at the call; for the wrapper, drop the
+> type parameter and call the argument `SignalWriterParams<T>`. **A spread
+> repairs none of them** — it drops freshness, not keys. A params object
+> carrying a plain `string`, `number` or `symbol` index signature
+> (`Record<string, unknown>`, `{[k: number]: unknown}`, `Record<symbol,
+> unknown>`) is exempt from the key rule and passes unchanged; a pattern key
+> is not, which is why it stands in the list above.
 
 > On a muted or destroyed signal, `set()` still writes: the new value is stored
 > and subsequent reads return it — only the notification (including
@@ -683,6 +722,10 @@ stack) for the duration of `callback`. Inside, you can start fresh contexts
 restored on exit, including after a throw — whether the throw came from
 `callback` or from the flush below. Stackable.
 
+`hibernate()` returns whatever `callback` returns, and — like `batch()` and
+`beQuiet()` — rejects an `async`/thenable-returning `callback` at compile
+time, because the saved context is restored at the first `await`.
+
 > If a batch was active, its queued effects are flushed before the callback
 > runs (so they aren't lost or re-batched). The queue is emptied even when an
 > effect in it throws, so the restored batch never recalls anyone a second
@@ -871,12 +914,12 @@ Exported from `@spearwolf/signalize`:
 | ---------------------------- | ---------------------------------------------------------------- |
 | `Signal<T>`                  | The reactive object returned by `createSignal()`.                |
 | `SignalReader<T>`            | The callable form of `signal.get` (also a `SignalLike<T>`).      |
-| `SignalWriter<T>`            | The callable form of `signal.set`, as an overload pair: a value, or a factory with `{lazy: true}`. |
+| `SignalWriter<T>`            | The callable form of `signal.set`, as an overload pair: a value — with params that name only declared options and never a statically `true` `lazy` — or a factory with `{lazy: true}`. |
 | `SignalLike<T>`              | Internal brand that only `createSignal()` produces. `$signal` is not exported, so the type is inspectable but not implementable from the outside — use `isSignal(v)` to recognise one. `T` defaults to `unknown`. |
 | `SignalParams<T>`            | Options for `createSignal` (`lazy`, `compare`, `beforeRead`, `attach`). |
 | `SignalWriterParams<T>`      | Options for `set()` (extends `SignalParams`, adds `touch`). Its `lazy?: boolean` is *not* narrow enough for the factory overload — that one wants a statically `true` `lazy`. |
 | `SignalValueParams`          | The `{touch?: boolean}` half of `SignalWriterParams`, on its own.  |
-| `NonThenable<T>`             | `T` unless `T` is promise-like, in which case `never`. What makes an `async` callback a compile error in `batch()` and `beQuiet()`. |
+| `NonThenable<T>`             | `T` unless `T` is promise-like, in which case `never`. What makes an `async` callback a compile error in `batch()`, `beQuiet()` and `hibernate()`. |
 | `Effect`                     | The wrapper returned by `createEffect()`.                        |
 | `EffectOptions`              | The wide options form the `EffectImpl` constructor takes. A `createEffect()` call site refuses it (`TS2769`) — its `dependencies` may hold names while `attach` stays optional. Name one of the two below instead. |
 | `EffectOptionsWithSignalDeps` | Options whose `dependencies` hold only `SignalLike` entries; `attach` optional. |

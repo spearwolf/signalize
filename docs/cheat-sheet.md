@@ -20,6 +20,7 @@ c.value;           // untracked read
 c.set(1);          // write
 c.value = 1;       // setter
 c.set(fn, {lazy: true});       // store factory; evaluate on next read
+                               // the flag is the factory's alone: c.set(v, {lazy: true}) does not compile
 c.set(v,  {touch: true});      // notify even if equal
 
 c.touch(); c.destroy();
@@ -130,6 +131,7 @@ batch(() => { a.set(1); b.set(2); });   // dedup + priority flush
                                          // callback must be sync — async throws TypeError (tsc rejects it too)
 const v = beQuiet(() => a.get());       // no track, no notify; returns the callback's result
 hibernate(() => { /* outer ctx suspended; new ctx allowed */ });
+                                         // sync only — tsc rejects an async callback, no runtime check
 isQuiet();
 ```
 

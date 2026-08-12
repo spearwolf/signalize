@@ -70,6 +70,7 @@ c.value;                    // untracked read
 c.set(v);   c.value = v;    // write
 c.set(v, {touch: true});    // notify even when equal
 c.set(fn, {lazy: true});    // store a factory — literal `true` only, not a SignalParams variable
+                            // and factories only: c.set(v, {lazy: true}) is a compile error
 c.touch();                  // force-notify
 c.destroy();
 c.muted = true;             // muted signals neither notify nor touch — set() still stores
@@ -221,11 +222,11 @@ run.
 ```ts
 batch(() => { a.set(1); b.set(2); });   // dedup + flush in priority order — a HINT, not a guarantee
 const v = beQuiet(() => a.get());       // reads untracked, writes silent; counter-based, nests; returns the callback's result
-hibernate(() => { /* outer reactive context suspended */ });
+hibernate(() => { /* outer reactive context suspended */ });   // sync callback only — tsc rejects an async one
 isQuiet();
 ```
 
-`hibernate` flushes an active outer batch before running its callback, so queued effects are not lost, and restores batches / quiet state / effect stack afterwards — also when it is the flush itself that throws.
+`hibernate` flushes an active outer batch before running its callback, so queued effects are not lost, and restores batches / quiet state / effect stack afterwards — also when it is the flush itself that throws. Its callback must be synchronous, like `batch()`'s and `beQuiet()`'s: an `async` one is refused at compile time, because the restore happens at the first `await` and everything past it runs outside the hibernation. There is no runtime check, only the type.
 
 ## SignalGroup
 
