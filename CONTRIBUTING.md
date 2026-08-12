@@ -179,6 +179,29 @@ When changing the public API:
 - Update documentation for API changes
 - Write clear commit messages explaining the "why"
 
+## Releasing
+
+There is no separate release step. `.github/workflows/main.yml` runs the full
+CI workflow on every push to `main` and, if it passes, runs `pnpm publish:pkg`
+right after — so **the `version` field in `package.json` is the release
+trigger**. `scripts/publishPackage.cjs` publishes that version unless it ends
+in `-dev` (skipped as a development version) or already exists on npm (skipped
+as released).
+
+Two consequences before you touch that field:
+
+- **The `-dev` suffix is the safety catch, and dropping it is the release.**
+  There is no tag, no GitHub release and no manual approval between merging to
+  `main` and `npm publish`.
+- **A version number is spent once.** Publishing cannot be taken back in any
+  way a consumer would notice, and the guard against republishing only covers
+  versions that already exist — never the one you just created.
+
+So a pull request should leave `version` alone unless releasing is the point of
+that pull request. What a given version number promises a consumer is in
+[Versioning & stability](./README.md#versioning--stability); a breaking change
+shipped under a version that does not allow one cannot be repaired afterwards.
+
 ## Reporting Issues
 
 When reporting bugs:

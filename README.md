@@ -106,6 +106,32 @@ yarn add     @spearwolf/signalize @spearwolf/eventize
 
 ESM-only: there is no CommonJS build. Two entry points — `@spearwolf/signalize` and `@spearwolf/signalize/decorators`.
 
+## Versioning & stability
+
+What you may rely on is decided by the version number you installed:
+
+- **`0.x` — nothing is promised.** Any release may change or remove anything:
+  exported names, call signatures, option shapes, thrown message texts,
+  observable ordering. `CHANGELOG.md` records what moved, but a minor bump on
+  this side of `1.0.0` carries no implication that it was safe to take.
+- **`1.0.0` and above — semver on the published surface.** Breaking that
+  surface requires a major bump. The published surface is what the two entry
+  points export — `@spearwolf/signalize` and
+  `@spearwolf/signalize/decorators` — together with the types those exports
+  carry: everything reachable by following imports from `lib/index.d.ts` and
+  `lib/decorators.d.ts`. The `lib/**/*.d.ts` glob in the shipped tarball is
+  wider than that — `tsc` emits one declaration file per source file — but a
+  declaration outside that import graph is not part of the promise.
+- **A `-dev` version is not a release.** It is what `main` carries between
+  releases, it never reaches npm, and it promises nothing at all.
+
+Exempt at every version, including after `1.0.0`: everything marked
+`@internal`. Those symbols are cut out of the shipped declarations, so
+TypeScript will not offer them — but some remain reachable at runtime through
+the global symbol registry (`Symbol.for('@spearwolf/signalize/...')`). Nothing
+supports reaching for them. They change without a major bump and without a
+changelog entry.
+
 ## API at a glance
 
 ```ts

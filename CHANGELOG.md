@@ -1,5 +1,9 @@
 # CHANGELOG
 
+Which of these changes you may rely on depends on the version they ship in —
+see [Versioning & stability](./README.md#versioning--stability). Entries under
+`## Unreleased` have not shipped in any version yet.
+
 ## Unreleased
 
 ### Breaking Changes
@@ -234,6 +238,8 @@
 - The `beforeRead` hook is documented as what it is — it fires on every read through the reader, tracked or not, so `beQuiet()` does not suppress it, and only `.value`, `value()` and a `readAsValue: true` accessor skip it (BUG-013)
 - `docs/api.md` describes `SignalWriterParams<T>` as the `extends` it is rather than a union, and names its exactness bound next to the `lazy` one
 - `CLAUDE.md` points at `biome.json` for the rule list instead of naming five of the disabled rules, and says which rules are switched *on* (CONS-013)
+- `README.md` gains a "Versioning & stability" section: no compatibility promise below `1.0.0`, semver on the published surface from `1.0.0` on, everything `@internal` exempt at every version (API-011)
+- `CONTRIBUTING.md` gains a "Releasing" section: the `version` field in `package.json` is the publish trigger — dropping the `-dev` suffix and pushing to `main` is the release, with no tag and no manual approval in between
 
 ### Chores
 
