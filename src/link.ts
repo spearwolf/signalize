@@ -158,12 +158,6 @@ export interface LinkOptions {
    * of them.
    */
   attach?: object;
-
-  // /**
-  //  * Enable two-bay binding between two signals.
-  //  * Has no effect when the target is a callback function.
-  //  */
-  // twoWay?: boolean;
 }
 
 /**

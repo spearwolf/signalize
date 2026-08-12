@@ -780,7 +780,9 @@ describe('the published type surface', () => {
   it('publishes the diagnostics channel and its payload (CONS-001)', () => {
     // Through the entry point, not the module: the re-export is half of what
     // this package promises, and `src/index.ts` carries a by-name list that
-    // no step of `pnpm world` checks for completeness.
+    // no step of `pnpm world` checks for completeness. Still true for the
+    // type list; the value list gained a witness in Paket 5
+    // (`index.public-surface.spec.ts`, API-017) and no longer qualifies.
     let seen: SignalizeErrorPayload | undefined;
     // The use that keeps `_NoReporter` alive for `noUnusedLocals`; the
     // directive on its declaration is the actual assertion.

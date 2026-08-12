@@ -72,6 +72,9 @@
             "ignoreRestSiblings": true
           }
         }
+      },
+      "performance": {
+        "noReExportAll": "error"
       }
     }
   },

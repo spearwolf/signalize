@@ -228,6 +228,8 @@
 - Enabled Biome's `style/useImportType` rule and marked the 13 type-only cross-layer imports it found across 8 files as `import type`, with no effect on the emitted JavaScript (ARCH-003)
 - A consumer bundle that only uses `createSignal` no longer carries the effect subsystem: 17 087 → 10 539 B minified (5 790 → 3 868 gzip). `Signal.onChange()` and the deprecated `signalReader(callback)` reach `createEffect` through a registered hook instead of an import, and pull the subsystem back in as soon as they are used. A bundle using the full surface pays for the indirection: 25 573 → 25 835 B minified (+262, +1,0 %), 8 591 → 8 711 gzip (ARCH-002)
 - `EffectImpl.run()` is split into its static and its dynamic branch, and the snapshot/prune pair of `#lostSignals` now sits in a scope of its own that knows its own commit criterion. Behaviour, API and measured throughput are unchanged (READ-011)
+- The entry point names every export instead of re-exporting `link.js` and `SignalAutoMap.js` via `export *`; the published name set is unchanged on both the value and the type axis, measured (API-017)
+- Enabled Biome's `performance/noReExportAll`: an `export *` anywhere in the tree now fails `pnpm check` (API-017)
 
 ### Tests
 
@@ -249,6 +251,7 @@
 - The five spec files that had no counter guard at all closed ten leaking tests first — 8 effects and 18 signals across `createMemo`, `batch`, `createSignal.lazy`, `unsubscribeEffect` and `createSignal.compareFn` — before gaining one
 - The same five files picked up 34 new `finally` teardown blocks for resources that used to sit unguarded behind the assertions (36 total, 2 pre-existing)
 - The position of `shouldRun = false` relative to the cleanup call inside `EffectImpl.run()` is pinned: moving it ahead of `runCleanupCallback()` now fails exactly one test — a direct `run()` from within a cleanup used to disappear silently — instead of passing unnoticed
+- New `src/index.public-surface.spec.ts` pins the entry point's value exports and rejects both `export *` and `export type *` (API-017)
 
 ### Build System
 
