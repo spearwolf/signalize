@@ -110,7 +110,7 @@ createEffect(() => {
 
 ## Deprecated surface
 
-**20 — `signal.get(callback)` is deprecated.** It creates an internal effect with no unsubscribe handle, so only destroying the signal cleans it up, and it emits a once-per-process `console.warn` — which an `onSignalizeError()` handler takes over (`source: 'deprecation'`), silencing the console. Use `sig.onChange(cb)`, which returns an unsubscribe function. The callback overload of `SignalReader` carries an `@deprecated` tag, so an editor strikes the form through at the call site; the plain `sig.get()` is a second overload and stays unmarked. `SignalGroup.destroy()` and `SignalGroup#destroy` carry the tag too.
+**20 — `signal.get(callback)` is deprecated.** It creates an internal effect with no unsubscribe handle, so only destroying the signal cleans it up, and it emits a once-per-process `console.warn` — which an `onSignalizeError()` handler takes over (`source: 'deprecation'`), silencing the console. Use `sig.onChange(cb)`, which returns an unsubscribe function. The callback overload of `SignalReader` carries an `@deprecated` tag, so an editor strikes the form through at the call site; the plain `sig.get()` is a second overload and stays unmarked. `SignalGroup.destroy()` and `SignalGroup#destroy` carry the tag too, and report the same way: once per process per call site, not on every call — so a deprecated call in a render loop costs one notice in total, and a test that counted the notices sees one (CONS-004).
 
 ## Working inside the signalize repo
 

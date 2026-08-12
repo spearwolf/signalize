@@ -47,7 +47,7 @@ describe('createSignal(existingSignal, params) passthrough (API-012)', () => {
       expect(seen[0].level).toBe('warn');
       expect(seen[0].error).toBeUndefined();
       expect(seen[0].message).toBe(
-        'createSignal(existingSignal, {compare, beforeRead}) is a passthrough: it returns the signal that was passed in, so nothing in those braces is applied. Only {attach} works on this path. Configure the signal where it is created, or drop the options.',
+        '[signalize] createSignal(existingSignal, {compare, beforeRead}) is a passthrough: it returns the signal that was passed in, so nothing in those braces is applied. Only {attach} works on this path. Configure the signal where it is created, or drop the options.',
       );
     } finally {
       unsubscribe();
@@ -73,7 +73,7 @@ describe('createSignal(existingSignal, params) passthrough (API-012)', () => {
 
       expect(seen).toHaveLength(1);
       expect(seen[0].message).toBe(
-        'createSignal(existingSignal, {compare, beforeRead}) is a passthrough: it returns the signal that was passed in, so nothing in those braces is applied. Only {attach} works on this path. Configure the signal where it is created, or drop the options.',
+        '[signalize] createSignal(existingSignal, {compare, beforeRead}) is a passthrough: it returns the signal that was passed in, so nothing in those braces is applied. Only {attach} works on this path. Configure the signal where it is created, or drop the options.',
       );
     } finally {
       unsubscribe();
@@ -170,7 +170,7 @@ describe('createSignal(existingSignal, params) passthrough (API-012)', () => {
       expect(seen).toHaveLength(1);
       expect(seen[0].source).toBe('ignored-option');
       expect(seen[0].message).toBe(
-        'createSignal(existingSignal, {lazy}) is a passthrough: it returns the signal that was passed in, so nothing in those braces is applied. Only {attach} works on this path. Configure the signal where it is created, or drop the options.',
+        '[signalize] createSignal(existingSignal, {lazy}) is a passthrough: it returns the signal that was passed in, so nothing in those braces is applied. Only {attach} works on this path. Configure the signal where it is created, or drop the options.',
       );
     } finally {
       unsubscribe();
@@ -197,7 +197,7 @@ describe('createSignal(existingSignal, params) passthrough (API-012)', () => {
       expect(seen).toHaveLength(1);
       expect(seen[0].source).toBe('ignored-option');
       expect(seen[0].message).toBe(
-        'createSignal(existingSignal, {lazy}) is a passthrough: it returns the signal that was passed in, so nothing in those braces is applied. Only {attach} works on this path. Configure the signal where it is created, or drop the options.',
+        '[signalize] createSignal(existingSignal, {lazy}) is a passthrough: it returns the signal that was passed in, so nothing in those braces is applied. Only {attach} works on this path. Configure the signal where it is created, or drop the options.',
       );
     } finally {
       unsubscribe();

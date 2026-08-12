@@ -142,7 +142,7 @@ export function createMemo<Type>(
       reportSignalizeError({
         level: 'warn',
         source: 'ignored-option',
-        message: `createMemo({name: ${String(name)}}) without {attach} is ignored: a name only exists within a SignalGroup. Pass {attach} as well, or drop the name.`,
+        message: `[signalize] createMemo({name: ${String(name)}}) without {attach} is ignored: a name only exists within a SignalGroup. Pass {attach} as well, or drop the name.`,
       });
     }
 

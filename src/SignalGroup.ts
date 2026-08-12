@@ -9,6 +9,7 @@ import {
 } from '@spearwolf/eventize';
 import {collect, throwCollectedErrors} from './collect-errors.js';
 import {$effect, DESTROY, OFF} from './constants.js';
+import {warnDeprecatedOnce} from './deprecation-warnings.js';
 import type {Effect} from './Effect.js';
 import type {EffectImpl} from './EffectImpl.js';
 import {globalDestroySignalQueue} from './global-queues.js';
@@ -201,7 +202,7 @@ const BUSY_OFF = 1 << 3;
 const BUSY_CLEAR = 1 << 4;
 
 const CYCLE_REJECTED =
-  'Cannot attach a group to one of its own descendants: this would create a cycle in the group graph';
+  '[signalize] Cannot attach a group to one of its own descendants: this would create a cycle in the group graph';
 
 // PERF-004: die selten benutzten Container entstehen erst beim ersten
 // Schreiben. Bis dahin zeigt das Feld auf einen modulweit geteilten
@@ -223,7 +224,7 @@ const CYCLE_REJECTED =
 // Container füllen, den sich sämtliche SignalGroups des Prozesses
 // teilen — der lauteste Fehlschlag ist hier der billigste.
 const SHARED_EMPTY_WRITE =
-  'internal error: a shared empty stand-in collection was written to';
+  '[signalize] internal error: a shared empty stand-in collection was written to';
 
 class EmptySet extends Set<any> {
   add(): never {
@@ -365,7 +366,7 @@ export class SignalGroup {
    */
   static findOrCreate(object: object) {
     if (object == null) {
-      throw new Error('Cannot create a group with a null object');
+      throw new Error('[signalize] Cannot create a group with a null object');
     }
     // PERF-002: check the store before constructing. The field initializers
     // alone allocated eleven collections — six Sets, three Maps, a WeakMap
@@ -393,18 +394,16 @@ export class SignalGroup {
    * Delete and clear the group associated with an object, and warn about it.
    *
    * Behaves exactly like {@link SignalGroup.delete}, plus a `deprecation`
-   * notice on every call.
+   * notice — once per process, not once per call (CONS-004).
    *
    * @deprecated Use {@link SignalGroup.delete} instead.
    * @param object - The object whose group should be deleted, or the group
    */
   static destroy(object: object) {
-    reportSignalizeError({
-      level: 'warn',
-      source: 'deprecation',
-      message:
-        'SignalGroup.destroy(obj) is deprecated. Use SignalGroup.delete(obj) instead.',
-    });
+    warnDeprecatedOnce(
+      'SignalGroup.destroy',
+      '[signalize] SignalGroup.destroy(obj) is deprecated. Use SignalGroup.delete(obj) instead.',
+    );
     SignalGroup.delete(object);
   }
 
@@ -502,7 +501,7 @@ export class SignalGroup {
    */
   attachGroup(group: SignalGroup) {
     if (group === this) {
-      throw new Error('Cannot attach a group to itself');
+      throw new Error('[signalize] Cannot attach a group to itself');
     }
 
     // Walk up our own parent chain: if the prospective child is already an
@@ -529,7 +528,7 @@ export class SignalGroup {
 
       if (fast != null && fast === slow) {
         throw new Error(
-          'Cannot attach a group: the parent chain of this group is already cyclic',
+          '[signalize] Cannot attach a group: the parent chain of this group is already cyclic',
         );
       }
     }
@@ -583,7 +582,9 @@ export class SignalGroup {
     const si = signalImpl(signal);
 
     if (si?.destroyed) {
-      throw new Error('Cannot attach a destroyed signal to a group');
+      throw new Error(
+        '[signalize] Cannot attach a destroyed signal to a group',
+      );
     }
 
     if (si) {
@@ -932,7 +933,9 @@ export class SignalGroup {
         : (effect as EffectImpl);
 
     if (impl == null || impl.destroyed) {
-      throw new Error('Cannot attach a destroyed effect to a group');
+      throw new Error(
+        '[signalize] Cannot attach a destroyed effect to a group',
+      );
     }
 
     // Guarded because eventize's own dedup can't help: `add()` only dedupes
@@ -988,7 +991,7 @@ export class SignalGroup {
    */
   attachLink<L extends SignalLink<any>>(link: L): L {
     if (link?.isDestroyed) {
-      throw new Error('Cannot attach a destroyed link to a group');
+      throw new Error('[signalize] Cannot attach a destroyed link to a group');
     }
 
     if (link) {
@@ -1078,17 +1081,16 @@ export class SignalGroup {
    * Tear down all subscriptions of this group, and warn about it.
    *
    * Behaves exactly like {@link SignalGroup#clear} — the group itself
-   * survives and stays usable — plus a `deprecation` notice on every call.
+   * survives and stays usable — plus a `deprecation` notice, once per
+   * process, not once per call (CONS-004).
    *
    * @deprecated Use {@link SignalGroup#clear} instead.
    */
   destroy() {
-    reportSignalizeError({
-      level: 'warn',
-      source: 'deprecation',
-      message:
-        'SignalGroup#destroy is deprecated. Use SignalGroup#clear instead.',
-    });
+    warnDeprecatedOnce(
+      'SignalGroup#destroy',
+      '[signalize] SignalGroup#destroy is deprecated. Use SignalGroup#clear instead.',
+    );
     this.clear();
   }
 

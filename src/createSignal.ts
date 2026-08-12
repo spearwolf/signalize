@@ -1,4 +1,5 @@
 import {$signal} from './constants.js';
+import {warnDeprecatedOnce} from './deprecation-warnings.js';
 import {requireCreateEffect} from './effect-hook.js';
 import {Signal} from './Signal.js';
 import {SignalGroup} from './SignalGroup.js';
@@ -63,21 +64,15 @@ declare const _checkPassthroughListCoversSignalParams: _AssertTrue<_PassthroughL
 // that creates a signal.
 const DEFAULT_EQUALS: CompareFunc<any> = (a, b) => a === b;
 
-let signalReaderCallbackDeprecationWarned = false;
-
 // Module-private, so no `.d.ts` carries it and a deprecation tag here would
 // reach no editor. The consumer-visible declaration of this same deprecation
 // is the callback overload of `SignalReader` in `types.ts`, which does carry
 // the tag.
 function warnSignalReaderCallbackDeprecated(): void {
-  if (signalReaderCallbackDeprecationWarned) return;
-  signalReaderCallbackDeprecationWarned = true;
-  reportSignalizeError({
-    level: 'warn',
-    source: 'deprecation',
-    message:
-      'signalReader(callback) is deprecated and will be removed in a future release. Use Signal.onChange(callback) instead — it returns an unsubscribe function for proper cleanup.',
-  });
+  warnDeprecatedOnce(
+    'signalReader(callback)',
+    '[signalize] signalReader(callback) is deprecated and will be removed in a future release. Use Signal.onChange(callback) instead — it returns an unsubscribe function for proper cleanup.',
+  );
 }
 
 const createSignalReader = <Type>(
@@ -434,7 +429,7 @@ export function createSignal<Type = unknown>(
       reportSignalizeError({
         level: 'warn',
         source: 'ignored-option',
-        message: `createSignal(existingSignal, {${ignoredOptions.join(', ')}}) is a passthrough: it returns the signal that was passed in, so nothing in those braces is applied. Only {attach} works on this path. Configure the signal where it is created, or drop the options.`,
+        message: `[signalize] createSignal(existingSignal, {${ignoredOptions.join(', ')}}) is a passthrough: it returns the signal that was passed in, so nothing in those braces is applied. Only {attach} works on this path. Configure the signal where it is created, or drop the options.`,
       });
     }
   } else {

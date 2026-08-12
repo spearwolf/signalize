@@ -23,6 +23,15 @@ import type {
 /** The value type defaults to `unknown`; annotate `ValueCallback<number>`. */
 export type ValueCallback<ValueType = unknown> = (value: ValueType) => void;
 
+// One text, two rejection sites: `NextValueRead.settleWithDestroy()` for a
+// link destroyed while the read is pending, and the up-front guard in
+// `#nextValue()` for one that was already dead when the call arrived. From
+// the caller's side there is no meaningful difference between the two, so
+// they must not drift apart — a constant makes that structural instead of a
+// promise (side finding of package 6).
+const NEXT_VALUE_DESTROYED =
+  '[signalize] SignalLink destroyed before the next value arrived';
+
 /**
  * W1: the handle that cancels the read an `asyncValues()` iterator is
  * currently waiting on — present only while a read is actually pending,
@@ -101,9 +110,7 @@ class NextValueRead<ValueType> {
 
   settleWithDestroy(): void {
     this.releaseAll();
-    this.#reject(
-      new Error('SignalLink destroyed before the next value arrived'),
-    );
+    this.#reject(new Error(NEXT_VALUE_DESTROYED));
   }
 
   settleWithAbort(reason: unknown): void {
@@ -113,7 +120,9 @@ class NextValueRead<ValueType> {
 
   settleWithCancel(): void {
     this.releaseAll();
-    this.#reject(new Error('SignalLink read cancelled by the iterator'));
+    this.#reject(
+      new Error('[signalize] SignalLink read cancelled by the iterator'),
+    );
   }
 }
 
@@ -348,7 +357,7 @@ export abstract class SignalLink<ValueType = unknown> {
       // rejection as the "destroyed while pending" path below; from the
       // caller's side there is no meaningful difference between the two.
       if (this.isDestroyed) {
-        reject(new Error('SignalLink destroyed before the next value arrived'));
+        reject(new Error(NEXT_VALUE_DESTROYED));
         return;
       }
 

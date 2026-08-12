@@ -23,6 +23,8 @@ import {
   SignalGroup,
 } from './SignalGroup.js';
 import {SignalLinkToCallback} from './SignalLink.js';
+import {onSignalizeError} from './signalize-error.js';
+import type {SignalizeErrorPayload} from './types.js';
 
 // Nothing attached to a group may survive its teardown on the global queues.
 const subscriptionSnapshot = () => ({
@@ -189,7 +191,7 @@ describe('SignalGroup', () => {
         SignalGroup.destroy(obj);
 
         expect(warnSpy).toHaveBeenCalledWith(
-          'SignalGroup.destroy(obj) is deprecated. Use SignalGroup.delete(obj) instead.',
+          '[signalize] SignalGroup.destroy(obj) is deprecated. Use SignalGroup.delete(obj) instead.',
         );
 
         assertSignalsCount(0, 'after destroy');
@@ -198,6 +200,30 @@ describe('SignalGroup', () => {
         warnSpy.mockRestore();
         signal.destroy();
         group.clear();
+      }
+    });
+
+    it('reports the deprecation once per process, not once per call (CONS-004)', () => {
+      // Zero, not one — and that is the whole assertion. The witness right
+      // above already spent this call site's single notice, and the gate in
+      // `deprecation-warnings.ts` is module-scoped, so nothing is left for
+      // these two calls. Before CONS-004 they produced two more notices.
+      // Same shape as `createSignal.deprecation.spec.ts`'s second test.
+      const seen: SignalizeErrorPayload[] = [];
+      const unsubscribe = onSignalizeError((payload) => {
+        seen.push(payload);
+      });
+      const obj = {};
+      SignalGroup.findOrCreate(obj);
+
+      try {
+        SignalGroup.destroy(obj);
+        SignalGroup.destroy(obj);
+
+        expect(seen).toHaveLength(0);
+      } finally {
+        unsubscribe();
+        SignalGroup.delete(obj);
       }
     });
   });
@@ -1112,13 +1138,35 @@ describe('SignalGroup', () => {
         group.destroy();
 
         expect(warnSpy).toHaveBeenCalledWith(
-          'SignalGroup#destroy is deprecated. Use SignalGroup#clear instead.',
+          '[signalize] SignalGroup#destroy is deprecated. Use SignalGroup#clear instead.',
         );
 
         assertSignalsCount(0, 'signal destroyed');
       } finally {
         warnSpy.mockRestore();
         signal.destroy();
+        group.clear();
+      }
+    });
+
+    it('reports the deprecation once per process, not once per call (CONS-004)', () => {
+      // Zero, not one — see the sibling witness for the static
+      // `SignalGroup.destroy(obj)`: the test above already spent this call
+      // site's single notice. Before CONS-004 these two calls produced two
+      // more.
+      const seen: SignalizeErrorPayload[] = [];
+      const unsubscribe = onSignalizeError((payload) => {
+        seen.push(payload);
+      });
+      const group = SignalGroup.findOrCreate({});
+
+      try {
+        group.destroy();
+        group.destroy();
+
+        expect(seen).toHaveLength(0);
+      } finally {
+        unsubscribe();
         group.clear();
       }
     });

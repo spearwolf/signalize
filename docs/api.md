@@ -444,7 +444,7 @@ used to go straight to the console, where no application could route it.
 | `link-finalizer`     | Releasing a collected link's queue subscriptions threw.          |
 | `automap-finalizer`  | The same for a collected `SignalAutoMap`.                        |
 | `link-count`         | 1000 links on one source signal — once per source.               |
-| `deprecation`        | A deprecated call: `SignalGroup.destroy()`, `SignalGroup#destroy`, `signalReader(callback)`. |
+| `deprecation`        | A deprecated call: `SignalGroup.destroy()`, `SignalGroup#destroy`, `signalReader(callback)` — once per process per call site, never on every call, because it marks a lifecycle fact about the calling codebase rather than a single mistyped call. |
 | `multiple-instances` | More than one copy of the library in one process; once, when the second one loads. |
 | `ignored-option`     | An option with no effect in the combination it was passed in — on every such call, never once per process, because it marks a misspelled call rather than a lifecycle event. Which combinations qualify is a property of the call and grows with the API; today `createMemo({name})` without `attach`, and `createSignal(existingSignal, …)` for every option but `attach`. |
 
@@ -702,7 +702,7 @@ true` — only an externally requested abort is meant to be distinguishable
 from a normal stop.
 
 A link destroyed while a `nextValue()` is pending rejects with
-`Error('SignalLink destroyed before the next value arrived')` — not
+`Error('[signalize] SignalLink destroyed before the next value arrived')` — not
 `undefined` — so a `catch` block has something to inspect.
 
 `asyncValues()` only ever holds the **last** propagated value — it is a

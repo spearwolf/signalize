@@ -80,6 +80,26 @@
   },
   "overrides": [
     {
+      "includes": ["src/**/*.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "error"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/signalize-error.ts", "src/EffectImpl.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["src/**/*.spec.ts"],
       "linter": {
         "rules": {
