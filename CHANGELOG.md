@@ -230,6 +230,7 @@
 - `EffectImpl.run()` is split into its static and its dynamic branch, and the snapshot/prune pair of `#lostSignals` now sits in a scope of its own that knows its own commit criterion. Behaviour, API and measured throughput are unchanged (READ-011)
 - The entry point names every export instead of re-exporting `link.js` and `SignalAutoMap.js` via `export *`; the published name set is unchanged on both the value and the type axis, measured (API-017)
 - Enabled Biome's `performance/noReExportAll`: an `export *` anywhere in the tree now fails `pnpm check` (API-017)
+- `SignalLink.nextValue()` is split into a read object that owns the promise callbacks, the collected unsubscribe handles and the four ways a read can end, plus a cursor predicate of its own; the subscribe order and both early guards stay where they were. Behaviour and API are unchanged, measured against the same 20 mutations before and after — each one takes down the same named tests (READ-014)
 
 ### Tests
 
@@ -252,6 +253,7 @@
 - The same five files picked up 34 new `finally` teardown blocks for resources that used to sit unguarded behind the assertions (36 total, 2 pre-existing)
 - The position of `shouldRun = false` relative to the cleanup call inside `EffectImpl.run()` is pinned: moving it ahead of `runCleanupCallback()` now fails exactly one test — a direct `run()` from within a cleanup used to disappear silently — instead of passing unnoticed
 - New `src/index.public-surface.spec.ts` pins the entry point's value exports and rejects both `export *` and `export type *` (API-017)
+- The two early guards of `SignalLink.nextValue()` and the link-side release in its abort path are pinned: swapping the guards (an already-aborted signal on an already-destroyed link would reject with the destroy error instead of the abort reason) or dropping the shared `unsubscribe()` from the abort path (an aborted read would leave its DESTROY and VALUE subscriptions on the link) each now fails exactly one test instead of passing unnoticed (READ-014)
 
 ### Build System
 

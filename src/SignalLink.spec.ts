@@ -244,6 +244,78 @@ describe('SignalLink', () => {
         destroySignal(sigA);
       }
     });
+
+    it('an already-aborted signal beats an already-destroyed link: the rejection is the abort reason, not the destroy error', {
+      timeout: 500,
+    }, async () => {
+      const sigA = createSignal(1);
+      const controller = new AbortController();
+      const reason = new Error('aborted by the caller, not by the link');
+
+      try {
+        const con = link(sigA, () => {});
+        con.destroy();
+        controller.abort(reason);
+
+        // Both early guards of nextValue() apply to this call: the link is
+        // already destroyed *and* the signal is already aborted. Which of
+        // the two rejections the caller sees is decided by the order the
+        // guards stand in — abort first, destroy second. Swap them and the
+        // caller gets the destroy Error instead.
+        //
+        // `toBe(reason)` pins the *identity* of the rejection, not its
+        // wording: the S9 rethrow in #asyncValues() decides whether an
+        // iteration ends quietly or throws by comparing the rejection
+        // against `signal.reason` with `===`, so identity is what this
+        // order actually buys. A message match would keep passing after the
+        // identity is gone.
+        await expect(con.nextValue({signal: controller.signal})).rejects.toBe(
+          reason,
+        );
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
+    });
+
+    it('an abort-driven rejection releases the link-side subscriptions too, not just the abort listener', {
+      timeout: 500,
+    }, async () => {
+      const sigA = createSignal(1);
+      const controller = new AbortController();
+
+      try {
+        const con = link(sigA, () => {});
+        const base = getSubscriptionCount(con);
+
+        const pending = con.nextValue({signal: controller.signal});
+
+        expect(
+          getSubscriptionCount(con),
+          'a pending nextValue({signal}) holds two subscriptions on the link itself: DESTROY and VALUE',
+        ).toBe(base + 2);
+
+        controller.abort();
+        await expect(pending).rejects.toBe(controller.signal.reason);
+
+        // The neighbouring test above watches the *other* side of the same
+        // teardown — the abort listener on the caller's AbortSignal — and
+        // that one is registered with `{once: true}`, so it would come off
+        // even if nextValue() released nothing at all. This side does not:
+        // the DESTROY and VALUE subscriptions only go away because the
+        // abort path runs the shared unsubscribe(). Without it they sit on
+        // the link for as long as it lives.
+        expect(
+          getSubscriptionCount(con),
+          'an aborted read leaves neither DESTROY nor VALUE behind on the link',
+        ).toBe(base);
+
+        con.destroy();
+      } finally {
+        controller.abort();
+        destroySignal(sigA);
+      }
+    });
   });
 
   describe('K1: nextValue({signal}) survives a synchronous retained-VALUE replay', () => {

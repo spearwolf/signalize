@@ -31,6 +31,92 @@ export type ValueCallback<ValueType = unknown> = (value: ValueType) => void;
  */
 type PendingRead = {cancel?: () => void};
 
+/**
+ * One pending read of the next value: the two promise callbacks, every
+ * unsubscribe handle the read has collected so far, and the four ways it can
+ * end. Created inside `#nextValue()`'s promise executor, one per call.
+ *
+ * Not to be confused with {@link PendingRead}, despite the neighbouring
+ * names: that one is only the cancel handle an `asyncValues()` iterator
+ * holds on the read *from the outside*, this one is the read itself.
+ *
+ * Each of the four `settleWith*()` methods releases everything the read
+ * holds and then settles the promise — which of the four runs is what tells
+ * the caller apart: a value, a destroy, an abort, or the iterator pulling
+ * the plug.
+ */
+class NextValueRead<ValueType> {
+  readonly #resolve: (value: ValueType) => void;
+  readonly #reject: (reason?: unknown) => void;
+  readonly #pendingRead?: PendingRead;
+
+  readonly #handles: (() => void)[] = [];
+
+  #settled = false;
+
+  constructor(
+    resolve: (value: ValueType) => void,
+    reject: (reason?: unknown) => void,
+    pendingRead?: PendingRead,
+  ) {
+    this.#resolve = resolve;
+    this.#reject = reject;
+    this.#pendingRead = pendingRead;
+  }
+
+  get hasSettled(): boolean {
+    return this.#settled;
+  }
+
+  /**
+   * Register one unsubscribe handle — called at the subscription it belongs
+   * to, immediately, never collected and handed over in one go afterwards.
+   * The K1 block at the subscribe sequence in `#nextValue()` is where that
+   * rule is argued; it is the reason this takes one handle and not a list.
+   */
+  add(unsubscribe: () => void): void {
+    this.#handles.push(unsubscribe);
+  }
+
+  /**
+   * W1: every settle path runs this, which is exactly when the cancel
+   * handle below stops being valid — a read that is over cannot be
+   * cancelled, and leaving a stale handle around would let a later
+   * `return()` unsubscribe a *different* call's listeners.
+   */
+  releaseAll(): void {
+    if (this.#pendingRead != null) {
+      this.#pendingRead.cancel = undefined;
+    }
+    this.#handles.forEach((unsub) => {
+      unsub();
+    });
+  }
+
+  settleWithValue(value: ValueType): void {
+    this.#settled = true;
+    this.releaseAll();
+    this.#resolve(value);
+  }
+
+  settleWithDestroy(): void {
+    this.releaseAll();
+    this.#reject(
+      new Error('SignalLink destroyed before the next value arrived'),
+    );
+  }
+
+  settleWithAbort(reason: unknown): void {
+    this.releaseAll();
+    this.#reject(reason);
+  }
+
+  settleWithCancel(): void {
+    this.releaseAll();
+    this.#reject(new Error('SignalLink read cancelled by the iterator'));
+  }
+}
+
 // Eventize injects EventizedObject members at runtime via eventize(this) in
 // the constructor — declaration merging tells TS the brand is present.
 // biome-ignore lint/correctness/noUnusedVariables: declaration merging requires the same type-parameter name as the class
@@ -245,6 +331,10 @@ export abstract class SignalLink<ValueType = unknown> {
     const {signal} = options ?? {};
 
     return new Promise((resolve, reject) => {
+      // Order-bearing, not incidental: an already-aborted signal beats an
+      // already-destroyed link, because the S9 check in `#asyncValues()`
+      // decides by the *identity* of the rejection (`err === signal.reason`)
+      // and this is the path that picks which one that is.
       if (signal?.aborted) {
         reject(signal.reason);
         return;
@@ -262,19 +352,7 @@ export abstract class SignalLink<ValueType = unknown> {
         return;
       }
 
-      const subscriptions: (() => void)[] = [];
-      const unsubscribe = () => {
-        // W1: every settle path runs this, which is exactly when the cancel
-        // handle below stops being valid — a read that is over cannot be
-        // cancelled, and leaving a stale handle around would let a later
-        // `return()` unsubscribe a *different* call's listeners.
-        if (pendingRead != null) {
-          pendingRead.cancel = undefined;
-        }
-        subscriptions.forEach((unsub) => {
-          unsub();
-        });
-      };
+      const read = new NextValueRead<ValueType>(resolve, reject, pendingRead);
 
       if (pendingRead != null) {
         // W1: hand the caller — `asyncValues()`, and only it — a way to end
@@ -282,10 +360,7 @@ export abstract class SignalLink<ValueType = unknown> {
         // (never `signal.reason`) makes the generator's catch clause treat
         // it as a normal stop, so it breaks out of the loop and runs its
         // `finally` instead of rethrowing.
-        pendingRead.cancel = () => {
-          unsubscribe();
-          reject(new Error('SignalLink read cancelled by the iterator'));
-        };
+        pendingRead.cancel = () => read.settleWithCancel();
       }
 
       // K1: DESTROY and the abort listener are subscribed *before* VALUE,
@@ -305,27 +380,17 @@ export abstract class SignalLink<ValueType = unknown> {
       // sufficient — VALUE is the only one of the three that can go off
       // inline, right here, and only it needs everything else in place
       // first.
-      subscriptions.push(
-        once(this, DESTROY, () => {
-          unsubscribe();
-          reject(
-            new Error('SignalLink destroyed before the next value arrived'),
-          );
-        }),
-      );
+      read.add(once(this, DESTROY, () => read.settleWithDestroy()));
 
       if (signal != null) {
-        const onAbort = () => {
-          unsubscribe();
-          reject(signal.reason);
-        };
+        const onAbort = () => read.settleWithAbort(signal.reason);
         signal.addEventListener('abort', onAbort, {once: true});
         // Also part of `unsubscribe()`: whichever of VALUE/DESTROY/abort
         // settles the promise first must detach the *other* listeners too,
         // this one included — otherwise a `nextValue()` that resolves
         // normally leaves its abort listener on the caller's `AbortSignal`
         // for as long as that signal lives (ASYNC-004).
-        subscriptions.push(() => signal.removeEventListener('abort', onAbort));
+        read.add(() => signal.removeEventListener('abort', onAbort));
       }
 
       // ASYNC-005: `on`, not `once` — which is what the line that used to
@@ -335,35 +400,48 @@ export abstract class SignalLink<ValueType = unknown> {
       // above), and a replay of a generation this caller has already consumed
       // is not a next value: it has to be ignored *while staying subscribed*.
       // A `once` is spent by the replay, so ignoring it would leave this
-      // promise pending for good. A plain `nextValue()` passes no cursor and
-      // therefore still settles on the replay, exactly as before.
+      // promise pending for good.
       // `hasSettled`, not `settledInline`: the listener sets it on *every*
       // resolution, including one that arrives minutes later. It answers the
       // inline question only because it is read exactly once, on the line
       // after `on()` returns — at that point "has settled" can only mean
       // "settled during the subscribe call".
-      let hasSettled = false;
       const releaseValue = on(this, VALUE, (val) => {
-        if (cursor != null && cursor.generation === this.#emittedGeneration) {
-          return;
+        if (this.#consumeGeneration(cursor)) {
+          read.settleWithValue(val);
         }
-        if (cursor != null) {
-          cursor.generation = this.#emittedGeneration;
-        }
-        hasSettled = true;
-        unsubscribe();
-        resolve(val);
       });
-      if (hasSettled) {
+      if (read.hasSettled) {
         // Settled by the replay, i.e. from inside the `on()` call above:
         // `unsubscribe()` ran before this handle existed, so it walked past
         // it. Release it here instead — the one thing `once` used to do for
         // us, since a spent obligation removes itself.
         releaseValue();
       } else {
-        subscriptions.push(releaseValue);
+        read.add(releaseValue);
       }
     });
+  }
+
+  /**
+   * "This delivery is new for this cursor — take it." The predicate a VALUE
+   * delivery has to pass before it may settle a read, and the one place the
+   * cursor is advanced.
+   *
+   * A cursor that takes a delivery moves to its generation in the same step,
+   * so a later replay of that same generation is refused (ASYNC-005). A
+   * plain `nextValue()` passes no cursor and therefore still settles on the
+   * replay, exactly as before.
+   *
+   * Stays a method of the link rather than moving into {@link
+   * NextValueRead}: it reads `#emittedGeneration`, a `#private` field no
+   * other object can reach without having it handed over as a parameter.
+   */
+  #consumeGeneration(cursor: {generation: number} | null): boolean {
+    if (cursor == null) return true;
+    if (cursor.generation === this.#emittedGeneration) return false;
+    cursor.generation = this.#emittedGeneration;
+    return true;
   }
 
   /**
