@@ -392,10 +392,28 @@ describe('effect-error-handlers', () => {
       expect(reported.length).toBeGreaterThan(0);
       reported.length = 0;
 
-      SignalGroup.delete(host);
-      attached.destroy();
-      detached.destroy();
+      // Four teardown steps, checked after each one instead of once at the
+      // end: `group.clear()` already destroys `attached` (and signal `a`,
+      // attached to the group) on its own, so the three calls after it are
+      // each a no-op on an already-torn-down target — `SignalGroup.delete()`
+      // on a group already cleared, `attached.destroy()` on an effect
+      // already destroyed. Checking after every step, not just the last,
+      // is what would have caught the handler count drifting on the
+      // `group.clear()` path specifically, which this test did not exercise
+      // before.
+      group.clear();
+      assertHandlerCountMatchesQueue();
+      expect(getEffectErrorHandlerCount()).toBe(1);
 
+      SignalGroup.delete(host);
+      assertHandlerCountMatchesQueue();
+      expect(getEffectErrorHandlerCount()).toBe(1);
+
+      attached.destroy();
+      assertHandlerCountMatchesQueue();
+      expect(getEffectErrorHandlerCount()).toBe(1);
+
+      detached.destroy();
       assertHandlerCountMatchesQueue();
       expect(getEffectErrorHandlerCount()).toBe(1);
     } finally {

@@ -88,10 +88,17 @@ class NextValueRead<ValueType> {
   }
 
   /**
-   * W1: every settle path runs this, which is exactly when the cancel
-   * handle below stops being valid — a read that is over cannot be
-   * cancelled, and leaving a stale handle around would let a later
-   * `return()` unsubscribe a *different* call's listeners.
+   * W1: every settle path runs this. It releases the handles this read
+   * collected and clears the cancel hook that `#nextValue()` installed on
+   * the shared `PendingRead` — a read that is over cannot be cancelled.
+   *
+   * Clearing the hook is precaution, not load bearing, and the difference is
+   * measured. Package 6 removed the clearing and found nothing observable
+   * across seven scenarios: a hook left behind reaches only this read's own
+   * handles, which are spent by then (eventize unsubscribes are idempotent —
+   * measured again in package 8), and it would reject a promise that has
+   * already settled. It stays because the next thing added to a settle path
+   * need not be inert.
    */
   releaseAll(): void {
     if (this.#pendingRead != null) {
@@ -373,15 +380,15 @@ export abstract class SignalLink<ValueType = unknown> {
       }
 
       // K1: DESTROY and the abort listener are subscribed *before* VALUE,
-      // and each is pushed onto `subscriptions` immediately, not batched
+      // and each is handed to `read.add()` immediately, not batched
       // into one `push()` call after all three exist. Reason: eventize
       // replays a *retained* event synchronously, inside the subscribe call
       // itself (`on()` for VALUE below, `once()` for the rest), before that
       // call returns — and `asyncValues()` retains
       // VALUE (ASYNC-005). If VALUE were subscribed first, its own replay
-      // could run before `subscriptions` holds anything else at all —
+      // could run before the read's handle list holds anything else at all —
       // including the not-yet-registered DESTROY/abort handles — so the
-      // `unsubscribe()` it calls would walk an empty array and release
+      // `releaseAll()` it calls would walk an empty array and release
       // nothing, leaking the other two for however long `this` and the
       // caller's `AbortSignal` live. DESTROY is never retained, and
       // `addEventListener('abort', ...)` cannot fire synchronously on
@@ -394,7 +401,7 @@ export abstract class SignalLink<ValueType = unknown> {
       if (signal != null) {
         const onAbort = () => read.settleWithAbort(signal.reason);
         signal.addEventListener('abort', onAbort, {once: true});
-        // Also part of `unsubscribe()`: whichever of VALUE/DESTROY/abort
+        // Also part of `releaseAll()`: whichever of VALUE/DESTROY/abort
         // settles the promise first must detach the *other* listeners too,
         // this one included — otherwise a `nextValue()` that resolves
         // normally leaves its abort listener on the caller's `AbortSignal`
@@ -422,7 +429,7 @@ export abstract class SignalLink<ValueType = unknown> {
       });
       if (read.hasSettled) {
         // Settled by the replay, i.e. from inside the `on()` call above:
-        // `unsubscribe()` ran before this handle existed, so it walked past
+        // `releaseAll()` ran before this handle existed, so it walked past
         // it. Release it here instead — the one thing `once` used to do for
         // us, since a spent obligation removes itself.
         releaseValue();

@@ -97,7 +97,7 @@ export interface CreateMemoOptions {
  * place.
  *
  * @param callback - Function that computes the derived value
- * @param options - Configuration options (attach, name, lazy, priority)
+ * @param options - See {@link CreateMemoOptions}; every field is documented there
  * @returns A SignalReader function to get the computed value
  */
 export function createMemo<Type>(

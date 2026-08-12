@@ -16,6 +16,13 @@ const getObjStore = (obj: object): ObjectStore => {
   return store;
 };
 
+/**
+ * The signal registered on `obj` under `name`, or `undefined`.
+ *
+ * `undefined` covers both misses and does not tell them apart: an object
+ * that never had a signal store, and a name that is not in the one it has.
+ * Signals get registered by the `@signal` decorator.
+ */
 export const findObjectSignalByName = <O extends object, K extends keyof O>(
   obj: O,
   name: K,
@@ -37,6 +44,15 @@ export const findObjectSignal = (
   name: string | symbol,
 ): Signal<unknown> | undefined => g_objectStores.get(obj)?.signals?.get(name);
 
+/**
+ * Every signal registered on `obj`, or `undefined` when there are none.
+ *
+ * `undefined`, never an empty array — the only path that empties the store
+ * (`destroyObjectSignals`) drops it as well, so an empty one is not
+ * reachable from here. The map is heterogeneous, so the elements come out
+ * as `Signal<unknown>`; use `findObjectSignalByName` when the value type
+ * matters.
+ */
 export const findObjectSignals = <O extends object>(
   obj: O,
 ): Signal<unknown>[] | undefined => {
@@ -47,6 +63,12 @@ export const findObjectSignals = <O extends object>(
   return undefined;
 };
 
+/**
+ * The names every signal on `obj` is registered under, or `undefined` when
+ * there are none — same `undefined`-instead-of-empty rule as
+ * {@link findObjectSignals}. Insertion order, which is the order the
+ * decorated fields were first written.
+ */
 export const findObjectSignalNames = <O extends object>(
   obj: O,
 ): (string | symbol)[] | undefined => {
@@ -67,6 +89,15 @@ export const storeAsObjectSignal = (
   store.signals.set(name, signal);
 };
 
+/**
+ * Destroy every signal registered on each of `objects` and drop their
+ * stores.
+ *
+ * An object without a store is skipped silently, so a second call is a
+ * no-op and an unknown object is not an error. This reaches the signals
+ * only — the object's `SignalGroup`, and any effect or link in it, stays.
+ * `SignalGroup.delete(obj)` is the one that takes everything.
+ */
 export function destroyObjectSignals(...objects: object[]): void {
   for (const obj of objects) {
     if (g_objectStores.has(obj)) {

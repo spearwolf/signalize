@@ -33,9 +33,15 @@ import type {EffectErrorCallback, FailingEffect} from './types.js';
  * `onDestroyEffect()` handler, a throwing cleanup) is reported next to the
  * original error as an `AggregateError`, never in its place.
  *
+ * The second position takes either shape: the options object
+ * (`createEffect(cb, {…})`) or the dependency array (`createEffect(cb,
+ * [a, b])`), which is shorthand for `{dependencies: [a, b]}` and leaves the
+ * options to a third position. The overloads on `EffectImpl.createEffect`
+ * spell out the combinations; the one condition they add beyond shape is
+ * that a `string`/`symbol` dependency requires `attach`, because such a
+ * dependency is a name looked up in a group.
+ *
  * @param callback - The function to run reactively
- * @param dependencies - Optional array of signals to explicitly depend on
- * @param options - Configuration options (autorun, priority, attach)
  * @returns An Effect object with run() and destroy() methods
  */
 // Delegate instead of aliasing: an alias would read EffectImpl at module-eval

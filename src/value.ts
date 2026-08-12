@@ -4,8 +4,17 @@ import type {SignalLike, SignalReader} from './types.js';
 
 /**
  * Read a signal's value without creating a dependency (non-tracking read).
- * Unlike signal.get(), this does not subscribe the current effect to the signal.
- * Equivalent to wrapping the read in beQuiet(), but more convenient.
+ *
+ * This is **not** `beQuiet(() => sig.get())`. That one still goes through
+ * the reader and fires `beforeRead`; this one reads `SignalImpl.value`
+ * directly and skips the hook — the same read `sig.value` performs, with
+ * the `[obj, key]` form on top. `beQuiet()` suppresses the *subscription*,
+ * not the hook.
+ *
+ * Where the difference is observable: a `{lazy: true}` memo recomputes *in*
+ * its `beforeRead`, so `value()` never triggers that recompute. It hands
+ * back whatever the last read through the reader stored, or `undefined` if
+ * there never was one. An eager memo is unaffected — its effect autoruns.
  *
  * @param source - A signal or [object, propertyName] tuple
  * @throws TypeError if source is neither a signal nor an [object, propertyName] tuple

@@ -227,6 +227,10 @@
 - Corrected the pnpm version (`11.20.0`), the `@spearwolf/eventize` peer dependency range (`^6.0.0`), and the published-tarball file count in `AGENTS.md` (48 files) — all had drifted from `package.json`/the built tree. The tarball's kB figures are dropped rather than corrected: `docs/`, `skills/`, `README.md` and `CHANGELOG.md` all ship in it and all move under ordinary documentation edits — measured, a throwaway 10-line diff shifted the size by ~0.1-0.2 kB, so a byte count recorded in a file that itself ships would already be stale by the next doc package
 - The two link-cost measurements in `src/link.ts` that disagreed eightfold are one dated measurement in one place; the second site points at it. They were the same benchmark run warm and cold, which is now stated (READ-010)
 - No comment in `src/` justifies a code decision with a coverage percentage or a threshold tier any more — the factual half of each argument stays, the number goes. `signal-core.ts` additionally records that PERF-008 was measured and rejected rather than pending, since that measurement exists nowhere else in the published package (READ-012)
+- `value()`'s JSDoc no longer claims it is `beQuiet(() => sig.get())` — it reads `SignalImpl.value` directly and skips `beforeRead`, which is observable on a `{lazy: true}` memo (BUG-013)
+- The four object-signal lookups (`findObjectSignalByName`, `findObjectSignals`, `findObjectSignalNames`, `destroyObjectSignals`) ship with JSDoc, each naming its `undefined` case (CONS-014)
+- `createEffect()`'s JSDoc names both shapes of its second argument instead of describing a `dependencies` parameter that no overload has; `createMemo()` points at `CreateMemoOptions` instead of an option list that had gone stale (READ-008)
+- `[RECALL]()`'s JSDoc says what it does — set `shouldRun` — instead of describing a necessity check that lives in `run()` (READ-004)
 
 ### Chores
 

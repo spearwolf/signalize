@@ -98,6 +98,18 @@ export class SignalAutoMap {
   }
 
   #create<T>(key: SignalAutoMapKeyType, initialValue?: unknown): Signal<T> {
+    // Invariant: never reached with a key that is already in `#signals`.
+    // Both callers guarantee it — `get()` checks `has(key)` first, and
+    // `fromProps()` deduplicates its key list and runs on a fresh map. No
+    // guard here on purpose: the branch would be unreachable, and an
+    // unreachable branch breaks the 100 % gate this file stands under in
+    // `vitest.config.ts` (package 1, CONS-005/MEM-012).
+    //
+    // What it buys: the two `set()` calls below would otherwise overwrite an
+    // entry. The displaced signal is never destroyed and its unsubscribe
+    // handle stays in `[$autoMapResources].unsubs` until the finalizer runs,
+    // while `clear()` and `#drop()` — both keyed on `#signals` — can no
+    // longer reach either.
     const signal = createSignal<T>(initialValue as T);
     this.#signals.set(key, signal);
     // MEM-007: `on`, not `once` — the same queue carries the soft-detach

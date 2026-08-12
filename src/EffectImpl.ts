@@ -769,14 +769,18 @@ export class EffectImpl {
   }
 
   /**
-   * Eventually run the _effect callback_
+   * Mark the effect dirty, and hand it to `run()` if anything is waiting.
    *
-   * If the _autorun_ flag is activated, then the effect is executed immediately in any case.
-   * Otherwise the effect is only executed if it is necessary.
+   * This sets `shouldRun = true`, and that is the whole of what happens for
+   * most effects. `run()` follows for an `autorun` effect, and for a
+   * non-autorun one whose explicitly requested run is parked in an open
+   * batch (`#explicitRunRequested`, ASYNC-002). Every other non-autorun
+   * effect leaves here with the flag set and nothing run — the next
+   * explicit `run()` picks it up.
    *
-   * The necessity is given if
-   * - the effect has been initialized but has not yet run
-   * - a signal used in the effect has changed
+   * The necessity test is `run()`'s, not this method's: `#run()` returns
+   * early while `shouldRun` is false, and the run that honours the flag is
+   * the one that clears it.
    *
    * A callback that throws no longer ends the delivery it was part of: the
    * failure is collected and re-raised once every other subscriber of that
