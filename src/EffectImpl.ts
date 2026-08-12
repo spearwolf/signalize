@@ -275,7 +275,7 @@ export class EffectImpl {
    * Destroyed and rebuilt from scratch on every rerun — there is no slot
    * recycling; see {@link collectDestroyChildEffects}.
    */
-  private readonly childEffects: EffectImpl[] = [];
+  readonly #childEffects: EffectImpl[] = [];
 
   autorun = true;
   shouldRun = true;
@@ -558,7 +558,7 @@ export class EffectImpl {
   }
 
   private attachChildEffect(effect: EffectImpl): void {
-    this.childEffects.push(effect);
+    this.#childEffects.push(effect);
   }
 
   /**
@@ -570,9 +570,9 @@ export class EffectImpl {
    *
    * The optional return value of the _effect callback_ is stored as the next _cleanup callback_.
    */
-  run = (): void => {
+  run(): void {
     this.#run(false);
-  };
+  }
 
   /**
    * Run the effect callback now, even while a batch is open.
@@ -583,9 +583,9 @@ export class EffectImpl {
    *
    * @internal
    */
-  runImmediately = (): void => {
+  runImmediately(): void {
     this.#run(true);
-  };
+  }
 
   #run(immediate: boolean): void {
     if (this.#destroyed) return;
@@ -937,7 +937,7 @@ export class EffectImpl {
    * `AggregateError`.
    *
    * The early return is exactly equivalent to running the body on an empty
-   * list: the loop below iterates zero times, `childEffects.length = 0` on
+   * list: the loop below iterates zero times, `#childEffects.length = 0` on
    * an empty array is a no-op, and `throwCollectedErrors()` returns
    * immediately for an empty list. It is here because `#run()` calls this
    * method on *every* rerun while the overwhelming majority of effects never
@@ -945,7 +945,7 @@ export class EffectImpl {
    * a call for nothing (PERF-001).
    */
   private destroyChildEffects(): void {
-    if (this.childEffects.length === 0) return;
+    if (this.#childEffects.length === 0) return;
 
     const errors: unknown[] = [];
     this.collectDestroyChildEffects(errors);
@@ -958,10 +958,10 @@ export class EffectImpl {
    * with an error from its own cleanup into a single report.
    */
   private collectDestroyChildEffects(errors: unknown[]): void {
-    for (const effect of this.childEffects) {
+    for (const effect of this.#childEffects) {
       collect(errors, () => effect.destroy());
     }
-    this.childEffects.length = 0;
+    this.#childEffects.length = 0;
   }
 
   private unsubscribeSignal(signalId: symbol): void {
@@ -1145,7 +1145,7 @@ export class EffectImpl {
    * teardown order (own steps first, then the children). A lone error is
    * rethrown unchanged.
    */
-  destroy = (): void => {
+  destroy(): void {
     if (this.#destroyed) return;
 
     // Flag first, unsubscribe second — from here on nothing can call the
@@ -1186,5 +1186,5 @@ export class EffectImpl {
     }
 
     throwCollectedErrors(errors, 'destroying an effect');
-  };
+  }
 }

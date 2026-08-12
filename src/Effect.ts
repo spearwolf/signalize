@@ -69,9 +69,13 @@ export class Effect {
    *
    * @internal Used by `createMemo()` to bind a memo signal to the lifetime of
    * the effect that created it. Not part of the public API surface: unlike
-   * `run`, `runImmediately` and `destroy` on this class — all three bound
-   * properties — it is a prototype method, and that inconsistency should be
-   * settled before it becomes a promise.
+   * `run`, `runImmediately` and `destroy` on this class, it is a prototype
+   * method rather than a bound property. That is not an inconsistency to
+   * settle — the other three are deliberately bound, because callers detach
+   * them: `Signal#onChange()` returns `destroy` as a standalone unsubscribe
+   * function, and `createMemo()` passes `runImmediately` and `destroy` on to
+   * event queues the same way. Nobody detaches `onDestroy()`, so a plain
+   * prototype method costs it nothing (PERF-009, audit 2026-08-12).
    */
   onDestroy(callback: VoidFunc): () => void {
     const effect = this[$effect];
