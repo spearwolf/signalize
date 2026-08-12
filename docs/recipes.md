@@ -83,12 +83,13 @@ Quirks:
   one. `createSignal(5, {lazy: true})` used to compile and leave the first
   read to die with `TypeError: this.valueFn is not a function`; now it does
   not compile. `createSignal(existingSignal, {lazy: true})` goes the same way,
-  which is worth knowing because the passthrough discards its params anyway.
-  So does `createSignal(undefined, {lazy: true})` — `undefined` is the one
-  value that reaches the no-initial-value overload, so that overload carries
-  the same conditions; under `strictNullChecks: false` this particular form
-  instead lands on the factory overload, where `undefined` passes for a
-  factory.
+  and the passthrough drops the rest of its params too — since API-012 not in
+  silence: every such call reports the dropped options through
+  `onSignalizeError()`. So does `createSignal(undefined, {lazy: true})` —
+  `undefined` is the one value that reaches the no-initial-value overload, so
+  that overload carries the same conditions; under `strictNullChecks: false`
+  this particular form instead lands on the factory overload, where
+  `undefined` passes for a factory.
 - **Both constructors name their options exactly.** An undeclared key is
   forbidden in the signature, not merely caught by freshness, so a variable is
   caught as readily as a literal: `createSignal(5, myOpts)` and `set(5,
@@ -150,6 +151,24 @@ Quirks:
 Passing an existing signal-like to `createSignal` returns that same signal. No
 new signal is created, no counter increment. Useful in helper functions that
 accept "value or signal".
+
+Nothing in `params` configures the signal that comes back, because no new
+signal is made for it to configure — `attach` is the one exception, since it
+is applied behind the `isSignal()` branch and belongs to both paths equally.
+`lazy`, `compare` and `beforeRead` are simply dropped. Every call that passes
+one of those three reports it through `onSignalizeError()` with `source:
+'ignored-option'` and `level: 'warn'` — on every such call, not once per
+process, because it flags a misspelled call rather than a lifecycle event
+(API-012).
+
+The same passthrough is also reachable through the reader:
+`createSignal(existing.get, {lazy: true})` type-checks against the *factory*
+overload, because a `SignalReader<T>` is both a `SignalLike<T>` and a
+`() => T` — but at runtime `isSignal()` recognises that same reader and routes
+the call into the passthrough instead of building a new lazy signal from it.
+It is easy to write that line and read it as constructing a fresh lazy signal;
+it does not. The dropped options are reported the same way as the direct
+form.
 
 ## Effects: dynamic vs static deps
 

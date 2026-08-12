@@ -15,9 +15,9 @@ Create a signal. With an initial value the result is `Signal<T>`; called
 without one it is `Signal<T | undefined>` — see the note below the table.
 
 **`initial`** — initial value, a `() => T` factory (when `lazy: true`), or an
-existing signal-like (then this very signal is returned, no new one created).
-Omitted, or passed an explicit `undefined`, the signal holds `undefined` until
-the first write.
+existing signal-like (then this very signal is returned, no new one created —
+see the passthrough box below the table). Omitted, or passed an explicit
+`undefined`, the signal holds `undefined` until the first write.
 
 **`params`** *(`SignalParams<T>`)*:
 
@@ -27,6 +27,19 @@ the first write.
 | `compare`     | `(a, b) => boolean`           | Custom equality. `===` by default.                                  |
 | `beforeRead`  | `() => void`                  | Hook called before each tracked read (not on `.value`).             |
 | `attach`      | `object \| SignalGroup`       | Attaches the signal to a group; group lifecycle owns it.            |
+
+> ⚠️ **A passthrough configures nothing.** `createSignal(existingSignal,
+> params)` gives back the signal that was passed in, so `attach` is the only
+> option with anything to do — it is applied on both branches. Everything
+> else is dropped, and every such call says so through `onSignalizeError()`
+> (`source: 'ignored-option'`, `level: 'warn'`, so `console.warn` while nobody
+> listens). The rule is the branch rather than the current three names: an
+> option that configures a *new* signal has nothing to configure when none is
+> created. `{lazy: true}` is a compile error on that form anyway — except
+> through the reader: `createSignal(sig.get, {lazy: true})` compiles, because
+> a `SignalReader<T>` is the `() => T` the factory overload asks for, and
+> still lands on the passthrough, because `isSignal()` recognises the same
+> object. That one is reported like the rest.
 
 > ⚠️ **No initial value means `Signal<T | undefined>`.** `createSignal<number>()`
 > holds `undefined` until something writes to it, and the type now says so:
@@ -433,7 +446,7 @@ used to go straight to the console, where no application could route it.
 | `link-count`         | 1000 links on one source signal — once per source.               |
 | `deprecation`        | A deprecated call: `SignalGroup.destroy()`, `SignalGroup#destroy`, `signalReader(callback)`. |
 | `multiple-instances` | More than one copy of the library in one process; once, when the second one loads. |
-| `ignored-option`     | An option that does nothing in the combination it was passed in: `createMemo({name})` with a non-empty name and without `attach`. Every call. |
+| `ignored-option`     | An option with no effect in the combination it was passed in — on every such call, never once per process, because it marks a misspelled call rather than a lifecycle event. Which combinations qualify is a property of the call and grows with the API; today `createMemo({name})` without `attach`, and `createSignal(existingSignal, …)` for every option but `attach`. |
 
 `multiple-instances` is the one source a handler will usually **not** see.
 With two static imports both copies register while their modules are being

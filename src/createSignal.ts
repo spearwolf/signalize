@@ -25,6 +25,36 @@ import {UniqIdGen} from './UniqIdGen.js';
 
 const idCreator = new UniqIdGen('si');
 
+// The three `SignalParams` keys the passthrough drops on the floor. `attach`
+// is missing on purpose: it is applied behind the branch and works on both
+// paths. The list is written out instead of derived from `Object.keys(params)`,
+// and that is load bearing — `decorators.ts` hands its own options object
+// straight to `createSignal()`, and the `name`/`readAsValue` in there are the
+// decorator's own business, not dropped signal options. A derived list would
+// report them and be wrong on the one call site this library makes itself.
+//
+// Kept honest by the trip wire below: a `SignalParams` key that is neither
+// `attach` nor on this list fails `tsc` at `_checkPassthroughListCoversSignalParams`,
+// not silently on the passthrough. Type-only — `declare const` erases on
+// emit, so it costs nothing at runtime and nothing in the `.d.ts` (measured
+// against `lib/createSignal.js` and `lib/createSignal.d.ts`, both after
+// `pnpm compile`), and it needs no `export` to be checked: `tsc` evaluates a
+// generic the moment it is referenced, whether or not the declaration using
+// it is itself read afterwards.
+const PASSTHROUGH_IGNORED_OPTIONS = ['lazy', 'compare', 'beforeRead'] as const;
+
+type _AssertTrue<T extends true> = T;
+type _PassthroughListCoversSignalParams =
+  Exclude<
+    keyof SignalParams<unknown>,
+    (typeof PASSTHROUGH_IGNORED_OPTIONS)[number] | 'attach'
+  > extends never
+    ? true
+    : [
+        'PASSTHROUGH_IGNORED_OPTIONS is missing a SignalParams key — add it there if it is dropped on the passthrough, or to the Exclude<…> above if it is not (like attach)',
+      ];
+declare const _checkPassthroughListCoversSignalParams: _AssertTrue<_PassthroughListCoversSignalParams>;
+
 let signalReaderCallbackDeprecationWarned = false;
 
 // Module-private, so no `.d.ts` carries it and a deprecation tag here would
@@ -182,6 +212,14 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
  * `SignalParams<T> & {lazy: true}`. Spreading (`{...params}`) does *not*
  * help: the spread keeps `lazy?: boolean`.
  *
+ * A `SignalReader<T>` — `sig.get` off an existing signal — is also a
+ * `() => T`, so `createSignal(sig.get, {lazy: true})` type-checks against
+ * this very overload (API-012). At runtime `isSignal()` recognises that same
+ * reader and routes the call into the passthrough below instead of building
+ * a new lazy signal from it: `sig.get` is not called as a factory, the
+ * returned signal is `sig` itself, and the dropped options are reported the
+ * same way the value overload's passthrough reports them.
+ *
  * @param initialValue - Factory evaluated on the first read
  * @param params - Configuration, with a statically `true` `lazy`
  * @returns A Signal object with get/set methods
@@ -247,7 +285,20 @@ export function createSignal<
 /**
  * Create a new reactive signal with an initial value.
  *
- * If passed an existing signal, returns that signal without creating a new one.
+ * If passed an existing signal, that signal is returned and no new one is
+ * created — which is also why nothing in `params` configures it. `attach` is
+ * the single exception, because it is applied behind the branch and belongs
+ * to both paths; `lazy`, `compare` and `beforeRead` are dropped, and every
+ * such call reports the ones it was given through `onSignalizeError()` with
+ * `source: 'ignored-option'` (API-012). The line worth keeping is the
+ * branch, not the three names: an option that configures a *new* signal has
+ * nothing to configure when no new signal is made, and that stays true as
+ * the options change. The same call also reaches here through the factory
+ * overload above: `createSignal(sig.get, {lazy: true})` compiles there,
+ * because a `SignalReader<T>` is both a `SignalLike<T>` and the `() => T`
+ * that overload asks for, and `isSignal()` still recognises the same object
+ * at runtime and routes it into this same passthrough — reported the same
+ * way.
  *
  * A function reaching this overload is stored **as the value** — which is
  * only possible when `Type` is itself a function type, either because it was
@@ -333,6 +384,7 @@ export function createSignal<
  * remains an error).
  *
  * @param initialValue - Initial value, or an existing signal to pass through
+ *   (every option but `attach` is then dropped and reported)
  * @param params - Optional configuration (compare, beforeRead, attach), with
  *   no `lazy: true` and no key beyond `SignalParams<Type>`
  * @returns A Signal object with get/set methods
@@ -361,6 +413,23 @@ export function createSignal<Type = unknown>(
   if (isSignal(initialValue)) {
     // NOTE createSignal(otherSignal) returns otherSignal and does NOT create a new signal
     signal = signalImpl(initialValue as SignalLike<Type>);
+
+    // API-012: the signal that comes back is the one that went in, so nothing
+    // in `params` has anything to configure — `attach` below is the exception
+    // and applies to both branches. Reported on every such call, not once per
+    // process: this marks a misspelled call, not a lifecycle event, and the
+    // module-level flag the deprecation notice above uses would also outlive
+    // the test that installed it.
+    const ignoredOptions = PASSTHROUGH_IGNORED_OPTIONS.filter(
+      (key) => params?.[key] != null,
+    );
+    if (ignoredOptions.length > 0) {
+      reportSignalizeError({
+        level: 'warn',
+        source: 'ignored-option',
+        message: `createSignal(existingSignal, {${ignoredOptions.join(', ')}}) is a passthrough: it returns the signal that was passed in, so nothing in those braces is applied. Only {attach} works on this path. Configure the signal where it is created, or drop the options.`,
+      });
+    }
   } else {
     // === Create a new signal ===
     const lazy = params?.lazy ?? false;

@@ -15,6 +15,9 @@ const c = createSignal(0, {
   attach:     obj,                  // SignalGroup lifecycle
 });                                 // no key beyond these four — name the type if it has one
 
+createSignal(otherSignal, {compare});   // passthrough: everything but attach is dropped
+                                        // and reported ('ignored-option'), every call
+
 const d = createSignal<number>();   // Signal<number | undefined> — undefined until first write
 createSignal(0, {lazy: true});      // does not compile: the flag is the factory's alone
 createSignal(undefined, {lazy: true});  // …nor via the no-value overload (strictNullChecks only)

@@ -55,7 +55,7 @@ are still child effects and die with the parent.
 
 A group *with a host object* also gets a `FinalizationRegistry` backstop: once that object becomes unreachable without an explicit teardown, the group's `clear()` runs and the attached signals, effects and links are reclaimed. It is a genuine safety net, but GC timing is unobservable and it may never fire within a process — so it prevents the worst-case leak rather than defining when cleanup happens. Design for explicit disposal; treat the registry as insurance.
 
-**6 — `createSignal(existingSignal)` is a passthrough.** It returns that same signal — no clone, no new instance. Handy for "value or signal" helpers; wrong if a copy was intended.
+**6 — `createSignal(existingSignal)` is a passthrough.** It returns that same signal — no clone, no new instance. Handy for "value or signal" helpers; wrong if a copy was intended. Except for `{attach}`, everything in `params` is dropped and reported on every such call through `onSignalizeError()` (`source: 'ignored-option'`) — nothing configures a signal that was never created.
 
 ## Verifying reactive code
 
