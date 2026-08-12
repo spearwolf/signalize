@@ -2,7 +2,6 @@ import {
   type EventizedObject,
   emit,
   eventize,
-  getSubscribedEventNames,
   off,
   on,
   once,
@@ -23,6 +22,7 @@ import {
   RECALL,
 } from './constants.js';
 import {Effect} from './Effect.js';
+import {hasEffectErrorHandler} from './effect-error-handlers.js';
 import {
   globalDestroySignalQueue,
   globalEffectCalledQueue,
@@ -110,34 +110,57 @@ const isThenable = (value: unknown): value is Promise<unknown> =>
  * them out structured. A handler that throws is treated the same way:
  * reported, never re-raised.
  *
- * Note the cost of the handler probe: `getSubscribedEventNames()` builds an
- * array holding one entry per subscribed event name — and every live effect
- * subscribes to the queue by its own id — which is then scanned linearly.
- * A storm of failures across many effects is therefore quadratic. Acceptable
- * because this is the error path and errors are meant to be rare (PERF-005).
+ * The handler probe used to be `getSubscribedEventNames(globalEffectQueue)
+ * .includes($effectError)` — an array built with one entry per subscribed
+ * event name, scanned linearly, on every reported error. Measured at 8000
+ * live effects: 15,96 µs per call, and quadratic in the number of live
+ * effects (0,089 µs at 0, 22,9 µs at 16 000) — every one of them subscribes
+ * to the queue under its own id, so the array the probe builds grows with
+ * them. `hasEffectErrorHandler()` replaces it with a module-local counter
+ * (`effect-error-handlers.ts`), 0,013 µs regardless of live effect count —
+ * roughly 1200× cheaper at 8000 effects, and a measured 77,5 % less time
+ * end-to-end for a write-then-report cycle at the same count (PERF-005).
  *
- * If that ever stops being true, the shape matters. Caching the probe's
- * *input* — the queue's set of subscribed event names — is the expensive
- * one: six things write to that set (verified against the live queue), so
- * all six would have to invalidate. The four named channels
- * `onEffectError()`, `onCreateEffect()`, `onDestroyEffect()` and
- * `onSignalizeError()`; every `EffectImpl`, which subscribes under its own
- * id in the constructor and drops out in `destroy()`; and `batch.ts`'s
- * catch-all listener, which registers as `*`. PERF-005 recommends the cheap
- * shape instead — a handler counter kept by `onEffectError()` and its own
- * unsubscribe, which nothing else on the queue can invalidate.
+ * The counter lives in its own leaf module and not here or in `effects.ts`,
+ * because `effects.ts` already imports this module — a counter written
+ * there and read here closes a value-import ring and `pnpm bundle` fails
+ * with `Circular dependency: lib/effects.js -> lib/EffectImpl.js ->
+ * lib/effects.js` (measured on that shape; `tsc --noEmit` says nothing).
  *
- * Either way it is two sites, not one: `reportSignalizeError()` runs the
- * same probe against the same queue for `$signalizeError` and measures the
- * same quadratic (numbers in `onSignalizeError()`'s JSDoc), and stays
- * uncached there on purpose.
+ * It cannot drift silently for a function callback registered through
+ * `onEffectError()`: that is the only place that ever subscribes
+ * `$effectError` on `globalEffectQueue`, and the only way such a
+ * subscription goes away is the unsubscribe `trackEffectErrorHandler()`
+ * wraps. Where the counter could still be wrong despite that, it is wrong
+ * on the safe side: an undercount routes a report to the fallback channel —
+ * `onSignalizeError()`, then `console.error` — loud but visible; an
+ * overcount would run `emit()` against zero listeners and swallow the
+ * error. `trackEffectErrorHandler()`'s `released` guard exists for exactly
+ * this asymmetry — see its own comment. A known way around that guarantee,
+ * reachable only by bypassing `EffectErrorCallback`'s function type, is
+ * documented in `effect-error-handlers.ts`.
+ *
+ * Caching the probe's *input* instead of replacing it — the queue's set of
+ * subscribed event names — was considered and rejected: six things write to
+ * that set (verified against the live queue), so all six would have to
+ * invalidate a cache, for a saving the counter gets without one. The six:
+ * the three named channels `onEffectError()`, `onCreateEffect()` and
+ * `onDestroyEffect()`; every `EffectImpl`, which subscribes under its own id
+ * in the constructor and drops out in `destroy()`; `onSignalizeError()`; and
+ * `batch.ts`'s catch-all listener, which registers as `*`.
+ *
+ * `reportSignalizeError()` in `signalize-error.ts` ran the same probe
+ * against the same queue for `$signalizeError`, on the fallback path this
+ * function falls to when nobody listens here — a report with no
+ * `onEffectError` handler used to scan twice. It got a counter of its own
+ * too, module-local rather than sharing this module's — see its own JSDoc.
  */
 const emitEffectError = (
   effect: EffectImpl,
   error: unknown,
   phase: EffectErrorPhase,
 ): void => {
-  if (getSubscribedEventNames(globalEffectQueue).includes($effectError)) {
+  if (hasEffectErrorHandler()) {
     const payload: EffectErrorPayload = {
       error,
       effect,

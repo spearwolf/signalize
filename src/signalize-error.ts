@@ -8,11 +8,39 @@
 // `rollup.config.mjs`'s CIRCULAR_DEPENDENCY branch fails the bundle, so the
 // mistake is caught, but only at `pnpm bundle`, not at `tsc`.
 
-import {emit, getSubscribedEventNames, on} from '@spearwolf/eventize';
+import {emit, on} from '@spearwolf/eventize';
 import {$signalizeError} from './constants.js';
 import {globalEffectQueue} from './global-queues.js';
 import {registerSignalizeInstance} from './instances.js';
 import type {SignalizeErrorCallback, SignalizeErrorPayload} from './types.js';
+
+// Module-local counter, the same shape as `effect-error-handlers.ts` — no
+// module of its own because this file is already a leaf and nothing else
+// would ever import it. Kept honest by the same `released` guard: eventize's
+// unsubscribe is idempotent, so a second call must not decrement twice.
+//
+// Same known boundary as `effect-error-handlers.ts`, not fixed here either:
+// `SignalizeErrorCallback` is a function type, but eventize also accepts an
+// *object* listener and calls `obj[$signalizeError](...)` on it — reachable
+// only past `tsc`, e.g. `onSignalizeError(someEffectImplInstance as any)`.
+// If that object is later an `EffectImpl` that gets destroyed,
+// `EffectImpl#destroy()`'s `off(globalEffectQueue, this)` removes the
+// `$signalizeError` subscription by listener identity too, without going
+// through the unsubscribe this module wrapped — the counter does not learn
+// of it. See `effect-error-handlers.ts` for the full mechanism and the
+// measured effect (counter positive, queue empty, a report reaches nobody).
+let signalizeErrorHandlerCount = 0;
+
+const trackSignalizeErrorHandler = (unsubscribe: () => void): (() => void) => {
+  signalizeErrorHandlerCount++;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    signalizeErrorHandlerCount--;
+    unsubscribe();
+  };
+};
 
 /**
  * Subscribe to the diagnostics that have no caller to throw at.
@@ -62,13 +90,20 @@ import type {SignalizeErrorCallback, SignalizeErrorPayload} from './types.js';
  * arrives here carries the effect id and the phase inside `message` as text,
  * not as fields; whoever needs them as fields takes `onEffectError`.
  *
- * Cost of the handler probe, measured on Node 25.9 over 1000 runs per call:
- * 0.17 µs with no live effects · 0.65 µs at 100 · 3.15 µs at 1000 · 34.9 µs at
- * 10 000. `getSubscribedEventNames()` builds one array entry per subscribed
- * event name, and every live effect subscribes to the queue under its own id —
- * the same quadratic behaviour `emitEffectError()` describes. It stays
- * uncached here on purpose: these call sites are registry callbacks and
- * one-shot notices, not error storms.
+ * The handler probe used to be `getSubscribedEventNames(globalEffectQueue)
+ * .includes($signalizeError)` — one array entry per subscribed event name,
+ * scanned linearly, on every call. Measured on Node 25.9 over 1000 runs per
+ * call: 0.17 µs with no live effects · 0.65 µs at 100 · 3.15 µs at 1000 ·
+ * 34.9 µs at 10 000 — quadratic in the number of live effects, the same
+ * shape `emitEffectError()` used to have (PERF-005). It now reads a
+ * module-local handler counter instead — same idea as
+ * `effect-error-handlers.ts`, kept local here because this module is
+ * already a leaf and gains nothing from a module of its own. The counter
+ * can only be wrong on the safe side: `trackSignalizeErrorHandler()`'s
+ * `released` guard keeps a double unsubscribe (eventize's own unsubscribe is
+ * idempotent) from decrementing twice, and an undercount just falls through
+ * to the console a call early — an overcount would run `emit()` against
+ * zero listeners and swallow the diagnostic.
  *
  * @param callback - Receives one {@link SignalizeErrorPayload} per diagnostic
  * @param priority - Optional eventize priority; higher runs first
@@ -78,9 +113,11 @@ export const onSignalizeError = (
   callback: SignalizeErrorCallback,
   priority?: number,
 ): (() => void) =>
-  priority == null
-    ? on(globalEffectQueue, $signalizeError, callback)
-    : on(globalEffectQueue, $signalizeError, priority, callback);
+  trackSignalizeErrorHandler(
+    priority == null
+      ? on(globalEffectQueue, $signalizeError, callback)
+      : on(globalEffectQueue, $signalizeError, priority, callback),
+  );
 
 const logToConsole = ({level, message, error}: SignalizeErrorPayload): void => {
   const write = level === 'warn' ? console.warn : console.error;
@@ -98,7 +135,7 @@ const logToConsole = ({level, message, error}: SignalizeErrorPayload): void => {
  * @internal
  */
 export const reportSignalizeError = (payload: SignalizeErrorPayload): void => {
-  if (getSubscribedEventNames(globalEffectQueue).includes($signalizeError)) {
+  if (signalizeErrorHandlerCount > 0) {
     try {
       emit(globalEffectQueue, $signalizeError, payload);
       return;

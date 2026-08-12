@@ -2,6 +2,7 @@ import {on} from '@spearwolf/eventize';
 import {$createEffect, $destroyEffect, $effectError} from './constants.js';
 import type {Effect} from './Effect.js';
 import {EffectImpl} from './EffectImpl.js';
+import {trackEffectErrorHandler} from './effect-error-handlers.js';
 import {setCreateEffectHook} from './effect-hook.js';
 import {globalEffectQueue} from './global-queues.js';
 import type {EffectErrorCallback, FailingEffect} from './types.js';
@@ -134,9 +135,11 @@ export const onEffectError = (
   callback: EffectErrorCallback,
   priority?: number,
 ): (() => void) =>
-  priority == null
-    ? on(globalEffectQueue, $effectError, callback)
-    : on(globalEffectQueue, $effectError, priority, callback);
+  trackEffectErrorHandler(
+    priority == null
+      ? on(globalEffectQueue, $effectError, callback)
+      : on(globalEffectQueue, $effectError, priority, callback),
+  );
 
 /**
  * Raise or lower the re-entrancy cap of an effect run.

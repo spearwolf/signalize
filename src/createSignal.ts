@@ -55,6 +55,14 @@ type _PassthroughListCoversSignalParams =
       ];
 declare const _checkPassthroughListCoversSignalParams: _AssertTrue<_PassthroughListCoversSignalParams>;
 
+// PERF-006: one instance instead of a fresh arrow built on every `writer()`
+// call. `CompareFunc<any>` assigns to `CompareFunc<Type>` (measured clean
+// under `tsc --noEmit`), so no cast is needed. Not a `sideEffects: false`
+// exception — a plain allocation with no observable effect, tree-shakeable
+// like anything else, and `createSignal.ts` is already loaded by any bundle
+// that creates a signal.
+const DEFAULT_EQUALS: CompareFunc<any> = (a, b) => a === b;
+
 let signalReaderCallbackDeprecationWarned = false;
 
 // Module-private, so no `.d.ts` carries it and a deprecation tag here would
@@ -141,8 +149,7 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
     const lazy = params?.lazy ?? false;
 
     const compare = params?.compare ?? this.compare;
-    const equals: CompareFunc<Type> =
-      compare ?? ((a: Type, b: Type) => a === b);
+    const equals: CompareFunc<Type> = compare ?? DEFAULT_EQUALS;
 
     if (
       lazy !== this.lazy ||

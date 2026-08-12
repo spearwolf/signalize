@@ -203,6 +203,9 @@
 - `{batchWrites: true}` no longer costs a memo without a dependent effect anything worth measuring — `bench/memo.bench.ts`, 756,036 → 2,244,935 ops/s, within 5 % of the default (PERF-002, audit 2026-08-08)
 - An empty `SignalGroup` retains 1081 instead of 2513 bytes: nine of its eleven member containers are only allocated on first write (PERF-004, audit 2026-08-08)
 - An `EffectImpl` retains 232 fewer bytes: `run`, `runImmediately` and `destroy` are prototype methods now, not one bound-function closure per instance — no measurable change in run/destroy speed (PERF-009, audit 2026-08-12)
+- A reported effect failure no longer scans every subscribed event name of the global effect queue to find out whether an `onEffectError()` handler exists — a module-local counter replaces the scan, measured 15,96 µs → 0,013 µs at 8000 live effects, and about 78 % less time end-to-end for a write-then-report cycle at the same count (PERF-005, audit 2026-08-12)
+- The same scan against the same queue, run a second time on the fallback path when no `onEffectError()` handler is registered, is gone too — not itself an audit finding, folded into PERF-005 while the queue and its cost were already in view (PERF-005, audit 2026-08-12)
+- A signal write no longer builds a fresh default-equality closure on every call — one shared comparer is reused when no `compare` option is given, about 48 fewer bytes of garbage per write and half the minor-GC rate on a write with no consumers; no measurable change in write throughput (PERF-006, audit 2026-08-12)
 
 ### Documentation
 

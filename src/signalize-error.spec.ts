@@ -105,4 +105,64 @@ describe('onSignalizeError', () => {
     });
     expect(warnSpy).toHaveBeenCalledWith('a notice');
   });
+
+  it('the drift witness: a triple unsubscribe must not silence a still-registered sibling', () => {
+    const seen: SignalizeErrorPayload[] = [];
+    const unsubStaying = onSignalizeError((p) => seen.push(p));
+    const unsubGoing = onSignalizeError(() => {});
+
+    // eventize's own unsubscribe is idempotent — a naive counter without a
+    // `released` guard would decrement three times for one subscription and
+    // silence `unsubStaying`, which is still registered.
+    unsubGoing();
+    unsubGoing();
+    unsubGoing();
+
+    try {
+      reportSignalizeError({
+        level: 'error',
+        source: 'automap-finalizer',
+        message: 'a failure',
+        error: new Error('boom'),
+      });
+      expect(seen).toHaveLength(1);
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      unsubStaying();
+    }
+  });
+
+  it('the same callback registered twice needs two unsubscribes to go quiet', () => {
+    const seen: SignalizeErrorPayload[] = [];
+    const callback = (p: SignalizeErrorPayload) => seen.push(p);
+    const unsubFirst = onSignalizeError(callback);
+    const unsubSecond = onSignalizeError(callback);
+
+    reportSignalizeError({
+      level: 'warn',
+      source: 'deprecation',
+      message: 'first',
+    });
+    expect(seen).toHaveLength(2); // one delivery per subscription
+    seen.length = 0;
+
+    unsubFirst();
+    reportSignalizeError({
+      level: 'warn',
+      source: 'deprecation',
+      message: 'second',
+    });
+    expect(seen).toHaveLength(1);
+    expect(warnSpy).not.toHaveBeenCalled();
+    seen.length = 0;
+
+    unsubSecond();
+    reportSignalizeError({
+      level: 'warn',
+      source: 'deprecation',
+      message: 'third',
+    });
+    expect(seen).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledWith('third');
+  });
 });
