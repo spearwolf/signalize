@@ -13,6 +13,7 @@
       "*.ts",
       "rollup/**/*.mjs",
       "scripts/**/*.cjs",
+      "scripts/**/*.mjs",
       "*.mjs",
       "*.cjs",
       "*.js",

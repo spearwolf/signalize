@@ -194,7 +194,7 @@ Also avoid reading an imported binding at module-eval time across module boundar
 | `pnpm compile:types` | `tsc --project tsconfig.types.json` → `lib/*.d.ts`, with JSDoc kept and `@internal` symbols stripped |
 | `pnpm bundle` | rollup → `dist/index.js`, `dist/decorators.js` |
 | `pnpm clean` | `rimraf build types tests dist lib coverage smoke/build` |
-| `pnpm check` / `pnpm fix` | Biome lint+format check / Biome auto-fix |
+| `pnpm check` / `pnpm fix` | Biome lint+format plus the two guard scripts (`check:refs`, `check:banner`) — check only / Biome auto-fix |
 | `pnpm lint` | Biome lint only |
 | `pnpm format` / `pnpm format:write` | Biome format check / auto-fix |
 | `pnpm checkPkgTypes` | `attw --pack --profile esm-only` — package types audit. The profile ignores `node10` and `node16 (from CJS)`, which cannot pass for an ESM-only package with a subpath export (no `exports`-map support / ESM served to a CJS resolver, respectively); `node16 (from ESM)` and `bundler` are still checked in full. Blocks in CI (`pnpm world`, `ci.yml`), not just documented |

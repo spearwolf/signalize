@@ -287,6 +287,8 @@
 - CI runs the full gate as a matrix over Node 22 and Node 24, so the declared floor is exercised instead of asserted (BUILD-009)
 - New `pnpm check:refs` (`scripts/check-doc-refs.mjs`), wired into `pnpm check` and therefore into `pnpm world` and CI: fails the build if `AGENTS.md`, `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`, `docs/**/*.md` or `skills/**/*.md` contain a `datei:zeile` reference. `remediation-plan.md` and `CHANGELOG.md` are exempt — they are history, entitled to point at where a line used to be (READ-009, CONS-010)
 - Removed the dead `/* eslint-disable no-console */` from `scripts/publishPackage.cjs` — ESLint left the project in v0.28, Biome has no matching rule directive and none is needed here
+- The bundle banner's `@version` line no longer carries a build date (`+esm.YYYYMMDD` → `+esm`), and the copyright year is frozen at `2022-2026` instead of computed — two builds of the same commit, from the same `pnpm-lock.yaml` on the same Node major version, now produce byte-identical output regardless of the day they run on. The shared chunk's hashed filename changes once as a result; it is not a public import path (SEC-001)
+- New `pnpm check:banner` (`scripts/check-banner.mjs`), wired into `pnpm check` and therefore into `pnpm world` and CI, after the same pattern as `check:refs`: it renders the bundle banner twice under different ambient clock/random state and fails the build if the two renders differ (SEC-001)
 
 ## `v0.31.1` (2026-07-25)
 

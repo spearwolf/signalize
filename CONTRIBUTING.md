@@ -36,7 +36,7 @@ pnpm install
 | `pnpm test:smoke` | Runs `smoke/dist-smoke.test.ts` on plain Node (`node --test`) against the built `dist/`, type-checked against the `lib/*.d.ts` — not Vitest, not `src/`. Requires `pnpm dist` (or `pnpm smoke`, which builds first) to have run |
 | `pnpm smoke`   | `pnpm dist` + `pnpm test:smoke` — builds and then smoke-tests in one command |
 | `pnpm checkPkgTypes` | `attw --pack --profile esm-only` — checks the `exports` map and shipped `.d.ts` across the resolution modes that apply to an ESM-only package (`node16 (from ESM)`, `bundler`); `node10` and `node16 (from CJS)` are excluded by the profile because they cannot pass here by design |
-| `pnpm check`   | Run Biome (lint + format check)              |
+| `pnpm check`   | Biome lint+format check plus the two guard scripts (`check:refs`, `check:banner`) |
 | `pnpm fix`     | Run Biome with auto-fix                      |
 | `pnpm compile` | TypeScript compilation only                  |
 | `pnpm clean`   | Remove build artifacts                       |

@@ -1,15 +1,7 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-
+// The build tag carries no date on purpose. The banner has to be a pure
+// function of package.json — otherwise two builds of the same commit ship
+// different bytes and a consumer cannot verify the published artifact
+// against their own rebuild (SEC-001). `scripts/check-banner.mjs` holds it.
 export function makeVersionWithBuild(build) {
-  const today = new Date();
-  let month = today.getUTCMonth() + 1;
-  if (month < 10) {
-    month = `0${month}`;
-  }
-  let date = today.getUTCDate();
-  if (date < 10) {
-    date = `0${date}`;
-  }
-  return (version) =>
-    `${version}+${build}.${today.getUTCFullYear()}${month}${date}`;
+  return (version) => `${version}+${build}`;
 }
