@@ -368,7 +368,7 @@ describe('a creation that throws leaves nothing behind (P1, P2)', () => {
           ...NO_GROUP_MEMBERS,
           signals: 1,
           namedSignals: 1,
-          otherSignals: 1,
+          signalsByName: 1,
           effects: 1,
         });
       } finally {

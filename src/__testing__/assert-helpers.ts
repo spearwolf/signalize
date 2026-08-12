@@ -16,7 +16,7 @@ import {getSignalsCount} from '../signal-core.js';
 export function getGroupMemberCounts(group: SignalGroup): {
   signals: number;
   namedSignals: number;
-  otherSignals: number;
+  signalsByName: number;
   effects: number;
   links: number;
   groups: number;
@@ -28,7 +28,7 @@ export function getGroupMemberCounts(group: SignalGroup): {
 export const NO_GROUP_MEMBERS = {
   signals: 0,
   namedSignals: 0,
-  otherSignals: 0,
+  signalsByName: 0,
   effects: 0,
   links: 0,
   groups: 0,

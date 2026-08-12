@@ -173,7 +173,10 @@ type SignalNameType = string | symbol;
 // Cycle / re-entrancy guard for the five recursive walks.
 //
 // `attachGroup()` rejects any edge that would close a cycle, so the group
-// graph is a forest. The walks below must survive a broken invariant anyway:
+// graph is a forest for every edge that goes through it — `[$setParentGroup]`
+// is the one that does not, and `Symbol.for` keeps it reachable from the
+// built bundle, not just from these tests. The walks below must survive a
+// broken invariant anyway:
 // `clear()` runs from the FinalizationRegistry callback, where a RangeError is
 // out of reach for any application-level try/catch. The same marker also stops
 // user code from re-entering a walk it is already inside — a DESTROY listener
@@ -293,10 +296,14 @@ export class SignalGroup {
   #groups: Set<SignalGroup> = EMPTY_SET;
 
   readonly #signals = new Set<ISignalImpl>();
+  // The signal a name currently resolves to — one per name.
   #namedSignals: Map<SignalNameType, ISignalImpl> = EMPTY_MAP;
 
-  #signalKeys: WeakMap<ISignalImpl<any>, Set<SignalNameType>> = EMPTY_WEAK_MAP;
-  #otherSignals: Map<SignalNameType, Set<ISignalImpl>> = EMPTY_MAP;
+  #namesBySignal: WeakMap<ISignalImpl<any>, Set<SignalNameType>> =
+    EMPTY_WEAK_MAP;
+  // Every signal ever bound to a name, the active one included; the fallback
+  // pool `#removeSignal()` promotes from.
+  #signalsByName: Map<SignalNameType, Set<ISignalImpl>> = EMPTY_MAP;
 
   // Signals handed to the public `attachSignal()`. They stay group-owned even
   // when a name they are bound to is rebound to another signal — signals that
@@ -361,19 +368,21 @@ export class SignalGroup {
       throw new Error('Cannot create a group with a null object');
     }
     // PERF-002: check the store before constructing. The field initializers
-    // alone allocated five Sets, three Maps, a WeakMap and a WeakSet, plus
-    // the `[$groupResources]` wrapper object, so `new SignalGroup(object)`
-    // on a cache hit built and discarded all of that just to have the
-    // constructor's own `store.has()` check hand back the existing
-    // instance. Since PERF-004 the cache-miss side allocates three of them
-    // — `#signals`, `#effects` and the wrapper — the other nine fields
-    // point at the shared empty stand-ins until something writes to them.
-    // Checked here first, this path is a plain WeakMap
-    // lookup on a hit. The constructor's `store.has()` check (and the
-    // `instanceof SignalGroup` early return) stay in place as the
-    // authoritative safety net — for direct/re-entrant construction and for
-    // the race between this lookup and the constructor's own set — they just
-    // no longer carry the common case.
+    // alone allocated eleven collections — six Sets, three Maps, a WeakMap
+    // and a WeakSet — plus the `[$groupResources]` wrapper object, so
+    // `new SignalGroup(object)` on a cache hit built and discarded all of
+    // that just to have the constructor's own `store.has()` check hand back
+    // the existing instance. Since PERF-004 the cache-miss side allocates
+    // three objects — `#signals`, `#effects` and the wrapper — while the
+    // other nine collections point at the shared empty stand-ins until
+    // something writes to them; eight of the nine are fields, the ninth is
+    // the wrapper's own `unsubs`. Checked here first, this path is a plain
+    // WeakMap lookup on a hit. The constructor's `store.has()` check (and
+    // the `instanceof SignalGroup` early return) stay in place as the
+    // authoritative safety net for a direct or re-entrant construction. They
+    // guard nothing else: in a single-threaded runtime nothing can run
+    // between the lookup here and the constructor's own `store.set()`, which
+    // is why both of those branches are uncovered to this day.
     if (object instanceof SignalGroup) {
       return object;
     }
@@ -665,19 +674,19 @@ export class SignalGroup {
    * name, not its life, and `clear()` still destroys it.
    */
   #releaseFromName(name: SignalNameType, si: ISignalImpl) {
-    const otherSignals = this.#otherSignals.get(name);
-    if (otherSignals) {
-      otherSignals.delete(si);
-      if (otherSignals.size === 0) {
-        this.#otherSignals.delete(name);
+    const signalsForName = this.#signalsByName.get(name);
+    if (signalsForName) {
+      signalsForName.delete(si);
+      if (signalsForName.size === 0) {
+        this.#signalsByName.delete(name);
       }
     }
 
-    const keys = this.#signalKeys.get(si);
-    if (keys) {
-      keys.delete(name);
-      if (keys.size === 0) {
-        this.#signalKeys.delete(si);
+    const names = this.#namesBySignal.get(si);
+    if (names) {
+      names.delete(name);
+      if (names.size === 0) {
+        this.#namesBySignal.delete(si);
         if (!this.#directSignals.has(si)) {
           this.#dropSignalSubscription(si);
           this.#signals.delete(si);
@@ -732,20 +741,20 @@ export class SignalGroup {
 
       (this.#namedSignals = ownMap(this.#namedSignals)).set(name, si);
 
-      const otherSignals = this.#otherSignals.get(name);
-      if (otherSignals) {
-        otherSignals.add(si);
+      const signalsForName = this.#signalsByName.get(name);
+      if (signalsForName) {
+        signalsForName.add(si);
       } else {
-        (this.#otherSignals = ownMap(this.#otherSignals)).set(
+        (this.#signalsByName = ownMap(this.#signalsByName)).set(
           name,
           new Set([si]),
         );
       }
 
-      if (this.#signalKeys.has(si)) {
-        this.#signalKeys.get(si)!.add(name);
+      if (this.#namesBySignal.has(si)) {
+        this.#namesBySignal.get(si)!.add(name);
       } else {
-        (this.#signalKeys = ownWeakMap(this.#signalKeys)).set(
+        (this.#namesBySignal = ownWeakMap(this.#namesBySignal)).set(
           si,
           new Set([name]),
         );
@@ -755,9 +764,9 @@ export class SignalGroup {
       // signals from all of their names. `detachSignal()` would do the latter
       // and would also strip an explicitly attached signal of its group
       // ownership, which the rebind path deliberately preserves.
-      const otherSignals = this.#otherSignals.get(name);
-      if (otherSignals) {
-        for (const si of [...otherSignals]) {
+      const signalsForName = this.#signalsByName.get(name);
+      if (signalsForName) {
+        for (const si of [...signalsForName]) {
           this.#releaseFromName(name, si);
         }
       }
@@ -834,35 +843,43 @@ export class SignalGroup {
    * Shared by the public `detachSignal()` and by the destroy hook from
    * `#addSignal()`: a hard-destroyed signal has to leave through exactly this
    * door. Emptying only `#signals`/`#directSignals` would leave the dead
-   * `SignalImpl` reachable through `#namedSignals`/`#otherSignals` — which is
+   * `SignalImpl` reachable through `#namedSignals`/`#signalsByName` — which is
    * the whole of the `@signal` decorator path, where `attachSignalByName()`
    * is the only way in (MEM-002).
    */
   #removeSignal(si: ISignalImpl) {
-    this.#dropSignalSubscription(si);
+    // The unsubscribe is the one step here that can throw: the handle comes
+    // from a queue this group does not own. It must not take the rest of the
+    // removal with it — a signal left standing in `#signals` and
+    // `#directSignals` with its destroy subscription already gone is one the
+    // group can never hear about again. Same shape as `clear()` and `off()`
+    // since CONS-005; a lone error comes back out unchanged, so
+    // `detachSignal()` still throws exactly what the handle threw.
+    const errors: unknown[] = [];
+    collect(errors, () => this.#dropSignalSubscription(si));
     this.#signals.delete(si);
     this.#directSignals.delete(si);
 
-    if (this.#signalKeys.has(si)) {
-      // signal has named keys
-      const keys = this.#signalKeys.get(si)!;
-      for (const name of keys) {
-        // for each signal key
-        const otherSignals = this.#otherSignals.get(name);
-        if (otherSignals) {
-          // remove the signal from the other-signals set (idempotent)
-          otherSignals.delete(si);
+    if (this.#namesBySignal.has(si)) {
+      // signal is bound to names
+      const names = this.#namesBySignal.get(si)!;
+      for (const name of names) {
+        // for each name
+        const signalsForName = this.#signalsByName.get(name);
+        if (signalsForName) {
+          // remove the signal from this name's candidate set (idempotent)
+          signalsForName.delete(si);
 
-          if (otherSignals.size === 0) {
+          if (signalsForName.size === 0) {
             // if there are no further signals for this name, then we can delete
             this.#namedSignals.delete(name);
-            this.#otherSignals.delete(name);
+            this.#signalsByName.delete(name);
           } else if (this.#namedSignals.get(name) === si) {
             // there are other signals and the signal was the active one —
             // fall back to the most recently inserted remaining signal (Set
             // preserves insertion order).
             let previous: ISignalImpl | undefined;
-            for (const s of otherSignals) previous = s;
+            for (const s of signalsForName) previous = s;
             (this.#namedSignals = ownMap(this.#namedSignals)).set(
               name,
               previous!,
@@ -871,9 +888,11 @@ export class SignalGroup {
         }
       }
 
-      keys.clear();
-      this.#signalKeys.delete(si);
+      names.clear();
+      this.#namesBySignal.delete(si);
     }
+
+    throwCollectedErrors(errors, 'detaching a signal from a signal group');
   }
 
   /**
@@ -1040,7 +1059,7 @@ export class SignalGroup {
   get memberCounts(): {
     signals: number;
     namedSignals: number;
-    otherSignals: number;
+    signalsByName: number;
     effects: number;
     links: number;
     groups: number;
@@ -1048,7 +1067,7 @@ export class SignalGroup {
     return {
       signals: this.#signals.size,
       namedSignals: this.#namedSignals.size,
-      otherSignals: this.#otherSignals.size,
+      signalsByName: this.#signalsByName.size,
       effects: this.#effects.size,
       links: this.#links.size,
       groups: this.#groups.size,
@@ -1199,7 +1218,7 @@ export class SignalGroup {
       this.#groups.clear();
       this.#signals.clear();
       this.#namedSignals.clear();
-      this.#otherSignals.clear();
+      this.#signalsByName.clear();
       this.#directSignals.clear();
       this.#effects.clear();
       this.#links.clear();

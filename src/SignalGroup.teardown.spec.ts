@@ -1039,7 +1039,7 @@ describe('SignalGroup teardown robustness', () => {
         expect(seen, 'the listener saw the group still intact').toEqual({
           signals: 2,
           namedSignals: 0,
-          otherSignals: 0,
+          signalsByName: 0,
           effects: 1,
           links: 1,
           groups: 1,

@@ -169,4 +169,42 @@ describe('SignalGroup teardown survives a throwing unsubscribe (CONS-005)', () =
       }
     }
   });
+
+  it("detachSignal() clears the group's own registers even when the unsubscribe throws", () => {
+    // `#removeSignal()` calls `#dropSignalSubscription()` as its first step.
+    // A throw from there must not take the rest of the removal with it: a
+    // signal left standing in `#signals`/`#directSignals`, or still bound to
+    // a name, is one the group can never hear about again.
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+
+    const sig = createSignal(0);
+    // Marked before `attachSignal()` — the mock's `on()` seam looks at the
+    // id at subscribe time, so a later marking would come too late.
+    throwingIds.add(signalImpl(sig).id);
+    group.attachSignal(sig);
+    group.attachSignalByName('n', sig);
+
+    try {
+      expect(() => group.detachSignal(sig)).toThrow('[test] unsubscribe boom');
+
+      expect(
+        getGroupMemberCounts(group),
+        'the group must be fully released from the signal despite the throw',
+      ).toEqual(NO_GROUP_MEMBERS);
+      expect(group.hasSignal('n')).toBe(false);
+      expect(group.signal('n')).toBeUndefined();
+    } finally {
+      // Same guard as the tests above: a reverted fix leaves the entry
+      // standing, so the cleanup below would hit the same throw again and
+      // mask the assertion failure with its own error instead.
+      throwingIds.delete(signalImpl(sig).id);
+      destroySignal(sig);
+      try {
+        group.clear();
+      } catch {
+        /* ignore */
+      }
+    }
+  });
 });

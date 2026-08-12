@@ -172,6 +172,7 @@
 - A `SignalGroup` lets a destroyed effect go even when a higher-priority `DESTROY` listener throws first — the bookkeeping hook now runs on `Priority.Max`, like `attachLink()`'s. It used to keep the dead `EffectImpl` and its callback closure in the group until the next `clear()` (MEM-009, audit 2026-08-08)
 - `SignalGroup.delete(group)` clears the group it is handed instead of doing nothing. A group made by `findOrCreate(host)` is filed in the store under `host`, so the lookup this method did found nothing — the documented public destructor was a silent no-op for exactly the argument `get()` and `findOrCreate()` accept. The deprecated `SignalGroup.destroy(group)`, which routes through it, is fixed with it (API-014, audit 2026-08-08)
 - `group.clear()` finishes the whole teardown even when releasing a signal's destroy-queue subscription throws — the last of `clear()`'s five teardown loops now collects the failure and keeps going, the same shape the four loops above it already had. `#dropSignalSubscription()`, the internal helper that `detachSignal()` and a rebound name route through, now takes its own bookkeeping out of both registers in a `finally` regardless of whether the unsubscribe throws (CONS-005, audit 2026-08-12)
+- `group.detachSignal(sig)` takes the signal out of the group completely even when releasing its destroy-queue subscription throws; the signal used to stay in the group's own registers — the signal set, the direct-ownership set and every name it was bound to — while its subscription was already gone
 
 #### Batching und Frames
 
