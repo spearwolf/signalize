@@ -162,6 +162,7 @@
 - A `SignalGroup` collected together with its host has not run `clear()`: it emits no `DESTROY` event, and its signals are collected rather than destroyed (MEM-003, audit 2026-08-07)
 - A `SignalGroup` lets a destroyed effect go even when a higher-priority `DESTROY` listener throws first — the bookkeeping hook now runs on `Priority.Max`, like `attachLink()`'s. It used to keep the dead `EffectImpl` and its callback closure in the group until the next `clear()` (MEM-009, audit 2026-08-08)
 - `SignalGroup.delete(group)` clears the group it is handed instead of doing nothing. A group made by `findOrCreate(host)` is filed in the store under `host`, so the lookup this method did found nothing — the documented public destructor was a silent no-op for exactly the argument `get()` and `findOrCreate()` accept. The deprecated `SignalGroup.destroy(group)`, which routes through it, is fixed with it (API-014, audit 2026-08-08)
+- `group.clear()` finishes the whole teardown even when releasing a signal's destroy-queue subscription throws — the last of `clear()`'s five teardown loops now collects the failure and keeps going, the same shape the four loops above it already had. `#dropSignalSubscription()`, the internal helper that `detachSignal()` and a rebound name route through, now takes its own bookkeeping out of both registers in a `finally` regardless of whether the unsubscribe throws (CONS-005, audit 2026-08-12)
 
 #### Batching und Frames
 
@@ -182,6 +183,7 @@
 - `SignalAutoMap` evicts an entry whose signal is destroyed from the outside instead of keeping the corpse cached: `has(key)` is `false` in the same synchronous turn and `get(key)` creates a fresh, live signal (measured: 1000 dead keys → 0). A soft detach via `SignalGroup#off()` is not a destruction and leaves the entry alone (MEM-007, audit 2026-08-07)
 - A `SignalAutoMap` that is dropped without `clear()` releases its per-entry destroy-queue subscriptions itself, through a `FinalizationRegistry`, and stays collectible (measured: 400 subscriptions → 0). Its signals are collected with it, not destroyed (MEM-007, audit 2026-08-07)
 - `touch()` and `value()` reject a source that is neither a signal nor an `[object, propertyName]` tuple with `[signalize] touch: …` / `[signalize] value: …` (`TypeError`), the shape `link()` already used. The unchecked case used to run into a spread and produce `Spread syntax requires ...iterable[Symbol.iterator] to be a function`, which names neither the function nor its argument (CONS-007, audit 2026-08-08)
+- `SignalAutoMap.fromProps(obj, propKeys)` no longer orphans a signal when `propKeys` names the same key twice — the duplicate used to create a second signal under that key, silently displacing the first without releasing its destroy-queue subscription or destroying it. `propKeys` is deduplicated before it drives the create loop (MEM-012, audit 2026-08-12)
 
 ### Performance
 

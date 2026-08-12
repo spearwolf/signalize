@@ -643,11 +643,14 @@ export class SignalGroup {
   #dropSignalSubscription(si: ISignalImpl) {
     const unsubscribe = this.#signalDestroySubscriptions.get(si);
     if (unsubscribe) {
-      unsubscribe();
-      this.#signalDestroySubscriptions.delete(si);
-      // Out of both registers, or the held value accumulates dead handles
-      // whenever signals come and go on a long-lived group.
-      this[$groupResources].unsubs.delete(unsubscribe);
+      try {
+        unsubscribe();
+      } finally {
+        this.#signalDestroySubscriptions.delete(si);
+        // Out of both registers, or the held value accumulates dead handles
+        // whenever signals come and go on a long-lived group.
+        this[$groupResources].unsubs.delete(unsubscribe);
+      }
     }
   }
 
@@ -1189,7 +1192,7 @@ export class SignalGroup {
       for (const unsubscribe of [
         ...this.#signalDestroySubscriptions.values(),
       ]) {
-        unsubscribe();
+        collect(errors, () => unsubscribe());
       }
       this.#signalDestroySubscriptions.clear();
 

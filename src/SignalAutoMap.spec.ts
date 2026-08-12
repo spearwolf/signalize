@@ -11,7 +11,12 @@ import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import type {Signal} from './Signal.js';
 import {SignalAutoMap} from './SignalAutoMap.js';
 import {SignalGroup} from './SignalGroup.js';
-import {destroySignal, isSignal} from './signal-core.js';
+import {
+  destroySignal,
+  getSignalsCount,
+  isSignal,
+  signalImpl,
+} from './signal-core.js';
 
 describe('SignalAutoMap', () => {
   beforeEach(() => {
@@ -940,6 +945,48 @@ describe('SignalAutoMap', () => {
         // standing, with no neighbor after this test in the file to reveal
         // it. sm.clear() is the same idempotent safety net as everywhere
         // else in this file.
+        sm.clear();
+      }
+    });
+  });
+
+  describe('duplicate keys in fromProps() (MEM-012)', () => {
+    it('does not orphan the signal a duplicate key displaces', () => {
+      // `fromProps(obj, ['a', 'b', 'a'])` used to call `#create('a', …)`
+      // twice: the second call overwrote `#signals`/`#unsubs` for 'a'
+      // without releasing the first signal's destroy-queue subscription or
+      // destroying it — an orphan that `clear()` could never reach.
+      const destroySubscriptionsBefore = getSubscriptionCount(
+        globalDestroySignalQueue,
+      );
+      const signalsBefore = getSignalsCount();
+
+      const sm = SignalAutoMap.fromProps({a: 1, b: 2}, ['a', 'b', 'a']);
+
+      try {
+        sm.clear();
+
+        expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
+          destroySubscriptionsBefore,
+        );
+        expect(getSignalsCount()).toBe(signalsBefore);
+      } finally {
+        // MEM-007-style idempotent safety net: clear() is the act under
+        // test and stays exactly where it is.
+        sm.clear();
+      }
+    });
+
+    it('keeps exactly one live entry under the duplicated key', () => {
+      const sm = SignalAutoMap.fromProps({a: 1, b: 2}, ['a', 'b', 'a']);
+
+      try {
+        const keys = [...sm.keys()];
+        expect(keys.filter((key) => key === 'a').length).toBe(1);
+
+        const sig = sm.get('a');
+        expect(signalImpl(sig).destroyed).toBe(false);
+      } finally {
         sm.clear();
       }
     });

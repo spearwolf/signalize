@@ -75,7 +75,7 @@ export class SignalAutoMap {
     // element type would widen to include the property values and force a
     // cast back onto `#create()`.
     const entries: [SignalAutoMapKeyType, unknown][] = propKeys
-      ? propKeys.map((key) => [key, obj[key]])
+      ? [...new Set(propKeys)].map((key) => [key, obj[key]])
       : Object.entries(obj);
     for (const [key, value] of entries) {
       // Through `#create()`, not straight into `#signals`: an entry that
