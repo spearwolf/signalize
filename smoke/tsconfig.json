@@ -5,6 +5,16 @@
     "rootDir": ".",
     "outDir": "build",
     "types": ["node"],
-    "noEmitOnError": true
+    "noEmitOnError": true,
+
+    // The repo compiles with `strictNullChecks: false` (see the root
+    // `tsconfig.json`), which is a decision about this source tree, not about
+    // the people who install the package. A consumer profile is what this
+    // project claims to be, so it is what it compiles as — and it is the only
+    // setting under which API-013 can be witnessed at all: with the flag off,
+    // `Type | undefined` collapses to `Type` and the directive below would
+    // never fail. `skipLibCheck` is inherited, so the `lib/*.d.ts` are used
+    // here, not audited.
+    "strictNullChecks": true
   }
 }

@@ -63,7 +63,11 @@ const c = createSignal(0, {
   compare:    (a, b) => a === b,  // custom equality (default: ===)
   beforeRead: () => {},           // hook, tracked reads only (NOT on .value)
   attach:     obj,                // SignalGroup lifecycle
-});
+});                               // no key beyond these four — name the params type if yours has one
+
+const d = createSignal<number>();       // Signal<number | undefined> — undefined until first write
+createSignal(0, {lazy: true});          // compile error: the flag belongs to the factory form alone
+createSignal<number>(0, {lazy: true});  // but naming T switches the check off (pitfalls.md, 4c)
 
 c.get();                    // tracked read — registers a dependency inside an effect
 c.value;                    // untracked read

@@ -13,7 +13,13 @@ const c = createSignal(0, {
   compare:    (a, b) => a === b,    // custom equality
   beforeRead: () => {/* hook */},   // tracked-read only
   attach:     obj,                  // SignalGroup lifecycle
-});
+});                                 // no key beyond these four — name the type if it has one
+
+const d = createSignal<number>();   // Signal<number | undefined> — undefined until first write
+createSignal(0, {lazy: true});      // does not compile: the flag is the factory's alone
+createSignal(undefined, {lazy: true});  // …nor via the no-value overload (strictNullChecks only)
+createSignal<number>(0, {lazy: true});  // …but naming T switches the check off (no partial inference)
+// a params VARIABLE with no key in common (e.g. {label: string}) is no longer caught — annotate it
 
 c.get();           // tracked read
 c.value;           // untracked read

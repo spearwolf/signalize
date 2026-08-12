@@ -488,6 +488,138 @@ describe('the published type surface', () => {
     }
   });
 
+  it('refuses a lazy flag on a value at construction (BUG-014)', () => {
+    // The constructor half of the promise `set()` carries above. All four of
+    // these used to compile, put the value where the factory belongs, and
+    // leave the first read to die with `TypeError: this.valueFn is not a
+    // function` — the same damage, one call earlier.
+    const pinned = {lazy: true} as const;
+    const annotated: SignalParams<number> & {lazy: true} = {lazy: true};
+    // Declared `boolean`, narrowed to `true` by control flow: the fourth
+    // statically-true form, and the one that does not look like one.
+    const flag: boolean = true;
+    const cmpNum = (a: number, b: number) => a === b;
+
+    // @ts-expect-error BUG-014: a value is not a factory.
+    const lazySig = createSignal(5, {lazy: true});
+    // @ts-expect-error BUG-014: pinning the literal changes nothing.
+    const fromPinned = createSignal(5, pinned);
+    // @ts-expect-error BUG-014: nor does annotating the variable.
+    const fromAnnotated = createSignal(5, annotated);
+    // @ts-expect-error BUG-014: nor does hiding the flag in a variable the
+    // checker has already narrowed to `true`.
+    const fromFlag = createSignal(5, {lazy: flag});
+
+    // `undefined` is the one value that reaches the no-init overload, so that
+    // overload carries the same clauses — otherwise it is the hole all four
+    // forms above fall through. Only the stray-key half can be witnessed here:
+    // `createSignal(undefined, {lazy: true})` is refused under
+    // `strictNullChecks: true` alone, because with the flag off `undefined` is
+    // assignable to `() => Type` and the call lands on the factory overload
+    // instead. That half is witnessed in `smoke/dist-smoke.test.ts`.
+    const stray = {label: 'x', compare: cmpNum};
+    // @ts-expect-error BUG-014: a stray key is refused with no value too.
+    const fromStray = createSignal(undefined, stray);
+
+    try {
+      // The damage the type now prevents, from the runtime side:
+      expect(() => lazySig.get()).toThrow(TypeError);
+      expect(() => fromPinned.get()).toThrow(TypeError);
+      expect(() => fromAnnotated.get()).toThrow(TypeError);
+      expect(() => fromFlag.get()).toThrow(TypeError);
+
+      // A plain write repairs it here too — the lazy flag is cleared on the
+      // value path.
+      lazySig.set(6);
+      expect(lazySig.get()).toBe(6);
+
+      // The stray-key call did build a signal — the option was simply
+      // ignored, which is precisely why the compiler has to be the one to
+      // object.
+      expect(fromStray.value).toBeUndefined();
+    } finally {
+      destroySignal(lazySig, fromPinned, fromAnnotated, fromFlag, fromStray);
+    }
+  });
+
+  it('keeps a stray key out of createSignal params (BUG-014)', () => {
+    // Same trade the writer makes above, for the same reason: the generic `P`
+    // that closes the branch for a statically true `lazy` takes the excess
+    // property check with it, and the exactness clause puts it back. Without
+    // the clause these two compile — with it they do not, and `createSignal`
+    // keeps the typo protection it has always had.
+    //
+    // Both need a *valid* key beside the typo, or they witness the wrong
+    // mechanism: a literal carrying nothing but stray keys is already refused
+    // by freshness ("Object literal may only specify known properties"), which
+    // the clause has nothing to do with. Not the weak-type check — generic
+    // params gave that up, which is the other half of this trade. Both calls
+    // stay on one line, too: the excess property error is reported at the
+    // offending *key*, so a multi-line literal puts it out of the directive's
+    // one-line reach.
+    const cmp = (a: number, b: number) => a === b;
+
+    // @ts-expect-error BUG-014: `lasy` is not `lazy` — the one typo that would
+    // otherwise buy silence on the branch this package closes.
+    const typoLazy = createSignal(5, {lasy: true, compare: cmp});
+    // @ts-expect-error BUG-014: `comapre` is not `compare`.
+    const typoCompare = createSignal(6, {comapre: cmp, lazy: false});
+
+    try {
+      // Both stored their value; only the misspelled option did nothing.
+      expect(typoLazy.get()).toBe(5);
+      expect(typoCompare.get()).toBe(6);
+    } finally {
+      destroySignal(typoLazy, typoCompare);
+    }
+  });
+
+  it('lets a params object with an index signature through createSignal (BUG-014)', () => {
+    // The other side of the exactness clause, and the reason it needs a guard
+    // in front of it: for a params type carrying an index signature `keyof P`
+    // *is* `string` (or `number`, or `symbol`), so `Record<Exclude<keyof P,
+    // …>, never>` would demand that every key be `never` and refuse a caller
+    // with no stray key in sight. Not a directive test: these have to compile.
+    //
+    // Measured against the generated `.d.ts`, one guard branch deleted at a
+    // time — the same result the `set()` twin above records: without the
+    // `string` branch `fromWidened` and `fromAsserted` report TS2769, without
+    // the `number` branch `fromNumeric` does, without the `symbol` branch
+    // `fromSymbol` does. `fromLoose` only falls to the blunter rollback of
+    // deleting the guard outright, because with any branch still in place the
+    // conditional stays deferred and `P` falls back to its constraint. Delete
+    // the exactness clause instead and the two typos above start compiling.
+    const loose: {[k: string]: unknown} = {};
+    const widened: SignalParams<number> & Record<string, unknown> = {};
+    const asserted = {} as Record<string, any>;
+    const numeric: {[k: number]: unknown} = {};
+    const bySymbol: Record<symbol, unknown> = {};
+
+    const fromLoose = createSignal(1, loose);
+    const fromWidened = createSignal(2, widened);
+    const fromAsserted = createSignal(3, asserted);
+    const fromNumeric = createSignal(4, numeric);
+    const fromSymbol = createSignal(5, bySymbol);
+
+    try {
+      expect([
+        fromLoose.get(),
+        fromWidened.get(),
+        fromAsserted.get(),
+        fromNumeric.get(),
+        fromSymbol.get(),
+      ]).toEqual([1, 2, 3, 4, 5]);
+    } finally {
+      destroySignal(
+        fromLoose,
+        fromWidened,
+        fromAsserted,
+        fromNumeric,
+        fromSymbol,
+      );
+    }
+  });
+
   it('refuses an async callback in hibernate() (ASYNC-004)', () => {
     const sig = createSignal(21);
 

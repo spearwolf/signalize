@@ -53,6 +53,14 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
       },
 
       init(this: C, value: T): T {
+        // The `<T>` is load bearing, not decoration. `createSignal`'s value
+        // overload infers its params type and refuses any key beyond
+        // `SignalParams` (BUG-014), and `SignalDecoratorOptions` carries two
+        // — `name` and `readAsValue`. Naming the type argument makes that
+        // params type fall back to its default instead of being inferred,
+        // which is the one thing that keeps this call compiling. Drop it and
+        // the build fails with `TS2769` on `Record<"name" | "readAsValue",
+        // never>`, a message that says nothing about the cause.
         const si = createSignal<T>(value, options);
         storeAsObjectSignal(this, name, si);
         SignalGroup.findOrCreate(this).attachSignalByName(name, si);

@@ -77,28 +77,73 @@ Quirks:
   looking like one: `{lazy: flag}` where control flow has narrowed `flag` to
   `true`, as a `const flag: boolean = true` does. A params *variable* of those
   types stays welcome on the value branch of both — `createSignal(v, p)` and
-  `set(v, p)` compile, whatever `p` holds at runtime. What `set` turns away
+  `set(v, p)` compile, whatever `p` holds at runtime. What both turn away
   there is every one of those four statically-`true` forms: on a plain value
-  each is `TS2769`, because the flag promises a factory and a value is not one.
-- **`set()` also names its options exactly, and `createSignal()` does not.**
-  `set` forbids undeclared keys in the signature, so it catches them in a
-  variable as well as in a literal; `createSignal` relies on freshness and
-  catches them only in a literal — `createSignal(5, myOpts)` with `interface
-  MyOpts extends SignalParams<number> {label: string}` compiles, `set(5,
-  myOpts)` does not. That exactness is what keeps `set(5, {lasy: true})` an
-  error, and it costs nine shapes that used to compile: an interface extending
-  the params type, a variable with an inferred stray key, an unrelated type
-  with an *optional* stray key, an intersection, a class instance with an extra
-  field, a destructuring rest object, a wrapper generic in its own params
-  (`<Q extends SignalWriterParams<T>>(q: Q) => sig.set(v, q)`), a *pattern*
-  index signature whose key is a template literal type such as
-  `data-${string}`, and `{lazy: flag}` with `flag` narrowed to `true`. Each is
-  a loud `TS2769`; the repair is to name the params type — annotate the
-  variable `SignalWriterParams<T>` or assert it at the call, and for the
-  wrapper type the argument `SignalWriterParams<T>` instead of constraining a
-  type parameter. A spread repairs none of them. A params object with a plain
-  `string`, `number` or `symbol` index signature (`Record<string, unknown>` and
-  the two others) is exempt and passes — only the pattern key is not.
+  each is `TS2769`, because the flag promises a factory and a value is not
+  one. `createSignal(5, {lazy: true})` used to compile and leave the first
+  read to die with `TypeError: this.valueFn is not a function`; now it does
+  not compile. `createSignal(existingSignal, {lazy: true})` goes the same way,
+  which is worth knowing because the passthrough discards its params anyway.
+  So does `createSignal(undefined, {lazy: true})` — `undefined` is the one
+  value that reaches the no-initial-value overload, so that overload carries
+  the same conditions; under `strictNullChecks: false` this particular form
+  instead lands on the factory overload, where `undefined` passes for a
+  factory.
+- **Both constructors name their options exactly.** An undeclared key is
+  forbidden in the signature, not merely caught by freshness, so a variable is
+  caught as readily as a literal: `createSignal(5, myOpts)` and `set(5,
+  myOpts)` with `interface MyOpts extends SignalParams<number> {label:
+  string}` are both errors. That exactness is what keeps `set(5, {lasy:
+  true})` and `createSignal(5, {lasy: true, compare})` errors, and the price
+  is one rule rather than a tally. The clause tests the key set of the params
+  type the compiler infers, so what a call gets depends on what that inference
+  produces — three outcomes:
+  1. **It resolves to a concrete key set** → `TS2769` if that set holds a key
+     the published options type does not declare, required or optional,
+     declared or inferred. Sharing keys with the options is not the deciding
+     factor: a *pattern* index key such as `data-${string}` survives `Exclude`
+     whole, so its entire key set counts as beyond and it is refused although
+     it shares nothing. Shapes that land here: an interface extending the
+     params type, a variable with an inferred stray key, an unrelated type
+     with an *optional* stray key, an intersection, a class instance with an
+     extra field, the rest object of a destructuring that kept a valid key,
+     and that pattern index key.
+  2. **It resolves to nothing testable** → refused outright, with no stray key
+     in sight. That is a bare type parameter, which is what a wrapper generic
+     in its own params hands over (`<Q extends SignalParams<T>>(q: Q) =>
+     createSignal(v, q)`): `keyof Q` is unknown, the conditional stays
+     deferred, and nothing is assignable to a deferred conditional.
+  3. **It never gets that far**, because the argument fails the constraint →
+     inference falls back to the published options type, the clause goes
+     vacuous, and the call compiles. For an all-optional options type that is
+     a params type with no key in common *and* no index signature.
+
+  The repair for the first two is always the same: name the params type —
+  annotate the variable `SignalParams<T>`/`SignalWriterParams<T>` or assert it
+  at the call, and for the wrapper type the argument by the published name
+  instead of constraining a type parameter. A spread repairs none of them. A
+  params object with a plain `string`, `number` or `symbol` index signature
+  (`Record<string, unknown>` and the two others) is exempt from the first
+  outcome — only the pattern key is not.
+- **The third outcome is a loss, and it is silent.** `{label: string}`,
+  `{a: number; b: string}`, the rest object of a destructuring with no valid
+  key left: TypeScript's weak-type check (`has no properties in common with`)
+  used to refuse exactly that shape, and generic params lose it, because an
+  intersection is never weak. A disjoint object *literal* is still an error
+  through freshness; a disjoint *variable* now compiles and does nothing at
+  runtime. `set()` lost this when its value overload turned generic,
+  `createSignal` loses it here — so an options object built entirely from
+  foreign keys is one of the mistakes neither constructor catches any more.
+  It has company two bullets down: the type-argument gap and, under
+  `strictNullChecks: false`, the no-value form of the lazy flag.
+- **On `createSignal`, naming the type argument switches both params
+  conditions off.** `createSignal<number>(5, {lazy: true})` compiles,
+  `createSignal(5, {lazy: true})` does not. TypeScript has no partial type
+  argument inference, so naming `T` makes the params type parameter fall back
+  to its default instead of being inferred — and what was never inferred
+  carries nothing to test. Drop the type argument; the value infers it. Typos
+  are still caught either way (`createSignal<number>(5, {lasy: true})` is an
+  error), and `set()` has no such gap.
 
 ## `createSignal(otherSignal)` is a passthrough
 

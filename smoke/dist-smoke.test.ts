@@ -164,6 +164,58 @@ test('the shipped declarations refuse a lazy value write and an async hibernate'
   sig.destroy();
 });
 
+test('the shipped declarations type a signal without an initial value as possibly undefined', () => {
+  const sig = createSignal<number>();
+
+  // @ts-expect-error API-013: with no initial value the signal holds
+  // `undefined` until the first write, and the declarations say so. This is
+  // the one witness for it — the suite in `src/` compiles with
+  // `strictNullChecks: false`, where the union collapses and no directive
+  // could ever fail. Lose the overload and tsc reports the unused directive
+  // (TS2578) before this suite runs.
+  const n: number = sig.value;
+  void n;
+
+  assert.equal(sig.value, undefined);
+
+  sig.set(1);
+  assert.equal(sig.get(), 1);
+
+  sig.destroy();
+});
+
+test('the shipped declarations refuse a lazy flag at construction', () => {
+  // @ts-expect-error BUG-014: `{lazy: true}` on a value is refused at
+  // construction, not only on a write. It used to compile and leave the first
+  // read to die.
+  const lazySig = createSignal(5, {lazy: true});
+  assert.throws(() => lazySig.get(), TypeError);
+  lazySig.destroy();
+
+  // The valid key beside the typo is required, or this witnesses the wrong
+  // mechanism: a literal of nothing but stray keys is already refused by
+  // freshness, which the exactness clause has no part in. And the call has to
+  // stay on one line: the excess property error is reported at the offending
+  // key, out of a directive's one-line reach otherwise.
+  const cmp = (a: number, b: number) => a === b;
+
+  // @ts-expect-error BUG-014: the generic params of the value overload must
+  // not cost the excess property check — `lasy` is the typo that would buy
+  // silence on exactly the branch above.
+  const typo = createSignal(6, {lasy: true, compare: cmp});
+  assert.equal(typo.get(), 6);
+  typo.destroy();
+
+  // @ts-expect-error BUG-014: and the no-initial-value overload is not the way
+  // around it — `undefined` is the one value that reaches it. This half is
+  // witnessed here rather than in `src/`: with `strictNullChecks` off,
+  // `undefined` is assignable to `() => Type` and the call lands on the
+  // factory overload instead, so no directive there could fail.
+  const noInit = createSignal(undefined, {lazy: true});
+  assert.throws(() => noInit.get(), TypeError);
+  noInit.destroy();
+});
+
 test('the shipped declarations type a link callback from its source', () => {
   const src = createSignal(1);
   const seen: number[] = [];

@@ -13,6 +13,7 @@ import {
   unmuteSignal,
 } from './signal-core.js';
 import {touch} from './touch.js';
+import {value} from './value.js';
 
 describe('createSignal', () => {
   let warnSpy: MockInstance;
@@ -61,6 +62,29 @@ describe('createSignal', () => {
       expect(obj()).toBe(myObj);
     } finally {
       destroySignal(num, str, obj);
+    }
+  });
+
+  it('holds undefined until first written when created without an initial value (API-013)', () => {
+    // The runtime half of API-013. The type half — `Signal<Type | undefined>`
+    // for this call — cannot be witnessed here: this project compiles with
+    // `strictNullChecks: false`, where `number | undefined` collapses back to
+    // `number` and any directive would go unused. It is witnessed against the
+    // shipped declarations instead, in `smoke/dist-smoke.test.ts`.
+    const sig = createSignal<number>();
+
+    try {
+      expect(sig.value).toBeUndefined();
+      expect(sig.get()).toBeUndefined();
+      expect(value(sig.get)).toBeUndefined();
+
+      sig.set(1);
+
+      expect(sig.value).toBe(1);
+      expect(sig.get()).toBe(1);
+      expect(value(sig.get)).toBe(1);
+    } finally {
+      destroySignal(sig);
     }
   });
 

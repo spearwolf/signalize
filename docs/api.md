@@ -9,21 +9,49 @@ Two entry points:
 
 ## Signals
 
-### `createSignal<T>(initial?, params?): Signal<T>`
+### `createSignal<T>(initial?, params?): Signal<T>` / `Signal<T | undefined>`
 
-Create a signal.
+Create a signal. With an initial value the result is `Signal<T>`; called
+without one it is `Signal<T | undefined>` — see the note below the table.
 
 **`initial`** — initial value, a `() => T` factory (when `lazy: true`), or an
 existing signal-like (then this very signal is returned, no new one created).
+Omitted, or passed an explicit `undefined`, the signal holds `undefined` until
+the first write.
 
 **`params`** *(`SignalParams<T>`)*:
 
 | Field         | Type                          | Effect                                                              |
 | ------------- | ----------------------------- | ------------------------------------------------------------------- |
-| `lazy`        | `boolean` (default `false`)   | Treats `initial` as a factory; not evaluated until first read. Required for that form, and it has to be statically `true` — `createSignal<T>(fn)` without it does not compile, and neither does a params *variable* typed `SignalParams<T>` (see below). |
+| `lazy`        | `boolean` (default `false`)   | Treats `initial` as a factory; not evaluated until first read. Required for that form, and it has to be statically `true` — `createSignal<T>(fn)` without it does not compile, and neither does a params *variable* typed `SignalParams<T>` (see below). Reserved for it, too: `createSignal(v, {lazy: true})` on a plain value is a compile error rather than a `TypeError` on the next read. |
 | `compare`     | `(a, b) => boolean`           | Custom equality. `===` by default.                                  |
 | `beforeRead`  | `() => void`                  | Hook called before each tracked read (not on `.value`).             |
 | `attach`      | `object \| SignalGroup`       | Attaches the signal to a group; group lifecycle owns it.            |
+
+> ⚠️ **No initial value means `Signal<T | undefined>`.** `createSignal<number>()`
+> holds `undefined` until something writes to it, and the type now says so:
+> `const n: number = sig.value` is a `TS2322` instead of an `undefined` wearing
+> a `number` label. This only exists for you if you compile with
+> `strictNullChecks: true` — with the flag off the union collapses back to `T`
+> and nothing about your code changes. Without a type argument the result stays
+> `Signal<unknown>`, and `createSignal<T>(undefined, {attach: host})` — no
+> value, but a holder — keeps working as before. That overload puts the same
+> conditions on its params as the value one below: `undefined` is the single
+> value that reaches it, so without them `createSignal(undefined, {lazy: true})`
+> would be the way around every one of them — and it builds a signal whose
+> first read dies with `TypeError: this.valueFn is not a function`. Note that
+> the flag half of that is refused under `strictNullChecks: true` only; with
+> the flag off, `undefined` is assignable to `() => T` and the call reaches the
+> factory overload instead.
+
+> ⚠️ **The error message for a refused `lazy` points at nothing.** `TS2769` on
+> these calls reports "Argument of type `{lazy: boolean}` is not assignable to
+> parameter of type `undefined`" under `strictNullChecks: true`, and `… to
+> parameter of type 'never'` with the flag off — the clause collapses the
+> params to `never`, which an optional parameter then prints as `undefined`.
+> Neither names `lazy`. Read either one as "a value is not stored lazily, a
+> factory is", the same way `TS2769` on `set(fn, {lazy: false})` has to be read
+> as "a factory needs `{lazy: true}`".
 
 ### `Signal<T>` instance
 
@@ -64,44 +92,84 @@ existing signal-like (then this very signal is returned, no new one created).
 > `flag` to `true`, which a `const flag: boolean = true` already does.
 > Spreading (`{...params}`) does not — the spread keeps `lazy?: boolean`.
 
-> ⚠️ **`set()` reserves that flag for the factory, and names its options
-> exactly.** A params *variable* typed `SignalParams<T>` or
-> `SignalWriterParams<T>` stays welcome on the value branch of both
-> constructors: `createSignal(v, params)` and `set(v, params)` compile whatever
-> the variable holds at runtime, for the same reason it does not open the
-> factory branch — `lazy?: boolean` promises nothing either way. What `set`
-> turns away there is each of the four statically-`true` spellings above, every
-> one a `TS2769` on a plain value, because that flag promises a factory
-> (BUG-014) — and any params type whose keys reach past
-> `SignalWriterParams<T>`.
+> ⚠️ **Both constructors reserve that flag for the factory, and both name
+> their options exactly.** A params *variable* typed `SignalParams<T>` or
+> `SignalWriterParams<T>` stays welcome on the value branch:
+> `createSignal(v, params)` and `set(v, params)` compile whatever the variable
+> holds at runtime, for the same reason they do not open the factory branch —
+> `lazy?: boolean` promises nothing either way. What they turn away there is
+> each of the four statically-`true` spellings above, every one a `TS2769` on
+> a plain value, because that flag promises a factory (BUG-014) — and any
+> params type whose keys reach past the published options type.
 >
-> The two constructors are **not** symmetric on that second point.
-> `createSignal` still relies on freshness, so it catches a stray key only in
-> an object *literal*: `createSignal(5, {lazy: false, labell: 'x'})` is an
-> error, while `createSignal(5, myOpts)` with `interface MyOpts extends
-> SignalParams<number> {label: string}` compiles, and so does a variable whose
-> inferred type picked up the stray key. `set` forbids the keys in the
-> signature itself, so it catches the variable too: `set(5, myOpts)` does not
-> compile.
+> An earlier revision of this page said the two were **not** symmetric on that
+> second point, `createSignal` relying on freshness while `set` forbade the
+> keys in its signature. That is withdrawn: `createSignal`'s value branch now
+> carries the same clause, because the `lazy` fix requires it. Refusing
+> `{lazy: true}` while letting `lazy?: boolean` through takes a generic params
+> type, and a generic params type costs the excess property check — without
+> the clause, `createSignal(5, {lasy: true, compare})` would start compiling.
+> A misspelled `lazy` buying silence on exactly the branch that fix exists to
+> close is the one trade not worth making.
 >
-> **That exactness is what keeps `set(5, {lasy: true})` an error, and it costs
-> nine shapes that used to compile.** Eight come from the key rule — an
-> interface extending the params type, a variable with an inferred stray key,
-> an unrelated type with an *optional* stray key, an intersection
-> (`SignalWriterParams<T> & {mine: string}`), a class instance with a field
-> beyond the options, the rest object of a destructuring, a pass-through
-> wrapper generic in its own params (`<Q extends SignalWriterParams<T>>(q: Q)
-> => sig.set(v, q)`), and a *pattern* index signature, whose key is a template
-> literal type such as `data-${string}`. The ninth comes from the flag:
-> `{lazy: flag}` with `flag` narrowed to `true`. Each is a loud `TS2769`, and
-> the repair is to name the params type — annotate the variable
-> `SignalWriterParams<T>` or assert it at the call; for the wrapper, drop the
-> type parameter and call the argument `SignalWriterParams<T>`. **A spread
-> repairs none of them** — it drops freshness, not keys. A params object
-> carrying a plain `string`, `number` or `symbol` index signature
-> (`Record<string, unknown>`, `{[k: number]: unknown}`, `Record<symbol,
-> unknown>`) is exempt from the key rule and passes unchanged; a pattern key
-> is not, which is why it stands in the list above.
+> **What the exactness costs, as a rule and not a list.** The clause tests the
+> key set of the params type the compiler infers, so what a call gets depends
+> on what that inference produces. Three outcomes:
+>
+> 1. **It resolves to a concrete key set** — refused (`TS2769`) if that set
+>    holds a key the published options type does not declare, required or
+>    optional, declared or inferred. Sharing keys with the options is not what
+>    decides it: a *pattern* index key such as `data-${string}` survives
+>    `Exclude` whole, so its whole key set counts as beyond and it is refused
+>    although it shares nothing. Examples, not an exhaustive tally: an
+>    interface extending the params type; a variable whose inferred type picked
+>    up a stray key; an unrelated annotated type with an *optional* stray key;
+>    an intersection (`SignalParams<T> & {mine: string}`); a class instance
+>    with a field beyond the options; the rest object of a destructuring that
+>    kept a valid key; that pattern index key.
+> 2. **It resolves to nothing testable** — refused outright, with no stray key
+>    anywhere. That is a bare type parameter, which is what a pass-through
+>    wrapper generic in its *own* params hands over (`<Q extends
+>    SignalParams<T>>(q: Q) => createSignal(v, q)`): `keyof Q` is unknown, the
+>    conditional stays deferred, and nothing is assignable to a deferred
+>    conditional.
+> 3. **It never gets that far**, because the argument does not satisfy the
+>    constraint — inference falls back to the published options type, the
+>    clause goes vacuous, and the call is accepted. For an all-optional options
+>    type that means a params type with no key in common *and* no index
+>    signature (`{label: string}`, `{a: number; b: string}`).
+>
+> The flag adds one refusal of its own, independent of all three: `{lazy: flag}`
+> with `flag` narrowed to `true`. A params object carrying a plain `string`,
+> `number` or `symbol` index signature (`Record<string, unknown>`,
+> `{[k: number]: unknown}`, `Record<symbol, unknown>`) is exempt from the first
+> outcome — that is what the guard in front of the clause is for. The repair
+> for everything the first two refuse is the same: name the params type —
+> annotate the variable `SignalParams<T>` / `SignalWriterParams<T>`, or assert
+> it at the call; for the wrapper, drop the type parameter and type the
+> argument by the published name. **A spread repairs none of them** — it drops
+> freshness, not keys.
+>
+> **The third outcome is the second cost, and it is silent.** TypeScript's
+> weak-type check (`has no properties in common with`) used to refuse exactly
+> that shape, and generic params give it up, because an intersection is never
+> weak. A disjoint object *literal* is still an error — through freshness,
+> reported as "Object literal may only specify known properties" — while a
+> disjoint *variable* now compiles and does nothing at runtime. `set()` paid
+> this when it turned generic; `createSignal` pays it here. Both measured
+> against the generated declarations, before and after.
+
+> ⚠️ **Naming the type argument switches `createSignal`'s params conditions
+> off.** `createSignal<number>(5, {lazy: true})` still compiles where
+> `createSignal(5, {lazy: true})` does not, and the same goes for the key
+> rule. The cause is not the signature but TypeScript itself: there is no
+> partial type argument inference, so naming `T` makes the params type
+> parameter fall back to its default instead of being inferred from your
+> argument — and a params type that was never inferred carries nothing to
+> test. The repair is to drop the type argument; the value infers it anyway.
+> Typo protection is unaffected, because freshness still applies:
+> `createSignal<number>(5, {lasy: true})` remains an error. `set()` has no
+> such gap — its value type comes from the signal, not from a type argument.
 
 > On a muted or destroyed signal, `set()` still writes: the new value is stored
 > and subsequent reads return it — only the notification (including
@@ -951,7 +1019,7 @@ Exported from `@spearwolf/signalize`:
 | `SignalReader<T>`            | The callable form of `signal.get` (also a `SignalLike<T>`).      |
 | `SignalWriter<T>`            | The callable form of `signal.set`, as an overload pair: a value — with params that name only declared options and never a statically `true` `lazy` — or a factory with `{lazy: true}`. |
 | `SignalLike<T>`              | Internal brand that only `createSignal()` produces. `$signal` is not exported, so the type is inspectable but not implementable from the outside — use `isSignal(v)` to recognise one. `T` defaults to `unknown`. |
-| `SignalParams<T>`            | Options for `createSignal` (`lazy`, `compare`, `beforeRead`, `attach`). |
+| `SignalParams<T>`            | Options for `createSignal` (`lazy`, `compare`, `beforeRead`, `attach`). On the value branch it is also the exact bound: no statically `true` `lazy`, and no key beyond these four. |
 | `SignalWriterParams<T>`      | Options for `set()` (extends `SignalParams`, adds `touch`). Its `lazy?: boolean` is *not* narrow enough for the factory overload — that one wants a statically `true` `lazy`. |
 | `SignalValueParams`          | The `{touch?: boolean}` half of `SignalWriterParams`, on its own.  |
 | `NonThenable<T>`             | `T` unless `T` is promise-like, in which case `never`. What makes an `async` callback a compile error in `batch()`, `beQuiet()` and `hibernate()`. |
