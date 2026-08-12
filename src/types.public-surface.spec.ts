@@ -507,6 +507,46 @@ describe('the published type surface', () => {
     }
   });
 
+  it('types a link callback target from its source (TYPE-007)', () => {
+    const source = createSignal(1);
+    const target = createSignal(0);
+    const seen: number[] = [];
+
+    // No annotation and no directive: under `noImplicitAny` this used to be
+    // TS7006, and `docs/api.md` carried the annotate-it workaround.
+    const toCallback = link(source, (v) => {
+      // @ts-expect-error TYPE-007: `v` is `number`, not `any` — an `any`
+      // would take this assignment in silence.
+      const wrong: string = v;
+      void wrong;
+      seen.push(v);
+    });
+
+    // The signal half has to keep compiling — no directive.
+    const toSignal: SignalLink<number> = link(source, target);
+    const toReader: SignalLink<number> = link(source, target.get);
+
+    // The measured cost of the split: a target whose static type is a union
+    // mixing a callback with a signal reaches neither overload.
+    const eitherOr = target as Signal<number> | ValueCallback<number>;
+    // @ts-expect-error TYPE-007: TS2769 — narrow it or split the call.
+    link(source, eitherOr);
+
+    try {
+      // `target` and `target.get` share one registry key, so these are the
+      // same link — two links on `source`, not three.
+      expect(toReader).toBe(toSignal);
+
+      source.set(2);
+      expect(seen).toEqual([1, 2]);
+      expect(target.value).toBe(2);
+    } finally {
+      toCallback.destroy();
+      toSignal.destroy();
+      destroySignal(source, target);
+    }
+  });
+
   it('takes only string and symbol keys (TYPE-005)', () => {
     const map = new SignalAutoMap();
     const numericObj = {1: 'a'} as Record<number, string>;

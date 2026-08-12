@@ -182,7 +182,7 @@ m();                 // SignalReader<T>
 ## Links
 
 ```ts
-const con = link(src, target, {attach: obj});   // target: signal | (value) => void
+const con = link(src, target, {attach: obj});   // target: signal | (value) => void (callback param inferred from src)
 unlink(src, target);   unlink(src);             // drop one, or all links from src
 getLinksCount();       getLinksCount(src);
 // unlink(src) tears every link down, then reports — several failures as an AggregateError

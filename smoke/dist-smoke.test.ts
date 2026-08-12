@@ -16,6 +16,7 @@ import {
   type Effect,
   findObjectSignals,
   hibernate,
+  link,
   type Signal,
   SignalGroup,
 } from '@spearwolf/signalize';
@@ -161,4 +162,24 @@ test('the shipped declarations refuse a lazy value write and an async hibernate'
   assert.ok(pending instanceof Promise);
 
   sig.destroy();
+});
+
+test('the shipped declarations type a link callback from its source', () => {
+  const src = createSignal(1);
+  const seen: number[] = [];
+
+  const con = link(src, (v) => {
+    // @ts-expect-error TYPE-007: `v` is `number` on the shipped declarations
+    // too. Degrade it back to `any` and tsc fails on the unused directive
+    // (TS2578).
+    const wrong: string = v;
+    void wrong;
+    seen.push(v);
+  });
+
+  src.set(2);
+  assert.deepEqual(seen, [1, 2]);
+
+  con.destroy();
+  src.destroy();
 });

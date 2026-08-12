@@ -195,7 +195,52 @@ export interface LinkOptions {
  * has grown two orders of magnitude (measured) and an unbounded register is
  * the likelier explanation than intent. Diagnostic only: nothing is thrown
  * and nothing is refused.
+ *
+ * Two overloads, not one union signature: `SignalReader<T>` is itself
+ * callable, so `LinkableTarget<T>` is a union with more than one call
+ * signature, and TypeScript builds no contextual type against that — an
+ * unannotated callback target's parameter used to fall back to implicit
+ * `any` (`TS7006` under `noImplicitAny`). The signal overload is listed
+ * first on purpose, so that `link(src, dst)` and `link(src, dst.get)` both
+ * land on it — the same overload that `signalImpl(target)` matches at
+ * runtime. A target whose *static* type is already the union
+ * `SignalReader<T> | ValueCallback<T>` still lands on the callback overload
+ * regardless of ordering, because the whole union is assignable to
+ * `ValueCallback<T>` — harmless, since both overloads return the same
+ * `SignalLink<ValueType>`. The similarly-spelled `Signal<T> |
+ * ValueCallback<T>` is the opposite case: it is assignable to *neither*
+ * overload and is rejected with `TS2769`. That is one face of a wider rule:
+ * `link` carries two signatures, and anything that reduces it back to one —
+ * an assignment to a narrower signature, generic inference, or a utility
+ * type such as `Parameters<typeof link>` — resolves to the callback
+ * signature, not the union (`pitfalls.md` 17b has the full rule, its other
+ * faces and their repairs).
  */
+// Order matters and nothing here re-checks it: keep the signal overload
+// first. Both overloads return the same `SignalLink<ValueType>`, so
+// swapping them compiles clean and no test catches it — it only changes
+// which overload a callable target lands on, per the paragraph above.
+export function link<ValueType>(
+  source: LinkableSource<ValueType>,
+  target: SignalReader<ValueType> | Signal<ValueType>,
+  options?: LinkOptions,
+): SignalLink<ValueType>;
+/**
+ * Callback-target form of `link()`. See the signal-target overload above
+ * for `@param source`, lifetime, dedup and the 1000-link warning — all
+ * identical here; `target`'s parameter type is inferred from `source`
+ * rather than left implicit.
+ *
+ * @param source - The source signal to link from
+ * @param target - The callback that receives the source's value
+ * @param options - Configuration options (attach)
+ * @returns A SignalLink object that can be destroyed to break the connection
+ */
+export function link<ValueType>(
+  source: LinkableSource<ValueType>,
+  target: ValueCallback<ValueType>,
+  options?: LinkOptions,
+): SignalLink<ValueType>;
 export function link<ValueType>(
   source: LinkableSource<ValueType>,
   target: LinkableTarget<ValueType>,

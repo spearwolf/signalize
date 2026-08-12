@@ -488,20 +488,55 @@ again returns the existing link.
 ### `link<T>(source, target, options?): SignalLink<T>`
 
 - **`source`** — `Signal<T>` or `SignalReader<T>`. Throws if it is not a signal.
-- **`target`** — `Signal<T>`, `SignalReader<T>`, or `(value: T) => void`.
+- **`target`** — `Signal<T>`, `SignalReader<T>`, or `(value: T) => void`. A
+  callback target's parameter is inferred from `source`; an explicit
+  annotation is still allowed and is checked against the source as usual.
 - **`options.attach`** — `object` (lifecycle group).
 
 The target receives the source's current value immediately (`touch()` on
 construction).
 
-> **Annotate a callback target's parameter.** `link(sig, (v) => …)` reports
-> `TS7006: Parameter 'v' implicitly has an 'any' type` under `noImplicitAny`,
-> even though `source` fixes the type. The target parameter is a union of
-> three types, two of which are callable — `SignalReader<T>` is itself a
-> function — and TypeScript builds no contextual type for a union with more
-> than one call signature. Write `link(sig, (v: number) => …)`; the
-> annotation is checked against the source as usual, so nothing is lost but
-> the inference.
+`link()` is an overload pair — one signature for a signal target, one for a
+callback target — because `SignalReader<T>` is itself callable and TypeScript
+builds no contextual type for a union with more than one call signature.
+`link` therefore carries two signatures now, and the cost is one rule:
+anything that reduces it back to a single signature — an assignment to a
+narrower one, generic inference, or a utility type — resolves to the callback
+signature. Four examples of that rule, not a closed list:
+
+- **A call whose target's static type is a union mixing a callback with a
+  signal** — `Signal<T> | ValueCallback<T>`, a wider union built from it, or
+  the same union reached through a variable, an object property, a ternary
+  expression, or a type parameter constrained to it — reaches neither
+  overload and reports `TS2769`. Narrow it first
+  (`typeof target === 'function'` splits both branches cleanly), split the
+  call, or cast at the call site. A union of `SignalReader<T> |
+  ValueCallback<T>` is *not* affected — it is entirely assignable to
+  `ValueCallback<T>` and still goes through, landing on the callback
+  overload.
+- **A generic pass-through whose parameter is written as a call signature**
+  (`<A extends unknown[], R>(fn: (...a: A) => R, ...a: A)`) reports `TS2345`
+  instead: generic inference over an overloaded type picks one signature, and
+  `ValueType` falls to `unknown`. A wrapper whose parameter is a bare type
+  parameter (`<T extends (...a: any[]) => any>(impl: T): T`) keeps the whole
+  overload set and is unaffected.
+- **Treating `link` itself as a value, not calling it** — assigning or
+  passing the bare function to a variable, an object or class property, an
+  array element, a `Map#set()` call, a default parameter, or a `satisfies`
+  expression typed with a monomorphic signature that spells the union out by
+  hand — reports `TS2322` (`TS2345` at an argument position; `TS2769` where
+  the target position is itself overloaded, as the `Map` constructor is): an
+  overloaded function type isn't assignable to a narrower one.
+- **A utility type that reduces the overloaded type to one signature**
+  resolves it to the callback overload, not the union: `Parameters<typeof
+  link>[1]` is `ValueCallback<unknown>` now, so a variable typed from it no
+  longer accepts a signal. `ReturnType<typeof link>` is unaffected — both
+  overloads return the same type.
+
+The repair is the same across all four, with the same caveat: annotate the
+target `typeof link` when you own the signature being annotated, otherwise
+wrap the call in an arrow that narrows inside before delegating, or cast at
+the call site (`link as …`) when neither is available.
 
 Calling `link()` again for a `(source, target)` pair that already has a link
 returns the existing instance — it does **not** create a second one. If that

@@ -107,7 +107,7 @@ m();                 // SignalReader
 ```ts
 import {link, unlink, getLinksCount} from '@spearwolf/signalize';
 
-const con = link(src, target, {attach: obj});  // target: signal | callback
+const con = link(src, target, {attach: obj});  // target: signal | callback (callback param inferred from src)
 unlink(src, target);  unlink(src);
 // unlink(src) tears every link down, then reports — several failures as an AggregateError
 // held until destroy()/unlink()/{attach} clears/source|target dies — a link on a still-live source is never reclaimed by GC alone
