@@ -18,13 +18,7 @@ export type SignalReaderDecoratorOptions = {
 /**
  * Options of the `@signal` accessor decorator.
  *
- * `attach` names an **additional** group, it does not replace anything: the
- * decorated signal is always attached to the group of the instance it lives
- * on, and `attach` puts it into a second group on top of that. Both
- * memberships are real — a `SignalGroup.destroy()` on the additional group
- * destroys the signal. What the instance loses then is the reactivity, not
- * the entry: `findObjectSignalNames()` still lists the name and the property
- * getter still returns the last value.
+ * `docs/api.md`, "Decorators" → "`@signal(options?)` — accessor decorator"
  */
 export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'> &
   SignalReaderDecoratorOptions & {
@@ -43,7 +37,7 @@ export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'> &
  * under `name` in the object store that `findObjectSignalByName()`,
  * `findObjectSignals()` and `findObjectSignalNames()` read; once under the
  * same `name` in `SignalGroup.findOrCreate(this)`, the group of the
- * instance the field lives on. `name` defaults to the property name.
+ * instance the field lives on.
  *
  * Reading the property tracks the signal in the surrounding effect
  * (`signal.get()`); with `readAsValue: true` it reads untracked
@@ -51,9 +45,10 @@ export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'> &
  * `destroyObjectSignals(this)` the store entry is gone and both ends go
  * quiet: the getter returns `undefined`, the setter is a no-op.
  *
- * `attach` names an **additional** group and does not replace the instance
- * group — see {@link SignalDecoratorOptions} for that option and every
- * other one.
+ * See {@link SignalReaderDecoratorOptions} for `name`, and
+ * {@link SignalDecoratorOptions} for `attach` and every other option.
+ *
+ * `docs/api.md`, "Decorators" → "`@signal(options?)` — accessor decorator"
  *
  * ```ts
  * class Foo { @signal() accessor bar = 23; }

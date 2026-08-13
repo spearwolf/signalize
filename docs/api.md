@@ -1112,6 +1112,10 @@ Turns a class field declared with `accessor` into a per-instance signal.
 | `beforeRead`  | `() => void`                  | Hook on every read through the reader — which, with `readAsValue: true` above, is never: that getter reads `.value` and bypasses it. |
 | `attach`      | `object \| SignalGroup`       | An **additional** group. The instance group stays — the signal is a member of both, and destroying the additional group destroys the signal. |
 
+What the instance loses then is the reactivity, not the entry:
+`findObjectSignalNames()` still lists the name and the property getter still
+returns the last value.
+
 Each instance gets its own signal. The signal is registered in
 `SignalGroup.findOrCreate(this)` under `name`.
 

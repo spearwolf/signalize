@@ -199,8 +199,7 @@ const THENABLE_HINT =
 
 /**
  * Batch multiple signal updates together to defer effect execution.
- * Effects are deduplicated and run once after the callback completes,
- * improving performance when updating multiple signals at once.
+ * Effects are deduplicated and run once after the callback completes.
  *
  * Batches can be nested - the effects only run when the outermost batch completes.
  *
@@ -211,22 +210,19 @@ const THENABLE_HINT =
  * `await` then runs completely unbatched, indistinguishable from working
  * code. To catch this early, `batch()` throws `TypeError` if `callback`
  * returns a thenable (checked structurally at runtime, and rejected by
- * `tsc` for anything typed as `Promise`/`PromiseLike` before that). This is
- * a hard error at the call site (unlike an async *effect* callback, whose
- * rejection cannot be thrown at any caller and goes to `onEffectError()`
- * instead) — `batch()`'s caller is still on the stack and can catch it
- * directly.
+ * `tsc` for anything typed as `Promise`/`PromiseLike` before that).
  *
- * An effect that throws during the flush no longer holds up the other
- * delayed effects; its error — or an `AggregateError`, if several of them
- * failed — arrives at the `batch()` caller once the flush is complete.
+ * An effect that throws during the flush does not hold up the other delayed
+ * effects; its error — or an `AggregateError`, if several of them failed —
+ * arrives at the `batch()` caller once the flush is complete.
  *
  * If `callback` *and* the flush fail, both errors arrive together as an
- * `AggregateError`, callback error first — the flush no longer replaces what
+ * `AggregateError`, callback error first — the flush does not replace what
  * the callback threw. A single failure, from either side, is rethrown
  * unchanged, including the `TypeError` of the thenable guard above.
  *
- * @param callback - Synchronous function containing signal updates to batch
+ * `docs/api.md`, "Context modes" → "batch(callback)"
+ *
  * @throws {TypeError} if `callback` returns a thenable and the flush succeeds
  * @throws {AggregateError} if both sides fail — the callback's error (or the
  *   `TypeError` above) as `errors[0]`, the flush's as `errors[1]`

@@ -29,6 +29,15 @@ import type {SignalizeErrorCallback, SignalizeErrorPayload} from './types.js';
 // through the unsubscribe this module wrapped — the counter does not learn
 // of it. See `effect-error-handlers.ts` for the full mechanism and the
 // measured effect (counter positive, queue empty, a report reaches nobody).
+//
+// Whether anyone listens is read from this counter, not probed on the
+// queue: `getSubscribedEventNames()` builds an array with one entry per
+// subscribed event name and scans it linearly, which is quadratic in the
+// number of live effects because each subscribes under its own id.
+//
+// The counter can only be wrong on the safe side: an undercount just falls
+// through to the console a call early — an overcount would run `emit()`
+// against zero listeners and swallow the diagnostic.
 let signalizeErrorHandlerCount = 0;
 
 const trackSignalizeErrorHandler = (unsubscribe: () => void): (() => void) => {
@@ -45,33 +54,27 @@ const trackSignalizeErrorHandler = (unsubscribe: () => void): (() => void) => {
 /**
  * Subscribe to the diagnostics that have no caller to throw at.
  *
- * Some failures surface where nobody is left to catch them: inside a
+ * Some failures surface where nobody is left to catch them — inside a
  * `FinalizationRegistry` callback of `SignalGroup`, `link()` or
- * `SignalAutoMap`, where a throw becomes an `uncaughtException` and takes the
- * process down. Others are notices rather than failures — a deprecated call,
- * the 1000-links-on-one-source threshold. All of them used to go straight to
- * `console.warn`/`console.error`, where no application could route them
- * anywhere. They come through here instead.
+ * `SignalAutoMap`, a throw becomes an `uncaughtException` and ends the
+ * process.
  *
- * What a handler changes, exactly:
+ * As long as no handler is registered, every message goes to the console
+ * exactly as before — same text, same argument shape. Once a handler is
+ * registered, the payload goes to it instead and the console stays quiet;
+ * whoever installs this channel owns the message, **including the
+ * deprecation notices** — if they should stay visible, log them.
  *
- * 1. **No handler.** Every message goes to the console exactly as before —
- *    same text, same argument shape.
- * 2. **Handler registered.** The payload goes to the handler and the console
- *    stays quiet. Whoever installs this channel owns the message, **including
- *    the deprecation notices** — if they should stay visible, log them.
- * 3. **Handler throws synchronously.** Caught. Two lines follow: the
- *    handler's failure on `console.error`, then the original payload on the
- *    console method its own `level` names — so a notice ends up on
- *    `console.warn`, and mocking only `console.error` lets it slip through.
- *    Never a rethrow — the call sites are registry callbacks.
- * 4. **A throwing handler starves its siblings.** eventize ends the dispatch,
- *    so handlers with a lower priority never see the event. The payload still
- *    reaches the console afterwards, so nothing is lost. Keep handlers total,
- *    and give the one that must not be missed the highest priority.
- * 5. **An `async` handler that rejects.** Nothing awaits it, so a rejected
- *    promise coming out of it is an unhandled rejection — the very thing this
- *    channel exists to prevent:
+ * A handler that throws synchronously is caught. Two lines follow: the
+ * handler's failure on `console.error`, then the original payload on the
+ * console method its own `level` names — so a notice ends up on
+ * `console.warn`, and mocking only `console.error` lets it slip through.
+ *
+ * **The handler must be synchronous or catch its own errors.** Nothing
+ * awaits it, so a rejected promise coming out of it is an unhandled
+ * rejection again — the very thing this channel exists to prevent.
+ * Reporting to a remote service is the obvious use case and the obvious
+ * trap:
  *
  * ```js
  * onSignalizeError(async ({error}) => {        // ✗ a failing send() crashes
@@ -83,24 +86,17 @@ const trackSignalizeErrorHandler = (unsubscribe: () => void): (() => void) => {
  * });
  * ```
  *
- * This is the general channel, not a replacement for {@link onEffectError}.
- * An effect failure is offered to `onEffectError` first, with its structured
- * payload (`effect`, `effectId`, `phase`), and only reaches here when nobody
- * listens there — so a handler never sees the same failure twice. What
- * arrives here carries the effect id and the phase inside `message` as text,
- * not as fields; whoever needs them as fields takes `onEffectError`.
+ * A handler that throws synchronously also aborts the dispatch: handlers
+ * registered with a lower priority never see the event. Keep handlers
+ * total, and give the one that must not be missed the highest priority.
  *
- * Whether anyone listens is read from a module-local counter, not probed on
- * the queue: `getSubscribedEventNames()` builds an array with one entry per
- * subscribed event name and scans it linearly, which is quadratic in the
- * number of live effects because each subscribes under its own id. Same idea
- * as `effect-error-handlers.ts`, kept local here because this module is
- * already a leaf and gains nothing from a module of its own. The counter
- * can only be wrong on the safe side: `trackSignalizeErrorHandler()`'s
- * `released` guard keeps a double unsubscribe (eventize's own unsubscribe is
- * idempotent) from decrementing twice, and an undercount just falls through
- * to the console a call early — an overcount would run `emit()` against
- * zero listeners and swallow the diagnostic.
+ * This is the general channel, not a replacement for {@link onEffectError}.
+ * An effect failure is offered to `onEffectError` first, with its
+ * structured payload (`effect`, `effectId`, `phase`), and only reaches
+ * here when nobody listens there — so a handler never sees the same
+ * failure twice.
+ *
+ * `docs/api.md`, "Effects" → "onSignalizeError(cb, priority?): () => void"
  *
  * @param callback - Receives one {@link SignalizeErrorPayload} per diagnostic
  * @param priority - Optional eventize priority; higher runs first

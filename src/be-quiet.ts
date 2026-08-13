@@ -11,17 +11,10 @@ const THENABLE_HINT =
   'and pass a synchronous action.';
 
 /**
- * Execute a callback in "quiet mode" where signal reads do not create dependencies
- * and signal writes do not trigger effects.
- *
- * Useful for reading signal values without subscribing to them,
- * or updating signals without triggering reactive updates.
+ * Execute an action in "quiet mode" where signal reads do not create
+ * dependencies and signal writes do not trigger effects.
  *
  * Calls can be nested - quiet mode remains active until all nested calls complete.
- *
- * Returns whatever `action` returns — the untracked read is the point of
- * the frame, and `const peek = beQuiet(() => b.get())` has to evaluate to
- * the read value. Same shape as `hibernate()`.
  *
  * `action` must be synchronous. `beQuiet()` closes its frame the moment an
  * `async` action returns its pending promise at the first `await`, so every
@@ -33,7 +26,8 @@ const THENABLE_HINT =
  * `batch()` and `hibernate()`. The frame is closed before that `TypeError`
  * reaches the caller.
  *
- * @param action - Synchronous function to execute in quiet mode
+ * `docs/api.md`, "Context modes" → "beQuiet(action): T"
+ *
  * @returns The action's return value
  * @throws {TypeError} if `action` returns a thenable
  */
@@ -52,8 +46,7 @@ export function beQuiet<T>(action: () => NonThenable<T>): T {
 }
 
 /**
- * Check if the system is currently in quiet mode (inside a beQuiet() call).
- * @returns True if in quiet mode, false otherwise
+ * Check if the system is currently in quiet mode (inside a `beQuiet()` call).
  */
 export function isQuiet(): boolean {
   return g_numberOfBeQuietRequests > 0;

@@ -39,7 +39,8 @@ const THENABLE_HINT =
  * `batch()` and `beQuiet()`. That `TypeError` is collected like any other
  * callback failure, so a flush that failed as well arrives together with it.
  *
- * @param callback - Synchronous function to execute in hibernation state
+ * `docs/api.md`, "Context modes" → "hibernate(callback): T"
+ *
  * @throws {TypeError} if `callback` returns a thenable and the flush of the
  *   saved batch succeeds
  * @throws {AggregateError} if the flush of the saved batch *and* `callback`
