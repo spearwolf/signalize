@@ -942,10 +942,20 @@ export class EffectImpl {
   }
 
   private cleanupLostSignals(): void {
+    // The common case on every dynamic effect rerun: nothing was lost. Cheap
+    // to check and, like `destroyChildEffects()` below, spares that run the
+    // error array it would otherwise allocate for nothing.
+    if (this.#lostSignals.size === 0) return;
+
+    // Collected per signal, not left to `unsubscribeSignal()`'s own throw:
+    // otherwise the first lost signal that fails would take every signal
+    // behind it with it, each surviving in `#signals` as if still tracked.
+    const errors: unknown[] = [];
     for (const signalId of this.#lostSignals) {
-      this.unsubscribeSignal(signalId);
+      collect(errors, () => this.unsubscribeSignal(signalId));
       this.#signals.delete(signalId);
     }
+    throwCollectedErrors(errors, 'unsubscribing an effect from a signal');
   }
 
   /**
@@ -988,10 +998,20 @@ export class EffectImpl {
 
   private unsubscribeSignal(signalId: symbol): void {
     if (this.#signalSubscriptions.has(signalId)) {
-      this.#signalSubscriptions.get(signalId).forEach((unsubscribe) => {
-        unsubscribe();
-      });
-      this.#signalSubscriptions.delete(signalId);
+      // A throwing handle must not strand the other one, or the register:
+      // `hasNoLiveSignals()` reads `#signalSubscriptions`, and a signal id
+      // left in it after both real subscriptions are already gone reports
+      // "still has dependencies" forever — the effect would never destroy
+      // itself again.
+      const errors: unknown[] = [];
+      try {
+        this.#signalSubscriptions.get(signalId).forEach((unsubscribe) => {
+          collect(errors, () => unsubscribe());
+        });
+      } finally {
+        this.#signalSubscriptions.delete(signalId);
+      }
+      throwCollectedErrors(errors, 'unsubscribing an effect from a signal');
     }
   }
 
