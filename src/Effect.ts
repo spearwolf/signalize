@@ -27,17 +27,10 @@ export class Effect {
   runImmediately = () => this[$effect]?.runImmediately();
 
   /**
-   * Whether this effect has been destroyed.
-   *
    * True as soon as the effect is gone — through `destroy()` on this
    * wrapper, through its group, or because an `onCreateEffect()` handler
    * destroyed it before `createEffect()` even handed the wrapper out. A
-   * destroyed effect no longer reacts and `run()` is a no-op.
-   *
-   * That handler is the only route to the second case: a first run that
-   * throws also destroys the effect, but it rethrows out of
-   * `createEffect()` — with `{attach}` as without — so the caller gets the
-   * error instead of a wrapper and has nothing to ask (measured).
+   * destroyed effect stops reacting, and `run()` is a no-op.
    */
   get destroyed(): boolean {
     const effect = this[$effect];

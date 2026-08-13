@@ -17,17 +17,9 @@ export interface CreateMemoOptions {
   /** Attach the memo to a SignalGroup for lifecycle management */
   attach?: object | SignalGroup;
   /**
-   * Optional name for the memo when attached to a group.
-   *
-   * Only has meaning together with `attach` — a name is a slot inside a
+   * Only meaningful together with `attach` — a name is a slot inside a
    * group. Passed on its own it does nothing, and every such call is
    * reported through `onSignalizeError()` with `source: 'ignored-option'`.
-   *
-   * An empty string is *no name*, not an empty one: `{name: ''}` behaves
-   * exactly like a call without `name` — with `attach` the memo joins the
-   * group unnamed and is not reachable through `group.signal('')`, without
-   * `attach` nothing is reported. Only the empty string is degenerate; a
-   * symbol is always a name, `Symbol('')` included.
    */
   name?: string | symbol;
   /** If true, the memo won't compute until first read (default: false) */
@@ -35,68 +27,39 @@ export interface CreateMemoOptions {
   /** Effect priority for dependency tracking (default: Priority.C = 1000) */
   priority?: number;
   /**
-   * Wrap each recompute in `batch()` (default: false).
+   * Wrap each recompute in `batch()` (default: `false`).
    *
    * Only needed when `callback` itself writes to *other* signals as a side
-   * effect — the batch groups those writes together with the memo's own
-   * write, so a downstream effect that depends on both sees one
-   * deduplicated run instead of one per write with a torn intermediate
-   * state (some signals updated, others not yet).
+   * effect — the batch groups those writes with the memo's own, so a
+   * downstream effect depending on both sees one run instead of one per
+   * write with a torn intermediate state.
    *
-   * What that grouping costs depends on whether anything reacts. A memo
-   * without a dependent effect defers nothing, and a batch with an empty
-   * queue skips its flush entirely — `true` then measures within a few
-   * percent of the default. With a
-   * dependent effect the recompute pays a whole flush for that one deferred
-   * effect: a `Set`, an array, two temporary queue subscriptions, a delivery
-   * frame and a dispatch through eventize instead of a direct call, measured
-   * at roughly 3x a recompute under the default. Which is why the default
-   * stays `false`: the cost lands exactly where the option is used, and it
-   * only pays off when one recompute would otherwise trigger the same
-   * downstream effect more than once — writing to unrelated signals from a
-   * `callback` is the exception, and the ordinary memo should not pay for it.
-   *
-   * The other half of that reasoning is gone. `true` used to mean that a
-   * memo read from inside `callback` while dirty would come back with its
-   * *stale* pre-recompute value if `beforeRead` deferred the recompute like
-   * any other run in an open batch. It does not: `beforeRead` recomputes at
-   * the read regardless of an open batch, so composed memos read fresh under
-   * either setting.
+   * `docs/api.md`, "Memos" → "createMemo<T>(computer, options?): SignalReader<T>"
    */
   batchWrites?: boolean;
 }
 
 /**
- * Create a memoized (computed) signal that derives its value from other signals.
- * The memo automatically tracks dependencies and recomputes when they change.
- * Results are cached until dependencies change.
+ * Derive a value from other signals. `computer` runs once up front and
+ * tracks whatever it reads as dependencies; the cached result stands until
+ * one of them changes and triggers a recompute.
  *
- * A memo created inside another effect's body binds its signal's lifetime to
- * that effect: the memo's internal effect is registered there as a *child
- * effect* (dies on every parent rerun and on parent `destroy()`), and the
- * memo signal dies with it too — with and without `{attach}`. Passing
- * `{attach}` gives the signal a `SignalGroup` membership and, optionally, a
- * name, but not a lifetime of its own; it does not lift the signal out of
- * the creating effect's ownership, so `group.off()` destroys such a memo
- * signal along with the effect it belongs to, same as `outer.destroy()`
- * would. `hibernate()` around the creation is the only way to keep the memo
- * itself recomputing — and its signal alive — past the parent's rerun. A
- * memo created outside any effect body is unaffected either way; its signal
- * lives until destroyed explicitly (or via its group).
+ * Created inside another effect's body, the memo is that effect's child —
+ * the parent's rerun or `destroy()` takes the internal effect and the memo
+ * signal down with it, with or without `{attach}`. `hibernate()` around the
+ * creation is the only way past that.
  *
  * A throw out of the first compute — the one this call runs itself, unless
- * `{lazy: true}` defers it to the first read — leaves neither the memo signal
- * nor its internal effect behind: without `attach` nothing holds them, this
- * call never returned a reader, and an abandoned memo signal is a leak no
- * counter ever gives back. So the creation is taken back and the error
- * arrives here. With `attach` both stay, because the group holds them and
- * `clear()` reaches them — the same rule and the same condition
- * `createEffect()` applies to itself. A failing signal teardown on top of the
- * compute error is reported next to it as an `AggregateError`, never in its
- * place.
+ * `{lazy: true}` defers it to the first read — arrives here either way, and
+ * `attach` decides what survives it: without it the creation is taken back,
+ * destroying the memo signal along with its internal effect; with it both
+ * stay, because the group holds them. A failing signal teardown on top of
+ * that compute error is reported next to it as an `AggregateError`, never
+ * in its place.
  *
- * @param callback - Function that computes the derived value
- * @param options - See {@link CreateMemoOptions}; every field is documented there
+ * `docs/api.md`, "Memos" → "createMemo<T>(computer, options?): SignalReader<T>"
+ *
+ * @param options - See {@link CreateMemoOptions}
  * @returns A SignalReader function to get the computed value
  */
 export function createMemo<Type>(

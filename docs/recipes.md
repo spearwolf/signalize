@@ -370,7 +370,7 @@ try {
 
 If an effect callback writes to a signal it depends on, `run()` re-enters
 itself synchronously. Tolerated up to `getMaxEffectDepth()` levels, 256 by
-default; beyond that, it throws:
+default; beyond that, it throws instead of overflowing the native call stack:
 
 ```
 [signalize] Effect Symbol(ef…) exceeded maxDepth=256: an effect callback
@@ -431,8 +431,7 @@ is skipped entirely, so the option then costs practically nothing.) That is
 why the default is `false` — every memo with a dependent effect would pay it,
 and a `computer` that writes other signals is the exception, not the rule.
 
-Reading a *composed* memo from inside such a callback is safe, and used to
-not be:
+Reading a *composed* memo from inside such a callback is safe:
 
 ```ts
 const source = createSignal(0);
@@ -447,9 +446,7 @@ const outer = createMemo(
 If `inner` is dirty when `outer` recomputes, reading it runs it right there,
 inside `outer`'s batch — a memo's read hook is not subject to the batch's
 deferral, only its resulting write is. `outer` sees `inner`'s fresh value on
-the first read. This used to return the stale value instead, and for a
-`{lazy: true}` `inner` it stayed stale until something read it directly
-outside any batch.
+the first read.
 
 ## Batching
 

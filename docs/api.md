@@ -528,6 +528,8 @@ returned a reader anybody could have used. With `{attach}` both stay, because
 the group holds them and `clear()` reaches them; the same rule and the same
 condition as `createEffect()`. `{lazy: true}` sidesteps the question — the
 first compute then happens on the first read, at which point the reader exists.
+A failing signal teardown on top of the compute error is reported next to it
+as an `AggregateError`, never in its place.
 
 **`options`** *(`CreateMemoOptions`)*:
 
@@ -536,7 +538,7 @@ first compute then happens on the first read, at which point the reader exists.
 | `lazy`     | `boolean`                     | `false`      | If `false`, the memo eagerly recomputes on dep change (acts as a computed signal). If `true`, recomputes on read only. |
 | `priority` | `number`                      | `1000`       | Higher than default effects so memos resolve first in a flush.               |
 | `attach`   | `object \| SignalGroup`       | `—`          | Lifecycle group.                                                             |
-| `name`     | `string \| symbol`            | `—`          | Name within the attached group (`group.signal(name)`). Without `attach` it does nothing and is reported via `onSignalizeError()` (`source: 'ignored-option'`) on every such call. An empty string counts as no name at all and behaves exactly like omitting the option, with and without `attach`. |
+| `name`     | `string \| symbol`            | `—`          | Name within the attached group (`group.signal(name)`). Without `attach` it does nothing and is reported via `onSignalizeError()` (`source: 'ignored-option'`) on every such call. An empty string counts as no name at all and behaves exactly like omitting the option, with and without `attach` — a symbol is always a name, `Symbol('')` included. |
 | `batchWrites` | `boolean`                   | `false`      | Wrap the recompute in `batch()`. Groups side-effect writes with the memo's own; costs a full flush once the memo has a downstream effect. See below. |
 
 **Eager (default) vs lazy.** Effects that depend on a memo only re-run if the
@@ -562,11 +564,10 @@ default. That is why the default is `false`: the price lands exactly where
 the option is used, and it only pays off when one recompute would otherwise
 trigger the same downstream effect more than once.
 
-It used to cost read freshness as well: a *composed* memo read from inside a
-`batchWrites: true` callback while dirty came back stale, permanently so for a
-`{lazy: true}` one. That no longer applies — a memo's `beforeRead` recomputes
-at the read and walks past the open batch (its own write still goes into the
-batch), so composed memos read fresh under either setting.
+Reading a *composed* memo from inside a `batchWrites: true` callback is safe:
+a memo's `beforeRead` recomputes at the read and walks past the open batch
+(its own write still goes into the batch), so composed memos read fresh under
+either setting.
 
 **Lifetime when created inside another effect's body.** The memo's internal
 effect is registered there as a child effect (see "Effects: dynamic vs static

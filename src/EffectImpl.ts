@@ -52,12 +52,11 @@ export type SignalLikeDeps = SignalLike<any>[];
  * The wide form of the effect options — what the `EffectImpl` constructor
  * takes, not what a `createEffect()` call site accepts.
  *
- * Its `dependencies` may hold names while `attach` stays optional, and that
- * is exactly the pairing the four `createEffect()` overloads forbid: a name
- * without a group throws at runtime. A caller holding an options object in a
- * variable therefore names {@link EffectOptionsWithSignalDeps} or
- * {@link EffectOptionsWithNameDeps}; passing a variable of this type reports
- * `TS2769`.
+ * Its `dependencies` may hold names while `attach` stays optional — exactly
+ * the pairing the four `createEffect()` overloads forbid, since a name
+ * without a group throws at runtime. A variable of this type at a call site
+ * reports `TS2769`; name {@link EffectOptionsWithSignalDeps} or
+ * {@link EffectOptionsWithNameDeps} instead.
  */
 export interface EffectOptions {
   autorun?: boolean;
@@ -80,9 +79,11 @@ export interface EffectOptionsWithSignalDeps {
 /**
  * Effect options whose `dependencies` array contains at least one
  * string/symbol entry. Such names are resolved via a SignalGroup, so
- * `attach` is **required** by the type system — preventing the runtime
- * TypeError that would otherwise be thrown when `group.signal(name)` is
- * called on an undefined group.
+ * `attach` is **required** by the type system — without it the call throws
+ * before the effect is even created, with `cannot resolve dependency "…" —
+ * no SignalGroup is attached`.
+ *
+ * `docs/api.md`, "Effects" → "createEffect(callback, options?)"
  */
 export interface EffectOptionsWithNameDeps {
   autorun?: boolean;
@@ -495,15 +496,12 @@ export class EffectImpl {
     }
   }
 
-  // Overload 1: options-only form with pure-SignalLike deps (or no deps).
-  // `attach` is optional because no name lookup is needed.
+  // Overload 1: options-only, SignalLike deps only — `attach` optional.
   static createEffect(
     callback: EffectCallback,
     options?: EffectOptionsWithSignalDeps,
   ): Effect;
-  // Overload 2: options-only form with string/symbol deps. The conditional
-  // type forces `attach` to be present — without a group, name lookup
-  // would throw at runtime.
+  // Overload 2: options-only, string/symbol deps — `attach` required.
   static createEffect(
     callback: EffectCallback,
     options: EffectOptionsWithNameDeps,
@@ -514,8 +512,7 @@ export class EffectImpl {
     dependencies: SignalLikeDeps,
     options?: Omit<EffectOptionsWithSignalDeps, 'dependencies'>,
   ): Effect;
-  // Overload 4: positional deps containing string/symbol — options is
-  // required and must carry `attach`.
+  // Overload 4: positional deps with a string/symbol entry — `attach` required.
   static createEffect(
     callback: EffectCallback,
     dependencies: EffectDeps,
