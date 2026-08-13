@@ -726,6 +726,32 @@ describe('the published type surface', () => {
     }
   });
 
+  it('infers the zero-argument read from a SignalReader', () => {
+    // The overload order on `SignalReader<T>` is load-bearing: the
+    // parameter-less read must stay the last signature. The wrapper's
+    // parameter is written as a call signature — a bare type parameter
+    // (`<F>(fn: F) => F`) witnesses nothing.
+    const asCallSignature =
+      <Args extends unknown[], Result>(fn: (...args: Args) => Result) =>
+      (...args: Args): Result =>
+        fn(...args);
+
+    const sig = createSignal(1);
+    const read = asCallSignature(sig.get);
+    const onValue = (_v: number) => {};
+
+    try {
+      const seen: number = read();
+
+      // @ts-expect-error the inferred wrapper takes no argument.
+      read(onValue);
+
+      expect(seen).toBe(1);
+    } finally {
+      destroySignal(sig);
+    }
+  });
+
   it('types a link callback target from its source', () => {
     const source = createSignal(1);
     const target = createSignal(0);
@@ -763,6 +789,30 @@ describe('the published type surface', () => {
       toCallback.destroy();
       toSignal.destroy();
       destroySignal(source, target);
+    }
+  });
+
+  it('reduces link() to its callback signature', () => {
+    // Both `link()` overloads return the same type, so swapping them
+    // compiles clean — it only shows where the overloaded type is reduced
+    // to one signature, and that has to stay the callback one
+    // (`pitfalls.md`, 17b).
+    type LinkTarget = Parameters<typeof link>[1];
+
+    const sig = createSignal(1);
+    const target: LinkTarget = (value: unknown) => {
+      void value;
+    };
+    const asCallback: ValueCallback<unknown> = target;
+
+    // @ts-expect-error a signal is not a callback.
+    const wrong: LinkTarget = sig;
+
+    try {
+      expect(typeof asCallback).toBe('function');
+      expect(wrong).toBe(sig);
+    } finally {
+      destroySignal(sig);
     }
   });
 
