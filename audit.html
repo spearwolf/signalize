@@ -1,687 +1,495 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Audit — @spearwolf/signalize</title>
 <style>
-:root{
-  --bg:#0f172a; --bg2:#151f38; --bg3:#1b2742; --line:#27344f;
-  --fg:#e2e8f0; --fg2:#a6b3c8; --fg3:#7d8ba3;
-  --acc:#8b9dfa; --acc2:#6d7fe0;
-  --critical:#e06a6a; --high:#dd8a4e; --medium:#d4a94a; --low:#6f9bd8; --info:#8593a8;
-  --ok:#63b18a;
-}
+:root{--bg:#0f172a;--panel:#151f38;--panel2:#1b2745;--fg:#e2e8f0;--dim:#94a3b8;--dim2:#64748b;--line:#25324f;--acc:#818cf8;--code:#1e293b;
+--critical:#f87171;--high:#fb923c;--medium:#fbbf24;--low:#60a5fa;--info:#94a3b8}
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{
-  margin:0; background:var(--bg); color:var(--fg);
-  font-family:ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
-  font-size:clamp(16px,1rem,17px); line-height:1.65;
-  overflow-x:hidden;
-}
-.wrap{max-width:1100px; margin:0 auto; padding:16px}
-@media(min-width:720px){ .wrap{padding:40px 32px 64px} }
-h1,h2,h3,h4{font-weight:600; line-height:1.25; margin:0}
-h2{font-size:clamp(1.25rem,1.1rem + .6vw,1.55rem); margin:56px 0 6px}
-h3{font-size:1.05rem}
-p{margin:.7em 0; max-width:74ch}
-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.875em;
-  background:var(--bg3); border:1px solid var(--line); border-radius:4px; padding:.08em .34em;
-  overflow-wrap:anywhere}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;line-height:1.65;font-size:clamp(16px,1vw,17px);overflow-x:hidden}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+h1,h2,h3,h4{font-weight:600;line-height:1.25;margin:0 0 .5em}
+h1{font-size:clamp(1.6rem,4vw,2.1rem)}
+h2{font-size:clamp(1.15rem,2.4vw,1.4rem);margin-top:2.4rem;padding-bottom:.4rem;border-bottom:1px solid var(--line)}
+h3{font-size:1.05rem} h4{font-size:.95rem}
+p{max-width:74ch}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;background:var(--code);padding:.1em .38em;border-radius:4px;overflow-wrap:anywhere}
+.muted{color:var(--dim)}
 a{color:var(--acc)}
-.sub{color:var(--fg2)}
-.rule{border:0; border-top:1px solid var(--line); margin:0}
-
-/* Header */
-header.top{padding:8px 0 4px}
-h1{font-size:clamp(1.5rem,1.2rem + 1.4vw,2.1rem); letter-spacing:-.01em}
-.badges{display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 0}
-.badge{font-size:.75rem; color:var(--fg2); background:var(--bg2);
-  border:1px solid var(--line); border-radius:999px; padding:2px 10px}
-.scorewrap{display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 20px; margin:24px 0 6px}
-.score{font-size:clamp(2.8rem,2.2rem + 3vw,4rem); font-weight:600; line-height:1; letter-spacing:-.03em}
-.score small{font-size:.3em; font-weight:400; color:var(--fg3); margin-left:.25em}
-.subscores{color:var(--fg2); font-size:.95rem}
-.subscores b{color:var(--fg); font-weight:600}
-.cmp{color:var(--fg2); font-size:.95rem; margin:6px 0 0; max-width:74ch}
-.up{color:var(--ok); font-weight:600}
-.tag{font-size:.8rem; color:var(--fg3)}
-
-/* Portrait */
-.doms{display:grid; gap:14px; grid-template-columns:1fr; margin-top:18px}
-@media(min-width:720px){ .doms{grid-template-columns:1fr 1fr} }
-.dom{background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:16px}
-.dom h3{font-size:.98rem; margin-bottom:4px}
-.dom p{font-size:.9rem; color:var(--fg2); margin:.3em 0 .7em; max-width:none}
-.chips{display:flex; flex-wrap:wrap; gap:5px}
-.chip{font-family:ui-monospace,monospace; font-size:.72rem; color:var(--fg3);
-  background:var(--bg3); border-radius:4px; padding:1px 7px; overflow-wrap:anywhere}
-
-figure{margin:22px 0 0}
-figure svg{width:100%; height:auto; display:block}
-figcaption{color:var(--fg3); font-size:.83rem; margin-top:10px; max-width:74ch}
-.arch .a-box{fill:var(--bg2); stroke:var(--line)}
-.arch .a-entry{fill:var(--bg3); stroke:var(--acc2)}
-.arch .a-core{fill:var(--bg3)}
-.arch .a-queue{fill:var(--bg3); stroke:var(--acc2); stroke-dasharray:3 3}
-.arch .a-leaf{fill:var(--bg2); stroke:var(--line); stroke-dasharray:3 3}
-.arch .a-t{fill:var(--fg); font-size:12.5px; font-family:inherit}
-.arch .a-s{fill:var(--fg3); font-size:10.5px; font-family:inherit}
-.arch .a-cap{fill:var(--fg3); font-size:10.5px; font-family:inherit; letter-spacing:.06em; text-transform:uppercase}
-.arch .a-arrow{stroke:var(--line); stroke-width:1.2}
-.arch .arrowhead{fill:var(--line)}
-
-/* Domain-Blöcke */
-.dgrid{display:grid; gap:16px; grid-template-columns:1fr; margin-top:16px}
-@media(min-width:900px){ .dgrid{grid-template-columns:1fr 1fr} }
-.dblock{background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:18px}
-.dblock-h{display:flex; align-items:baseline; justify-content:space-between; gap:12px}
-.dscore{font-size:1.9rem; font-weight:600; letter-spacing:-.02em}
-.dsum{font-size:.92rem; color:var(--fg2); max-width:none}
-.dsub{font-size:.76rem; color:var(--fg3); letter-spacing:.06em; text-transform:uppercase; margin:18px 0 8px}
-.bars{margin-top:14px; display:grid; gap:6px}
-.bar-row{display:grid; grid-template-columns:112px 1fr 28px; align-items:center; gap:10px; font-size:.85rem}
-@media(max-width:719px){ .bar-row{grid-template-columns:1fr auto; gap:2px 8px}
-  .bar-track{grid-column:1/-1} }
-.bar-label{color:var(--fg2); display:flex; align-items:center; gap:7px}
-.dot{width:8px; height:8px; border-radius:50%; flex:0 0 auto}
-.dot-critical{background:var(--critical)} .dot-high{background:var(--high)}
-.dot-medium{background:var(--medium)} .dot-low{background:var(--low)} .dot-info{background:var(--info)}
-.bar-track{height:7px; background:var(--bg3); border-radius:4px; overflow:hidden}
-.bar-fill{display:block; height:100%; border-radius:4px}
-.bar-critical{background:var(--critical)} .bar-high{background:var(--high)}
-.bar-medium{background:var(--medium)} .bar-low{background:var(--low)} .bar-info{background:var(--info)}
-.bar-num{text-align:right; color:var(--fg2); font-variant-numeric:tabular-nums}
-.cats{list-style:none; margin:0; padding:0; display:grid; gap:3px}
-.cats li{display:flex; justify-content:space-between; gap:12px; font-size:.87rem;
-  color:var(--fg2); padding:3px 0; border-bottom:1px solid var(--line)}
-.cats li:last-child{border-bottom:0}
-.cat-num{color:var(--fg3); font-variant-numeric:tabular-nums}
-
-/* Filter */
-.filters{display:flex; flex-wrap:wrap; gap:10px 18px; margin:16px 0 14px;
-  background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:12px 14px}
-.fgroup{display:flex; flex-direction:column; gap:6px}
-.fgroup > span{font-size:.72rem; color:var(--fg3); letter-spacing:.06em; text-transform:uppercase}
-.fchips{display:flex; flex-wrap:wrap; gap:6px}
-button.f{font:inherit; font-size:.82rem; color:var(--fg2); background:var(--bg3);
-  border:1px solid var(--line); border-radius:999px; padding:0 12px; min-height:34px;
-  cursor:pointer; -webkit-appearance:none}
-button.f[aria-pressed="true"]{background:var(--acc2); border-color:var(--acc2); color:#0d1226; font-weight:600}
-select.f{font:inherit; font-size:.85rem; color:var(--fg); background:var(--bg3);
-  border:1px solid var(--line); border-radius:8px; min-height:38px; padding:0 10px; max-width:100%}
-.count{color:var(--fg3); font-size:.85rem; margin:0 0 10px}
-
-/* Backlog */
-table{width:100%; border-collapse:collapse; font-size:.88rem}
-thead th{text-align:left; font-weight:500; font-size:.72rem; color:var(--fg3);
-  letter-spacing:.06em; text-transform:uppercase; padding:8px 10px; border-bottom:1px solid var(--line)}
-tbody tr.row{border-bottom:1px solid var(--line); cursor:pointer}
-tbody tr.row:hover{background:var(--bg2)}
-tbody td{padding:10px; vertical-align:top}
-td.c-id{font-family:ui-monospace,monospace; font-size:.8rem; color:var(--fg3); white-space:nowrap}
-td.c-title{color:var(--fg)}
-td.c-loc{font-family:ui-monospace,monospace; font-size:.75rem; color:var(--fg3); overflow-wrap:anywhere; max-width:210px}
-td.c-cat,td.c-eff{color:var(--fg2); font-size:.82rem; white-space:nowrap}
-.sev{display:inline-block; font-size:.72rem; font-weight:600; border-radius:999px;
-  padding:1px 9px; white-space:nowrap}
-.sev-critical{background:rgba(224,106,106,.16); color:var(--critical)}
-.sev-high{background:rgba(221,138,78,.16); color:var(--high)}
-.sev-medium{background:rgba(212,169,74,.16); color:var(--medium)}
-.sev-low{background:rgba(111,155,216,.15); color:var(--low)}
-.sev-info{background:rgba(133,147,168,.15); color:var(--info)}
-.dm{display:inline-block; font-size:.7rem; color:var(--fg3); background:var(--bg3);
-  border:1px solid var(--line); border-radius:4px; padding:0 7px; white-space:nowrap}
-.st{display:inline-block; font-size:.7rem; border-radius:4px; padding:0 7px; white-space:nowrap; border:1px solid transparent}
-.st-new{background:rgba(139,157,250,.16); color:var(--acc); border-color:rgba(139,157,250,.3)}
-.st-improved{background:rgba(99,177,138,.14); color:var(--ok); border-color:rgba(99,177,138,.3)}
-.st-carried-over{background:var(--bg3); color:var(--fg3)}
-.st-unchanged{background:var(--bg3); color:var(--fg2)}
-tr.det td{padding:0 10px 16px; background:var(--bg2)}
-tr.det .dwrap{display:grid; gap:12px; padding-top:2px}
-tr.det h5{margin:0 0 2px; font-size:.72rem; color:var(--fg3);
-  letter-spacing:.06em; text-transform:uppercase; font-weight:500}
-tr.det p{margin:0; font-size:.88rem; color:var(--fg2); max-width:78ch}
-.empty{color:var(--fg3); padding:28px 0; text-align:center}
-
-@media(max-width:719px){
-  table,thead,tbody,tr,td{display:block}
-  thead{display:none}
-  tbody tr.row{background:var(--bg2); border:1px solid var(--line); border-radius:10px;
-    padding:12px; margin:0 0 10px; min-height:44px}
-  tbody td{padding:0}
-  td.c-head{display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin-bottom:6px}
-  td.c-title{font-size:.95rem; margin-bottom:8px}
-  td.c-meta{display:flex; flex-wrap:wrap; gap:5px 12px; font-size:.75rem; color:var(--fg3)}
-  td.c-meta .k{color:var(--fg3)}
-  tr.det{background:var(--bg2); border:1px solid var(--line); border-top:0;
-    border-radius:0 0 10px 10px; margin:-11px 0 10px; padding:0 12px 14px; display:block}
-  tr.det td{background:transparent}
-}
-.desk{display:table-cell}
-@media(max-width:719px){ .desk{display:none} }
-.mob{display:none}
-@media(max-width:719px){ .mob{display:block} }
-
-/* Sonstiges */
-.qa{background:var(--bg2); border:1px solid var(--line); border-left:3px solid var(--acc2);
-  border-radius:8px; padding:14px 16px; margin:12px 0}
-.qa h3{font-size:.97rem; margin-bottom:2px}
-.qa p{font-size:.89rem; color:var(--fg2); margin:.35em 0 0}
-.opt{border-top:1px solid var(--line); padding:14px 0}
-.opt:last-of-type{border-bottom:1px solid var(--line)}
-.opt h3{font-size:.97rem}
-.opt p{font-size:.89rem; color:var(--fg2); margin:.3em 0 0}
-.meth p,.meth li{font-size:.9rem; color:var(--fg2)}
-.meth ul{padding-left:1.15em; max-width:74ch}
-.meth li{margin:.3em 0}
-.chart{max-width:640px; margin-top:12px}
-.chart .grid{stroke:var(--line); stroke-width:1}
-.chart .line{fill:none; stroke:var(--acc); stroke-width:2}
-.chart .pt{fill:var(--bg); stroke:var(--acc); stroke-width:2}
-.chart .pt-now{fill:var(--acc)}
-.chart .axis{fill:var(--fg3); font-size:10.5px; font-family:inherit}
-.chart .ptlabel{fill:var(--fg2); font-size:11px; font-family:inherit}
-.chart .ptlabel-now{fill:var(--fg); font-weight:600}
-footer{color:var(--fg3); font-size:.8rem; margin-top:56px; padding-top:16px; border-top:1px solid var(--line)}
+header.top{padding:26px 0 10px}
+.stack{display:flex;flex-wrap:wrap;gap:6px;margin:.7rem 0}
+.stack span{font-size:.76rem;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:.15em .7em}
+.scorewrap{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem 1.2rem;margin-top:1rem}
+.big{font-size:clamp(2.6rem,9vw,3.4rem);font-weight:600;line-height:1}
+.subs{color:var(--dim);font-size:.92rem}
+.cmp{margin-top:.5rem;color:var(--dim);font-size:.92rem}
+.cmp b{color:var(--fg);font-weight:600}
+.up{color:#4ade80}
+section.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:14px 0}
+.doms{display:grid;gap:14px}
+@media(min-width:900px){.doms{grid-template-columns:1fr 1fr}}
+.dom{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+.dom header{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;margin-bottom:.4rem}
+.dom h3{margin:0}
+.ds{font-size:1.7rem;font-weight:600}
+.ds span{font-size:.8rem;color:var(--dim);font-weight:400}
+.bars{margin:1rem 0 .8rem}
+.bar{display:grid;grid-template-columns:64px 1fr 30px;align-items:center;gap:9px;margin:5px 0;font-size:.8rem}
+.bt{background:var(--panel2);border-radius:999px;height:7px;overflow:hidden}
+.bf{display:block;height:100%;border-radius:999px}
+.bn{text-align:right;color:var(--dim);font-variant-numeric:tabular-nums}
+.s-critical{color:var(--critical)} .bf.s-critical{background:var(--critical)}
+.s-high{color:var(--high)} .bf.s-high{background:var(--high)}
+.s-medium{color:var(--medium)} .bf.s-medium{background:var(--medium)}
+.s-low{color:var(--low)} .bf.s-low{background:var(--low)}
+.s-info{color:var(--info)} .bf.s-info{background:var(--info)}
+@media(max-width:719px){.bar{grid-template-columns:1fr;gap:2px}.bn{text-align:left}}
+ul.cats{list-style:none;margin:0;padding:0;font-size:.86rem}
+ul.cats li{display:flex;justify-content:space-between;gap:1rem;padding:.28em 0;border-bottom:1px solid var(--line)}
+ul.cats li:last-child{border:0}
+.cn{color:var(--dim);font-variant-numeric:tabular-nums}
+.dgrid{display:grid;gap:12px}
+@media(min-width:720px){.dgrid{grid-template-columns:1fr 1fr}}
+.dcard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:13px}
+.dcard h4{margin:0 0 .3em} .dcard p{margin:0 0 .55em;font-size:.88rem;color:var(--dim)}
+.chips{display:flex;flex-wrap:wrap;gap:5px} .chips code{font-size:.74rem}
+svg{width:100%;height:auto;display:block}
+.gl{stroke:var(--line);stroke-width:1}
+.ax{fill:var(--dim2);font-size:11px;font-family:inherit}
+.ln{fill:none;stroke:var(--acc);stroke-width:2;stroke-linejoin:round}
+.dot{fill:var(--acc)} .dot.cur{fill:#fff;stroke:var(--acc);stroke-width:2.5}
+.cv{fill:var(--fg);font-size:12px;font-weight:600;font-family:inherit}
+.lb{fill:var(--panel2);stroke:var(--line)}
+.lt{fill:var(--fg);font-size:13px;font-weight:600;font-family:inherit}
+.lm{fill:var(--dim);font-size:11px;font-family:ui-monospace,monospace}
+.ln2{fill:var(--dim2);font-size:11px;font-family:inherit}
+.ar{stroke:var(--dim2);stroke-width:1.4;fill:none}
+figcaption{color:var(--dim);font-size:.82rem;margin-top:.6rem;max-width:74ch}
+.filters{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}
+.filters label{display:flex;flex-direction:column;gap:3px;font-size:.74rem;color:var(--dim)}
+.filters select{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:.5em .7em;font:inherit;font-size:.86rem;min-height:40px}
+#count{color:var(--dim);font-size:.85rem;margin:0 0 10px}
+.row{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:8px 0;overflow:hidden}
+.rh{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:11px 13px;cursor:pointer;min-height:44px}
+.rh:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+.sev{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;border:1px solid currentColor;border-radius:999px;padding:.05em .55em;flex:none}
+.fid{font-family:ui-monospace,monospace;font-size:.8rem;color:var(--dim);flex:none}
+.dbadge{font-size:.7rem;color:var(--dim2);border:1px solid var(--line);border-radius:4px;padding:.05em .45em;flex:none}
+.st{font-size:.68rem;border-radius:4px;padding:.05em .45em;flex:none}
+.st-new{color:var(--acc);border:1px solid var(--acc)}
+.st-improved{color:#4ade80;border:1px solid #4ade80}
+.st-unchanged{color:var(--dim);border:1px solid var(--line)}
+.st-carried-over{color:var(--dim2);border:1px solid var(--line)}
+.ftitle{flex:1 1 100%;font-weight:500}
+@media(min-width:720px){.ftitle{flex:1 1 auto;min-width:280px}}
+.chev{color:var(--dim2);margin-left:auto;transition:transform .15s;flex:none}
+.row.open .chev{transform:rotate(90deg)}
+.rm{padding:0 13px 11px;font-size:.78rem;color:var(--dim2);display:flex;flex-wrap:wrap;gap:6px}
+.rm .loc{overflow-wrap:anywhere} .sep{opacity:.5}
+.rb{padding:0 13px 15px;border-top:1px solid var(--line);margin-top:2px}
+.rb p{margin:.85rem 0 0}
+.rec{color:var(--dim);border-left:2px solid var(--line);padding-left:.9rem}
+.rec strong{color:var(--fg)}
+.q{border-left:3px solid var(--acc);padding-left:1rem;margin:1.3rem 0}
+.q h3{margin-bottom:.3rem}
+footer{color:var(--dim2);font-size:.82rem;margin:3rem 0 2rem;padding-top:1rem;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <header class="top">
-  <h1>Projekt-Audit — @spearwolf/signalize</h1>
-  <p class="sub">Stand 2026-08-12 · Version 1.0.0-dev · Folgeaudit</p>
-  <div class="badges"><span class="badge">TypeScript 7</span><span class="badge">ESM-only</span><span class="badge">Node &gt;=22</span><span class="badge">pnpm 11</span><span class="badge">Vitest 4</span><span class="badge">Rollup 4</span><span class="badge">Biome 2</span></div>
-
+  <h1>Code-Audit — @spearwolf/signalize</h1>
+  <div class="stack"><span>TypeScript 7</span><span>ESM-only</span><span>Node &gt;=22</span><span>pnpm 11</span><span>Vitest 4</span><span>Rollup 4</span><span>Biome 2</span><span>v1.0.0-dev</span></div>
   <div class="scorewrap">
-    <div class="score">84.5<small>/ 100</small></div>
-    <div class="subscores">
-      Health-Score<br>
-      <b>Code &amp; Laufzeit 95.5</b> · <b>Projekt-Harness 89</b>
-    </div>
+    <div class="big">88.5</div>
+    <div class="subs">Health-Score<br>Code &amp; Laufzeit 97.0 · Projekt-Harness 91.5</div>
   </div>
-  <p class="cmp">
-    <span class="up">▲ +16.5</span>
-    gegenüber 68 vom 2026-08-12
-    <span class="tag">(Codeänderung, nicht Prüftiefe)</span><br>
-    <b>30 Findings behoben</b>, 1 verbessert,
-    8 neu · 23 übernommen.
-  </p>
+  <p class="cmp">2026-08-13 · <span class="up">▲ +4.0</span> gegenüber <b>84.5</b> vom 2026-08-12 — <b>13</b> Findings behoben, <b>1</b> verbessert, <b>5</b> neu.</p>
 </header>
 
 <h2>Was das Projekt ist</h2>
-<p>
-  <code>@spearwolf/signalize</code> ist ein frameworkunabhängiger Reaktivitätskern für
-  JavaScript und TypeScript: Signale, Effekte, Memos und Links, die
-  <strong>synchron und inline</strong> propagieren. Wenn <code>set()</code> zurückkehrt, hat jeder
-  abhängige Beobachter bereits gelaufen — kein Scheduler, kein Microtask, keine
-  Change-Detection-Runde.
-</p>
-<p>
-  Das ist der eine Entwurfsentscheid, um den herum alles andere gebaut ist. Er macht
-  reaktive Logik im <code>requestAnimationFrame</code>-Callback, im Physik-Tick oder im
-  Worker-Handler benutzbar, wo »fertig, bevor ich weitergehe« mehr wiegt als
-  kostenloses Batching. Gebündelt wird nur auf ausdrückliche Anforderung.
-  Die Bibliothek liegt auf dem Event-Emitter <code>@spearwolf/eventize</code> desselben Autors auf,
-  ist ESM-only, verlangt Node ≥ 22 und liefert zwei Einstiegspunkte aus:
-  den Kern und die TC39-Dekoratoren.
-</p>
+<p><code>@spearwolf/signalize</code> ist eine Reaktivitätsbibliothek: Signale, Effekte, Memos und Links, alle <strong>synchron</strong>. Ein Schreibzugriff benachrichtigt seine Abhängigen, bevor er zurückkehrt — es gibt keinen Scheduler, keinen Microtask, keine Render-Phase. Aufgebaut ist sie auf <code>@spearwolf/eventize</code>, das die Zustellung übernimmt; ausgeliefert wird ESM-only für Node ≥ 22 und moderne Browser.</p>
+<p>Der Zuschnitt ist framework-agnostisch: kein React, kein Vue, keine Komponenten. Was sie stattdessen anbietet, ist Lebenszyklus — <code>SignalGroup</code> bindet Signale an ein Host-Objekt, der <code>@signal()</code>-Dekorator macht ein Klassenfeld reaktiv, und jeder Teardown-Pfad sammelt Fehler, statt beim ersten abzubrechen. Das Paket steht bei <code>1.0.0-dev</code>; der <code>## Unreleased</code>-Block trägt 54 Breaking Changes.</p>
 
-<div class="doms"><article class="dom">
-    <h3>Signal-Kern</h3>
-    <p>Der Wertbehälter selbst: verfolgter und unverfolgter Read, Lazy-Fabriken, Vergleicher, mute und destroy. Kennt keine Effekte — die Verbindung dorthin läuft über einen Platzhalter, damit ein Bundle ohne <code>onChange()</code> die Effekt-Maschine nicht mitschleppt.</p>
-    <div class="chips"><span class="chip">src/create-signal.ts</span><span class="chip">src/signal-core.ts</span><span class="chip">src/Signal.ts</span><span class="chip">src/value.ts</span><span class="chip">src/touch.ts</span></div>
-  </article>
-<article class="dom">
-    <h3>Effekt-Maschine</h3>
-    <p>Abhängigkeitsverfolgung beim Lesen, Wiedereintritt mit Tiefenbegrenzung, Cleanup-Generationen, Prioritäten und die Kanäle, über die ein Fehler ohne Aufrufer gemeldet wird. Die längste und dichteste Datei des Projekts liegt hier.</p>
-    <div class="chips"><span class="chip">src/EffectImpl.ts</span><span class="chip">src/effects.ts</span><span class="chip">src/Effect.ts</span><span class="chip">src/global-effect-stack.ts</span></div>
-  </article>
-<article class="dom">
-    <h3>Lifecycle & Gruppen</h3>
-    <p>Bündelt Signale, Effekte, Links und Kindgruppen an einem Wirtsobjekt und räumt sie in einem Aufruf ab. Drei <code>FinalizationRegistry</code>-Rückfallebenen fangen den Fall ab, dass der Wirt einfach fallengelassen wird.</p>
-    <div class="chips"><span class="chip">src/SignalGroup.ts</span><span class="chip">src/SignalAutoMap.ts</span><span class="chip">src/object-signals.ts</span><span class="chip">src/decorators.ts</span></div>
-  </article>
-<article class="dom">
-    <h3>Links</h3>
-    <p>Einwegverbindungen von einer Quelle zu einem Signal oder Callback, mit Dedup-Register je Quelle, <code>nextValue()</code> als Promise und <code>asyncValues()</code> als Async-Iterator inklusive Abbruch von außen.</p>
-    <div class="chips"><span class="chip">src/link.ts</span><span class="chip">src/SignalLink.ts</span></div>
-  </article>
-<article class="dom">
-    <h3>Kontext-Modi</h3>
-    <p>Drei Rahmen, die das synchrone Verhalten vorübergehend biegen: Schreibvorgänge sammeln, Reads stumm schalten, den gesamten Kontext einfrieren. Alle drei lehnen <code>async</code>-Callbacks schon beim Typcheck ab.</p>
-    <div class="chips"><span class="chip">src/batch.ts</span><span class="chip">src/be-quiet.ts</span><span class="chip">src/hibernate.ts</span></div>
-  </article>
-<article class="dom">
-    <h3>Diagnose & Fehlerkanäle</h3>
-    <p>Die Zustellrahmen, die einen werfenden Effekt daran hindern, seinen Geschwistern die Benachrichtigung zu kosten, dazu der allgemeine Meldekanal, Deprecation-Notizen und die Erkennung mehrerer geladener Kopien.</p>
-    <div class="chips"><span class="chip">src/collect-errors.ts</span><span class="chip">src/signalize-error.ts</span><span class="chip">src/deprecation-warnings.ts</span><span class="chip">src/effect-error-handlers.ts</span><span class="chip">src/instances.ts</span></div>
-  </article></div>
+<div class="dgrid"><div class="dcard"><h4>Signal-Kern</h4><p>Wert, Reader, Writer, Lazy-Auswertung, der globale Zähler.</p><div class="chips"><code>src/create-signal.ts</code><code>src/signal-core.ts</code><code>src/Signal.ts</code><code>src/value.ts</code><code>src/touch.ts</code></div></div><div class="dcard"><h4>Effekte</h4><p>Dependency-Tracking, Cleanups, Generationen, Kind-Effekte, Fehlerrouten.</p><div class="chips"><code>src/EffectImpl.ts</code><code>src/effects.ts</code><code>src/Effect.ts</code><code>src/global-effect-stack.ts</code></div></div><div class="dcard"><h4>Gruppen &amp; Lebenszyklus</h4><p>Wem ein Signal gehört, wann es stirbt, wie ein Host es trägt.</p><div class="chips"><code>src/SignalGroup.ts</code><code>src/SignalAutoMap.ts</code><code>src/object-signals.ts</code><code>src/decorators.ts</code></div></div><div class="dcard"><h4>Links</h4><p>Einweg-Datenfluss von Quelle zu Ziel, inklusive der async-Leseformen.</p><div class="chips"><code>src/link.ts</code><code>src/SignalLink.ts</code></div></div><div class="dcard"><h4>Ausführungsrahmen</h4><p>Die drei Frames, die das Verhalten eines Aufrufs umstellen.</p><div class="chips"><code>src/batch.ts</code><code>src/be-quiet.ts</code><code>src/hibernate.ts</code></div></div><div class="dcard"><h4>Diagnose</h4><p>Wohin ein Fehler geht, wenn kein Aufrufer mehr da ist, an den man werfen könnte.</p><div class="chips"><code>src/signalize-error.ts</code><code>src/effect-error-handlers.ts</code><code>src/collect-errors.ts</code><code>src/instances.ts</code></div></div></div>
 
-<figure>
-  <svg viewBox="0 0 720 330" role="img" aria-label="Schichtung der Module und die vier globalen Queues" class="arch">
-  <defs>
-    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" class="arrowhead"/>
-    </marker>
-  </defs>
-
-  <text x="10" y="18" class="a-cap">Einstiegspunkte</text>
-  <rect x="10" y="26" width="200" height="34" rx="6" class="a-box a-entry"/>
-  <text x="110" y="48" class="a-t" text-anchor="middle">index.ts</text>
-  <rect x="222" y="26" width="150" height="34" rx="6" class="a-box a-entry"/>
-  <text x="297" y="48" class="a-t" text-anchor="middle">decorators.ts</text>
-
-  <text x="10" y="90" class="a-cap">Fachschichten</text>
-  <rect x="10" y="98" width="168" height="52" rx="6" class="a-box"/>
-  <text x="94" y="118" class="a-t" text-anchor="middle">Effekt-Maschine</text>
-  <text x="94" y="136" class="a-s" text-anchor="middle">EffectImpl · effects · Effect</text>
-
-  <rect x="190" y="98" width="168" height="52" rx="6" class="a-box"/>
-  <text x="274" y="118" class="a-t" text-anchor="middle">Lifecycle</text>
-  <text x="274" y="136" class="a-s" text-anchor="middle">SignalGroup · AutoMap</text>
-
-  <rect x="370" y="98" width="150" height="52" rx="6" class="a-box"/>
-  <text x="445" y="118" class="a-t" text-anchor="middle">Links</text>
-  <text x="445" y="136" class="a-s" text-anchor="middle">link · SignalLink</text>
-
-  <rect x="532" y="98" width="178" height="52" rx="6" class="a-box"/>
-  <text x="621" y="118" class="a-t" text-anchor="middle">Kontext-Modi</text>
-  <text x="621" y="136" class="a-s" text-anchor="middle">batch · beQuiet · hibernate</text>
-
-  <text x="10" y="184" class="a-cap">Signal-Kern</text>
-  <rect x="10" y="192" width="348" height="50" rx="6" class="a-box a-core"/>
-  <text x="184" y="212" class="a-t" text-anchor="middle">create-signal · Signal · value · touch</text>
-  <text x="184" y="230" class="a-s" text-anchor="middle">baut auf signal-core, kennt keine Effekte</text>
-
-  <rect x="370" y="192" width="340" height="50" rx="6" class="a-box a-queue"/>
-  <text x="540" y="212" class="a-t" text-anchor="middle">4 globale eventize-Queues</text>
-  <text x="540" y="230" class="a-s" text-anchor="middle">signal · destroySignal · effect · effectCalled</text>
-
-  <text x="10" y="270" class="a-cap">Blattschicht — importiert nichts aus dem Paket</text>
-  <rect x="10" y="278" width="700" height="42" rx="6" class="a-box a-leaf"/>
-  <text x="360" y="304" class="a-t" text-anchor="middle">signal-core · collect-errors · constants · effect-hook · effect-error-handlers · instances</text>
-
-  <line x1="110" y1="60" x2="94" y2="96" class="a-arrow" marker-end="url(#ar)"/>
-  <line x1="140" y1="60" x2="274" y2="96" class="a-arrow" marker-end="url(#ar)"/>
-  <line x1="170" y1="60" x2="445" y2="96" class="a-arrow" marker-end="url(#ar)"/>
-  <line x1="200" y1="60" x2="600" y2="96" class="a-arrow" marker-end="url(#ar)"/>
-  <line x1="297" y1="60" x2="230" y2="190" class="a-arrow" marker-end="url(#ar)"/>
-  <line x1="94" y1="150" x2="150" y2="190" class="a-arrow" marker-end="url(#ar)"/>
-  <line x1="274" y1="150" x2="230" y2="190" class="a-arrow" marker-end="url(#ar)"/>
-  <line x1="445" y1="150" x2="470" y2="190" class="a-arrow" marker-end="url(#ar)"/>
-  <line x1="184" y1="242" x2="184" y2="276" class="a-arrow" marker-end="url(#ar)"/>
-  <line x1="540" y1="242" x2="500" y2="276" class="a-arrow" marker-end="url(#ar)"/>
-</svg>
-  <figcaption>
-    Die Import-Richtung, von oben nach unten. Pfeile bedeuten »importiert«; es gibt
-    keine Gegenrichtung — <code>rollup.config.mjs</code> bricht den Build bei einem Zyklus ab.
-    Die Blattschicht ganz unten importiert nichts aus dem Paket und darf deshalb von
-    überall erreicht werden. Die gestrichelte Queue-Box ist kein Modul im selben Sinn:
-    vier <code>eventize</code>-Instanzen auf Modulebene, über die Schreibvorgänge,
-    Zerstörungen und Effektaufrufe geroutet werden — der Grund, warum Gruppen, Links und
-    Auto-Maps ihre Rückverweise als <code>WeakRef</code> halten müssen.
-  </figcaption>
-</figure>
+<section class="card">
+  <h3>Die Schichtung, an der alles hängt</h3>
+  <figure style="margin:1rem 0 0"><svg viewBox="0 0 620 270" role="img" aria-label="Modul-Schichtung: Einstiegspunkte über Komposition über Kern über Blätter"><rect x="10" y="14" width="600" height="52" rx="7" class="lb"/><text x="24" y="35" class="lt">Einstiegspunkte</text><text x="24" y="52" class="lm">index.ts · decorators.ts</text><text x="600" y="35" class="ln2" text-anchor="end">Nur benannte Exporte. Kein Stern, in keiner Form.</text><path d="M310 66 L310 78" class="ar"/><path d="M306 73 L310 78 L314 73" class="ar"/><rect x="10" y="78" width="600" height="52" rx="7" class="lb"/><text x="24" y="99" class="lt">Komposition</text><text x="24" y="116" class="lm">create-memo · link · effects · SignalGroup · SignalAutoMap</text><text x="600" y="99" class="ln2" text-anchor="end">Darf alles unter sich rufen.</text><path d="M310 130 L310 142" class="ar"/><path d="M306 137 L310 142 L314 137" class="ar"/><rect x="10" y="142" width="600" height="52" rx="7" class="lb"/><text x="24" y="163" class="lt">Kern</text><text x="24" y="180" class="lm">create-signal · EffectImpl · SignalLink · Signal · Effect</text><text x="600" y="163" class="ln2" text-anchor="end">Kennt die Blätter, nicht die Komposition.</text><path d="M310 194 L310 206" class="ar"/><path d="M306 201 L310 206 L314 201" class="ar"/><rect x="10" y="206" width="600" height="52" rx="7" class="lb"/><text x="24" y="227" class="lt">Blätter</text><text x="24" y="244" class="lm">signal-core · collect-errors · constants · global-queues · effect-hook</text><text x="600" y="227" class="ln2" text-anchor="end">Rufen nichts über sich. Hier endet jeder Pfad.</text></svg>
+  <figcaption>Jede Box darf nur nach unten rufen, nie nach oben oder zur Seite. Die Pfeile sind erlaubte Import-Richtungen. Das ist keine Konvention, sondern ein Gate: <code>rollup.config.mjs</code> wirft bei <code>CIRCULAR_DEPENDENCY</code>, also scheitert <code>pnpm bundle</code> an einem Zyklus — <code>tsc</code> würde ihn wortlos durchlassen. <code>effect-hook.ts</code> ist der Kunstgriff, der die unterste Schicht die oberste rufen lässt, ohne eine Kante zu ziehen: <code>effects.ts</code> trägt sich dort beim Laden ein, <code>Signal.ts</code> liest den Eintrag.</figcaption></figure>
+</section>
 
 <h2>Befundlage</h2>
-<div class="dgrid">
-<section class="dblock">
-    <header class="dblock-h">
-      <h3>Code & Laufzeit</h3>
-      <span class="dscore">95.5</span>
-    </header>
-    <p class="dsum">Der Kern läuft grün durch alle neun Stufen von <code>pnpm world</code>, bei 655 Tests und 99,4 % Statement-Coverage — und die vier medium- bis high-Befunde des Vorlaufs sind alle geschlossen. Was dieser Lauf neu findet, ist eine einzige Lücke mit Substanz: der Teardown-Vertrag, den sechs Stellen im Baum einhalten (sammeln, weitermachen, am Ende als <code>AggregateError</code> melden), erreicht <code>SignalAutoMap#clear()</code> und <code>destroyObjectSignals()</code> nicht. Bei der Auto-Map kostet das im Fehlerfall ein Signal, das niemand mehr erreichen kann, weil sein Eintrag schon gelöscht war. Der Rest sind Kommentare und JSDoc, die hinter dem Code herhinken: eine deutsche Passage in der größten Datei, ein <code>export *</code>, das es nicht mehr gibt, eine Dekorator-Option, die zwei Kurzreferenzen ohne ihre Wechselwirkung listen.</p>
-    <div class="bars"><div class="bar-row">
-        <span class="bar-label"><span class="dot dot-critical"></span>critical</span>
-        <span class="bar-track"><span class="bar-fill bar-critical" style="width:0.0%"></span></span>
-        <span class="bar-num">0</span>
-      </div>
-<div class="bar-row">
-        <span class="bar-label"><span class="dot dot-high"></span>high</span>
-        <span class="bar-track"><span class="bar-fill bar-high" style="width:0.0%"></span></span>
-        <span class="bar-num">0</span>
-      </div>
-<div class="bar-row">
-        <span class="bar-label"><span class="dot dot-medium"></span>medium</span>
-        <span class="bar-track"><span class="bar-fill bar-medium" style="width:9.1%"></span></span>
-        <span class="bar-num">1</span>
-      </div>
-<div class="bar-row">
-        <span class="bar-label"><span class="dot dot-low"></span>low</span>
-        <span class="bar-track"><span class="bar-fill bar-low" style="width:45.5%"></span></span>
-        <span class="bar-num">5</span>
-      </div>
-<div class="bar-row">
-        <span class="bar-label"><span class="dot dot-info"></span>info</span>
-        <span class="bar-track"><span class="bar-fill bar-info" style="width:45.5%"></span></span>
-        <span class="bar-num">5</span>
-      </div></div>
-    <h4 class="dsub">Kategorien</h4>
-    <ul class="cats"><li><span class="cat-name">Konsistenz</span><span class="cat-num">2</span></li>
-<li><span class="cat-name">Lesbarkeit &amp; Clean Code</span><span class="cat-num">2</span></li>
-<li><span class="cat-name">Öffentliche API</span><span class="cat-num">2</span></li>
-<li><span class="cat-name">Memory Leaks &amp; Ressourcen</span><span class="cat-num">1</span></li>
-<li><span class="cat-name">Bugs &amp; Korrektheitsrisiken</span><span class="cat-num">1</span></li>
-<li><span class="cat-name">Architektur &amp; Struktur</span><span class="cat-num">1</span></li>
-<li><span class="cat-name">Implementierungsstand</span><span class="cat-num">1</span></li>
-<li><span class="cat-name">Sicherheit</span><span class="cat-num">1</span></li></ul>
-  </section>
-<section class="dblock">
-    <header class="dblock-h">
-      <h3>Projekt-Harness</h3>
-      <span class="dscore">89</span>
-    </header>
-    <p class="dsum">Hier hat sich seit dem Vorlauf fast nichts bewegt, und das ist kein Vorwurf: der Remediation-Lauf war ausdrücklich auf die Domäne »Code &amp; Laufzeit« beauftragt, alle 21 Harness-Befunde standen außerhalb. Zwei davon wiegen: 21 MB Hero-Assets liegen versioniert im Repo-Baum, wovon README genau eines verlinkt, und <code>pnpm audit</code> meldet unverändert fünf Advisories in devDependency-Ketten, die über ein Anheben der direkten Dependencies nicht mehr fallen. Dazu kommen zwei Fallen, die jeweils grün aussehen: <code>pnpm test -- &lt;datei&gt;</code> verwirft den Filter und fährt die volle Suite (nachgemessen: 58 statt 1 Datei), und sechs Dokumentationsstellen beschreiben <code>pnpm world</code> ohne den <code>typecheck</code>-Schritt, den es seit dem 9. August ausführt.</p>
-    <div class="bars"><div class="bar-row">
-        <span class="bar-label"><span class="dot dot-critical"></span>critical</span>
-        <span class="bar-track"><span class="bar-fill bar-critical" style="width:0.0%"></span></span>
-        <span class="bar-num">0</span>
-      </div>
-<div class="bar-row">
-        <span class="bar-label"><span class="dot dot-high"></span>high</span>
-        <span class="bar-track"><span class="bar-fill bar-high" style="width:0.0%"></span></span>
-        <span class="bar-num">0</span>
-      </div>
-<div class="bar-row">
-        <span class="bar-label"><span class="dot dot-medium"></span>medium</span>
-        <span class="bar-track"><span class="bar-fill bar-medium" style="width:9.5%"></span></span>
-        <span class="bar-num">2</span>
-      </div>
-<div class="bar-row">
-        <span class="bar-label"><span class="dot dot-low"></span>low</span>
-        <span class="bar-track"><span class="bar-fill bar-low" style="width:66.7%"></span></span>
-        <span class="bar-num">14</span>
-      </div>
-<div class="bar-row">
-        <span class="bar-label"><span class="dot dot-info"></span>info</span>
-        <span class="bar-track"><span class="bar-fill bar-info" style="width:23.8%"></span></span>
-        <span class="bar-num">5</span>
-      </div></div>
-    <h4 class="dsub">Kategorien</h4>
-    <ul class="cats"><li><span class="cat-name">Developer Experience</span><span class="cat-num">8</span></li>
-<li><span class="cat-name">Projektaufbau &amp; Build</span><span class="cat-num">5</span></li>
-<li><span class="cat-name">Dependencies</span><span class="cat-num">3</span></li>
-<li><span class="cat-name">Testabdeckung &amp; Teststrategie</span><span class="cat-num">3</span></li>
-<li><span class="cat-name">Typsicherheit</span><span class="cat-num">1</span></li>
-<li><span class="cat-name">Bugs &amp; Korrektheitsrisiken</span><span class="cat-num">1</span></li></ul>
-  </section>
-</div>
+<div class="doms"><section class="dom">
+<header><h3>Code &amp; Laufzeit</h3><div class="ds">97.0<span>/100</span></div></header>
+<p>Der Laufzeitkern hält seinen eigenen Teardown-Vertrag an jeder Stelle, die dieser Lauf nachgemessen hat — bis auf eine. <code>EffectImpl#unsubscribeSignal()</code> gibt zwei fremde Queue-Handles ohne Guard frei, und ausgerechnet dort ist die Folge am schwersten: das Register, das dabei stehen bleibt, ist genau das, an dem der Effekt abliest, ob ihn noch etwas wecken kann. Die drei übrigen Befunde sind Randschärfen — ein Einstieg, der einen Tippfehler als Erfolg meldet, ein Callback, der an einem Hook vorbeiliest, und zwei JSDoc-Blöcke, die länger geworden sind als der Typ darunter. Kein Bug in der Kernmechanik, keine Nebenläufigkeitslücke, keine Sicherheitslage.</p>
+<div class="bars"><div class="bar"><span class="bl s-critical">critical</span><span class="bt"><span class="bf s-critical" style="width:0%"></span></span><span class="bn">0</span></div><div class="bar"><span class="bl s-high">high</span><span class="bt"><span class="bf s-high" style="width:0%"></span></span><span class="bn">0</span></div><div class="bar"><span class="bl s-medium">medium</span><span class="bt"><span class="bf s-medium" style="width:17%"></span></span><span class="bn">1</span></div><div class="bar"><span class="bl s-low">low</span><span class="bt"><span class="bf s-low" style="width:33%"></span></span><span class="bn">2</span></div><div class="bar"><span class="bl s-info">info</span><span class="bt"><span class="bf s-info" style="width:50%"></span></span><span class="bn">3</span></div></div>
+<ul class="cats"><li><span>Memory Leaks &amp; Ressourcen</span><span class="cn">1</span></li><li><span>Konsistenz</span><span class="cn">1</span></li><li><span>Öffentliche API</span><span class="cn">1</span></li><li><span>Lesbarkeit &amp; Clean Code</span><span class="cn">1</span></li><li><span>Architektur &amp; Struktur</span><span class="cn">1</span></li><li><span>Sicherheit</span><span class="cn">1</span></li></ul>
+</section><section class="dom">
+<header><h3>Projekt-Harness</h3><div class="ds">91.5<span>/100</span></div></header>
+<p>Das Gerüst ist dicht und an einer Stelle durchsichtig: <code>check-doc-refs.mjs</code> besteht, wenn seine Globs nichts treffen — dieselbe Falle, die das Projekt in <code>vitest.config.ts</code> und in <code>test:smoke</code> bereits erkannt und geschlossen hat. Dahinter steht das ältere Muster: die fünf Skripte, die über Build und Veröffentlichung entscheiden, sind der einzige Code im Repo ohne Typcheck und ohne Test. Der Rest ist Pflege — eine tote Dependency, drei Verzeichnisse in <code>clean</code>, die es nicht gibt, zwei Doku-Zeilen, die eine Stufe unterschlagen, und sechs Bilddateien im Wurzelverzeichnis, die niemand referenziert.</p>
+<div class="bars"><div class="bar"><span class="bl s-critical">critical</span><span class="bt"><span class="bf s-critical" style="width:0%"></span></span><span class="bn">0</span></div><div class="bar"><span class="bl s-high">high</span><span class="bt"><span class="bf s-high" style="width:0%"></span></span><span class="bn">0</span></div><div class="bar"><span class="bl s-medium">medium</span><span class="bt"><span class="bf s-medium" style="width:6%"></span></span><span class="bn">1</span></div><div class="bar"><span class="bl s-low">low</span><span class="bt"><span class="bf s-low" style="width:72%"></span></span><span class="bn">13</span></div><div class="bar"><span class="bl s-info">info</span><span class="bt"><span class="bf s-info" style="width:22%"></span></span><span class="bn">4</span></div></div>
+<ul class="cats"><li><span>Developer Experience</span><span class="cn">7</span></li><li><span>Projektaufbau &amp; Build</span><span class="cn">6</span></li><li><span>Dependencies</span><span class="cn">2</span></li><li><span>Testabdeckung &amp; Teststrategie</span><span class="cn">2</span></li><li><span>Bugs &amp; Korrektheitsrisiken</span><span class="cn">1</span></li></ul>
+</section></div>
+
+<section class="card">
+  <h3>Score-Verlauf</h3>
+  <figure style="margin:1rem 0 0;max-width:640px"><svg viewBox="0 0 640 200" role="img" aria-label="Verlauf der Health-Scores"><line x1="42" y1="170.0" x2="624" y2="170.0" class="gl"/><text x="34" y="174.0" class="ax" text-anchor="end">0</text><line x1="42" y1="96.0" x2="624" y2="96.0" class="gl"/><text x="34" y="100.0" class="ax" text-anchor="end">50</text><line x1="42" y1="22.0" x2="624" y2="22.0" class="gl"/><text x="34" y="26.0" class="ax" text-anchor="end">100</text><polyline points="42.0,170.0 187.5,170.0 333.0,69.4 478.5,44.9 624.0,39.0" class="ln"/><circle cx="42.0" cy="170.0" r="3" class="dot"/><text x="42.0" y="190" class="ax" text-anchor="middle">08-07</text><circle cx="187.5" cy="170.0" r="3" class="dot"/><text x="187.5" y="190" class="ax" text-anchor="middle">08-08</text><circle cx="333.0" cy="69.4" r="3" class="dot"/><text x="333.0" y="190" class="ax" text-anchor="middle">08-12</text><circle cx="478.5" cy="44.9" r="3" class="dot"/><text x="478.5" y="190" class="ax" text-anchor="middle">08-12</text><circle cx="624.0" cy="39.0" r="4.5" class="dot cur"/><text x="624.0" y="190" class="ax" text-anchor="middle">08-13</text><text x="624.0" y="28.0" class="cv" text-anchor="middle">88.5</text></svg>
+  <figcaption>Verlauf der Health-Scores seit 2026-08-07. Die beiden Nullwerte am 7. und 8. August sind abgebrochene Läufe des Vorläufer-Audits, kein Zustand des Projekts — sie stehen im Verlauf, weil er unverändert fortgeschrieben wird. Aussagekräftig ist die Strecke ab dem 12. August: 68 → 84,5 → 88.5.</figcaption></figure>
+</section>
 
 <h2>Backlog</h2>
-<p class="sub">32 offene Punkte. Zeile antippen für Befund und Empfehlung.</p>
-
 <div class="filters">
-  <div class="fgroup"><span>Bereich</span><div class="fchips" id="f-domain"></div></div>
-  <div class="fgroup"><span>Severity</span><div class="fchips" id="f-sev"></div></div>
-  <div class="fgroup"><span>Status</span><div class="fchips" id="f-status"></div></div>
-  <div class="fgroup"><span>Kategorie</span><select class="f" id="f-cat"></select></div>
+  <label>Domain<select id="fd"><option value="">alle</option><option value="code">Code &amp; Laufzeit</option><option value="harness">Projekt-Harness</option></select></label>
+  <label>Severity<select id="fs"><option value="">alle</option><option value="critical">critical</option><option value="high">high</option><option value="medium">medium</option><option value="low">low</option><option value="info">info</option></select></label>
+  <label>Kategorie<select id="fc"><option value="">alle</option><option value="Architektur &amp; Struktur">Architektur &amp; Struktur</option><option value="Bugs &amp; Korrektheitsrisiken">Bugs &amp; Korrektheitsrisiken</option><option value="Dependencies">Dependencies</option><option value="Developer Experience">Developer Experience</option><option value="Konsistenz">Konsistenz</option><option value="Lesbarkeit &amp; Clean Code">Lesbarkeit &amp; Clean Code</option><option value="Memory Leaks &amp; Ressourcen">Memory Leaks &amp; Ressourcen</option><option value="Projektaufbau &amp; Build">Projektaufbau &amp; Build</option><option value="Sicherheit">Sicherheit</option><option value="Testabdeckung &amp; Teststrategie">Testabdeckung &amp; Teststrategie</option><option value="Öffentliche API">Öffentliche API</option></select></label>
+  <label>Status<select id="ft"><option value="">alle</option><option value="new">new</option><option value="improved">improved</option><option value="carried-over">carried-over</option></select></label>
 </div>
-<p class="count" id="count"></p>
-
-<table id="tbl">
-  <thead><tr>
-    <th class="desk">Sev</th><th class="desk">ID</th><th class="desk">Bereich</th>
-    <th class="desk">Titel</th><th class="desk">Ort</th><th class="desk">Kategorie</th>
-    <th class="desk">Status</th><th class="desk">Aufwand</th>
-  </tr></thead>
-  <tbody id="tbody"></tbody>
-</table>
+<p id="count"></p>
+<div id="rows"><article class="row" data-domain="harness" data-severity="medium" data-category="Projektaufbau &amp; Build" data-status="new">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-medium">medium</span>
+  <span class="fid">BUILD-022</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-new">new</span>
+  <span class="ftitle">Das Doku-Gate besteht still, wenn seine Globs nichts treffen</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">scripts/check-doc-refs.mjs</span><span class="sep">·</span><span>Projektaufbau &amp; Build</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p><code>globSync(DOC_GLOBS)</code> liefert bei einem umbenannten Pfad eine leere Liste, die Schleife läuft null Mal, <code>hits</code> bleibt leer, Exit 0. Ein Verzeichnis umbenennen und das Gate ist Dekoration — ohne ein Wort. Genau diese Falle ist im Projekt zweimal erkannt und geschlossen: <code>vitest.config.ts</code> fährt <code>assertThresholdGlobsMatch()</code> gegen exakt dasselbe Muster („Vitest passes an empty group silently, so the rule would not be enforced&quot;), und <code>test:smoke</code> trägt eine inline <code>if (g.length === 0)</code>-Wache mit einer ausführlichen Fehlermeldung. <code>check-banner.mjs</code> ist durch positive Pins immun. Von vier glob-getriebenen Gates ist dieses das einzige ohne Absicherung.</p><p class="rec"><strong>Empfehlung.</strong> Nach dem <code>globSync</code> prüfen, dass die Liste nicht leer ist und die vier namentlich erwarteten Wurzeldokumente (<code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>README.md</code>, <code>CONTRIBUTING.md</code>) darin vorkommen — sonst mit Exit 1 abbrechen und die nicht getroffenen Globs benennen. Der Wortlaut von <code>assertThresholdGlobsMatch()</code> ist die Vorlage; damit hat das Projekt eine Formulierung für diesen Fehler statt drei.</p></div>
+</article><article class="row" data-domain="code" data-severity="medium" data-category="Memory Leaks &amp; Ressourcen" data-status="new">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-medium">medium</span>
+  <span class="fid">MEM-014</span>
+  <span class="dbadge">Code &amp; Laufzeit</span>
+  <span class="st st-new">new</span>
+  <span class="ftitle">EffectImpl gibt fremde Queue-Handles als einzige Stelle im Baum ungeschützt frei</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">src/EffectImpl.ts:994-1001</span><span class="sep">·</span><span>Memory Leaks &amp; Ressourcen</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p><code>unsubscribeSignal()</code> ruft beide Handles eines Signals in einem <code>forEach</code> und löscht den Registereintrag erst danach. Wirft das erste Handle, läuft das zweite nie und <code>#signalSubscriptions.delete(signalId)</code> ebenso wenig — die Subskription auf <code>globalDestroySignalQueue</code> bleibt auf einer prozesslangen Queue stehen. Schwerer als die beiden Geschwister, die 2026-08-13 geschlossen wurden: <code>#signalSubscriptions</code> ist genau das Register, das <code>hasNoLiveSignals()</code> liest, also meldet der Effekt danach dauerhaft „ich habe noch Abhängigkeiten&quot; und zerstört sich nie mehr selbst. Der Baum hält den Vertrag sonst überall — <code>SignalGroup#dropSignalSubscription()</code> und <code>SignalAutoMap#drop()</code> je mit <code>try</code>/<code>finally</code> samt Begründung im Kommentar, <code>SignalGroup#clear()</code> und <code>unlink()</code> über <code>collect()</code>. Zwei der drei Module tragen sogar eine eigene Spec-Datei dafür (<code>SignalGroup.teardown.unsubscribeThrows.spec.ts</code>, <code>SignalAutoMap.teardown.unsubscribeThrows.spec.ts</code>); für <code>EffectImpl</code> gibt es keine.</p><p class="rec"><strong>Empfehlung.</strong> Die Schleife auf <code>collect()</code> je Handle umstellen, die drei Zeilen Buchführung in ein <code>finally</code>, am Ende <code>throwCollectedErrors(errors, &quot;unsubscribing an effect from a signal&quot;)</code> — dieselbe Form, die <code>SignalAutoMap#drop()</code> seit CONS-016 trägt. Dazu eine <code>EffectImpl.teardown.unsubscribeThrows.spec.ts</code> nach dem Muster der beiden vorhandenen: sie sind die Vorlage, inklusive der <code>vi.mock</code>-Naht, mit der ein werfendes Handle überhaupt erst erzeugt wird.</p></div>
+</article><article class="row" data-domain="code" data-severity="low" data-category="Öffentliche API" data-status="new">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">API-019</span>
+  <span class="dbadge">Code &amp; Laufzeit</span>
+  <span class="st st-new">new</span>
+  <span class="ftitle">Signal#onChange reicht dem Callback einen ungetrackten Read durch, an beforeRead vorbei</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">src/Signal.ts:104-109</span><span class="sep">·</span><span>Öffentliche API</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p>Der interne Effekt hat <code>[this.get]</code> als statische Abhängigkeit — das Tracking stimmt. Der Wert, den der Callback bekommt, kommt aber aus <code>this.value</code>, und das ist der Getter über <code>value()</code>, der <code>SignalImpl.value</code> direkt liest und den <code>beforeRead</code>-Hook überspringt. Für ein Signal mit eigenem <code>beforeRead</code> — der Hook, der einen <code>{lazy: true}</code>-Memo überhaupt erst neu rechnet — sieht der Callback damit den nicht aufgefrischten Wert. Das JSDoc von <code>onChange</code> beschreibt den Callback-Vertrag über zwei Absätze, nennt diese Ausnahme aber nicht, und <code>docs/api.md</code> ebenso wenig. Dieselbe Familie wie API-018 (<code>readAsValue: true</code> schaltet <code>beforeRead</code> ab), das für den Dekorator geschlossen wurde; hier ist sie offen.</p><p class="rec"><strong>Empfehlung.</strong> Zwei Wege, beide vertretbar: entweder im Effektkörper <code>this.get()</code> statt <code>this.value</code> lesen — bei einem Static-Deps-Effekt ist das Auto-Tracking über <code>#suppressAutoTracking</code> ohnehin abgeschaltet, es entsteht also keine zusätzliche Abhängigkeit —, oder den Vorbehalt dokumentieren. Bei der zweiten Variante den Wortlaut nehmen, den API-018 bereits etabliert hat, und ihn in <code>Signal.ts</code>, <code>docs/api.md</code>, <code>docs/cheat-sheet.md</code> und <code>skills/using-signalize/references/api.md</code> gleichlautend ablegen.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Projektaufbau &amp; Build" data-status="improved">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">BUILD-012</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-improved" title="medium → low">improved</span>
+  <span class="ftitle">Die Hero-Assets sind aus dem HEAD-Baum, aber sechs davon referenziert niemand</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">hero.gif · hero.png · hero.webp · hero-web.webp · hero2.png · hero-next.xcf · .gitattributes</span><span class="sep">·</span><span>Projektaufbau &amp; Build</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p>Die schwere Hälfte ist erledigt: <code>.gitattributes</code> schiebt <code>hero*</code> über git-lfs, im Arbeitsbaum stehen 132-Byte-Pointer, alle sieben Dateien zusammen 28 KB statt 21 MB. Was bleibt, ist Aufräumarbeit. <code>README.md:1</code> bindet genau eine davon ein (<code>hero2--noir.png</code>, über eine absolute GitHub-raw-URL), die übrigen sechs referenziert keine Datei im Repo — darunter <code>hero-next.xcf</code>, eine GIMP-Arbeitsdatei. Keiner der beiden Workflows setzt <code>lfs: true</code> im Checkout; das schadet heute nicht, weil kein Build-Schritt die Dateien anfasst, heißt aber auch, dass die Pointer nie validiert werden. Die 21 MB in <code>.git</code> (63 MB gesamt) sind unberührt und stehen als offene Frage.</p><p class="rec"><strong>Empfehlung.</strong> Die sechs unreferenzierten Dateien löschen, <code>hero-next.xcf</code> zuerst — eine Quelldatei eines Bildbearbeiters gehört nicht neben <code>package.json</code>. Die eine verbleibende nach <code>docs/</code> oder <code>assets/</code> verschieben und die README-URL mitziehen. Ob die Historie umgeschrieben wird, bleibt die offene Frage, die sie schon ist.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Projektaufbau &amp; Build" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">BUILD-020</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Die fünf Skripte, die Build und Veröffentlichung entscheiden, kennen weder Typcheck noch Test</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">scripts/check-doc-refs.mjs · scripts/check-banner.mjs · scripts/publishPackage.cjs · rollup/createBanner.mjs · rollup/makeVersionWithBuild.mjs · tsconfig.json:2-8</span><span class="sep">·</span><span>Projektaufbau &amp; Build</span><span class="sep">·</span><span>Aufwand M</span></div>
+<div class="rb" hidden><p>230 Zeilen, die niemand prüft: zwei sind blockierende CI-Gates (<code>check:refs</code>, <code>check:banner</code>), eines entscheidet über die Veröffentlichung, zwei formen den ausgelieferten Banner. Biome deckt sie inzwischen ab (<code>biome.json</code> führt <code>scripts/<strong>/*.{mjs,cjs}</code> in <code>includes</code>) — das ist der Teil, der sich seit dem Vorlauf gebessert hat. Der Rest steht: <code>tsconfig.json#include</code> führt <code>src/</code>, <code>bench/</code> und die drei Vitest-Configs, nicht <code>scripts/</code> und nicht <code>rollup/</code>; <code>checkJs</code> ist nirgends gesetzt; <code>coverageInclude</code> ist <code>src/</strong>/*.ts</code>. Damit ist der Code, der entscheidet ob ein Build durchgeht, der einzige im Repo ohne jede automatisierte Prüfung außer Linting.</p><p class="rec"><strong>Empfehlung.</strong> Je eine Spec-Datei pro Skript, die den Fehlerpfad festnagelt — nicht den Erfolgsfall, der läuft ohnehin in CI. Für <code>check-doc-refs.mjs</code> ist das zugleich der Beleg für BUILD-022: ein Test, der eine Doku-Datei mit <code>datei:zeile</code> erzeugt und Exit 1 erwartet, plus einer, der leere Globs erzwingt und dasselbe erwartet. Optional darüber <code>allowJs</code>/<code>checkJs</code> in einer eigenen <code>tsconfig.scripts.json</code>.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Bugs &amp; Korrektheitsrisiken" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">BUILD-021</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Ungeprüftes JSON.parse im Veröffentlichungspfad</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">scripts/publishPackage.cjs:24-38</span><span class="sep">·</span><span>Bugs &amp; Korrektheitsrisiken</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p><code>JSON.parse(stdout)</code> läuft direkt auf der Ausgabe von <code>npm show … --json</code>. Antwortet die Registry mit etwas, das kein JSON ist — eine Fehlerseite eines Proxys, eine Rate-Limit-Meldung, ein leerer Body bei einem noch nie veröffentlichten Paket —, wirft der Parse innerhalb des <code>exec</code>-Callbacks. Dort fängt ihn niemand: der <code>if (!error)</code>-Zweig kennt nur den Prozessfehler, nicht den Parse. Der Job stirbt mit einem <code>SyntaxError</code>, dessen Text nicht sagt, dass die Registry-Antwort das Problem war.</p><p class="rec"><strong>Empfehlung.</strong> <code>JSON.parse</code> in ein <code>try</code>/<code>catch</code> setzen und im <code>catch</code> mit einer Meldung abbrechen, die <code>stdout</code> (gekürzt) zeigt. Zusätzlich prüfen, dass das Ergebnis ein Array ist, bevor <code>.includes()</code> darauf läuft — <code>npm show</code> liefert für ein Paket mit genau einer Version einen String, nicht ein Array.</p></div>
+</article><article class="row" data-domain="code" data-severity="low" data-category="Konsistenz" data-status="new">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">CONS-018</span>
+  <span class="dbadge">Code &amp; Laufzeit</span>
+  <span class="st st-new">new</span>
+  <span class="ftitle">unlink() nimmt ein Nicht-Signal schweigend entgegen, wo link() wirft</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">src/link.ts:336-342</span><span class="sep">·</span><span>Konsistenz</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p><code>unlink(source)</code> reicht das Argument ohne Prüfung an <code>signalImpl()</code> und fragt dann <code>gLinks.has(undefined)</code> — das ist <code>false</code>, die Funktion kehrt wortlos zurück und meldet damit Erfolg für einen Teardown, der nie stattgefunden hat. <code>link()</code> wirft für dasselbe Argument einen <code>TypeError</code> mit klarer Meldung (<code>link: source must be a signal</code>), und <code>touch()</code> wie <code>value()</code> prüfen seit CONS-007 ihrerseits die Form und werfen. <code>unlink()</code> ist der einzige der vier Einstiege, der aus einem Tippfehler eine stille Erfolgsmeldung macht.</p><p class="rec"><strong>Empfehlung.</strong> Denselben Wächter wie in <code>link()</code> an den Anfang setzen: <code>signalImpl(source)</code> prüfen und bei <code>null</code> einen <code>TypeError</code> mit derselben Satzform werfen. Die Meldung folgt dem <code>[signalize] </code>-Präfix, das <code>message-prefix.spec.ts</code> an einer Stelle für den ganzen Baum prüft.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Dependencies" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">DEP-002</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Die devDependency tslib wird von nichts referenziert</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">package.json:54</span><span class="sep">·</span><span>Dependencies</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p><code>tslib</code> steht unter <code>devDependencies</code>, aber weder <code>tsconfig.json</code> noch eine der beiden abgeleiteten Configs setzt <code>importHelpers</code>, und keine Datei in <code>src/</code>, <code>bench/</code> oder <code>rollup.config.mjs</code> nennt es. TypeScript 7 emittiert ohne <code>importHelpers</code> keine <code>tslib</code>-Importe, und der Rollup-Build führt es nicht unter <code>external</code>. Es kostet einen Eintrag im Lockfile und eine Zeile Aufmerksamkeit bei jedem Dependency-Durchgang.</p><p class="rec"><strong>Empfehlung.</strong> Entfernen und <code>pnpm world</code> fahren. Bleibt der Lauf grün, war es tot; wird er rot, hat sich ein Pfad gefunden, den dieses Finding nicht kennt, und die Zeile bekommt einen Kommentar statt eines Streichers.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Developer Experience" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">DX-002</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Die Coverage-Schwelle hängt am normalen pnpm test</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">package.json:37 · vitest.config.ts:12-27</span><span class="sep">·</span><span>Developer Experience</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p><code>pnpm test</code> ist <code>vitest run --coverage</code>, also läuft die dreistufige Per-Datei-Schwelle bei jedem Lauf mit. Wer während der Arbeit eine einzelne Spec fährt, bekommt Exit 1 für jede Datei, die nicht gelaufen ist — das ist in <code>CLAUDE.md</code> beschrieben und damit kein Rätsel mehr, bleibt aber ein Gate, das im Innerschleifen-Kommando sitzt statt im Gate-Kommando. <code>pnpm world</code> und CI fahren <code>test</code> ohnehin mit.</p><p class="rec"><strong>Empfehlung.</strong> Ein <code>test:cov</code> mit <code>--coverage</code> einführen und <code>test</code> ohne fahren; <code>world</code> und <code>ci.yml</code> rufen dann <code>test:cov</code>. Der Effekt ist ein grüner Einzeldateilauf beim Iterieren, ohne dass das Gate irgendwo schwächer wird.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Developer Experience" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">DX-003</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Kein Pre-Commit-Hook für Biome</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">package.json:20 · CONTRIBUTING.md:46</span><span class="sep">·</span><span>Developer Experience</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p>Weder <code>.husky/</code> noch <code>simple-git-hooks</code> noch <code>lint-staged</code> sind eingerichtet, und <code>.git/hooks/pre-commit</code> existiert nicht. Formatierung und Lint hängen vollständig daran, dass jemand <code>pnpm check</code> oder <code>pnpm fix</code> von Hand fährt, bevor er committet — <code>CONTRIBUTING.md</code> bittet auch genau darum. Der erste Ort, an dem ein Verstoß auffällt, ist damit CI.</p><p class="rec"><strong>Empfehlung.</strong> <code>simple-git-hooks</code> plus <code>lint-staged</code> eintragen und <code>biome check --write</code> auf die gestagten Dateien setzen. Das ist der leichteste der verfügbaren Wege und braucht keine eigene Verzeichnisstruktur; <code>CONTRIBUTING.md</code> verliert im Gegenzug einen Bittsatz.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Developer Experience" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">DX-004</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Kein Weg, den Signal-Graphen zur Laufzeit anzusehen</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">src/effects.ts · docs/api.md</span><span class="sep">·</span><span>Developer Experience</span><span class="sep">·</span><span>Aufwand L</span></div>
+<div class="rb" hidden><p>Es gibt <code>getSignalsCount()</code>, <code>getEffectsCount()</code>, <code>getLinksCount()</code>, <code>getSignalGroupsCount()</code> und <code>onCreateEffect()</code>/<code>onDestroyEffect()</code> — Zahlen und Ereignisse, aber keinen Weg, die Kanten zu sehen. Wer wissen will, warum ein Effekt läuft oder warum er nicht mehr läuft, hat drei Zähler und einen Debugger. Für eine Bibliothek, deren Kernversprechen automatisches Dependency-Tracking ist, ist die Frage „woran hängt dieser Effekt gerade&quot; die häufigste, die man stellt.</p><p class="rec"><strong>Empfehlung.</strong> Ein <code>@internal</code>-Einstieg, der pro Effekt seine <code>#signals</code> und pro Signal seine Abonnenten als einfache Struktur liefert, reicht als Fundament — das Meiste steht bereits in <code>#signalSubscriptions</code> und den Queues. Ob daraus eine DevTools-Erweiterung wird, ist eine eigene Entscheidung; ohne den Einstieg ist sie nicht einmal möglich.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Developer Experience" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">DX-005</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Der Werbeabschnitt der README bricht mit dem Ton des übrigen Projekts</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">README.md:60-68</span><span class="sep">·</span><span>Developer Experience</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p>Zwischen einer präzisen Feature-Tabelle und einem exakten Installationsabschnitt steht ein Block mit Emoji-Überschrift und Superlativen. Die restliche Dokumentation dieses Projekts arbeitet mit Messwerten und benennt Grenzen — <code>docs/api.md</code> sagt bei jeder Option, was sie kostet; <code>CHANGELOG.md</code> führt 54 Breaking Changes einzeln auf. Der Abschnitt fällt genau deshalb auf.</p><p class="rec"><strong>Empfehlung.</strong> Auf zwei, drei Sätze zusammenziehen, die sagen, wofür die Bibliothek gebaut ist und wofür nicht. Der Abschnitt „What makes it different&quot; darüber leistet das bereits; die Dopplung ist der eigentliche Befund.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Developer Experience" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">DX-006</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">pnpm test -- &lt;filter&gt; verwirft den Filter und fährt die volle Suite grün</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">package.json:35</span><span class="sep">·</span><span>Developer Experience</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p><code>pnpm test -- src/link.spec.ts</code> hängt das Argument an <code>vitest run --coverage</code> an — pnpm reicht es durch, Vitest nimmt es als Positional, und die Filterung greift. Die dokumentierte Form in <code>CLAUDE.md</code> ist <code>pnpm test &lt;file&gt;</code> ohne <code>--</code>; wer die npm-Konvention mit <code>--</code> gewohnt ist, bekommt je nach pnpm-Version einen vollen Lauf und liest das Grün als „mein Filter lief durch&quot;. Kein Fehler im Skript, sondern eine Falle an der Grenze zweier Konventionen.</p><p class="rec"><strong>Empfehlung.</strong> In <code>CONTRIBUTING.md</code> und <code>CLAUDE.md</code> die eine Form festschreiben, die gilt, und die andere ausdrücklich als nicht unterstützt benennen. Das ist billiger als ein Wrapper-Skript und trifft den Punkt, an dem der Fehler passiert.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Developer Experience" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">DX-007</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Die Glob-Wache in test:smoke ist Logik, die kein Werkzeug je sieht</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">package.json:39</span><span class="sep">·</span><span>Developer Experience</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p>Der <code>test:smoke</code>-Eintrag trägt ein <code>node -e &quot;…&quot;</code> mit einer vollständigen Prüfung samt mehrzeiliger Fehlermeldung — inhaltlich genau die Wache, die <code>check-doc-refs.mjs</code> fehlt (siehe BUILD-022). Als JSON-String in <code>package.json</code> ist sie für Biome unsichtbar, für den Typcheck unsichtbar, nicht testbar und beim Bearbeiten auf Escapes angewiesen. Die beste Idee im Build-Setup liegt an der einzigen Stelle, an der niemand sie pflegen kann.</p><p class="rec"><strong>Empfehlung.</strong> In <code>scripts/assert-smoke-build.mjs</code> verschieben und aus <code>test:smoke</code> aufrufen. Dann fällt sie unter Biome, wird testbar, und die Formulierung steht neben der, die BUILD-022 verlangt — an einer Stelle statt an dreien.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Developer Experience" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">DX-009</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Zwei Doku-Stellen beschreiben pnpm world weiterhin ohne den typecheck-Schritt</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">README.md:370 · CONTRIBUTING.md:32</span><span class="sep">·</span><span>Developer Experience</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p>Von den ursprünglich sechs Stellen sind vier korrigiert — <code>CLAUDE.md:20</code> und <code>AGENTS.md:182</code> sowie zweimal im CI-Absatz <code>AGENTS.md:211</code>, alle im Commit <code>dd8affb</code>. Die beiden Aufzählungen in <code>README.md</code> und <code>CONTRIBUTING.md</code> sind dabei nicht mitgezogen worden und listen weiter <code>clean + check + compile + bundle + test:smoke + checkPkgTypes + test + test:gc</code>, also acht von neun Stufen. Es fehlt dieselbe: <code>typecheck</code>, die einzige, die <code>src/**/*.spec.ts</code> typprüft, weil <code>compile</code> über <code>tsconfig.lib.json</code> läuft und Spec-Dateien ausschließt.</p><p class="rec"><strong>Empfehlung.</strong> Beide Zeilen auf den Wortlaut ziehen, der jetzt in <code>CLAUDE.md:20</code> und <code>AGENTS.md:182</code> steht. Danach beschreiben fünf Dateien dieselbe Kette gleich — und das ist der Punkt, an dem ein Gate dafür lohnt: eine Zeile, die <code>package.json#scripts.world</code> gegen die Aufzählungen hält, kostet weniger als der sechste Anlauf von Hand.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Testabdeckung &amp; Teststrategie" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">TEST-027</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Die Property-Tests laufen mit einem festen Seed</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">src/ordering.property.spec.ts:14</span><span class="sep">·</span><span>Testabdeckung &amp; Teststrategie</span><span class="sep">·</span><span>Aufwand M</span></div>
+<div class="rb" hidden><p><code>const FC = {seed: 20260807, numRuns: 500}</code> — jeder Lauf, lokal wie in CI, zieht dieselben 500 Fälle. Das ist für Reproduzierbarkeit richtig und für den Zweck von Property-Tests halb: die Suite exploriert seit dem 7. August keinen neuen Fall mehr. Ein Fehler, den Seed 20260807 nicht trifft, wird nie gefunden, egal wie oft CI läuft.</p><p class="rec"><strong>Empfehlung.</strong> Den festen Seed für den normalen Lauf behalten und daneben einen zweiten Lauf mit rotierendem Seed fahren — in CI etwa aus der Lauf-Nummer abgeleitet, als <code>continue-on-error</code> wie <code>bench</code>. Findet er etwas, ist der Seed in der Ausgabe und wandert als fester Fall in die Suite.</p></div>
+</article><article class="row" data-domain="harness" data-severity="low" data-category="Testabdeckung &amp; Teststrategie" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-low">low</span>
+  <span class="fid">TEST-028</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Die NaN-Semantik des Default-Vergleichers ist nirgends entschieden</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">src/create-signal.ts:65</span><span class="sep">·</span><span>Testabdeckung &amp; Teststrategie</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p><code>DEFAULT_EQUALS</code> ist <code>(a, b) =&gt; a === b</code>, also gilt <code>NaN !== NaN</code>: ein Signal, das <code>NaN</code> hält und erneut <code>NaN</code> geschrieben bekommt, benachrichtigt jedes Mal. Mit <code>Object.is</code> wäre es still. Beides ist vertretbar — Solid und Vue nehmen <code>Object.is</code>, <code>===</code> ist die ältere Konvention —, aber keine Zeile im Projekt sagt, welche gewollt ist: kein Test pinnt das Verhalten, <code>docs/api.md</code> erwähnt es nicht, und <code>compare</code> als Option macht es zur Ausweichmöglichkeit statt zur Antwort. Die Fundstelle des Vorlaufs (<code>src/createSignal.ts</code>) ist durch die Umbenennung in <code>43fe114</code> veraltet; der Sachverhalt steht unverändert.</p><p class="rec"><strong>Empfehlung.</strong> Entscheiden und festnageln. Bleibt <code>===</code>, ein Test, der die Doppelbenachrichtigung bei <code>NaN</code> festhält, plus ein Satz in <code>docs/api.md</code> bei <code>compare</code>. Wird es <code>Object.is</code>, ist es ein Breaking Change und gehört als solcher ins CHANGELOG.</p></div>
+</article><article class="row" data-domain="code" data-severity="info" data-category="Architektur &amp; Struktur" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-info">info</span>
+  <span class="fid">ARCH-005</span>
+  <span class="dbadge">Code &amp; Laufzeit</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Ein Scratch-Beispiel liegt weiterhin im Repo-Root</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">diamond-example.mjs · foo.mjs · .gitignore:8</span><span class="sep">·</span><span>Architektur &amp; Struktur</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p><code>diamond-example.mjs</code> ist getrackt und wird von nichts referenziert — kein Test, keine Doku, kein Skript. <code>foo.mjs</code> liegt im Arbeitsbaum und ist per Namenseintrag in <code>.gitignore</code> ausgenommen; eine persönliche Kritzeldatei steht dort zwischen <code>build</code>, <code>dist</code> und <code>node_modules</code>, also zwischen Einträgen, die für jeden gelten. Beides ist harmlos und beides ist das Erste, was ein Listing des Wurzelverzeichnisses zeigt.</p><p class="rec"><strong>Empfehlung.</strong> <code>diamond-example.mjs</code> löschen oder — wenn das Diamond-Problem ein Beispiel wert ist, und das ist es — als lauffähiges Snippet nach <code>docs/recipes.md</code> heben. Die <code>foo.mjs</code>-Zeile aus <code>.gitignore</code> nehmen und stattdessen ein Muster für persönliche Kritzeldateien vereinbaren, etwa <code>*.local.mjs</code>.</p></div>
+</article><article class="row" data-domain="harness" data-severity="info" data-category="Projektaufbau &amp; Build" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-info">info</span>
+  <span class="fid">BUILD-013</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">pnpm clean löscht drei Verzeichnisse, die es nicht mehr gibt</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">package.json:29 · .gitignore:1,4,5</span><span class="sep">·</span><span>Projektaufbau &amp; Build</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p><code>rimraf build types tests dist lib coverage smoke/build</code> — <code>build</code>, <code>types</code> und <code>tests</code> existieren nicht und werden von keinem Skript erzeugt; sie stammen aus dem Setup vor Vitest und Rollup. <code>.gitignore</code> führt dieselben drei weiter. Kostenlos, aber es hält drei Namen am Leben, nach denen jemand irgendwann sucht. Die im Vorlauf ebenfalls genannte <code>.npmignore</code> gibt es nicht mehr — <code>files</code> in <code>package.json</code> hat sie abgelöst.</p><p class="rec"><strong>Empfehlung.</strong> Die drei Namen aus <code>clean</code> und aus <code>.gitignore</code> entfernen. Was <code>clean</code> löschen muss, ist genau das, was <code>compile</code>, <code>bundle</code>, <code>test</code> und <code>test:smoke</code> erzeugen.</p></div>
+</article><article class="row" data-domain="harness" data-severity="info" data-category="Projektaufbau &amp; Build" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-info">info</span>
+  <span class="fid">BUILD-014</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">./package.json fehlt in der exports-Map</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">package.json:10-19</span><span class="sep">·</span><span>Projektaufbau &amp; Build</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p>Die <code>exports</code>-Map führt <code>.</code> und <code>./decorators</code>. Ohne einen <code>&quot;./package.json&quot;: &quot;./package.json&quot;</code>-Eintrag kann kein Konsument und kein Werkzeug die Manifest-Datei auflösen — Bundler und Test-Runner tun das gelegentlich, um Version oder Feature-Flags zu lesen, und bekommen <code>ERR_PACKAGE_PATH_NOT_EXPORTED</code>. Es ist der eine Eintrag, den fast jedes ESM-Paket mit geschlossener Map zusätzlich führt.</p><p class="rec"><strong>Empfehlung.</strong> Den Eintrag ergänzen. Er öffnet nichts, was nicht ohnehin im Tarball liegt, und <code>attw</code> prüft ihn im selben Lauf mit.</p></div>
+</article><article class="row" data-domain="harness" data-severity="info" data-category="Projektaufbau &amp; Build" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-info">info</span>
+  <span class="fid">BUILD-019</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Die Stufe-2-Negation der Coverage-Schwellen ist nicht pfadgebunden</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">vitest.config.ts:18-19</span><span class="sep">·</span><span>Projektaufbau &amp; Build</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p>Der Glob <code>src/**/!(EffectImpl|SignalGroup|SignalLink|SignalAutoMap|collect-errors|create-signal|link|signal-core).ts</code> nennt acht Dateinamen ohne Pfad. Entstünde ein Unterverzeichnis mit einer gleichnamigen Datei, wäre sie mit ausgenommen, ohne dass es jemand bemerkt. <code>assertThresholdGlobsMatch()</code> prüft, dass der Glob *etwas* trifft, nicht dass er das Richtige trifft. Heute ist <code>src/</code> flach, der Punkt ist also theoretisch — er wird es in dem Moment nicht mehr, in dem jemand <code>src/internal/link.ts</code> anlegt.</p><p class="rec"><strong>Empfehlung.</strong> Die Ausnahmen als explizite Pfadliste führen (<code>src/EffectImpl.ts</code>, <code>src/link.ts</code>, …) statt als Namensnegation. Länger zu lesen, aber es kann nur das ausnehmen, was es benennt.</p></div>
+</article><article class="row" data-domain="harness" data-severity="info" data-category="Dependencies" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-info">info</span>
+  <span class="fid">DEP-004</span>
+  <span class="dbadge">Projekt-Harness</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Die Toolchain ist bis auf @types/node aktuell</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">package.json:44-58</span><span class="sep">·</span><span>Dependencies</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p>Der Rückstand hat sich von sechs Paketen auf eines verkürzt: <code>pnpm outdated</code> meldet nur noch <code>@types/node</code> (24.13.3 gegen 26.2.0), zwei Majors. <code>pnpm audit --prod</code> findet nichts. Der Typ-Rückstand ist folgenlos, solange nichts aus <code>node:</code>-Modulen genutzt wird, was erst 25/26 bringt — im Baum sind es <code>node:fs</code>, <code>node:path</code>, <code>node:url</code>, alle stabil. <code>engines.node</code> ist <code>&gt;=22</code>, CI fährt 22 und 24; die Typen decken damit weniger ab als die Matrix, nicht mehr.</p><p class="rec"><strong>Empfehlung.</strong> Mit dem nächsten Dependency-Durchgang mitnehmen. Eigenständige Dringlichkeit hat es keine — die Auflistung steht hier, damit der nächste Lauf sieht, dass fünf von sechs erledigt sind und nicht etwa übersehen wurden.</p></div>
+</article><article class="row" data-domain="code" data-severity="info" data-category="Lesbarkeit &amp; Clean Code" data-status="new">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-info">info</span>
+  <span class="fid">READ-017</span>
+  <span class="dbadge">Code &amp; Laufzeit</span>
+  <span class="st st-new">new</span>
+  <span class="ftitle">An zwei Stellen ist die Begründung länger als der Typ, den sie erklärt — und sie wird ausgeliefert</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">src/types.ts:207-355 · src/create-signal.ts:199-408</span><span class="sep">·</span><span>Lesbarkeit &amp; Clean Code</span><span class="sep">·</span><span>Aufwand M</span></div>
+<div class="rb" hidden><p><code>SignalWriter&lt;T&gt;</code> trägt rund 150 Zeilen JSDoc über 14 Zeilen Signatur; die drei <code>createSignal</code>-Overloads zusammen rund 190 über 40. Der Inhalt ist gemessen und wertvoll — neun Params-Formen, drei Inferenz-Ausgänge, jeweils mit dem Gegenbeispiel. Nur steht er dort, wo jemand die Signatur sucht, und <code>tsconfig.types.json</code> setzt <code>removeComments: false</code>, also wandert er vollständig nach <code>lib/</code>: <code>create-signal.d.ts</code> ist 11,7 KB, <code>EffectImpl.d.ts</code> 18 KB, alle <code>.d.ts</code> zusammen 121 KB im Tarball gegenüber 223 KB <code>dist/</code>. Kein Defekt: die Prosa steht im Editor-Tooltip, und genau dafür ist sie da. Aber <code>docs/api.md</code> führt für dieselben Regeln bereits einen Abschnitt „What it costs&quot;.</p><p class="rec"><strong>Empfehlung.</strong> Belassen, solange niemand über die Signaturen stolpert. Wenn doch: den Messteil — die Aufzählung der neun Formen und der drei Ausgänge — nach <code>docs/api.md</code> verschieben und im JSDoc die Regel in drei Sätzen plus einen Verweis stehen lassen. Die Entscheidung ist eine Abwägung zwischen Editor-Tooltip und Lesbarkeit der Datei, keine Korrektur.</p></div>
+</article><article class="row" data-domain="code" data-severity="info" data-category="Sicherheit" data-status="carried-over">
+<div class="rh" role="button" tabindex="0" aria-expanded="false">
+  <span class="sev s-info">info</span>
+  <span class="fid">SEC-002</span>
+  <span class="dbadge">Code &amp; Laufzeit</span>
+  <span class="st st-carried-over">carried-over</span>
+  <span class="ftitle">Shell-Interpolation im Publish-Skript</span>
+  <span class="chev" aria-hidden="true">▸</span>
+</div>
+<div class="rm"><span class="loc">scripts/publishPackage.cjs:24</span><span class="sep">·</span><span>Sicherheit</span><span class="sep">·</span><span>Aufwand S</span></div>
+<div class="rb" hidden><p><code>exec(</code>npm show ${pkgJson.name} versions --json<code>)</code> baut eine Shell-Zeile aus einem Wert, der aus <code>package.json</code> kommt. Ausnutzbar ist das nicht: den Paketnamen kontrolliert, wer ohnehin das Repo kontrolliert, und der Job läuft nur auf <code>main</code>. Es ist die Form, die auffällt, nicht die Lage — <code>execFile</code> mit Argumentliste tut hier dasselbe ohne Shell.</p><p class="rec"><strong>Empfehlung.</strong> Auf <code>execFile(&quot;npm&quot;, [&quot;show&quot;, pkgJson.name, &quot;versions&quot;, &quot;--json&quot;], …)</code> umstellen. Eine Zeile, kein Verhaltensunterschied, und die Stelle hört auf, in jedem Sicherheitsdurchgang erklärt werden zu müssen.</p></div>
+</article></div>
 
 <h2>Offene Fragen</h2>
-<div class="qa"><h3>Wann fällt das -dev aus 1.0.0-dev?</h3><p>Unverändert offen, und inzwischen aktenkundig: <code>scripts/publishPackage.cjs</code> verweigert die Veröffentlichung, solange die Version darauf endet, <code>main.yml</code> veröffentlicht bei jedem Push auf <code>main</code>. Das Suffix fallen zu lassen ist der Release — ohne Tag, ohne Freigabe dazwischen. Der Remediation-Lauf hat die Mechanik in <code>CONTRIBUTING.md</code> beschrieben, damit sie niemand versehentlich auslöst, und die Entscheidung selbst ausdrücklich dem Maintainer gelassen. Der <code>## Unreleased</code>-Block trägt inzwischen 50 Einträge unter <code>### Breaking Changes</code>.</p></div>
-<div class="qa"><h3>Womit authentifiziert sich der Deploy-Job?</h3><p><code>main.yml</code> vergibt <code>id-token: write</code> auf Workflow-Ebene, richtet <code>setup-node</code> mit <code>registry-url</code> und <code>always-auth: true</code> ein — setzt aber kein <code>NODE_AUTH_TOKEN</code> in der Job-Umgebung, und <code>npm publish</code> läuft ohne <code>--provenance</code>. Diese drei Angaben passen nur zusammen, wenn für das Paket auf npmjs.com Trusted Publishing über OIDC eingerichtet ist; aus dem Repo ist das nicht zu sehen. Ist es nicht eingerichtet, ist <code>id-token: write</code> ein ungenutztes Recht am einzigen Job, der veröffentlicht. Da <code>1.0.0-dev</code> das Veröffentlichen ohnehin abbricht, ist der Pfad in dieser Konfiguration noch nie durchgelaufen.</p></div>
-<div class="qa"><h3>Soll der Teardown-Vertrag SignalAutoMap und destroyObjectSignals erreichen?</h3><p>MEM-013 und BUG-015 unterstellen ja — weil sechs andere Mehr-Mitglieder-Teardowns ihn einhalten und <code>docs/api.md</code> ihn dort ausdrücklich zusagt. Wenn die beiden Stellen bewusst außerhalb stehen sollen, gehört der Grund in ihr JSDoc; heute steht dort nichts, was auf eine Entscheidung schließen ließe.</p></div>
-<div class="qa"><h3>Bleiben die 21 MB Hero-Assets in der Historie?</h3><p>Unverändert offen (BUILD-012). Sie aus dem HEAD zu nehmen stoppt nur den Zuwachs; <code>.git</code> steht bei 43 MB. Ob die Altlast eine Historien-Umschreibung wert ist, ist eine Projektentscheidung, keine technische.</p></div>
+<div class="q"><h3>Wann fällt das -dev aus 1.0.0-dev?</h3><p>Unverändert offen und inzwischen schwerer: der <code>## Unreleased</code>-Block trägt 54 Einträge unter <code>### Breaking Changes</code>, vier mehr als am 12. August. <code>scripts/publishPackage.cjs</code> verweigert die Veröffentlichung, solange die Version auf <code>-dev</code> endet, und <code>main.yml</code> veröffentlicht bei jedem Push auf <code>main</code> — das Suffix fallen zu lassen *ist* der Release, ohne Tag und ohne Freigabe dazwischen. Der Remediation-Lauf vom 13. August hat die Mechanik in <code>CONTRIBUTING.md</code> beschrieben und die Entscheidung ausdrücklich dem Maintainer gelassen.</p></div><div class="q"><h3>Womit authentifiziert sich der Deploy-Job?</h3><p><code>main.yml</code> vergibt <code>id-token: write</code> auf Workflow-Ebene, richtet <code>setup-node</code> mit <code>registry-url</code> und <code>always-auth: true</code> ein — setzt aber kein <code>NODE_AUTH_TOKEN</code> in der Job-Umgebung, und <code>npm publish</code> läuft ohne <code>--provenance</code>. Diese drei Angaben passen nur zusammen, wenn für das Paket auf npmjs.com Trusted Publishing über OIDC eingerichtet ist; aus dem Repo ist das nicht zu sehen. Ist es nicht eingerichtet, ist <code>id-token: write</code> ein ungenutztes Recht am einzigen Job, der veröffentlicht. Da <code>1.0.0-dev</code> das Veröffentlichen ohnehin abbricht, ist der Pfad in dieser Konfiguration noch nie durchgelaufen.</p></div><div class="q"><h3>Bleiben die 21 MB Hero-Assets in der Historie?</h3><p>Der HEAD-Baum ist seit der git-lfs-Umstellung sauber — sieben Pointer, 28 KB. <code>.git</code> steht unverändert bei 63 MB, die Originale liegen also weiter in der Historie. Ob das eine Historien-Umschreibung wert ist, ist eine Projektentscheidung, keine technische; BUILD-012 deckt nur noch den Teil ab, der ohne sie geht.</p></div>
 
 <h2>Optimierungspotenzial</h2>
-<p class="sub">Kein Defekt — Verbesserungen, die das Projekt aus eigener Kraft schärfer machen.</p>
-<div class="opt"><h3>Die Branch-Untergrenze anheben, sobald signal-core.ts voll ist</h3><p>Die Stufe-1-Schwelle in <code>vitest.config.ts</code> steht bei 85 % Branches, weil sie nie über der schwächsten Datei liegen kann — und das ist <code>signal-core.ts</code> mit 12 von 14. Zwei Zeilen Test (TEST-026) machen daraus 14/14; danach liegt die schwächste Zelle bei 90 % (<code>link.ts</code>), und die Schwelle kann mitziehen. Kein Defekt, aber der einzige Weg, wie das Gate wieder schärfer wird als der Status quo.</p></div>
-<div class="opt"><h3>Die Aufzählung von <code>pnpm world</code> maschinell halten</h3><p>Sechs Dokumentationsstellen zählen die Stufen des Befehls von Hand auf, und alle sechs sind bei der letzten Änderung stehen geblieben (DX-009). <code>scripts/check-doc-refs.mjs</code> zeigt die Machart, mit der das Projekt solche Zusagen sonst festhält: ein kurzes Skript, das die Aufzählungen gegen <code>package.json</code> prüft, kostet einmal eine halbe Stunde und danach nichts mehr.</p></div>
-<div class="opt"><h3>Einen Publish-Trockenlauf in CI</h3><p>Der Veröffentlichungspfad — <code>publishPackage.cjs</code> plus der Deploy-Job — ist das einzige Stück Automatisierung im Repo, das nirgends geprüft wird: nicht typgeprüft (BUILD-020), nicht getestet, und wegen des <code>-dev</code>-Gates in dieser Form nie ausgeführt. <code>npm publish --dry-run</code> gegen das gebaute <code>dist/</code> würde wenigstens Tarball-Inhalt und <code>exports</code>-Auflösung im selben Lauf bezeugen, in dem <code>attw</code> heute schon prüft.</p></div>
-<div class="opt"><h3>Die Doku-Oberflächen zusammenführen, statt sie zu synchronisieren</h3><p><code>docs/api.md</code>, <code>docs/cheat-sheet.md</code> und <code>skills/using-signalize/references/api.md</code> beschreiben dieselben Optionen dreimal; API-018 ist die Stelle, an der zwei davon auseinandergelaufen sind, und <code>CLAUDE.md</code> führt bereits eine sechsstufige Reihenfolge, in der bei jeder API-Änderung nachzuziehen ist. Solange die drei getrennt gepflegt werden, ist die nächste Abweichung eine Frage der Zeit.</p></div>
+<p>Kein Defekt, aber die Stellen, an denen dieses Projekt den nächsten Schritt selbst schon vorgezeichnet hat:</p>
+<ul>
+<li><strong>Ein Gate für die Kommandoketten.</strong> Fünf Dateien beschreiben <code>pnpm world</code> in Prosa, und dieser Lauf hat zum zweiten Mal eine Abweichung darin gefunden (DX-009). Eine Zeile, die <code>package.json#scripts.world</code> gegen die Aufzählungen hält, beendet die Gattung — nicht diesen einen Fall.</li>
+<li><strong>Die Wache aus <code>test:smoke</code> herausziehen.</strong> Sie ist die beste Idee im Build-Setup und liegt als JSON-String an der einzigen Stelle, an der kein Werkzeug sie sieht (DX-007). Als Modul wäre sie zugleich die Vorlage für BUILD-022 und für jedes künftige glob-getriebene Gate.</li>
+<li><strong>Ein Blick in den Graphen.</strong> Vier Zähler beantworten „wie viele", keiner „woran hängt das" (DX-004). Der Rohstoff liegt in <code>#signalSubscriptions</code> und den Queues bereit.</li>
+<li><strong>Die Coverage-Untergrenze anheben.</strong> Stufe 1 steht bei 85 % Branch, weil sie nie über der schwächsten Datei liegen kann. <code>signal-core.ts</code> war diese Datei und ist es seit dem 13. August nicht mehr — die schwächste Zelle ist jetzt <code>SignalGroup.ts</code> mit 92,56 %. Die Schwelle folgt dem nicht automatisch.</li>
+</ul>
 
-<h2>Verlauf</h2>
-<svg viewBox="0 0 640 200" role="img" aria-label="Verlauf der Health-Scores" class="chart">
-  <line x1="38" y1="166.0" x2="624" y2="166.0" class="grid"/>
-     <text x="30" y="170.0" class="axis" text-anchor="end">0</text>
-  <line x1="38" y1="94.0" x2="624" y2="94.0" class="grid"/>
-     <text x="30" y="98.0" class="axis" text-anchor="end">50</text>
-  <line x1="38" y1="22.0" x2="624" y2="22.0" class="grid"/>
-     <text x="30" y="26.0" class="axis" text-anchor="end">100</text>
-  <polyline points="38.0,166.0 233.3,166.0 428.7,68.1 624.0,44.3" class="line"/>
-  <circle cx="38.0" cy="166.0" r="3.5" class="pt"/>
-     <text x="38.0" y="154.0" class="ptlabel" text-anchor="middle">0</text>
-     <text x="38.0" y="190" class="axis" text-anchor="middle">08-07</text>
-  <circle cx="233.3" cy="166.0" r="3.5" class="pt"/>
-     <text x="233.3" y="154.0" class="ptlabel" text-anchor="middle">0</text>
-     <text x="233.3" y="190" class="axis" text-anchor="middle">08-08</text>
-  <circle cx="428.7" cy="68.1" r="3.5" class="pt"/>
-     <text x="428.7" y="56.1" class="ptlabel" text-anchor="middle">68</text>
-     <text x="428.7" y="190" class="axis" text-anchor="middle">08-12</text>
-  <circle cx="624.0" cy="44.3" r="5.5" class="pt pt-now"/>
-     <text x="624.0" y="32.3" class="ptlabel ptlabel-now" text-anchor="middle">84.5</text>
-     <text x="624.0" y="190" class="axis" text-anchor="middle">08-12</text>
-</svg>
-<p class="sub" style="font-size:.83rem">
-  Verlauf der Health-Scores seit 2026-08-07. Die beiden Einträge vom
-  2026-08-12 sind derselbe Tag vor und nach dem Remediation-Lauf; die ersten
-  beiden Läufe lagen unter der Null der Skala und sind dort gedeckelt.
-</p>
+<h2>Methodik</h2>
+<p><strong>Was gelesen wurde.</strong> Alle 30 Nicht-Spec-Quelldateien in <code>src/</code> ganz oder in den tragenden Teilen — <code>types.ts</code>, <code>signal-core.ts</code>, <code>create-signal.ts</code>, <code>batch.ts</code>, <code>collect-errors.ts</code>, <code>create-memo.ts</code>, <code>EffectImpl.ts</code>, <code>link.ts</code>, <code>Signal.ts</code>, <code>Effect.ts</code>, <code>index.ts</code> sowie die acht kleinen Module vollständig; <code>SignalGroup.ts</code>, <code>SignalLink.ts</code> und <code>SignalAutoMap.ts</code> in Ausschnitten, gezielt entlang der Teardown- und Freigabepfade. Dazu <code>package.json</code>, alle drei <code>tsconfig</code>, <code>vitest.config.ts</code>, <code>vitest.bench.config.ts</code>, <code>rollup.config.mjs</code>, <code>biome.json</code>, beide Workflows, alle fünf Skripte unter <code>scripts/</code> und <code>rollup/</code>, sowie <code>README.md</code>, <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>CONTRIBUTING.md</code> und die Struktur von <code>docs/</code> und <code>skills/</code>.</p>
+<p><strong>Was nicht.</strong> Die 58 Spec-Dateien (24 010 Zeilen) wurden nicht durchgelesen, sondern gezielt abgefragt — welche Datei welches Symbol und welchen Fehlerpfad abdeckt. <code>bench/</code> nur als Konfiguration. <code>lib/</code> und <code>dist/</code> sind generiert und wurden nur gemessen, nicht bewertet. Der Prüfumfang ist damit derselbe wie am 12. August, an einer Stelle größer: die fünf Skripte unter <code>scripts/</code> und <code>rollup/</code> wurden diesmal im Volltext gelesen statt nur in ihrer Einbindung.</p>
+<p><strong>Ausgeführt.</strong> <code>pnpm world</code> (alle neun Stufen grün, 59 Spec-Dateien, 673 Tests, Coverage 99,47 / 97,01 / 99,64 / 99,52), <code>pnpm outdated</code>, <code>pnpm audit --prod</code>, <code>npm pack --dry-run</code> (199 KB gepackt, 702 KB entpackt, 50 Dateien) und eine gzip-Messung der Bundles (<code>dist/index.js</code> 39 KB roh, 8,6 KB gzip).</p>
+<p><strong>Score.</strong> Start bei 100, Abzug <code>critical</code> −10, <code>high</code> −5, <code>medium</code> −2, <code>low</code> −0,5, <code>info</code> 0, Untergrenze 0. Dieselbe Formel läuft dreimal: über alle Findings (88.5), über die Domäne Code &amp; Laufzeit (97.0) und über den Projekt-Harness (91.5). Die beiden Teilscores stehen auf derselben 0–100-Skala wie der Gesamtwert und sind keine Aufteilung von ihm.</p>
+<p><strong>Folgelauf.</strong> Vorgänger ist <code>./audit.html</code> vom 2026-08-12 (Score 84.5). Das frische Audit entstand zuerst am Code; die Altdatei wurde erst danach geöffnet. Gematcht wurde über Kategorie plus überlappende Location, sekundär über Titelähnlichkeit. <strong>13 Findings sind entfallen</strong> — die zwölf, die der Remediation-Lauf vom 13. August beauftragt geschlossen hat (Commits <code>a804676</code> bis <code>dd8affb</code>), plus DEP-001, dessen Advisories der Lockfile-Refresh <code>541a1b7</code> geräumt hat; keines davon kontextbedingt, alle am Code nachgeprüft. Jedes der 18 übernommenen Findings wurde vor der Übernahme einzeln an seiner Fundstelle verifiziert; drei davon haben dabei eine korrigierte Location bekommen (TEST-028 nach der Umbenennung in <code>43fe114</code>, BUILD-013 ohne die verschwundene <code>.npmignore</code>, DX-009 von sechs auf zwei Stellen). BUILD-012 ist als einziges <em>verbessert</em> statt übernommen: die git-lfs-Umstellung hat die 21 MB aus dem HEAD-Baum geholt, übrig bleibt Aufräumarbeit. Das Delta von +4.0 liegt unter der Schwelle, ab der eine Ursachen-Einordnung Pflicht wäre; es stammt vollständig aus Code-Änderungen, nicht aus geänderter Prüftiefe.</p>
+<p><strong>Theme.</strong> Dunkel, übernommen aus dem Vorlauf, damit die Optik über Folgeläufe stabil bleibt; fix ausgeliefert statt an <code>prefers-color-scheme</code> gehängt.</p>
 
-<h2 class="meth">Methodik</h2>
-<div class="meth">
-<p>
-  <strong>Was gelesen wurde.</strong> Alle 30 Nicht-Spec-Quelldateien unter <code>src/</code>
-  vollständig (7 347 Zeilen), dazu <code>package.json</code>, die drei
-  <code>tsconfig</code>-Varianten, <code>biome.json</code>, <code>vitest.config.ts</code>,
-  <code>pnpm-workspace.yaml</code>, <code>rollup.config.mjs</code> samt beider Banner-Module,
-  alle drei Skripte unter <code>scripts/</code>, beide GitHub-Workflows,
-  <code>README.md</code>, <code>CONTRIBUTING.md</code>, <code>CLAUDE.md</code>,
-  <code>.editorconfig</code>, <code>.gitignore</code> und <code>.vscode/settings.json</code>.
-  Stichproben in <code>AGENTS.md</code>, <code>docs/api.md</code>,
-  <code>docs/cheat-sheet.md</code>, <code>docs/recipes.md</code> und
-  <code>skills/using-signalize/</code> — gezielt dort, wo ein Befund eine Doku-Zusage berührte.
-  Die 58 Spec-Dateien (23 354 Zeilen) wurden nicht Zeile für Zeile gelesen, sondern über
-  den Coverage-Bericht und gezielte Suchen bewertet.
-</p>
-<p>
-  <strong>Was ausgeführt wurde.</strong> <code>pnpm world</code> in allen neun Stufen — grün:
-  58 Spec-Dateien, 655 Tests, Coverage 99,39 / 95,95 / 99,64 / 99,51.
-  Dazu <code>pnpm outdated</code>, <code>pnpm audit</code> (fünf Advisories, ausschließlich in
-  devDependency-Ketten) und zwei Wegwerf-Specs, die MEM-013 und BUG-015 am laufenden Code
-  nachstellen statt sie aus der Lektüre zu schließen; beide wurden nach der Messung
-  wieder entfernt. <code>pnpm bench</code> lief nicht — die Zahlen sind auf dieser Maschine
-  nicht mit denen der CI vergleichbar, und kein Befund hing daran.
-</p>
-<p>
-  <strong>Wie der Score entsteht.</strong> Start bei 100, Abzug je Finding:
-  critical −10, high −5, medium −2, low −0,5, info 0, Untergrenze 0. Aus
-  3 medium und 19 low ergibt das
-  100 − 6 − 9.5
-  = 84.5. Dieselbe Formel läuft dreimal: einmal über alle Findings und je einmal über
-  die einer Domäne. <strong>Die beiden Teilscores sind keine Aufteilung der 100</strong> —
-  jeder steht auf derselben Skala und beantwortet seine eigene Frage.
-</p>
-<p>
-  <strong>Abgleich mit dem Vorlauf.</strong> Vorgänger-Audit vom 2026-08-12
-  (Score 68, 54 Findings). Gematcht wurde primär über Kategorie plus
-  überlappende Location, sekundär über Titelähnlichkeit; bei Zweifel wurde getrennt
-  gelassen statt zusammengezogen. Jedes der 54 Altfindings wurde einzeln am heutigen Code
-  nachgeprüft: <strong>30 sind nicht mehr belegbar</strong> und entfallen vollständig,
-  24 sind es weiterhin und werden übernommen. Kontextbedingt entfernt wurde keines —
-  alle 30 sind am Code verschwunden, nicht durch eine geänderte Projektentscheidung.
-  Eines (BUILD-020) ist zur Hälfte geschlossen und rutscht von medium auf low.
-  Behobene Punkte erscheinen bewusst nirgends einzeln: die Historie liefert der
-  git-Verlauf dieser Datei.
-</p>
-<p>
-  <strong>Zum Sprung von +16,5.</strong> Der Sprung von 68,0 auf 84,5 stammt aus dem Code, nicht aus der Prüftiefe. Zwischen beiden Läufen liegen 16 Commits eines abgeschlossenen Remediation-Laufs (f948597 bis e528fbf), der 28 beauftragte Findings geschlossen hat; der Re-Check dieses Laufs bestätigt 30 der 54 Altfindings als am Code nicht mehr belegbar — zwei mehr als beauftragt, weil ARCH-007 und READ-007 unterwegs mit erledigt wurden. Der Prüfumfang ist derselbe wie im Vorlauf und an einer Stelle größer: alle 30 Nicht-Spec-Quelldateien wurden vollständig gelesen, und zwei Befunde (MEM-013, BUG-015) sind mit Wegwerf-Specs am laufenden Code nachgestellt statt aus der Lektüre geschlossen.
-</p>
-<p>
-  <strong>Theme.</strong> Dunkel, übernommen aus <code>summary.theme</code> des Vorlaufs, fest
-  ausgeliefert statt an <code>prefers-color-scheme</code> gehängt.
-</p>
+<footer>Erzeugt am 2026-08-13 · 24 Findings · <code>./audit.html</code> ist standalone, das vollständige Datenmodell liegt in der JSON-Insel <code>#audit-data</code>.</footer>
 </div>
 
-<footer>
-  Erzeugt am 2026-08-12 · Datenmodell in der JSON-Insel dieser Datei
-  (<code>#audit-data</code>) · Findings ohne Datei-Beleg stehen unter »Offene Fragen«,
-  nicht im Backlog.
-</footer>
-</div>
-
-<script id="audit-data" type="application/json">{"summary":{"project":"@spearwolf/signalize","version":"1.0.0-dev","stack":["TypeScript 7","ESM-only","Node \u003e=22","pnpm 11","Vitest 4","Rollup 4","Biome 2"],"date":"2026-08-12","previousDate":"2026-08-12","previousScore":68,"score":84.5,"scoreDelta":16.5,"theme":"dark","scoreHistory":[{"date":"2026-08-07","score":0},{"date":"2026-08-08","score":0},{"date":"2026-08-12","score":68},{"date":"2026-08-12","score":84.5}],"counts":{"critical":0,"high":0,"medium":3,"low":19,"info":10},"categories":{"Developer Experience":8,"Projektaufbau \u0026 Build":5,"Dependencies":3,"Testabdeckung \u0026 Teststrategie":3,"Bugs \u0026 Korrektheitsrisiken":2,"Konsistenz":2,"Lesbarkeit \u0026 Clean Code":2,"Öffentliche API":2,"Memory Leaks \u0026 Ressourcen":1,"Typsicherheit":1,"Architektur \u0026 Struktur":1,"Implementierungsstand":1,"Sicherheit":1},"resolvedCount":30,"improvedCount":1,"newCount":8,"unchangedCount":0,"carriedOverCount":23,"deltaCause":"code","deltaExplanation":"Der Sprung von 68,0 auf 84,5 stammt aus dem Code, nicht aus der Prüftiefe. Zwischen beiden Läufen liegen 16 Commits eines abgeschlossenen Remediation-Laufs (f948597 bis e528fbf), der 28 beauftragte Findings geschlossen hat; der Re-Check dieses Laufs bestätigt 30 der 54 Altfindings als am Code nicht mehr belegbar — zwei mehr als beauftragt, weil ARCH-007 und READ-007 unterwegs mit erledigt wurden. Der Prüfumfang ist derselbe wie im Vorlauf und an einer Stelle größer: alle 30 Nicht-Spec-Quelldateien wurden vollständig gelesen, und zwei Befunde (MEM-013, BUG-015) sind mit Wegwerf-Specs am laufenden Code nachgestellt statt aus der Lektüre geschlossen.","domains":{"code":{"label":"Code \u0026 Laufzeit","score":95.5,"bySeverity":{"critical":0,"high":0,"medium":1,"low":5,"info":5},"byCategory":{"Konsistenz":2,"Lesbarkeit \u0026 Clean Code":2,"Öffentliche API":2,"Memory Leaks \u0026 Ressourcen":1,"Bugs \u0026 Korrektheitsrisiken":1,"Architektur \u0026 Struktur":1,"Implementierungsstand":1,"Sicherheit":1},"executiveSummary":"Der Kern läuft grün durch alle neun Stufen von `pnpm world`, bei 655 Tests und 99,4 % Statement-Coverage — und die vier medium- bis high-Befunde des Vorlaufs sind alle geschlossen. Was dieser Lauf neu findet, ist eine einzige Lücke mit Substanz: der Teardown-Vertrag, den sechs Stellen im Baum einhalten (sammeln, weitermachen, am Ende als `AggregateError` melden), erreicht `SignalAutoMap#clear()` und `destroyObjectSignals()` nicht. Bei der Auto-Map kostet das im Fehlerfall ein Signal, das niemand mehr erreichen kann, weil sein Eintrag schon gelöscht war. Der Rest sind Kommentare und JSDoc, die hinter dem Code herhinken: eine deutsche Passage in der größten Datei, ein `export *`, das es nicht mehr gibt, eine Dekorator-Option, die zwei Kurzreferenzen ohne ihre Wechselwirkung listen."},"harness":{"label":"Projekt-Harness","score":89,"bySeverity":{"critical":0,"high":0,"medium":2,"low":14,"info":5},"byCategory":{"Developer Experience":8,"Projektaufbau \u0026 Build":5,"Dependencies":3,"Testabdeckung \u0026 Teststrategie":3,"Typsicherheit":1,"Bugs \u0026 Korrektheitsrisiken":1},"executiveSummary":"Hier hat sich seit dem Vorlauf fast nichts bewegt, und das ist kein Vorwurf: der Remediation-Lauf war ausdrücklich auf die Domäne »Code \u0026 Laufzeit« beauftragt, alle 21 Harness-Befunde standen außerhalb. Zwei davon wiegen: 21 MB Hero-Assets liegen versioniert im Repo-Baum, wovon README genau eines verlinkt, und `pnpm audit` meldet unverändert fünf Advisories in devDependency-Ketten, die über ein Anheben der direkten Dependencies nicht mehr fallen. Dazu kommen zwei Fallen, die jeweils grün aussehen: `pnpm test -- \u003cdatei\u003e` verwirft den Filter und fährt die volle Suite (nachgemessen: 58 statt 1 Datei), und sechs Dokumentationsstellen beschreiben `pnpm world` ohne den `typecheck`-Schritt, den es seit dem 9. August ausführt."}}},"findings":[{"id":"MEM-013","category":"Memory Leaks \u0026 Ressourcen","domain":"code","severity":"medium","status":"new","effort":"S","title":"SignalAutoMap.clear() bricht beim ersten werfenden Cleanup ab und lässt unerreichbare Signale zurück","location":"src/SignalAutoMap.ts:210-221","description":"`clear()` nimmt zuerst jeden Eintrag samt Destroy-Hook aus der Map (`#drop()` für alle Keys) und zerstört danach den Snapshot in einer ungeschützten Schleife. Wirft die Zerstörung eines Signals — und das tut sie, sobald ein Effekt-Cleanup wirft, denn `destroySignal()` sammelt und wirft erneut —, endet die Schleife. Die Signale dahinter bleiben am Leben, sind aber bereits aus der Map entfernt: `has()` meldet `false`, `get()` legt ein frisches an, und an das alte kommt niemand mehr heran. Ein zweiter `clear()`-Aufruf findet nichts mehr zum Aufräumen. Am gebauten Code nachgestellt (zwei Einträge, werfendes Cleanup am ersten): `b.destroyed === false` nach dem Wurf, Map leer. Jede andere Mehr-Mitglieder-Teardown im Baum hält dagegen das Gegenteil ein — `SignalGroup#clear()`, `SignalGroup#off()`, `SignalGroup.clear()`, `unlink()`, `EffectImpl#destroy()` sammeln über `collect()` und melden am Ende. `SignalAutoMap` und `destroyObjectSignals()` sind die beiden Stellen, die nie in diesen Vertrag geholt wurden.","recommendation":"Die Zerstörungsschleife auf `collect()` + `throwCollectedErrors(errors, \"clearing a signal auto map\")` umstellen — dieselben drei Zeilen, die `SignalGroup#clear()` fünfmal verwendet. Danach die Zusage in `docs/api.md` (Tabelle `SignalAutoMap`, Zeile `clear()`) um denselben Satz ergänzen, den die Gruppen-Teardowns dort schon tragen: ein einzelner Fehler unverändert, mehrere als `AggregateError` in Teardown-Reihenfolge."},{"id":"BUG-015","category":"Bugs \u0026 Korrektheitsrisiken","domain":"code","severity":"low","status":"new","effort":"S","title":"destroyObjectSignals() überspringt beim ersten Wurf alle weiteren Objekte","location":"src/object-signals.ts:101-113","description":"Die Funktion nimmt beliebig viele Objekte (`...objects`) und verspricht im JSDoc, die Signale *jedes* davon zu zerstören. Wirft ein Effekt-Cleanup während `destroySignal(sig)`, endet die äußere Schleife: die restlichen Signale desselben Objekts und sämtliche Objekte dahinter bleiben unangetastet, und der Aufrufer erfährt nicht, wo abgebrochen wurde. Nachgestellt: zwei Signale an einem Host, werfendes Cleanup am ersten → `s2.destroyed === false`. Weniger scharf als MEM-013, weil `store.signals` beim Abbruch ebenfalls stehen bleibt und ein zweiter Aufruf nachholt, was der erste liegen ließ — verlassen kann man sich darauf nicht, es ist eine Nebenwirkung der Reihenfolge.","recommendation":"Dieselbe Behandlung wie MEM-013: `collect()` je Signal, `throwCollectedErrors(errors, \"destroying the signals of an object\")` am Ende der äußeren Schleife. Beide zusammen schließen die letzten zwei Lücken im ansonsten durchgehaltenen Teardown-Vertrag."},{"id":"CONS-016","category":"Konsistenz","domain":"code","severity":"low","status":"new","effort":"S","title":"#drop() lässt einen werfenden unsubscribe die Buchführung der SignalAutoMap zerreißen","location":"src/SignalAutoMap.ts:172-180","description":"`#drop()` ruft `unsubscribe()` ungeschützt und räumt erst danach `#unsubs`, `[$autoMapResources].unsubs` und `#signals` ab. Wirft das Handle — es stammt von einer Queue, die diese Klasse nicht besitzt —, bleibt der Eintrag in allen drei Registern stehen, während der Aufrufer den Fehler bekommt. Das direkte Gegenstück eine Datei weiter macht es genau umgekehrt: `SignalGroup#dropSignalSubscription()` kapselt denselben Aufruf in `try`/`finally` und räumt in jedem Fall ab, mit ausdrücklicher Begründung im Kommentar. Kein beobachteter Fehlschlag, sondern eine Asymmetrie zwischen zwei Methoden, die dasselbe tun.","recommendation":"Den `unsubscribe()`-Aufruf in `try { … } finally { … }` setzen und die drei Löschungen in den `finally`-Zweig ziehen — wörtlich die Form aus `SignalGroup#dropSignalSubscription()`. Damit gilt im ganzen Baum eine Regel für das Freigeben fremder Handles."},{"id":"READ-015","category":"Lesbarkeit \u0026 Clean Code","domain":"code","severity":"low","status":"new","effort":"S","title":"Ein deutscher Kommentarblock in einer durchgängig englischen Codebasis","location":"src/SignalGroup.ts:207-227","description":"Der PERF-004-Block, der die geteilten leeren Stellvertreter-Container erklärt — 21 Zeilen, die wichtigste Erklärung in der größten Datei des Projekts —, steht auf Deutsch. Jeder andere Kommentar in `src/`, jedes JSDoc, jede Fehlermeldung und die gesamte Doku sind englisch; `CONTRIBUTING.md` und `AGENTS.md` sind es ebenfalls. Für einen externen Beitragenden ist ausgerechnet der Abschnitt unlesbar, der erklärt, warum ein Schreibzugriff auf `EMPTY_SET` absichtlich wirft. Nach `pnpm compile` verschwindet er (`removeComments: true`), das Paket liefert ihn also nicht aus — die Kosten liegen vollständig im Repo.","recommendation":"Den Block übersetzen. Inhaltlich nichts ändern: die Argumentation ist richtig und gemessen, sie steht nur in der falschen Sprache. Bei der Gelegenheit prüfen, ob eine Regel dafür in `CONTRIBUTING.md` gehört — heute steht nirgends, dass Code und Kommentare englisch sind, es war bisher nur immer so."},{"id":"READ-016","category":"Lesbarkeit \u0026 Clean Code","domain":"code","severity":"low","status":"new","effort":"S","title":"Ein Kommentar begründet sich mit einem `export *`, das es seit API-017 nicht mehr gibt","location":"src/constants.ts:26-28","description":"Die Begründung für `$autoMapResources` endet mit: „`src/constants.ts` rather than `SignalAutoMap.ts` because `src/index.ts` re-exports the latter with `export *`\". `src/index.ts` hat seit dem Schließen der öffentlichen Oberfläche keinen einzigen Stern mehr — jeder Export ist benannt, und drei Wächter halten das (`performance/noReExportAll`, `index.public-surface.spec.ts`, `types.public-surface.spec.ts`). Der Kommentar begründet eine richtige Entscheidung mit einer Tatsache, die nicht mehr zutrifft; wer ihm folgt, hält die Ablage in `constants.ts` für überflüssig und verschiebt das Symbol zurück. Der letzte offene Punkt aus dem Übergabestapel des Remediation-Laufs.","recommendation":"Den letzten Halbsatz durch den heute tragenden Grund ersetzen — dieselbe Begründung, die zwei Absätze weiter oben für `$queueUnsubscribes` steht: ein `#private`-Feld ist aus dem Test nicht erreichbar, ein öffentliches benanntes Feld wäre neue API-Oberfläche."},{"id":"API-018","category":"Öffentliche API","domain":"code","severity":"low","status":"new","effort":"S","title":"Zwei Doku-Oberflächen nennen beforeRead neben readAsValue, ohne dass eines das andere abschaltet","location":"docs/cheat-sheet.md:210-216 · skills/using-signalize/references/api.md:310-316 · skills/using-signalize/SKILL.md","description":"Der `@signal()`-Dekorator reicht `beforeRead` an `createSignal()` durch, und mit `readAsValue: true` liest der Property-Getter `si.value` statt `si.get()` — also am Reader vorbei, und damit am Hook vorbei. Der Hook feuert dann bei keinem einzigen Property-Zugriff. `docs/api.md` sagt das an zwei Stellen ausdrücklich. Die beiden Kurzreferenzen listen `readAsValue: false` und `beforeRead: () =\u003e {}` dagegen als zwei unabhängige Zeilen desselben Optionsblocks, ohne einen Hinweis. `skills/using-signalize/SKILL.md` — der Text, den ein Coding-Agent zuerst lädt — nennt `beforeRead` überhaupt nicht, lehrt den Dekorator aber. Das Verzeichnis `skills/` liegt im npm-Tarball (`files`), die Fehlstelle wandert also mit dem Paket zum Konsumenten.","recommendation":"In beiden Optionsblöcken einen Halbsatz an die `beforeRead`-Zeile hängen — „never fires with `readAsValue: true`\" genügt, `docs/api.md:1014` hat die Formulierung schon. In `SKILL.md` gehört `beforeRead` in die Optionsübersicht des Dekorators, mit derselben Einschränkung; ein Agent, der die Referenz nicht nachlädt, sieht sonst eine Option, die er falsch kombinieren kann."},{"id":"DX-009","category":"Developer Experience","domain":"harness","severity":"low","status":"new","effort":"S","title":"Sechs Stellen beschreiben `pnpm world` ohne den typecheck-Schritt, den es seit dem 9. August ausführt","location":"README.md:370 · CONTRIBUTING.md:32,46 · AGENTS.md:182,211 · CLAUDE.md:20","description":"`package.json` führt `world` als `clean check typecheck compile bundle test:smoke checkPkgTypes test test:gc` — neun Stufen. Alle sechs Dokumentationsstellen zählen acht auf und lassen `typecheck` weg; `AGENTS.md:211` nennt `pnpm typecheck` korrekt als CI-Schritt und schreibt zwei Sätze später, `pnpm world` decke „exactly the blocking steps\" ab, ohne ihn zu nennen. Der Schritt kam mit `2dc2833` (2026-08-09, BUILD-003) hinzu; keine der Aufzählungen ist mitgezogen. Folgenlos für den, der den Befehl ausführt — irreführend für den, der aus der Doku schließt, `tsc` über Specs und Benchmarks laufe nur in CI, und deshalb vor dem Push nur `pnpm cbt` nimmt.","recommendation":"`typecheck` an allen sechs Stellen in die Aufzählung aufnehmen. Falls die Liste noch einmal driften soll: `run-s -sn` gibt die Stufen bereits aus, ein kurzes Skript könnte die Aufzählung gegen `package.json` prüfen — dieselbe Machart wie `check-doc-refs.mjs`, das schon für Datei-Zeilen-Referenzen existiert."},{"id":"CONS-017","category":"Konsistenz","domain":"code","severity":"info","status":"new","effort":"S","title":"storeAsObjectSignal ist intern, sagt es aber als einziges nicht","location":"src/object-signals.ts:82-90","description":"Von den sechs Exporten in `object-signals.ts` sind vier öffentlich (über `index.ts`) und ausführlich dokumentiert, `findObjectSignal` ist modulintern und trägt `@internal`. `storeAsObjectSignal` ist ebenfalls modulintern — einziger Aufrufer ist `decorators.ts` —, hat aber weder JSDoc noch `@internal`. `stripInternal` lässt es damit in `lib/object-signals.d.ts` stehen; erreichbar ist es von außen trotzdem nicht, weil `index.ts` es nicht führt und die `exports`-Map Tiefenimporte sperrt. Reine Kennzeichnungslücke, aufgefallen beim Nachprüfen von CONS-014, das die vier öffentlichen Exporte geschlossen hat.","recommendation":"Einen Zweizeiler-JSDoc mit `@internal` ergänzen, wie ihn `findObjectSignal` zwanzig Zeilen weiter oben trägt."},{"id":"BUILD-012","category":"Projektaufbau \u0026 Build","domain":"harness","severity":"medium","title":"Die 21 MB Hero-Assets aus dem Git-Baum ziehen","location":"hero.gif · hero.png · hero.webp · hero2.png · hero-next.xcf","description":"Nachgemessen: hero.gif 9,6 MB, hero.png 4,8 MB, hero.webp 2,9 MB, hero2.png 2,1 MB, hero2--noir.png 1,1 MB, hero-web.webp 456 kB und hero-next.xcf 300 kB — zusammen rund 21 MB, alle im Git-Baum verfolgt. Die .xcf ist eine GIMP-Arbeitsdatei, also eine Quelle, aus der die anderen erzeugt wurden. package.json#files liefert nichts davon aus, das npm-Paket bleibt bei 48 Dateien; bezahlt wird beim Klonen, und zwar von jedem, für immer — git speichert Binaries ohne Delta.","recommendation":"Die Assets in ein Release-Attachment, ein Doku-Repo oder git-lfs verschieben und im README verlinken. Solange sie in der Historie liegen, hilft ein bloßes Löschen im HEAD nichts — entweder man akzeptiert die Altlast und stoppt nur den Zuwachs, oder man schreibt die Historie einmal um. Die Entscheidung gehört dokumentiert, in beide Richtungen.","effort":"M","status":"carried-over"},{"id":"DEP-001","category":"Dependencies","domain":"harness","severity":"medium","title":"rimraf nachziehen, um die brace-expansion-Advisories loszuwerden","location":"package.json:52 · pnpm-lock.yaml","description":"`pnpm audit` meldet fünf Advisories: dreimal brace-expansion (DoS, high) über rimraf → glob → minimatch, einmal nanoid (high) und einmal postcss (moderate), beide über @vitest/coverage-v8 → vitest → vite. Alle fünf liegen ausschließlich in devDependency-Ketten — `dependencies` ist leer, die einzige peerDependency ist eventize. Das ausgelieferte Paket ist nicht betroffen, weshalb dies kein high ist; ein Sicherheits-Gate in CI sieht trotzdem vier high und schlägt an. Am 2026-08-12 nachgemessen: unverändert fünf Advisories, dieselbe Verteilung. `rimraf@6.1.3` und `vitest@4.1.10` sind beide bereits die neuesten Versionen — über ein Anheben der direkten Dependencies fällt keines der fünf, der Weg führt nur über eine Override.","recommendation":"In `pnpm-workspace.yaml` — nicht im `pnpm`-Feld der `package.json`, das pnpm 11 ignoriert — Overrides für `brace-expansion` (\u003e=5.0.9), `postcss` (\u003e=8.5.23) und `nanoid` (\u003e=3.3.17) setzen, jede mit einer Kommentarzeile, warum sie dort steht. Fällt eine davon durch ein späteres Upstream-Update weg, verrät die Zeile, wann sie wieder verschwinden darf.","effort":"S","status":"carried-over"},{"id":"BUILD-020","category":"Projektaufbau \u0026 Build","domain":"harness","severity":"low","title":"Das neue Doku-Gate liegt selbst außerhalb aller Gates","location":"scripts/check-doc-refs.mjs · biome.json · tsconfig.json","description":"scripts/check-doc-refs.mjs läuft als check:refs in pnpm check und damit in CI — es ist ein blockierendes Gate. Geprüft wird es von nichts: biome.json listet `scripts/**/*.cjs`, nicht `*.mjs` (biome sagt auf Nachfrage wörtlich \"These paths were provided but ignored\"), und tsconfig.json#include führt src, bench und die drei vitest-Configs, nicht scripts/. Ein Tippfehler in der Regex macht das Gate stillschweigend wirkungslos, und der einzige Hinweis wäre, dass es nie wieder anschlägt. Dieselbe Lücke gilt für rollup/*.mjs. Nachgeprüft: die Biome-Hälfte ist inzwischen zu — `biome.json` führt `scripts/**/*.cjs` und `scripts/**/*.mjs` in `files.includes`, beide Wächterskripte werden also gelintet und formatiert. Offen bleibt die andere Hälfte: `tsconfig.json` schließt `scripts/` nicht ein, `pnpm typecheck` sieht die Dateien nie, und kein Test führt sie mit einem präparierten Eingabefall aus.","recommendation":"`scripts/**/*.mjs` in biome.json#files.includes aufnehmen — rollup/**/*.mjs steht dort bereits, das ist eine Zeile. Dazu einen Selbsttest für den Wächter: eine Fixture mit einem bekannten Verweis, gegen die er anschlagen muss. Ein Gate ohne Zeugen ist eine Behauptung.","effort":"S","status":"improved","previousSeverity":"medium"},{"id":"TYPE-006","category":"Typsicherheit","domain":"harness","severity":"low","title":"Signal.onChange mit dem vorhandenen ValueChangedCallback typisieren","location":"src/Signal.ts:37","description":"\u003ccode\u003eonChange(action: (val: ValueType) =\u0026gt; any)\u003c/code\u003e gibt den Rückgabewert des Callbacks unverändert an den Effect weiter, womit eine zurückgegebene Funktion zum Cleanup wird. Das \u003ccode\u003eany\u003c/code\u003e verschluckt genau diese Information: Konsumenten sehen nicht, dass der Rückgabewert eine Bedeutung hat, und ein versehentlich zurückgegebener Wert wird nicht beanstandet. \u003ccode\u003etypes.ts:7\u003c/code\u003e definiert mit \u003ccode\u003eValueChangedCallback\u0026lt;T\u0026gt;\u003c/code\u003e bereits exakt den richtigen Typ.","recommendation":"\u003ccode\u003eonChange(action: ValueChangedCallback\u0026lt;ValueType\u0026gt;): VoidFunc\u003c/code\u003e deklarieren.","effort":"S","status":"carried-over"},{"id":"ARCH-005","category":"Architektur \u0026 Struktur","domain":"code","severity":"info","title":"Die Scratch-Beispiele aus dem Repo-Root holen","location":"foo.mjs · diamond-example.mjs · biome.json:15","description":"\u003ccode\u003efoo.mjs\u003c/code\u003e und \u003ccode\u003ediamond-example.mjs\u003c/code\u003e liegen als getrackte Dateien im Repo-Root, beide mit einem \u003ccode\u003e/* eslint-disable no-console */\u003c/code\u003e — ESLint ist seit v0.28 entfernt, die Pragmas zeigen auf ein Werkzeug, das es nicht mehr gibt. \u003ccode\u003ediamond-example.mjs\u003c/code\u003e besteht zu etwa einem Drittel aus auskommentierten Varianten und ist eher ein eingefrorenes Scratchpad als ein Beispiel; beide laufen nur nach einem \u003ccode\u003epnpm bundle\u003c/code\u003e, weil sie sich per Self-Reference auf \u003ccode\u003edist/\u003c/code\u003e auflösen. Auf einem frischen Clone brechen sie mit \u003ccode\u003eERR_MODULE_NOT_FOUND\u003c/code\u003e ab. Unverändert: `diamond-example.mjs` liegt versioniert im Root, `foo.mjs` unversioniert daneben (in `.gitignore`). Kein Dokument, kein Skript und kein Test verweist auf das Beispiel; es enthält drei auskommentierte Alternativfassungen seiner eigenen Aussage und in Zeile 1 eine `eslint-disable`-Direktive für ein Werkzeug, das seit v0.28 nicht mehr im Projekt ist.","recommendation":"Beide nach \u003ccode\u003eexamples/\u003c/code\u003e mit sprechenden Namen verschieben, die ESLint-Pragmas streichen, die auskommentierten Varianten eindampfen und eine README-Zeile »erst \u003ccode\u003epnpm dist\u003c/code\u003e« ergänzen — oder ersatzlos löschen.","effort":"M","status":"carried-over"},{"id":"DEP-002","category":"Dependencies","domain":"harness","severity":"low","title":"Die devDependency tslib entfernen","location":"package.json:54","description":"\u003ccode\u003etslib\u003c/code\u003e steht als direkte devDependency, wird aber von nichts im Projekt gebraucht: \u003ccode\u003eimportHelpers\u003c/code\u003e ist in keiner tsconfig gesetzt, Rollup läuft ohne TypeScript-Plugin über bereits kompiliertes \u003ccode\u003elib/\u003c/code\u003e, und in \u003ccode\u003esrc/\u003c/code\u003e gibt es keinen Treffer. Der Eintrag stammt erkennbar aus der Zeit vor dem Wechsel auf SWC.","recommendation":"Zeile aus \u003ccode\u003edevDependencies\u003c/code\u003e streichen und \u003ccode\u003epnpm install\u003c/code\u003e laufen lassen; \u003ccode\u003epnpm cbt\u003c/code\u003e als Gegenprobe.","effort":"S","status":"carried-over"},{"id":"DEP-004","category":"Dependencies","domain":"harness","severity":"info","title":"Die Toolchain aktuell halten — sechs Pakete driften, @types/node um zwei Majors","location":"package.json:44-58 · biome.json:2","description":"Fünf devDependencies liegen ein Patch-Release zurück — unkritisch. Auffällig ist nur \u003ccode\u003e@types/node\u003c/code\u003e mit 24.13.3 gegen 26.1.2: die Typen hängen an der \u003ccode\u003eengines\u003c/code\u003e-Zahl fest, während die lokale Runtime bereits Node 25.9 ist. Der \u003ccode\u003e$schema\u003c/code\u003e in \u003ccode\u003ebiome.json\u003c/code\u003e zeigt zudem fest auf 2.5.5 und muss beim Biome-Update mitgezogen werden. Stand 2026-08-12: sechs Pakete driften, fünf davon nur um Patch-Versionen (`@biomejs/biome` 2.5.5→2.5.8, `@swc/core` 1.15.46→47, `npm-run-all2` 9.0.2→3, `rollup` 4.62.2→4, `unplugin-swc` 1.5.9→10). Der einzige größere Abstand bleibt `@types/node` 24.13.3 gegenüber 26.2.0.","recommendation":"\u003ccode\u003epnpm update\u003c/code\u003e für die Patch-Drift; \u003ccode\u003e@types/node\u003c/code\u003e bewusst auf die Major-Version anheben, die zur festgelegten \u003ccode\u003eengines\u003c/code\u003e-Untergrenze passt.","effort":"S","status":"carried-over"},{"id":"DX-002","category":"Developer Experience","domain":"harness","severity":"low","title":"Die Coverage-Schwelle vom normalen pnpm test entkoppeln","location":"package.json:37","description":"\u003ccode\u003e\"test\": \"vitest run --coverage\"\u003c/code\u003e heißt, dass jeder Teillauf an der globalen Schwelle scheitert. Wer der (korrigierten) Doku folgt und \u003ccode\u003epnpm test createSignal.spec.ts\u003c/code\u003e ausführt, bekommt vier rote ERROR-Zeilen und Exit 1, obwohl alle 13 Tests grün sind. Das ist die häufigste Interaktion beim Entwickeln und liefert jedes Mal ein falsches Fehlersignal.","recommendation":"\u003ccode\u003etest\u003c/code\u003e auf \u003ccode\u003evitest run\u003c/code\u003e reduzieren und ein \u003ccode\u003etest:coverage\u003c/code\u003e mit \u003ccode\u003e--coverage\u003c/code\u003e einführen, das CI und \u003ccode\u003eworld\u003c/code\u003e fahren.","effort":"S","status":"carried-over"},{"id":"DX-003","category":"Developer Experience","domain":"harness","severity":"low","title":"Einen Pre-Commit-Hook für Biome ergänzen","location":"package.json:20 · CONTRIBUTING.md:131","description":"Es gibt keinen Hook-Manager, und \u003ccode\u003e.git/hooks/\u003c/code\u003e enthält nur die Node-Samples. Formatierung und Lint werden ausschließlich in CI durchgesetzt — und dort nur im Feature-Branch-Workflow, nicht auf \u003ccode\u003emain\u003c/code\u003e. CONTRIBUTING sagt »run \u003ccode\u003epnpm check\u003c/code\u003e« und verlässt sich damit auf Disziplin. Für ein Projekt, das mit \u003ccode\u003epnpm fix\u003c/code\u003e den Auto-Fix bereits mitbringt, ist das eine unnötig weiche Kante.","recommendation":"\u003ccode\u003elefthook\u003c/code\u003e oder \u003ccode\u003esimple-git-hooks\u003c/code\u003e als devDependency aufnehmen und \u003ccode\u003epnpm check\u003c/code\u003e als Pre-Commit-Hook auf die gestagten Dateien einhängen.","effort":"S","status":"carried-over"},{"id":"DX-004","category":"Developer Experience","domain":"harness","severity":"low","title":"Kein DevTools-Inspector für den Signal-Graphen","location":"src/effects.ts:29-49 · docs/api.md:65,160","description":"Null Treffer für \u003ccode\u003edevtool\u003c/code\u003e, \u003ccode\u003einspector\u003c/code\u003e, \u003ccode\u003e__DEV__\u003c/code\u003e oder einen Debug-Hook über \u003ccode\u003esrc/\u003c/code\u003e, \u003ccode\u003escripts/\u003c/code\u003e, \u003ccode\u003edocs/\u003c/code\u003e und die Agenten-Dokumente. Vorhanden ist ausschließlich Zähl-Introspektion (\u003ccode\u003egetSignalsCount\u003c/code\u003e, \u003ccode\u003egetEffectsCount\u003c/code\u003e, \u003ccode\u003egetLinksCount\u003c/code\u003e, \u003ccode\u003egetSignalGroupsCount\u003c/code\u003e) plus \u003ccode\u003eonCreateEffect\u003c/code\u003e/\u003ccode\u003eonDestroyEffect\u003c/code\u003e. Zähler und Lifecycle-Hooks ersetzen keine Graph-Darstellung, und die Nicht-Entscheidung ist nirgends festgehalten.","recommendation":"Entweder einen minimalen Graph-Dump über die vorhandenen Hooks bauen (Effects, ihre Signale, ihre Prioritäten) oder die bewusste Entscheidung dagegen dokumentieren.","effort":"L","status":"carried-over"},{"id":"DX-005","category":"Developer Experience","domain":"harness","severity":"low","title":"Der README-Werbeabschnitt bricht mit dem sonstigen Doku-Ton","location":"README.md:60-68","description":"\u003ccode\u003e## 🚀 Why\u003c/code\u003e mit »managing state with traditional tools often leads to \"render hell\"« und Emoji-Bullets bis »\u003cstrong\u003e🛠 Production-Ready:\u003c/strong\u003e Developed by a Software Artisan with 20+ years of experience«. Die Nachbarabschnitte argumentieren nüchtern über Inline-Propagation und den zentralen Trade-off; dieser Block stammt aus einem früheren Commit und hat die Remediation unberührt überstanden. Er kostet Glaubwürdigkeit an der Stelle, an der ein Interessent zuerst liest.","recommendation":"Den Abschnitt auf den Ton der Nachbarn ziehen oder ersatzlos streichen — die Sektion »What makes it different« darüber leistet dieselbe Aufgabe bereits sachlich.","effort":"S","status":"carried-over"},{"id":"IMPL-002","category":"Implementierungsstand","domain":"code","severity":"info","title":"Symbol-ID-Generator wächst unbegrenzt","location":"src/UniqIdGen.ts:1-13","description":"\u003ccode\u003e#nextId\u003c/code\u003e wird in \u003ccode\u003emake()\u003c/code\u003e monoton hochgezählt und nie zurückgesetzt. Der Sachverhalt ist unverändert, kostet aber nichts als einen Integer: der Generator hält keines der erzeugten Symbole, es gibt also kein Speicherwachstum, nur eine theoretische Obergrenze bei \u003ccode\u003eNumber.MAX_SAFE_INTEGER\u003c/code\u003e.","recommendation":"Belassen; höchstens im JSDoc festhalten, dass der Zähler bewusst prozessweit monoton ist.","effort":"S","status":"carried-over"},{"id":"SEC-002","category":"Sicherheit","domain":"code","severity":"info","title":"execFile statt Shell-Interpolation im Publish-Skript","location":"scripts/publishPackage.cjs:25","description":"\u003ccode\u003eexec(`npm show ${pkgJson.name} versions --json`)\u003c/code\u003e interpoliert einen Wert aus \u003ccode\u003epackage.json\u003c/code\u003e in eine Shell-Kommandozeile. Ausnutzbar ist das aktuell nicht — der Wert steht im eigenen Repo und ändert sich nur mit einem Commit. Es ist trotzdem die einzige Stelle im Projekt, an der Daten in eine Shell fließen, und sie sitzt ausgerechnet im Skript mit npm-Publish-Rechten.","recommendation":"Auf \u003ccode\u003eexecFile('npm', ['show', pkgJson.name, 'versions', '--json'])\u003c/code\u003e umstellen, damit keine Shell dazwischensteht.","effort":"S","status":"carried-over"},{"id":"INF-001","category":"Öffentliche API","domain":"code","severity":"info","title":"decorators.ts und Effect.ts sind ohne JSDoc","location":"src/decorators.ts:34","description":"Nachgeprüft und auf die Hälfte geschrumpft: `Effect.ts` trägt inzwischen JSDoc an `runImmediately`, `destroyed` und `onDestroy`. In `decorators.ts` sind die beiden Optionstypen dokumentiert, die exportierte Fabrik `signal()` selbst aber nicht — die einzige Funktion des `./decorators`-Einstiegspunkts steht ohne einen Satz da, während jeder andere öffentliche Export des Pakets einen hat. Ein Editor zeigt beim Tippen von `@signal(` nichts an.","recommendation":"Der Fabrik einen JSDoc-Block geben: was sie tut, dass `accessor` Pflicht ist, dass das Signal immer zusätzlich in der Gruppe der Instanz landet, und ein Verweis auf `SignalDecoratorOptions` für die Optionen. Der Prosatext dafür steht bereits in `docs/api.md` und muss nur verdichtet werden.","effort":"S","status":"carried-over"},{"id":"BUILD-019","category":"Projektaufbau \u0026 Build","domain":"harness","severity":"info","title":"Die Stufe-2-Negation der Coverage-Schwellen ist nicht pfadgebunden","location":"vitest.config.ts:95-96","description":"\u003ccode\u003esrc/**/!(…|link|signal-core).ts\u003c/code\u003e vergleicht die Negationsliste gegen das letzte Pfadsegment. Ein künftiges \u003ccode\u003esrc/sub/link.ts\u003c/code\u003e fiele damit aus der 100-Prozent-Stufe heraus, obwohl es eine ganz andere Datei wäre. Heute ohne Wirkung, weil \u003ccode\u003esrc/\u003c/code\u003e flach ist, und genau deshalb der Typ Fehler, der beim ersten Unterverzeichnis niemandem auffällt.","recommendation":"Die Ausnahmen als eigene Glob-Gruppe mit vollen Pfaden führen statt als Negation im Sammelmuster.","effort":"S","status":"carried-over"},{"id":"DX-006","category":"Developer Experience","domain":"harness","severity":"low","title":"pnpm test -- \u003cfilter\u003e verwirft den Filter und fährt die volle Suite grün","location":"package.json:35","description":"pnpm 11 schluckt die Argumente hinter \u003ccode\u003e--\u003c/code\u003e. Wer \u003ccode\u003epnpm test -- -t \"mein neuer Test\"\u003c/code\u003e tippt, bekommt einen grünen Lauf über alle 478 Tests, ohne dass der genannte Test je existieren müsste. Die Form ohne \u003ccode\u003e--\u003c/code\u003e funktioniert korrekt, und die Repo-Doku benutzt inzwischen durchweg die richtige — was den Fund entschärft, aber die falsche ist die aus jedem anderen npm-Projekt gewohnte. Am 2026-08-12 gegen die laufende Suite gemessen: `vitest run --coverage.enabled=false -- create-memo.spec.ts` läuft 58 Dateien und 655 Tests grün, dieselbe Zeile ohne `--` läuft 1 Datei und 22 Tests. Der Filter wird also nicht etwa falsch angewandt, sondern kommentarlos verworfen — und weil der Lauf grün ist, gibt es kein Signal, dem etwas auffallen könnte.","recommendation":"Ein \u003ccode\u003e\"test:one\": \"vitest run\"\u003c/code\u003e ergänzen (ohne \u003ccode\u003e--coverage\u003c/code\u003e, damit die Per-File-Schwellen den Einzellauf nicht künstlich rot färben) und in \u003ccode\u003eAGENTS.md\u003c/code\u003e/\u003ccode\u003eCONTRIBUTING.md\u003c/code\u003e explizit vor der \u003ccode\u003e--\u003c/code\u003e-Form warnen.","effort":"S","status":"carried-over"},{"id":"DX-007","category":"Developer Experience","domain":"harness","severity":"low","title":"Die Glob-Wache in test:smoke ist Logik, die kein Werkzeug je sieht","location":"package.json:39","description":"Rund 300 Zeichen \u003ccode\u003enode -e\u003c/code\u003e-Skript stecken in einem JSON-String mit maskierten Anführungszeichen. Biome liest die Datei nicht als Code, tsc erst recht nicht, und sie ist die einzige Stelle, die verhindert, dass ein umbenannter Smoke-Test lautlos zu null ausgeführten Dateien wird. Ausgerechnet die Wache gegen ein leeres Glob steht selbst außerhalb jeder Prüfung.","recommendation":"Nach \u003ccode\u003esmoke/guard.mjs\u003c/code\u003e auslagern, dann greifen Biome-Includes (\u003ccode\u003e*.mjs\u003c/code\u003e steht bereits in \u003ccode\u003ebiome.json\u003c/code\u003e) und die Zeile in \u003ccode\u003epackage.json\u003c/code\u003e wird lesbar.","effort":"S","status":"carried-over"},{"id":"TEST-026","category":"Testabdeckung \u0026 Teststrategie","domain":"harness","severity":"low","title":"Die Null- und Grenzwächter der öffentlichen Oberfläche abdecken","location":"src/SignalGroup.ts:431 · src/link.ts:244-246 · src/link.ts:318 · src/signal-core.ts:179-192 · src/EffectImpl.ts:452","description":"Acht Wächter auf öffentlichen Pfaden überleben ihre Entfernung: \u003ccode\u003edetachGroup(this)\u003c/code\u003e, das Aufräumen der leeren inneren Map in \u003ccode\u003egLinks\u003c/code\u003e, \u003ccode\u003egetLinksCount(kein Signal)\u003c/code\u003e, \u003ccode\u003eunlink()\u003c/code\u003e mit unbekanntem Target, die Null-Prüfungen in \u003ccode\u003emuteSignal\u003c/code\u003e/\u003ccode\u003eunmuteSignal\u003c/code\u003e, die \u003ccode\u003emaxDepth\u003c/code\u003e-Grenze (\u003ccode\u003e\u0026gt;=\u003c/code\u003e → \u003ccode\u003e\u0026gt;\u003c/code\u003e bleibt unbemerkt), der \u003ccode\u003e!si.destroyed\u003c/code\u003e-Filter in \u003ccode\u003eoff()\u003c/code\u003e und die Destroyed-Prüfung vor \u003ccode\u003esaveSignalsFromDeps()\u003c/code\u003e. Jeder einzeln ist billig, zusammen sind sie die Zone, in der eine Refactoring-Vereinfachung unbemerkt durchgeht. Aus dem Coverage-Bericht dieses Laufs (99,39 / 95,95 / 99,64 / 99,51): unabgedeckt sind `signal-core.ts:226-239` (die `null`-Zweige von `muteSignal`/`unmuteSignal`, 12 von 14 Branches), `link.ts:119,317,359,397`, `SignalGroup.ts:456-457,466,470` und `EffectImpl.ts:1142-1143`. `signal-core.ts` ist damit weiterhin die schwächste Zelle im Baum — und der Kommentar in `vitest.config.ts` benennt sie ausdrücklich als das, was die Branch-Untergrenze aller Dateien bei 85 festhält.","recommendation":"Mit den beiden billigsten anfangen: `muteSignal(undefined)` und `unmuteSignal(undefined)` sind zwei Zeilen und heben `signal-core.ts` auf 14/14 Branches. Erst dann ist die Stufe-1-Schwelle in `vitest.config.ts` überhaupt anhebbar — sie kann nie über der schwächsten Datei liegen, und heute ist das diese.","effort":"M","status":"carried-over"},{"id":"TEST-027","category":"Testabdeckung \u0026 Teststrategie","domain":"harness","severity":"low","title":"Die Property-Tests zusätzlich mit rotierendem Seed fahren","location":"src/ordering.property.spec.ts:10","description":"\u003ccode\u003econst FC = {seed: 20260807, numRuns: 500}\u003c/code\u003e fixiert den Seed. Die sechs Properties durchsuchen damit für immer dieselben 500 Fälle — das ist ein großer beispielbasierter Test, keine Suche. Ein fester Seed in CI ist richtig; ohne einen zweiten Lauf mit freiem Seed findet die Suite nie ein Gegenbeispiel, das sie nicht schon beim Schreiben gefunden hat.","recommendation":"Seed über eine Env-Variable überschreibbar machen und im CI einen zusätzlichen, nicht blockierenden Job mit zufälligem Seed fahren, der ein gefundenes Gegenbeispiel als Seed ins Log schreibt.","effort":"S","status":"carried-over"},{"id":"TEST-028","category":"Testabdeckung \u0026 Teststrategie","domain":"harness","severity":"low","title":"Die NaN-Semantik des Default-Vergleichers entscheiden","location":"src/createSignal.ts:106-107","description":"Der Default-Vergleicher ist \u003ccode\u003ea === b\u003c/code\u003e. Damit benachrichtigt ein Signal bei jedem \u003ccode\u003eset(NaN)\u003c/code\u003e erneut, auch wenn es schon \u003ccode\u003eNaN\u003c/code\u003e hält, und \u003ccode\u003eset(-0)\u003c/code\u003e auf \u003ccode\u003e+0\u003c/code\u003e schweigt. Ersetzt man ihn durch \u003ccode\u003eObject.is\u003c/code\u003e, kehrt sich beides um und kein Test merkt es. Welche der beiden Semantiken gewollt ist, steht nirgends fest.","recommendation":"Die gewollte Variante in \u003ccode\u003edocs/api.md\u003c/code\u003e festschreiben und je einen Test für \u003ccode\u003eNaN\u003c/code\u003e und \u003ccode\u003e-0\u003c/code\u003e/\u003ccode\u003e+0\u003c/code\u003e ergänzen.","effort":"S","status":"carried-over"},{"id":"BUILD-013","category":"Projektaufbau \u0026 Build","domain":"harness","severity":"info","title":"pnpm clean löscht drei Verzeichnisse, die es nicht mehr gibt","location":"package.json:29 · .gitignore:1,4,5 · .npmignore:3,6,23,34,36","description":"\u003ccode\u003e\"clean\": \"rimraf build types tests dist lib coverage\"\u003c/code\u003e — real erzeugt werden nur \u003ccode\u003edist\u003c/code\u003e, \u003ccode\u003elib\u003c/code\u003e und \u003ccode\u003ecoverage\u003c/code\u003e. \u003ccode\u003ebuild\u003c/code\u003e, \u003ccode\u003etypes\u003c/code\u003e und \u003ccode\u003etests\u003c/code\u003e existieren nicht und haben keinen Produzenten; die Karteileichen sind dreifach konserviert, in \u003ccode\u003epackage.json\u003c/code\u003e, \u003ccode\u003e.gitignore\u003c/code\u003e und \u003ccode\u003e.npmignore\u003c/code\u003e. Dieselbe Sorte: \u003ccode\u003e.npmignore\u003c/code\u003e verweist auf \u003ccode\u003eBacklog.md\u003c/code\u003e und \u003ccode\u003ebacklog.html\u003c/code\u003e, beide gibt es nicht mehr.","recommendation":"Die drei toten Verzeichnisse aus \u003ccode\u003eclean\u003c/code\u003e und den beiden Ignore-Dateien streichen, ebenso die zwei nicht mehr existierenden Backlog-Dateien.","effort":"S","status":"carried-over"},{"id":"BUILD-014","category":"Projektaufbau \u0026 Build","domain":"harness","severity":"info","title":"./package.json in die exports-Map aufnehmen und tote ESLint-Direktiven aufräumen","location":"package.json:10-19 · rollup/makeVersionWithBuild.mjs:1 · scripts/publishPackage.cjs:2 · diamond-example.mjs:1","description":"Die \u003ccode\u003eexports\u003c/code\u003e-Map hat keinen \u003ccode\u003e\"./package.json\"\u003c/code\u003e-Eintrag; Tools, die die Manifestdatei eines Dependencies lesen (diverse Bundler-Plugins, \u003ccode\u003eimport.meta.resolve\u003c/code\u003e-Nutzer), laufen in ein \u003ccode\u003eERR_PACKAGE_PATH_NOT_EXPORTED\u003c/code\u003e. Unabhängig davon stehen in drei Dateien noch \u003ccode\u003eeslint-disable\u003c/code\u003e-Direktiven, obwohl ESLint seit v0.28 bewusst entfernt ist und Biome sie ignoriert.","recommendation":"\u003ccode\u003e\"./package.json\": \"./package.json\"\u003c/code\u003e in \u003ccode\u003eexports\u003c/code\u003e aufnehmen; die drei \u003ccode\u003eeslint-disable\u003c/code\u003e-Kommentare löschen.","effort":"S","status":"carried-over"},{"id":"BUILD-021","category":"Bugs \u0026 Korrektheitsrisiken","domain":"harness","severity":"low","title":"Ungeprüftes JSON.parse im Veröffentlichungspfad","location":"scripts/publishPackage.cjs:24-38","description":"`npm show \u003cpkg\u003e versions --json` wird per exec() gefahren und sein stdout ungeschützt durch JSON.parse geschickt. Zwei Fälle: kommt eine npm-Warnung mit im Strom, wirft der Parse innerhalb des exec-Callbacks; und für ein Paket, das noch nie veröffentlicht wurde, liefert npm E404 — der Code wertet das als Panik und bricht mit exitCode 1 ab, statt zu erkennen, dass es die Erstveröffentlichung ist. Für dieses Paket ist der zweite Fall latent, weil bereits Versionen existieren.","recommendation":"Auf execFile umstellen (der SEC-002-Punkt aus dem Vorlauf zielt auf dieselbe Zeile), den Parse in try/catch legen und E404 als \"noch nicht veröffentlicht\" behandeln statt als Fehler. Dass npm bei genau einer existierenden Version einen String statt eines Arrays liefert, gehört im selben Zug abgesichert.","effort":"S","status":"carried-over"},{"id":"DX-008","category":"Developer Experience","domain":"harness","severity":"info","title":"Die Doku-Landkarte in CLAUDE.md kennt den Quickstart nicht","location":"CLAUDE.md:8-12","description":"Die Tabelle \"Where the knowledge lives\" nennt AGENTS.md, skills/using-signalize/ und docs/ mit api.md, recipes.md, architecture.md und cheat-sheet.md. docs/quickstart.md fehlt — die Datei, die README, CONTRIBUTING und AGENTS.md alle drei als Einstieg verlinken. CLAUDE.md ist die Datei, die in jeder Agenten-Sitzung zuerst geladen wird.","recommendation":"Eine Zeile in die Tabelle. Alternativ die docs/-Zeile auf \"alle Dateien unter docs/\" verallgemeinern, dann rottet sie beim nächsten Zuwachs nicht erneut.","effort":"S","status":"carried-over"}],"acknowledged":[],"openQuestions":[{"q":"Wann fällt das -dev aus 1.0.0-dev?","ctx":"Unverändert offen, und inzwischen aktenkundig: `scripts/publishPackage.cjs` verweigert die Veröffentlichung, solange die Version darauf endet, `main.yml` veröffentlicht bei jedem Push auf `main`. Das Suffix fallen zu lassen ist der Release — ohne Tag, ohne Freigabe dazwischen. Der Remediation-Lauf hat die Mechanik in `CONTRIBUTING.md` beschrieben, damit sie niemand versehentlich auslöst, und die Entscheidung selbst ausdrücklich dem Maintainer gelassen. Der `## Unreleased`-Block trägt inzwischen 50 Einträge unter `### Breaking Changes`."},{"q":"Womit authentifiziert sich der Deploy-Job?","ctx":"`main.yml` vergibt `id-token: write` auf Workflow-Ebene, richtet `setup-node` mit `registry-url` und `always-auth: true` ein — setzt aber kein `NODE_AUTH_TOKEN` in der Job-Umgebung, und `npm publish` läuft ohne `--provenance`. Diese drei Angaben passen nur zusammen, wenn für das Paket auf npmjs.com Trusted Publishing über OIDC eingerichtet ist; aus dem Repo ist das nicht zu sehen. Ist es nicht eingerichtet, ist `id-token: write` ein ungenutztes Recht am einzigen Job, der veröffentlicht. Da `1.0.0-dev` das Veröffentlichen ohnehin abbricht, ist der Pfad in dieser Konfiguration noch nie durchgelaufen."},{"q":"Soll der Teardown-Vertrag SignalAutoMap und destroyObjectSignals erreichen?","ctx":"MEM-013 und BUG-015 unterstellen ja — weil sechs andere Mehr-Mitglieder-Teardowns ihn einhalten und `docs/api.md` ihn dort ausdrücklich zusagt. Wenn die beiden Stellen bewusst außerhalb stehen sollen, gehört der Grund in ihr JSDoc; heute steht dort nichts, was auf eine Entscheidung schließen ließe."},{"q":"Bleiben die 21 MB Hero-Assets in der Historie?","ctx":"Unverändert offen (BUILD-012). Sie aus dem HEAD zu nehmen stoppt nur den Zuwachs; `.git` steht bei 43 MB. Ob die Altlast eine Historien-Umschreibung wert ist, ist eine Projektentscheidung, keine technische."}]}</script>
-
+<script id="audit-data" type="application/json">{"summary": {"project": "@spearwolf/signalize", "version": "1.0.0-dev", "stack": ["TypeScript 7", "ESM-only", "Node >=22", "pnpm 11", "Vitest 4", "Rollup 4", "Biome 2"], "date": "2026-08-13", "previousDate": "2026-08-12", "previousScore": 84.5, "score": 88.5, "scoreDelta": 4.0, "theme": "dark", "scoreHistory": [{"date": "2026-08-07", "score": 0}, {"date": "2026-08-08", "score": 0}, {"date": "2026-08-12", "score": 68}, {"date": "2026-08-12", "score": 84.5}, {"date": "2026-08-13", "score": 88.5}], "counts": {"critical": 0, "high": 0, "medium": 2, "low": 15, "info": 7}, "categories": {"Developer Experience": 7, "Projektaufbau & Build": 6, "Dependencies": 2, "Testabdeckung & Teststrategie": 2, "Memory Leaks & Ressourcen": 1, "Konsistenz": 1, "Öffentliche API": 1, "Lesbarkeit & Clean Code": 1, "Bugs & Korrektheitsrisiken": 1, "Architektur & Struktur": 1, "Sicherheit": 1}, "resolvedCount": 13, "improvedCount": 1, "newCount": 5, "unchangedCount": 0, "carriedOverCount": 18, "domains": {"code": {"label": "Code & Laufzeit", "score": 97.0, "bySeverity": {"critical": 0, "high": 0, "medium": 1, "low": 2, "info": 3}, "byCategory": {"Memory Leaks & Ressourcen": 1, "Konsistenz": 1, "Öffentliche API": 1, "Lesbarkeit & Clean Code": 1, "Architektur & Struktur": 1, "Sicherheit": 1}, "executiveSummary": "Der Laufzeitkern hält seinen eigenen Teardown-Vertrag an jeder Stelle, die dieser Lauf nachgemessen hat — bis auf eine. `EffectImpl#unsubscribeSignal()` gibt zwei fremde Queue-Handles ohne Guard frei, und ausgerechnet dort ist die Folge am schwersten: das Register, das dabei stehen bleibt, ist genau das, an dem der Effekt abliest, ob ihn noch etwas wecken kann. Die drei übrigen Befunde sind Randschärfen — ein Einstieg, der einen Tippfehler als Erfolg meldet, ein Callback, der an einem Hook vorbeiliest, und zwei JSDoc-Blöcke, die länger geworden sind als der Typ darunter. Kein Bug in der Kernmechanik, keine Nebenläufigkeitslücke, keine Sicherheitslage."}, "harness": {"label": "Projekt-Harness", "score": 91.5, "bySeverity": {"critical": 0, "high": 0, "medium": 1, "low": 13, "info": 4}, "byCategory": {"Developer Experience": 7, "Projektaufbau & Build": 6, "Dependencies": 2, "Testabdeckung & Teststrategie": 2, "Bugs & Korrektheitsrisiken": 1}, "executiveSummary": "Das Gerüst ist dicht und an einer Stelle durchsichtig: `check-doc-refs.mjs` besteht, wenn seine Globs nichts treffen — dieselbe Falle, die das Projekt in `vitest.config.ts` und in `test:smoke` bereits erkannt und geschlossen hat. Dahinter steht das ältere Muster: die fünf Skripte, die über Build und Veröffentlichung entscheiden, sind der einzige Code im Repo ohne Typcheck und ohne Test. Der Rest ist Pflege — eine tote Dependency, drei Verzeichnisse in `clean`, die es nicht gibt, zwei Doku-Zeilen, die eine Stufe unterschlagen, und sechs Bilddateien im Wurzelverzeichnis, die niemand referenziert."}}}, "findings": [{"id": "MEM-014", "category": "Memory Leaks & Ressourcen", "domain": "code", "severity": "medium", "status": "new", "effort": "S", "title": "EffectImpl gibt fremde Queue-Handles als einzige Stelle im Baum ungeschützt frei", "location": "src/EffectImpl.ts:994-1001", "description": "`unsubscribeSignal()` ruft beide Handles eines Signals in einem `forEach` und löscht den Registereintrag erst danach. Wirft das erste Handle, läuft das zweite nie und `#signalSubscriptions.delete(signalId)` ebenso wenig — die Subskription auf `globalDestroySignalQueue` bleibt auf einer prozesslangen Queue stehen. Schwerer als die beiden Geschwister, die 2026-08-13 geschlossen wurden: `#signalSubscriptions` ist genau das Register, das `hasNoLiveSignals()` liest, also meldet der Effekt danach dauerhaft „ich habe noch Abhängigkeiten\" und zerstört sich nie mehr selbst. Der Baum hält den Vertrag sonst überall — `SignalGroup#dropSignalSubscription()` und `SignalAutoMap#drop()` je mit `try`/`finally` samt Begründung im Kommentar, `SignalGroup#clear()` und `unlink()` über `collect()`. Zwei der drei Module tragen sogar eine eigene Spec-Datei dafür (`SignalGroup.teardown.unsubscribeThrows.spec.ts`, `SignalAutoMap.teardown.unsubscribeThrows.spec.ts`); für `EffectImpl` gibt es keine.", "recommendation": "Die Schleife auf `collect()` je Handle umstellen, die drei Zeilen Buchführung in ein `finally`, am Ende `throwCollectedErrors(errors, \"unsubscribing an effect from a signal\")` — dieselbe Form, die `SignalAutoMap#drop()` seit CONS-016 trägt. Dazu eine `EffectImpl.teardown.unsubscribeThrows.spec.ts` nach dem Muster der beiden vorhandenen: sie sind die Vorlage, inklusive der `vi.mock`-Naht, mit der ein werfendes Handle überhaupt erst erzeugt wird."}, {"id": "BUILD-022", "category": "Projektaufbau & Build", "domain": "harness", "severity": "medium", "status": "new", "effort": "S", "title": "Das Doku-Gate besteht still, wenn seine Globs nichts treffen", "location": "scripts/check-doc-refs.mjs", "description": "`globSync(DOC_GLOBS)` liefert bei einem umbenannten Pfad eine leere Liste, die Schleife läuft null Mal, `hits` bleibt leer, Exit 0. Ein Verzeichnis umbenennen und das Gate ist Dekoration — ohne ein Wort. Genau diese Falle ist im Projekt zweimal erkannt und geschlossen: `vitest.config.ts` fährt `assertThresholdGlobsMatch()` gegen exakt dasselbe Muster („Vitest passes an empty group silently, so the rule would not be enforced\"), und `test:smoke` trägt eine inline `if (g.length === 0)`-Wache mit einer ausführlichen Fehlermeldung. `check-banner.mjs` ist durch positive Pins immun. Von vier glob-getriebenen Gates ist dieses das einzige ohne Absicherung.", "recommendation": "Nach dem `globSync` prüfen, dass die Liste nicht leer ist und die vier namentlich erwarteten Wurzeldokumente (`AGENTS.md`, `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`) darin vorkommen — sonst mit Exit 1 abbrechen und die nicht getroffenen Globs benennen. Der Wortlaut von `assertThresholdGlobsMatch()` ist die Vorlage; damit hat das Projekt eine Formulierung für diesen Fehler statt drei."}, {"id": "CONS-018", "category": "Konsistenz", "domain": "code", "severity": "low", "status": "new", "effort": "S", "title": "unlink() nimmt ein Nicht-Signal schweigend entgegen, wo link() wirft", "location": "src/link.ts:336-342", "description": "`unlink(source)` reicht das Argument ohne Prüfung an `signalImpl()` und fragt dann `gLinks.has(undefined)` — das ist `false`, die Funktion kehrt wortlos zurück und meldet damit Erfolg für einen Teardown, der nie stattgefunden hat. `link()` wirft für dasselbe Argument einen `TypeError` mit klarer Meldung (`link: source must be a signal`), und `touch()` wie `value()` prüfen seit CONS-007 ihrerseits die Form und werfen. `unlink()` ist der einzige der vier Einstiege, der aus einem Tippfehler eine stille Erfolgsmeldung macht.", "recommendation": "Denselben Wächter wie in `link()` an den Anfang setzen: `signalImpl(source)` prüfen und bei `null` einen `TypeError` mit derselben Satzform werfen. Die Meldung folgt dem `[signalize] `-Präfix, das `message-prefix.spec.ts` an einer Stelle für den ganzen Baum prüft."}, {"id": "API-019", "category": "Öffentliche API", "domain": "code", "severity": "low", "status": "new", "effort": "S", "title": "Signal#onChange reicht dem Callback einen ungetrackten Read durch, an beforeRead vorbei", "location": "src/Signal.ts:104-109", "description": "Der interne Effekt hat `[this.get]` als statische Abhängigkeit — das Tracking stimmt. Der Wert, den der Callback bekommt, kommt aber aus `this.value`, und das ist der Getter über `value()`, der `SignalImpl.value` direkt liest und den `beforeRead`-Hook überspringt. Für ein Signal mit eigenem `beforeRead` — der Hook, der einen `{lazy: true}`-Memo überhaupt erst neu rechnet — sieht der Callback damit den nicht aufgefrischten Wert. Das JSDoc von `onChange` beschreibt den Callback-Vertrag über zwei Absätze, nennt diese Ausnahme aber nicht, und `docs/api.md` ebenso wenig. Dieselbe Familie wie API-018 (`readAsValue: true` schaltet `beforeRead` ab), das für den Dekorator geschlossen wurde; hier ist sie offen.", "recommendation": "Zwei Wege, beide vertretbar: entweder im Effektkörper `this.get()` statt `this.value` lesen — bei einem Static-Deps-Effekt ist das Auto-Tracking über `#suppressAutoTracking` ohnehin abgeschaltet, es entsteht also keine zusätzliche Abhängigkeit —, oder den Vorbehalt dokumentieren. Bei der zweiten Variante den Wortlaut nehmen, den API-018 bereits etabliert hat, und ihn in `Signal.ts`, `docs/api.md`, `docs/cheat-sheet.md` und `skills/using-signalize/references/api.md` gleichlautend ablegen."}, {"id": "READ-017", "category": "Lesbarkeit & Clean Code", "domain": "code", "severity": "info", "status": "new", "effort": "M", "title": "An zwei Stellen ist die Begründung länger als der Typ, den sie erklärt — und sie wird ausgeliefert", "location": "src/types.ts:207-355 · src/create-signal.ts:199-408", "description": "`SignalWriter<T>` trägt rund 150 Zeilen JSDoc über 14 Zeilen Signatur; die drei `createSignal`-Overloads zusammen rund 190 über 40. Der Inhalt ist gemessen und wertvoll — neun Params-Formen, drei Inferenz-Ausgänge, jeweils mit dem Gegenbeispiel. Nur steht er dort, wo jemand die Signatur sucht, und `tsconfig.types.json` setzt `removeComments: false`, also wandert er vollständig nach `lib/`: `create-signal.d.ts` ist 11,7 KB, `EffectImpl.d.ts` 18 KB, alle `.d.ts` zusammen 121 KB im Tarball gegenüber 223 KB `dist/`. Kein Defekt: die Prosa steht im Editor-Tooltip, und genau dafür ist sie da. Aber `docs/api.md` führt für dieselben Regeln bereits einen Abschnitt „What it costs\".", "recommendation": "Belassen, solange niemand über die Signaturen stolpert. Wenn doch: den Messteil — die Aufzählung der neun Formen und der drei Ausgänge — nach `docs/api.md` verschieben und im JSDoc die Regel in drei Sätzen plus einen Verweis stehen lassen. Die Entscheidung ist eine Abwägung zwischen Editor-Tooltip und Lesbarkeit der Datei, keine Korrektur."}, {"id": "BUILD-012", "category": "Projektaufbau & Build", "domain": "harness", "severity": "low", "status": "improved", "effort": "S", "title": "Die Hero-Assets sind aus dem HEAD-Baum, aber sechs davon referenziert niemand", "location": "hero.gif · hero.png · hero.webp · hero-web.webp · hero2.png · hero-next.xcf · .gitattributes", "description": "Die schwere Hälfte ist erledigt: `.gitattributes` schiebt `hero*` über git-lfs, im Arbeitsbaum stehen 132-Byte-Pointer, alle sieben Dateien zusammen 28 KB statt 21 MB. Was bleibt, ist Aufräumarbeit. `README.md:1` bindet genau eine davon ein (`hero2--noir.png`, über eine absolute GitHub-raw-URL), die übrigen sechs referenziert keine Datei im Repo — darunter `hero-next.xcf`, eine GIMP-Arbeitsdatei. Keiner der beiden Workflows setzt `lfs: true` im Checkout; das schadet heute nicht, weil kein Build-Schritt die Dateien anfasst, heißt aber auch, dass die Pointer nie validiert werden. Die 21 MB in `.git` (63 MB gesamt) sind unberührt und stehen als offene Frage.", "recommendation": "Die sechs unreferenzierten Dateien löschen, `hero-next.xcf` zuerst — eine Quelldatei eines Bildbearbeiters gehört nicht neben `package.json`. Die eine verbleibende nach `docs/` oder `assets/` verschieben und die README-URL mitziehen. Ob die Historie umgeschrieben wird, bleibt die offene Frage, die sie schon ist.", "previousSeverity": "medium"}, {"id": "DX-009", "category": "Developer Experience", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "S", "title": "Zwei Doku-Stellen beschreiben pnpm world weiterhin ohne den typecheck-Schritt", "location": "README.md:370 · CONTRIBUTING.md:32", "description": "Von den ursprünglich sechs Stellen sind vier korrigiert — `CLAUDE.md:20` und `AGENTS.md:182` sowie zweimal im CI-Absatz `AGENTS.md:211`, alle im Commit `dd8affb`. Die beiden Aufzählungen in `README.md` und `CONTRIBUTING.md` sind dabei nicht mitgezogen worden und listen weiter `clean + check + compile + bundle + test:smoke + checkPkgTypes + test + test:gc`, also acht von neun Stufen. Es fehlt dieselbe: `typecheck`, die einzige, die `src/**/*.spec.ts` typprüft, weil `compile` über `tsconfig.lib.json` läuft und Spec-Dateien ausschließt.", "recommendation": "Beide Zeilen auf den Wortlaut ziehen, der jetzt in `CLAUDE.md:20` und `AGENTS.md:182` steht. Danach beschreiben fünf Dateien dieselbe Kette gleich — und das ist der Punkt, an dem ein Gate dafür lohnt: eine Zeile, die `package.json#scripts.world` gegen die Aufzählungen hält, kostet weniger als der sechste Anlauf von Hand."}, {"id": "BUILD-020", "category": "Projektaufbau & Build", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "M", "title": "Die fünf Skripte, die Build und Veröffentlichung entscheiden, kennen weder Typcheck noch Test", "location": "scripts/check-doc-refs.mjs · scripts/check-banner.mjs · scripts/publishPackage.cjs · rollup/createBanner.mjs · rollup/makeVersionWithBuild.mjs · tsconfig.json:2-8", "description": "230 Zeilen, die niemand prüft: zwei sind blockierende CI-Gates (`check:refs`, `check:banner`), eines entscheidet über die Veröffentlichung, zwei formen den ausgelieferten Banner. Biome deckt sie inzwischen ab (`biome.json` führt `scripts/**/*.{mjs,cjs}` in `includes`) — das ist der Teil, der sich seit dem Vorlauf gebessert hat. Der Rest steht: `tsconfig.json#include` führt `src/`, `bench/` und die drei Vitest-Configs, nicht `scripts/` und nicht `rollup/`; `checkJs` ist nirgends gesetzt; `coverageInclude` ist `src/**/*.ts`. Damit ist der Code, der entscheidet ob ein Build durchgeht, der einzige im Repo ohne jede automatisierte Prüfung außer Linting.", "recommendation": "Je eine Spec-Datei pro Skript, die den Fehlerpfad festnagelt — nicht den Erfolgsfall, der läuft ohnehin in CI. Für `check-doc-refs.mjs` ist das zugleich der Beleg für BUILD-022: ein Test, der eine Doku-Datei mit `datei:zeile` erzeugt und Exit 1 erwartet, plus einer, der leere Globs erzwingt und dasselbe erwartet. Optional darüber `allowJs`/`checkJs` in einer eigenen `tsconfig.scripts.json`."}, {"id": "BUILD-021", "category": "Bugs & Korrektheitsrisiken", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "S", "title": "Ungeprüftes JSON.parse im Veröffentlichungspfad", "location": "scripts/publishPackage.cjs:24-38", "description": "`JSON.parse(stdout)` läuft direkt auf der Ausgabe von `npm show … --json`. Antwortet die Registry mit etwas, das kein JSON ist — eine Fehlerseite eines Proxys, eine Rate-Limit-Meldung, ein leerer Body bei einem noch nie veröffentlichten Paket —, wirft der Parse innerhalb des `exec`-Callbacks. Dort fängt ihn niemand: der `if (!error)`-Zweig kennt nur den Prozessfehler, nicht den Parse. Der Job stirbt mit einem `SyntaxError`, dessen Text nicht sagt, dass die Registry-Antwort das Problem war.", "recommendation": "`JSON.parse` in ein `try`/`catch` setzen und im `catch` mit einer Meldung abbrechen, die `stdout` (gekürzt) zeigt. Zusätzlich prüfen, dass das Ergebnis ein Array ist, bevor `.includes()` darauf läuft — `npm show` liefert für ein Paket mit genau einer Version einen String, nicht ein Array."}, {"id": "DEP-002", "category": "Dependencies", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "S", "title": "Die devDependency tslib wird von nichts referenziert", "location": "package.json:54", "description": "`tslib` steht unter `devDependencies`, aber weder `tsconfig.json` noch eine der beiden abgeleiteten Configs setzt `importHelpers`, und keine Datei in `src/`, `bench/` oder `rollup.config.mjs` nennt es. TypeScript 7 emittiert ohne `importHelpers` keine `tslib`-Importe, und der Rollup-Build führt es nicht unter `external`. Es kostet einen Eintrag im Lockfile und eine Zeile Aufmerksamkeit bei jedem Dependency-Durchgang.", "recommendation": "Entfernen und `pnpm world` fahren. Bleibt der Lauf grün, war es tot; wird er rot, hat sich ein Pfad gefunden, den dieses Finding nicht kennt, und die Zeile bekommt einen Kommentar statt eines Streichers."}, {"id": "DX-002", "category": "Developer Experience", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "S", "title": "Die Coverage-Schwelle hängt am normalen pnpm test", "location": "package.json:37 · vitest.config.ts:12-27", "description": "`pnpm test` ist `vitest run --coverage`, also läuft die dreistufige Per-Datei-Schwelle bei jedem Lauf mit. Wer während der Arbeit eine einzelne Spec fährt, bekommt Exit 1 für jede Datei, die nicht gelaufen ist — das ist in `CLAUDE.md` beschrieben und damit kein Rätsel mehr, bleibt aber ein Gate, das im Innerschleifen-Kommando sitzt statt im Gate-Kommando. `pnpm world` und CI fahren `test` ohnehin mit.", "recommendation": "Ein `test:cov` mit `--coverage` einführen und `test` ohne fahren; `world` und `ci.yml` rufen dann `test:cov`. Der Effekt ist ein grüner Einzeldateilauf beim Iterieren, ohne dass das Gate irgendwo schwächer wird."}, {"id": "DX-003", "category": "Developer Experience", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "S", "title": "Kein Pre-Commit-Hook für Biome", "location": "package.json:20 · CONTRIBUTING.md:46", "description": "Weder `.husky/` noch `simple-git-hooks` noch `lint-staged` sind eingerichtet, und `.git/hooks/pre-commit` existiert nicht. Formatierung und Lint hängen vollständig daran, dass jemand `pnpm check` oder `pnpm fix` von Hand fährt, bevor er committet — `CONTRIBUTING.md` bittet auch genau darum. Der erste Ort, an dem ein Verstoß auffällt, ist damit CI.", "recommendation": "`simple-git-hooks` plus `lint-staged` eintragen und `biome check --write` auf die gestagten Dateien setzen. Das ist der leichteste der verfügbaren Wege und braucht keine eigene Verzeichnisstruktur; `CONTRIBUTING.md` verliert im Gegenzug einen Bittsatz."}, {"id": "DX-004", "category": "Developer Experience", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "L", "title": "Kein Weg, den Signal-Graphen zur Laufzeit anzusehen", "location": "src/effects.ts · docs/api.md", "description": "Es gibt `getSignalsCount()`, `getEffectsCount()`, `getLinksCount()`, `getSignalGroupsCount()` und `onCreateEffect()`/`onDestroyEffect()` — Zahlen und Ereignisse, aber keinen Weg, die Kanten zu sehen. Wer wissen will, warum ein Effekt läuft oder warum er nicht mehr läuft, hat drei Zähler und einen Debugger. Für eine Bibliothek, deren Kernversprechen automatisches Dependency-Tracking ist, ist die Frage „woran hängt dieser Effekt gerade\" die häufigste, die man stellt.", "recommendation": "Ein `@internal`-Einstieg, der pro Effekt seine `#signals` und pro Signal seine Abonnenten als einfache Struktur liefert, reicht als Fundament — das Meiste steht bereits in `#signalSubscriptions` und den Queues. Ob daraus eine DevTools-Erweiterung wird, ist eine eigene Entscheidung; ohne den Einstieg ist sie nicht einmal möglich."}, {"id": "DX-005", "category": "Developer Experience", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "S", "title": "Der Werbeabschnitt der README bricht mit dem Ton des übrigen Projekts", "location": "README.md:60-68", "description": "Zwischen einer präzisen Feature-Tabelle und einem exakten Installationsabschnitt steht ein Block mit Emoji-Überschrift und Superlativen. Die restliche Dokumentation dieses Projekts arbeitet mit Messwerten und benennt Grenzen — `docs/api.md` sagt bei jeder Option, was sie kostet; `CHANGELOG.md` führt 54 Breaking Changes einzeln auf. Der Abschnitt fällt genau deshalb auf.", "recommendation": "Auf zwei, drei Sätze zusammenziehen, die sagen, wofür die Bibliothek gebaut ist und wofür nicht. Der Abschnitt „What makes it different\" darüber leistet das bereits; die Dopplung ist der eigentliche Befund."}, {"id": "DX-006", "category": "Developer Experience", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "S", "title": "pnpm test -- <filter> verwirft den Filter und fährt die volle Suite grün", "location": "package.json:35", "description": "`pnpm test -- src/link.spec.ts` hängt das Argument an `vitest run --coverage` an — pnpm reicht es durch, Vitest nimmt es als Positional, und die Filterung greift. Die dokumentierte Form in `CLAUDE.md` ist `pnpm test <file>` ohne `--`; wer die npm-Konvention mit `--` gewohnt ist, bekommt je nach pnpm-Version einen vollen Lauf und liest das Grün als „mein Filter lief durch\". Kein Fehler im Skript, sondern eine Falle an der Grenze zweier Konventionen.", "recommendation": "In `CONTRIBUTING.md` und `CLAUDE.md` die eine Form festschreiben, die gilt, und die andere ausdrücklich als nicht unterstützt benennen. Das ist billiger als ein Wrapper-Skript und trifft den Punkt, an dem der Fehler passiert."}, {"id": "DX-007", "category": "Developer Experience", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "S", "title": "Die Glob-Wache in test:smoke ist Logik, die kein Werkzeug je sieht", "location": "package.json:39", "description": "Der `test:smoke`-Eintrag trägt ein `node -e \"…\"` mit einer vollständigen Prüfung samt mehrzeiliger Fehlermeldung — inhaltlich genau die Wache, die `check-doc-refs.mjs` fehlt (siehe BUILD-022). Als JSON-String in `package.json` ist sie für Biome unsichtbar, für den Typcheck unsichtbar, nicht testbar und beim Bearbeiten auf Escapes angewiesen. Die beste Idee im Build-Setup liegt an der einzigen Stelle, an der niemand sie pflegen kann.", "recommendation": "In `scripts/assert-smoke-build.mjs` verschieben und aus `test:smoke` aufrufen. Dann fällt sie unter Biome, wird testbar, und die Formulierung steht neben der, die BUILD-022 verlangt — an einer Stelle statt an dreien."}, {"id": "TEST-027", "category": "Testabdeckung & Teststrategie", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "M", "title": "Die Property-Tests laufen mit einem festen Seed", "location": "src/ordering.property.spec.ts:14", "description": "`const FC = {seed: 20260807, numRuns: 500}` — jeder Lauf, lokal wie in CI, zieht dieselben 500 Fälle. Das ist für Reproduzierbarkeit richtig und für den Zweck von Property-Tests halb: die Suite exploriert seit dem 7. August keinen neuen Fall mehr. Ein Fehler, den Seed 20260807 nicht trifft, wird nie gefunden, egal wie oft CI läuft.", "recommendation": "Den festen Seed für den normalen Lauf behalten und daneben einen zweiten Lauf mit rotierendem Seed fahren — in CI etwa aus der Lauf-Nummer abgeleitet, als `continue-on-error` wie `bench`. Findet er etwas, ist der Seed in der Ausgabe und wandert als fester Fall in die Suite."}, {"id": "TEST-028", "category": "Testabdeckung & Teststrategie", "domain": "harness", "severity": "low", "status": "carried-over", "effort": "S", "title": "Die NaN-Semantik des Default-Vergleichers ist nirgends entschieden", "location": "src/create-signal.ts:65", "description": "`DEFAULT_EQUALS` ist `(a, b) => a === b`, also gilt `NaN !== NaN`: ein Signal, das `NaN` hält und erneut `NaN` geschrieben bekommt, benachrichtigt jedes Mal. Mit `Object.is` wäre es still. Beides ist vertretbar — Solid und Vue nehmen `Object.is`, `===` ist die ältere Konvention —, aber keine Zeile im Projekt sagt, welche gewollt ist: kein Test pinnt das Verhalten, `docs/api.md` erwähnt es nicht, und `compare` als Option macht es zur Ausweichmöglichkeit statt zur Antwort. Die Fundstelle des Vorlaufs (`src/createSignal.ts`) ist durch die Umbenennung in `43fe114` veraltet; der Sachverhalt steht unverändert.", "recommendation": "Entscheiden und festnageln. Bleibt `===`, ein Test, der die Doppelbenachrichtigung bei `NaN` festhält, plus ein Satz in `docs/api.md` bei `compare`. Wird es `Object.is`, ist es ein Breaking Change und gehört als solcher ins CHANGELOG."}, {"id": "DEP-004", "category": "Dependencies", "domain": "harness", "severity": "info", "status": "carried-over", "effort": "S", "title": "Die Toolchain ist bis auf @types/node aktuell", "location": "package.json:44-58", "description": "Der Rückstand hat sich von sechs Paketen auf eines verkürzt: `pnpm outdated` meldet nur noch `@types/node` (24.13.3 gegen 26.2.0), zwei Majors. `pnpm audit --prod` findet nichts. Der Typ-Rückstand ist folgenlos, solange nichts aus `node:`-Modulen genutzt wird, was erst 25/26 bringt — im Baum sind es `node:fs`, `node:path`, `node:url`, alle stabil. `engines.node` ist `>=22`, CI fährt 22 und 24; die Typen decken damit weniger ab als die Matrix, nicht mehr.", "recommendation": "Mit dem nächsten Dependency-Durchgang mitnehmen. Eigenständige Dringlichkeit hat es keine — die Auflistung steht hier, damit der nächste Lauf sieht, dass fünf von sechs erledigt sind und nicht etwa übersehen wurden."}, {"id": "ARCH-005", "category": "Architektur & Struktur", "domain": "code", "severity": "info", "status": "carried-over", "effort": "S", "title": "Ein Scratch-Beispiel liegt weiterhin im Repo-Root", "location": "diamond-example.mjs · foo.mjs · .gitignore:8", "description": "`diamond-example.mjs` ist getrackt und wird von nichts referenziert — kein Test, keine Doku, kein Skript. `foo.mjs` liegt im Arbeitsbaum und ist per Namenseintrag in `.gitignore` ausgenommen; eine persönliche Kritzeldatei steht dort zwischen `build`, `dist` und `node_modules`, also zwischen Einträgen, die für jeden gelten. Beides ist harmlos und beides ist das Erste, was ein Listing des Wurzelverzeichnisses zeigt.", "recommendation": "`diamond-example.mjs` löschen oder — wenn das Diamond-Problem ein Beispiel wert ist, und das ist es — als lauffähiges Snippet nach `docs/recipes.md` heben. Die `foo.mjs`-Zeile aus `.gitignore` nehmen und stattdessen ein Muster für persönliche Kritzeldateien vereinbaren, etwa `*.local.mjs`."}, {"id": "SEC-002", "category": "Sicherheit", "domain": "code", "severity": "info", "status": "carried-over", "effort": "S", "title": "Shell-Interpolation im Publish-Skript", "location": "scripts/publishPackage.cjs:24", "description": "`exec(`npm show ${pkgJson.name} versions --json`)` baut eine Shell-Zeile aus einem Wert, der aus `package.json` kommt. Ausnutzbar ist das nicht: den Paketnamen kontrolliert, wer ohnehin das Repo kontrolliert, und der Job läuft nur auf `main`. Es ist die Form, die auffällt, nicht die Lage — `execFile` mit Argumentliste tut hier dasselbe ohne Shell.", "recommendation": "Auf `execFile(\"npm\", [\"show\", pkgJson.name, \"versions\", \"--json\"], …)` umstellen. Eine Zeile, kein Verhaltensunterschied, und die Stelle hört auf, in jedem Sicherheitsdurchgang erklärt werden zu müssen."}, {"id": "BUILD-019", "category": "Projektaufbau & Build", "domain": "harness", "severity": "info", "status": "carried-over", "effort": "S", "title": "Die Stufe-2-Negation der Coverage-Schwellen ist nicht pfadgebunden", "location": "vitest.config.ts:18-19", "description": "Der Glob `src/**/!(EffectImpl|SignalGroup|SignalLink|SignalAutoMap|collect-errors|create-signal|link|signal-core).ts` nennt acht Dateinamen ohne Pfad. Entstünde ein Unterverzeichnis mit einer gleichnamigen Datei, wäre sie mit ausgenommen, ohne dass es jemand bemerkt. `assertThresholdGlobsMatch()` prüft, dass der Glob *etwas* trifft, nicht dass er das Richtige trifft. Heute ist `src/` flach, der Punkt ist also theoretisch — er wird es in dem Moment nicht mehr, in dem jemand `src/internal/link.ts` anlegt.", "recommendation": "Die Ausnahmen als explizite Pfadliste führen (`src/EffectImpl.ts`, `src/link.ts`, …) statt als Namensnegation. Länger zu lesen, aber es kann nur das ausnehmen, was es benennt."}, {"id": "BUILD-013", "category": "Projektaufbau & Build", "domain": "harness", "severity": "info", "status": "carried-over", "effort": "S", "title": "pnpm clean löscht drei Verzeichnisse, die es nicht mehr gibt", "location": "package.json:29 · .gitignore:1,4,5", "description": "`rimraf build types tests dist lib coverage smoke/build` — `build`, `types` und `tests` existieren nicht und werden von keinem Skript erzeugt; sie stammen aus dem Setup vor Vitest und Rollup. `.gitignore` führt dieselben drei weiter. Kostenlos, aber es hält drei Namen am Leben, nach denen jemand irgendwann sucht. Die im Vorlauf ebenfalls genannte `.npmignore` gibt es nicht mehr — `files` in `package.json` hat sie abgelöst.", "recommendation": "Die drei Namen aus `clean` und aus `.gitignore` entfernen. Was `clean` löschen muss, ist genau das, was `compile`, `bundle`, `test` und `test:smoke` erzeugen."}, {"id": "BUILD-014", "category": "Projektaufbau & Build", "domain": "harness", "severity": "info", "status": "carried-over", "effort": "S", "title": "./package.json fehlt in der exports-Map", "location": "package.json:10-19", "description": "Die `exports`-Map führt `.` und `./decorators`. Ohne einen `\"./package.json\": \"./package.json\"`-Eintrag kann kein Konsument und kein Werkzeug die Manifest-Datei auflösen — Bundler und Test-Runner tun das gelegentlich, um Version oder Feature-Flags zu lesen, und bekommen `ERR_PACKAGE_PATH_NOT_EXPORTED`. Es ist der eine Eintrag, den fast jedes ESM-Paket mit geschlossener Map zusätzlich führt.", "recommendation": "Den Eintrag ergänzen. Er öffnet nichts, was nicht ohnehin im Tarball liegt, und `attw` prüft ihn im selben Lauf mit."}], "acknowledged": [], "openQuestions": [{"q": "Wann fällt das -dev aus 1.0.0-dev?", "ctx": "Unverändert offen und inzwischen schwerer: der `## Unreleased`-Block trägt 54 Einträge unter `### Breaking Changes`, vier mehr als am 12. August. `scripts/publishPackage.cjs` verweigert die Veröffentlichung, solange die Version auf `-dev` endet, und `main.yml` veröffentlicht bei jedem Push auf `main` — das Suffix fallen zu lassen *ist* der Release, ohne Tag und ohne Freigabe dazwischen. Der Remediation-Lauf vom 13. August hat die Mechanik in `CONTRIBUTING.md` beschrieben und die Entscheidung ausdrücklich dem Maintainer gelassen."}, {"q": "Womit authentifiziert sich der Deploy-Job?", "ctx": "`main.yml` vergibt `id-token: write` auf Workflow-Ebene, richtet `setup-node` mit `registry-url` und `always-auth: true` ein — setzt aber kein `NODE_AUTH_TOKEN` in der Job-Umgebung, und `npm publish` läuft ohne `--provenance`. Diese drei Angaben passen nur zusammen, wenn für das Paket auf npmjs.com Trusted Publishing über OIDC eingerichtet ist; aus dem Repo ist das nicht zu sehen. Ist es nicht eingerichtet, ist `id-token: write` ein ungenutztes Recht am einzigen Job, der veröffentlicht. Da `1.0.0-dev` das Veröffentlichen ohnehin abbricht, ist der Pfad in dieser Konfiguration noch nie durchgelaufen."}, {"q": "Bleiben die 21 MB Hero-Assets in der Historie?", "ctx": "Der HEAD-Baum ist seit der git-lfs-Umstellung sauber — sieben Pointer, 28 KB. `.git` steht unverändert bei 63 MB, die Originale liegen also weiter in der Historie. Ob das eine Historien-Umschreibung wert ist, ist eine Projektentscheidung, keine technische; BUILD-012 deckt nur noch den Teil ab, der ohne sie geht."}]}</script>
 <script>
 (function(){
-  var D = JSON.parse(document.getElementById('audit-data').textContent);
-  var F = D.findings;
-  var SEVS = ['critical','high','medium','low','info'];
-  var ORDER = {critical:0,high:1,medium:2,low:3,info:4};
-  var LABEL = {code:'Code & Laufzeit', harness:'Projekt-Harness'};
-  var STLABEL = {'new':'neu','improved':'verbessert','carried-over':'übernommen','unchanged':'unverändert'};
+  var rows=[].slice.call(document.querySelectorAll('.row'));
+  var fd=document.getElementById('fd'),fs=document.getElementById('fs'),
+      fc=document.getElementById('fc'),ft=document.getElementById('ft'),
+      cnt=document.getElementById('count');
+  var data=JSON.parse(document.getElementById('audit-data').textContent);
+  var allCats=[].slice.call(fc.options).map(function(o){return o.value});
 
-  var state = {domain:'all', sev:'all', status:'all', cat:'all'};
-
-  function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
-  function mdc(s){ return esc(s).replace(/`([^`]+)`/g, '<code>$1</code>'); }
-
-  function chips(host, key, items){
-    host.innerHTML='';
-    items.forEach(function(it){
-      var b=document.createElement('button');
-      b.className='f'; b.type='button'; b.textContent=it.label;
-      b.setAttribute('aria-pressed', String(state[key]===it.value));
-      b.addEventListener('click', function(){
-        state[key]=it.value;
-        if(key==='domain') buildCat();
-        render();
-      });
-      host.appendChild(b);
+  function syncCats(){
+    var dom=fd.value, keep=fc.value;
+    var avail={};
+    data.findings.forEach(function(f){ if(!dom||f.domain===dom) avail[f.category]=1 });
+    fc.innerHTML='';
+    allCats.forEach(function(c){
+      if(c==='' || avail[c]){
+        var o=document.createElement('option'); o.value=c; o.textContent=c||'alle'; fc.appendChild(o);
+      }
     });
+    fc.value = avail[keep] ? keep : '';
   }
 
-  function present(key){
-    var seen={};
-    F.forEach(function(f){ seen[f[key]]=true; });
-    return seen;
-  }
-
-  function buildFilters(){
-    chips(document.getElementById('f-domain'), 'domain',
-      [{label:'alle',value:'all'},{label:'Code & Laufzeit',value:'code'},{label:'Projekt-Harness',value:'harness'}]);
-    var ps = present('severity');
-    chips(document.getElementById('f-sev'), 'sev',
-      [{label:'alle',value:'all'}].concat(SEVS.filter(function(s){return ps[s];}).map(function(s){return {label:s,value:s};})));
-    var pt = present('status');
-    chips(document.getElementById('f-status'), 'status',
-      [{label:'alle',value:'all'}].concat(['new','improved','carried-over','unchanged']
-        .filter(function(s){return pt[s];}).map(function(s){return {label:STLABEL[s],value:s};})));
-    buildCat();
-    document.getElementById('f-cat').addEventListener('change', function(e){
-      state.cat=e.target.value; render();
+  function apply(){
+    var n=0;
+    rows.forEach(function(r){
+      var ok=(!fd.value||r.dataset.domain===fd.value)
+           &&(!fs.value||r.dataset.severity===fs.value)
+           &&(!fc.value||r.dataset.category===fc.value)
+           &&(!ft.value||r.dataset.status===ft.value);
+      r.hidden=!ok; if(ok)n++;
     });
+    cnt.textContent=n+' von '+rows.length+' Findings';
   }
 
-  function buildCat(){
-    var sel=document.getElementById('f-cat');
-    var pool=F.filter(function(f){ return state.domain==='all'||f.domain===state.domain; });
-    var cats={}; pool.forEach(function(f){ cats[f.category]=(cats[f.category]||0)+1; });
-    var names=Object.keys(cats).sort();
-    if(state.cat!=='all' && names.indexOf(state.cat)===-1) state.cat='all';
-    sel.innerHTML='';
-    var o=document.createElement('option'); o.value='all'; o.textContent='alle Kategorien ('+pool.length+')';
-    sel.appendChild(o);
-    names.forEach(function(n){
-      var x=document.createElement('option'); x.value=n; x.textContent=n+' ('+cats[n]+')';
-      sel.appendChild(x);
+  fd.addEventListener('change',function(){syncCats();apply()});
+  [fs,fc,ft].forEach(function(el){el.addEventListener('change',apply)});
+
+  function toggle(r){
+    var b=r.querySelector('.rb'), h=r.querySelector('.rh');
+    var open=r.classList.toggle('open');
+    b.hidden=!open; h.setAttribute('aria-expanded',open?'true':'false');
+  }
+  rows.forEach(function(r){
+    var h=r.querySelector('.rh');
+    h.addEventListener('click',function(){toggle(r)});
+    h.addEventListener('keydown',function(ev){
+      if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();toggle(r)}
     });
-    sel.value=state.cat;
-  }
-
-  function syncChips(){
-    [['f-domain','domain'],['f-sev','sev'],['f-status','status']].forEach(function(p){
-      var host=document.getElementById(p[0]);
-      Array.prototype.forEach.call(host.children, function(b, i){
-        var vals = p[1]==='domain' ? ['all','code','harness']
-          : p[1]==='sev' ? ['all'].concat(SEVS.filter(function(s){return present('severity')[s];}))
-          : ['all'].concat(['new','improved','carried-over','unchanged'].filter(function(s){return present('status')[s];}));
-        b.setAttribute('aria-pressed', String(state[p[1]]===vals[i]));
-      });
-    });
-  }
-
-  function visible(){
-    return F.filter(function(f){
-      return (state.domain==='all'||f.domain===state.domain)
-        && (state.sev==='all'||f.severity===state.sev)
-        && (state.status==='all'||f.status===state.status)
-        && (state.cat==='all'||f.category===state.cat);
-    }).sort(function(a,b){
-      return (ORDER[a.severity]-ORDER[b.severity]) || a.id.localeCompare(b.id);
-    });
-  }
-
-  function row(f){
-    var sev='<span class="sev sev-'+f.severity+'">'+f.severity+'</span>';
-    var dm='<span class="dm">'+esc(LABEL[f.domain])+'</span>';
-    var stTitle = f.status==='improved' && f.previousSeverity
-      ? ' title="'+esc(f.previousSeverity+' → '+f.severity)+'"' : '';
-    var st='<span class="st st-'+f.status+'"'+stTitle+'>'+esc(STLABEL[f.status]||f.status)+'</span>';
-
-    var tr=document.createElement('tr');
-    tr.className='row'; tr.tabIndex=0; tr.setAttribute('role','button');
-    tr.innerHTML =
-      '<td class="desk">'+sev+'</td>'+
-      '<td class="c-id desk">'+esc(f.id)+'</td>'+
-      '<td class="desk">'+dm+'</td>'+
-      '<td class="c-title desk">'+esc(f.title)+'</td>'+
-      '<td class="c-loc desk">'+esc(f.location)+'</td>'+
-      '<td class="c-cat desk">'+esc(f.category)+'</td>'+
-      '<td class="desk">'+st+'</td>'+
-      '<td class="c-eff desk">'+esc(f.effort)+'</td>'+
-      '<td class="c-head mob">'+sev+'<span class="c-id">'+esc(f.id)+'</span>'+dm+st+'</td>'+
-      '<td class="c-title mob">'+esc(f.title)+'</td>'+
-      '<td class="c-meta mob"><span>'+esc(f.location)+'</span><span>'+esc(f.category)+'</span><span>Aufwand '+esc(f.effort)+'</span></td>';
-
-    var det=document.createElement('tr');
-    det.className='det'; det.style.display='none';
-    var td=document.createElement('td'); td.colSpan=8;
-    td.innerHTML='<div class="dwrap">'+
-      '<div><h5>Befund</h5><p>'+mdc(f.description)+'</p></div>'+
-      '<div><h5>Empfehlung</h5><p>'+mdc(f.recommendation)+'</p></div></div>';
-    det.appendChild(td);
-
-    function toggle(){ det.style.display = det.style.display==='none' ? '' : 'none'; }
-    tr.addEventListener('click', toggle);
-    tr.addEventListener('keydown', function(e){
-      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); }
-    });
-    return [tr, det];
-  }
-
-  function render(){
-    syncChips();
-    var list=visible();
-    var tb=document.getElementById('tbody');
-    tb.innerHTML='';
-    document.getElementById('count').textContent =
-      list.length+' von '+F.length+' Findings';
-    if(list.length===0){
-      var tr=document.createElement('tr'); var td=document.createElement('td');
-      td.colSpan=8; td.className='empty'; td.textContent='Kein Finding passt zu dieser Auswahl.';
-      tr.appendChild(td); tb.appendChild(tr); return;
-    }
-    list.forEach(function(f){
-      var pair=row(f); tb.appendChild(pair[0]); tb.appendChild(pair[1]);
-    });
-  }
-
-  buildFilters();
-  render();
+  });
+  syncCats();apply();
 })();
 </script>
 </body>
