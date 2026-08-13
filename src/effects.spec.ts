@@ -348,6 +348,50 @@ describe('createEffect', () => {
     }
   });
 
+  it('pins the maxDepth boundary exactly: N-1 recursive self-triggers pass, N throws (TEST-026)', () => {
+    const before = getMaxEffectDepth();
+    const N = 5;
+    setMaxEffectDepth(N);
+
+    try {
+      // N - 1 self-triggers: N total invocations, none of them ever see
+      // #runDepth reach N at entry.
+      const under = createSignal(0);
+      let underRuns = 0;
+      let underEffect: ReturnType<typeof createEffect> | undefined;
+      try {
+        expect(() => {
+          underEffect = createEffect(() => {
+            underRuns += 1;
+            const c = under.get();
+            if (c < N - 1) under.set(c + 1);
+          });
+        }).not.toThrow();
+        expect(underRuns).toBe(N);
+      } finally {
+        underEffect?.destroy();
+        destroySignal(under);
+      }
+
+      // Exactly N self-triggers: the (N+1)-th invocation sees #runDepth
+      // reach N at entry, right on the boundary — with `>` instead of `>=`
+      // this would not throw until N+1.
+      const over = createSignal(0);
+      try {
+        expect(() => {
+          createEffect(() => {
+            const c = over.get();
+            if (c < N) over.set(c + 1);
+          });
+        }).toThrow(/maxDepth=5/);
+      } finally {
+        destroySignal(over);
+      }
+    } finally {
+      setMaxEffectDepth(before);
+    }
+  });
+
   it('setMaxEffectDepth() refuses a cap that is not a positive integer (API-003)', () => {
     const before = getMaxEffectDepth();
 

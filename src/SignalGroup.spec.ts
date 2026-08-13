@@ -1125,6 +1125,16 @@ describe('SignalGroup', () => {
       }
     });
 
+    it('clear() on a group without a parent does not throw (TEST-026)', () => {
+      const group = SignalGroup.findOrCreate({});
+
+      try {
+        expect(() => group.clear()).not.toThrow();
+      } finally {
+        group.clear();
+      }
+    });
+
     it('destroy() is deprecated but works', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const group = SignalGroup.findOrCreate({});

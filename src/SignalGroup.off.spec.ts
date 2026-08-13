@@ -11,6 +11,7 @@ import {createEffect} from './effects.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
 import {link} from './link.js';
 import {SignalGroup} from './SignalGroup.js';
+import {destroySignal, signalImpl} from './signal-core.js';
 
 describe('SignalGroup#off()', () => {
   beforeEach(() => {
@@ -684,6 +685,50 @@ describe('SignalGroup#off()', () => {
         destroyQueueBaseline,
       );
     } finally {
+      group.clear();
+    }
+  });
+
+  it('the soft-detach loop skips a signal a sibling notification just hard-destroyed (TEST-026)', () => {
+    // The loop snapshots #signals before it starts. If reacting to one
+    // signal's soft-detach notice hard-destroys a *later* signal in that
+    // snapshot — synchronously, before the loop gets to it — the `!si.destroyed`
+    // filter is what stops it from also emitting a stray detach notice for a
+    // signal that is by then genuinely gone.
+    const host = {};
+    const group = SignalGroup.findOrCreate(host);
+    const first = createSignal(0, {attach: host});
+    const second = createSignal(0, {attach: host});
+
+    let secondDetachEvents = 0;
+    const unsubscribeSecond = on(
+      globalDestroySignalQueue,
+      signalImpl(second).id,
+      (_id: symbol, params?: {detach?: boolean}) => {
+        if (params?.detach) secondDetachEvents += 1;
+      },
+    );
+
+    const unsubscribeFirst = on(
+      globalDestroySignalQueue,
+      signalImpl(first).id,
+      (_id: symbol, params?: {detach?: boolean}) => {
+        if (params?.detach) {
+          destroySignal(second);
+        }
+      },
+    );
+
+    try {
+      group.off();
+
+      expect(
+        secondDetachEvents,
+        'second was already hard-destroyed before its turn in the loop',
+      ).toBe(0);
+    } finally {
+      unsubscribeFirst();
+      unsubscribeSecond();
       group.clear();
     }
   });

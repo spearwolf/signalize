@@ -189,6 +189,16 @@ describe('writes on muted or destroyed signals', () => {
     }
   });
 
+  it('muteSignal() on a value that is not a signal is a no-op, not a throw (TEST-026)', () => {
+    expect(() => muteSignal(undefined)).not.toThrow();
+    expect(() => muteSignal(null)).not.toThrow();
+  });
+
+  it('unmuteSignal() on a value that is not a signal is a no-op, not a throw (TEST-026)', () => {
+    expect(() => unmuteSignal(undefined)).not.toThrow();
+    expect(() => unmuteSignal(null)).not.toThrow();
+  });
+
   it('touch() on a destroyed signal does not notify', () => {
     const sig = createSignal(1);
     const onChange = vi.fn();

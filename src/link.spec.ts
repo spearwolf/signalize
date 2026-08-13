@@ -75,6 +75,20 @@ describe('link() comprehensive tests', () => {
         destroySignal(sigA);
       }
     });
+
+    // Contract test, not a guard pin (TEST-026 review round 1): the
+    // `sourceSignal != null` ternary in getLinksCount() (link.ts:397) is dead
+    // defense — `signalImpl()` returns `undefined` for a non-signal, and
+    // `WeakMap.prototype.get` on a non-object key returns `undefined` by
+    // spec, never throws. Neither removing the ternary nor inverting it
+    // turns this assertion red (inverting it only breaks the real-signal
+    // branch, caught by 'returns count of links from specific source signal'
+    // below — unrelated to this one). Kept because `getLinksCount(notASignal)
+    // === 0` is still the documented public contract.
+    it('returns 0 for an argument that is not a signal', () => {
+      expect(getLinksCount({} as any)).toBe(0);
+      expect(getLinksCount(42 as any)).toBe(0);
+    });
   });
 
   describe('link() with Signal objects', () => {
@@ -801,6 +815,64 @@ describe('link() comprehensive tests', () => {
         unlink(a);
         unlink(b);
         destroySignal(a, b);
+      }
+    });
+  });
+
+  // TEST-026 (review round 1): the `if (links.size === 0) gLinks.delete(sourceSignal)`
+  // guard in the DESTROY handler at link.ts:313-314 survives plain removal —
+  // the resulting stale, empty Map is silently reused by the next link() on
+  // the same source, and getLinksCount(source) reads `.size` either way. It
+  // only shows up under inversion (`links.size !== 0`), which wipes the
+  // registry entry for a source that still has a live link on it.
+  describe('TEST-026: the DESTROY handler only drops a source entry once it is actually empty', () => {
+    it('destroying one of several links on a source leaves getLinksCount(source) accurate for the rest', () => {
+      // The one test in this block that actually discriminates: red under
+      // `links.size !== 0`, green under plain removal of the guard.
+      const sigA = createSignal(1);
+      const sigB = createSignal(-1);
+      const sigC = createSignal(-2);
+
+      try {
+        const linkB = link(sigA, sigB);
+        link(sigA, sigC);
+
+        expect(getLinksCount(sigA)).toBe(2);
+
+        linkB.destroy();
+
+        // The source still has one live link — its registry entry must not
+        // be torn down along with the one that was destroyed.
+        expect(getLinksCount(sigA)).toBe(1);
+
+        sigA.set(42);
+        expect(sigC.value).toBe(42); // the surviving link still propagates
+      } finally {
+        destroySignal(sigA, sigB, sigC);
+      }
+    });
+
+    // Contract test, not a guard pin: stays green under both removing and
+    // inverting the guard above (the stale empty Map either gets replaced or
+    // reused, and either way the next link() lands at count 1). Kept because
+    // "a source counts from 1 again after its last link is destroyed" is the
+    // documented behaviour (see link()'s JSDoc "Lifetime" section).
+    it('a source counts from 1 again after its last link is destroyed and a new one is created', () => {
+      const sigA = createSignal(1);
+      const sigB = createSignal(-1);
+      const sigC = createSignal(-2);
+
+      try {
+        const first = link(sigA, sigB);
+        expect(getLinksCount(sigA)).toBe(1);
+
+        first.destroy();
+        expect(getLinksCount(sigA)).toBe(0);
+
+        link(sigA, sigC);
+        expect(getLinksCount(sigA)).toBe(1);
+      } finally {
+        destroySignal(sigA, sigB, sigC);
       }
     });
   });

@@ -186,6 +186,26 @@ describe('unlink()', () => {
     }
   });
 
+  it('unlink() with an unknown target on a source that has other links is a no-op (TEST-026)', () => {
+    const {get: sigA, set: setA} = createSignal(1);
+    const {get: sigB} = createSignal(-1);
+    const {get: sigC} = createSignal(-2); // never linked from sigA
+
+    try {
+      link(sigA, sigB);
+      assertLinksCount(1, 'after link');
+
+      unlink(sigA, sigC);
+
+      assertLinksCount(1, 'unchanged — sigC was never a target of sigA');
+
+      setA(42);
+      expect(sigB()).toBe(42); // the real link is untouched
+    } finally {
+      destroySignal(sigA, sigB, sigC);
+    }
+  });
+
   it('unlink all on source with no links is a no-op', () => {
     const sigA = createSignal(1);
 
