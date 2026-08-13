@@ -35,7 +35,9 @@ c.set(v,  {touch: true});      // notify even if equal
 c.touch(); c.destroy();
 c.muted = true;    c.muted = false;   // muted: set() still stores, nobody is notified
 c.destroyed;       // true once destroyed — still a value container, just silent
-c.onChange(cb);    // → unsubscribe()
+c.onChange(cb);    // → unsubscribe(); cb returns a cleanup fn or nothing —
+                   // a value or an async callback does not compile, unless
+                   // cb: any
 
 isSignal(x); getSignalsCount();   // live = created, not destroyed, still reachable
 value(c); value([obj, 'prop']);  // untracked

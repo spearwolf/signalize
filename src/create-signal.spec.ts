@@ -314,6 +314,8 @@ describe('createSignal', () => {
     // a function counts as "no cleanup"; it used to be stored and then called
     // on the *second* change, throwing `cleanupCallback is not a function`.
     const seen: number[] = [];
+    // @ts-expect-error TYPE-006: the signature refuses the returned `number`
+    // now; the runtime tolerance this test pins is unchanged.
     const unsubscribe = sig.onChange((val) => {
       seen.push(val);
       return val * 2;

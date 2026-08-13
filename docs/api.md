@@ -76,7 +76,7 @@ see the passthrough box below the table). Omitted, or passed an explicit
 | `set(v, params?)` | Write. `v` may be a value or, with `{lazy: true}`, a factory — and only with it; a bare factory is a compile error, and so is a plain value carrying `{lazy: true}`. |
 | `value = v`       | Setter shortcut for `set(v)`.                                                              |
 | `touch()`         | Emit a change without changing the value.                                                  |
-| `onChange(cb)`    | Subscribe to changes. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect, so it does **not** fire on subscribe — an effect created inside it is a child effect and is destroyed on the next change (see below). |
+| `onChange(cb)`    | Subscribe to changes. `cb` is a `ValueChangedCallback<T>` — it returns a cleanup function or nothing; returning a value, or the `Promise` of an `async` callback, is a compile error, unless `cb` itself is typed `any`. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect, so it does **not** fire on subscribe — an effect created inside it is a child effect and is destroyed on the next change (see below). |
 | `muted`           | `boolean` getter/setter — pause/resume notifications. Writes still store their value.      |
 | `destroyed`       | `boolean` getter — `true` once the signal has been destroyed. It stays usable as a plain value container; it just no longer notifies. |
 | `destroy()`       | Destroy the signal (alias for `destroySignal(this)`).                                      |
@@ -1058,7 +1058,7 @@ Exported from `@spearwolf/signalize`:
 | `CompareFunc<T>`             | `(a: T, b: T) => boolean`.                                       |
 | `BeforeReadFunc`             | `() => void`.                                                    |
 | `VoidFunc`                   | `() => void`.                                                    |
-| `ValueChangedCallback<T>`    | `(value: T) => void \| (() => void)`.                            |
+| `ValueChangedCallback<T>`    | `(value: T) => void \| (() => void)`. The callback of `Signal#onChange()` and of the deprecated `signalReader(cb)`; a returned function becomes the cleanup. |
 
 From `@spearwolf/signalize/decorators`:
 `SignalDecoratorOptions`, `SignalReaderDecoratorOptions`.

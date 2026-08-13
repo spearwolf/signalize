@@ -7,6 +7,7 @@ import type {
   SignalLike,
   SignalReader,
   SignalWriter,
+  ValueChangedCallback,
   VoidFunc,
 } from './types.js';
 import {value} from './value.js';
@@ -84,14 +85,23 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
    *
    * Two things about the callback itself: an effect created inside it is a
    * *child effect* and is destroyed on the next change, before the callback
-   * runs again — wrap the creation in `hibernate()` to keep it. And whatever
-   * the callback returns is passed on as the effect's cleanup, so returning
-   * a non-function value is allowed and simply ignored.
+   * runs again — wrap the creation in `hibernate()` to keep it. And what the
+   * callback returns is the effect's cleanup: a function is called before the
+   * next run and on unsubscribe, nothing at all means there is none. The
+   * parameter is {@link ValueChangedCallback}, so a plain value is a compile
+   * error instead of a silently discarded return — untyped JS keeps the old
+   * runtime tolerance, a non-function return counts as "no cleanup". An
+   * `async` callback is refused too, but not because its resolved cleanup
+   * would go unused: the effect subsystem honors a late cleanup arriving
+   * from a resolved promise like any other. `onChange()`'s callback type is
+   * synchronous by design; use `createEffect()` to drive an `async` callback
+   * and keep that cleanup.
    *
-   * @param action - Receives the new value on every change
+   * @param action - Receives the new value on every change; returns a cleanup
+   *   function or nothing
    * @returns Unsubscribe function
    */
-  onChange(action: (val: ValueType) => any): VoidFunc {
+  onChange(action: ValueChangedCallback<ValueType>): VoidFunc {
     const {destroy} = requireCreateEffect()(() => {
       return action(this.value);
     }, [this.get]);

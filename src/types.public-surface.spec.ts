@@ -620,6 +620,90 @@ describe('the published type surface', () => {
     }
   });
 
+  it('types the onChange callback by what its return value means (TYPE-006)', () => {
+    const sig = createSignal(1);
+    const seen: number[] = [];
+    const cleaned: number[] = [];
+
+    // The two shapes the contract names. No directive: both must keep
+    // compiling.
+    const offVoid = sig.onChange((v) => {
+      seen.push(v);
+    });
+    const offCleanup = sig.onChange((v) => () => {
+      cleaned.push(v);
+    });
+
+    // Four more forms that keep compiling too, each one a call shape a
+    // future narrowing could take away without this file noticing, since
+    // none of them carries a directive to turn red. No directive on any of
+    // the four below either: they have to compile.
+    const takeCleanup = true;
+    const conditionalCleanup = () => cleaned.push(-1);
+    const offConditional = sig.onChange((_v) =>
+      takeCleanup ? conditionalCleanup : undefined,
+    );
+
+    let nullaryRuns = 0;
+    const offNullary = sig.onChange(() => {
+      nullaryRuns++;
+    });
+
+    const anyTyped: (v: number) => any = (v) => v;
+    const offAnyVariable = sig.onChange(anyTyped);
+
+    let widerRuns = 0;
+    const widerParam: (v: unknown) => void = () => {
+      widerRuns++;
+    };
+    const offWiderParam = sig.onChange(widerParam);
+
+    // @ts-expect-error TYPE-006: a returned value is not a cleanup. It used
+    // to be swallowed by `any`; the runtime still ignores it.
+    const offValue = sig.onChange((v) => v * 2);
+
+    // @ts-expect-error TYPE-006: `ValueChangedCallback` is synchronous, and
+    // that is the whole reason this is refused — not because the resolved
+    // return of an `async` callback goes unused. It doesn't:
+    // EffectImpl#storeCleanupCallback() honors a cleanup arriving late from
+    // a resolved promise the same way it honors a synchronous one.
+    // createEffect() is the way to drive an `async` callback and keep that
+    // cleanup; onChange()'s contract does not admit a pending value at all.
+    const offAsync = sig.onChange(async (v) => {
+      seen.push(v);
+    });
+
+    // A pre-typed callback that widened its return type is refused at the
+    // argument (TS2345), not at the return expression (TS2322).
+    const unknownCb: (v: number) => unknown = (v) => v;
+    // @ts-expect-error TYPE-006
+    const offUnknown = sig.onChange(unknownCb);
+
+    try {
+      sig.set(2);
+      expect(seen).toEqual([2, 2]);
+      expect(cleaned).toEqual([]);
+      expect(nullaryRuns).toBe(1);
+      expect(widerRuns).toBe(1);
+
+      sig.set(3);
+      expect(cleaned).toEqual([2, -1]);
+      expect(nullaryRuns).toBe(2);
+      expect(widerRuns).toBe(2);
+    } finally {
+      offVoid();
+      offCleanup();
+      offConditional();
+      offNullary();
+      offAnyVariable();
+      offWiderParam();
+      offValue();
+      offAsync();
+      offUnknown();
+      destroySignal(sig);
+    }
+  });
+
   it('refuses an async callback in hibernate() (ASYNC-004)', () => {
     const sig = createSignal(21);
 

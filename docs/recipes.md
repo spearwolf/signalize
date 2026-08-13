@@ -822,10 +822,14 @@ the two subscription counts.
 
 ```ts
 // Deprecated — no unsubscribe handle:
-sig.get((value) => onChange(value));
+sig.get((value) => {
+  onChange(value);
+});
 
 // Replacement:
-const unsub = sig.onChange((value) => onChange(value));
+const unsub = sig.onChange((value) => {
+  onChange(value);
+});
 // ...
 unsub();
 ```

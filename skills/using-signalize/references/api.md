@@ -80,6 +80,8 @@ c.destroy();
 c.muted = true;             // muted signals neither notify nor touch — set() still stores
 c.destroyed;                // true once destroyed — still holds its value, just silent
 const off = c.onChange((v) => {});   // → unsubscribe; does NOT fire on subscribe
+                                     // cb returns a cleanup fn or nothing;
+                                     // a value or an async cb does not compile
 ```
 
 Top-level helpers:
