@@ -1,5 +1,6 @@
 import {on} from '@spearwolf/eventize';
 import {batch} from './batch.js';
+import {collect, throwCollectedErrors} from './collect-errors.js';
 import {$autoMapResources} from './constants.js';
 import {createSignal} from './create-signal.js';
 import {globalDestroySignalQueue} from './global-queues.js';
@@ -173,10 +174,23 @@ export class SignalAutoMap {
     // Invariant: every key in `#signals` has a handle in `#unsubs`. Both are
     // written only in `#create()` and removed only here.
     const unsubscribe = this.#unsubs.get(key);
-    unsubscribe();
-    this.#unsubs.delete(key);
-    this[$autoMapResources].unsubs.delete(unsubscribe);
-    this.#signals.delete(key);
+    // The handle comes from a queue this class does not own, so it may throw.
+    // When it does, the entry must not stay behind in all three registers
+    // while the caller already holds the error — it would be unreachable
+    // bookkeeping nobody can clean up again. Same shape as
+    // `SignalGroup#dropSignalSubscription()` (CONS-016).
+    //
+    // No `if (unsubscribe)` around it, unlike the template: the invariant
+    // above says the lookup cannot miss, and an unreachable branch breaks the
+    // coverage gate this file stands under (`vitest.config.ts`) — the same
+    // reasoning as the missing guard in `#create()`.
+    try {
+      unsubscribe();
+    } finally {
+      this.#unsubs.delete(key);
+      this[$autoMapResources].unsubs.delete(unsubscribe);
+      this.#signals.delete(key);
+    }
   }
 
   /**
@@ -206,18 +220,25 @@ export class SignalAutoMap {
 
   /**
    * Destroy all signals and clear the map.
+   *
+   * A throwing cleanup callback does not abort the teardown: every entry is
+   * dropped, every signal destroyed, and the failures are re-raised
+   * afterwards — a lone one unchanged, several as an `AggregateError` holding
+   * them in teardown order (MEM-013).
    */
   clear() {
     // Drop every entry (and its hook) first, then destroy the snapshot: the
     // same order `delete()` uses, and it keeps a destroy from firing a hook
     // that is about to be removed anyway.
     const signals = [...this.#signals.values()];
+    const errors: unknown[] = [];
     for (const key of [...this.#signals.keys()]) {
-      this.#drop(key);
+      collect(errors, () => this.#drop(key));
     }
     for (const sig of signals) {
-      sig.destroy();
+      collect(errors, () => sig.destroy());
     }
+    throwCollectedErrors(errors, 'clearing a signal auto map');
   }
 
   /**

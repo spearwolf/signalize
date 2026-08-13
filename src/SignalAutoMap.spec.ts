@@ -515,6 +515,134 @@ describe('SignalAutoMap', () => {
     }
   });
 
+  describe('teardown errors (MEM-013)', () => {
+    it('clear() destroys every entry even when an earlier cleanup throws', () => {
+      const sm = new SignalAutoMap();
+      sm.get('a');
+      const b = sm.get('b');
+      createEffect(() => {
+        sm.get('a').get();
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      });
+
+      try {
+        expect(() => sm.clear()).toThrow('cleanup boom');
+
+        expect(
+          b.destroyed,
+          'the entry behind the failing one must not survive the teardown',
+        ).toBe(true);
+        expect(sm.has('b')).toBe(false);
+        assertSignalsCount(0, 'every signal of the map is gone');
+        assertEffectsCount(0, 'the effect died with its only dependency');
+      } finally {
+        // A reverted fix leaves `b` alive and unreachable from the map, so
+        // this net cannot get at it — hence the direct destroy as well.
+        try {
+          sm.clear();
+        } catch {
+          /* ignore */
+        }
+        destroySignal(b);
+      }
+    });
+
+    it('clear() reports two failing cleanups as an AggregateError in teardown order', () => {
+      const sm = new SignalAutoMap();
+      const a = sm.get('a');
+      const b = sm.get('b');
+      // Two separate effects: one dependency each, so each dies with its own
+      // signal and the two cleanups fail in the map's iteration order.
+      createEffect(() => {
+        sm.get('a').get();
+        return () => {
+          throw new Error('boom a');
+        };
+      });
+      createEffect(() => {
+        sm.get('b').get();
+        return () => {
+          throw new Error('boom b');
+        };
+      });
+
+      try {
+        // One call, caught once: message and payload are two views of the
+        // same throw, and a second clear() would find an empty map.
+        let err: any;
+        try {
+          sm.clear();
+        } catch (e) {
+          err = e;
+        }
+
+        expect(err?.message).toBe(
+          '[signalize] 2 errors while clearing a signal auto map',
+        );
+        expect(err).toBeInstanceOf(AggregateError);
+        expect(err.errors.map((e: Error) => e.message)).toEqual([
+          'boom a',
+          'boom b',
+        ]);
+      } finally {
+        // Every step guarded: before the fix the surviving signal still
+        // carries its throwing effect, so an unguarded destroy here replaces
+        // the assertion failure above with its own 'boom b'.
+        try {
+          sm.clear();
+        } catch {
+          /* ignore */
+        }
+        try {
+          destroySignal(a);
+        } catch {
+          /* ignore */
+        }
+        try {
+          destroySignal(b);
+        } catch {
+          /* ignore */
+        }
+      }
+    });
+
+    it('a single failing cleanup arrives unchanged, not wrapped', () => {
+      // Green before the fix as well — it pins the promise of
+      // `throwCollectedErrors()` that the lone case stays exactly what
+      // userland threw, against a fix that wraps unconditionally.
+      const sm = new SignalAutoMap();
+      const a = sm.get('a');
+      createEffect(() => {
+        sm.get('a').get();
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      });
+
+      try {
+        let err: unknown;
+        try {
+          sm.clear();
+        } catch (e) {
+          err = e;
+        }
+
+        expect(err).toBeInstanceOf(Error);
+        expect(err).not.toBeInstanceOf(AggregateError);
+        expect((err as Error).message).toBe('cleanup boom');
+      } finally {
+        try {
+          sm.clear();
+        } catch {
+          /* ignore */
+        }
+        destroySignal(a);
+      }
+    });
+  });
+
   it('mixed string and symbol keys', () => {
     const sm = new SignalAutoMap();
     try {

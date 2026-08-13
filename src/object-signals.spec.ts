@@ -4,6 +4,7 @@ import {
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
 import {createSignal} from './create-signal.js';
+import {createEffect} from './effects.js';
 import {
   destroyObjectSignals,
   findObjectSignalByName,
@@ -11,6 +12,7 @@ import {
   findObjectSignals,
   storeAsObjectSignal,
 } from './object-signals.js';
+import {destroySignal} from './signal-core.js';
 import {touch} from './touch.js';
 import {value} from './value.js';
 
@@ -178,5 +180,135 @@ describe('object signals', () => {
       unsubscribe();
       destroyObjectSignals(host);
     }
+  });
+
+  describe('destroyObjectSignals() teardown errors (BUG-015)', () => {
+    it('a throwing cleanup does not spare the remaining signals of the same object', () => {
+      const host: Record<string, unknown> = {};
+      const foo = createSignal(1);
+      const bar = createSignal(2);
+      storeAsObjectSignal(host, 'foo', foo);
+      storeAsObjectSignal(host, 'bar', bar);
+
+      createEffect(() => {
+        foo.get();
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      });
+
+      try {
+        expect(() => destroyObjectSignals(host)).toThrow('cleanup boom');
+
+        expect(
+          bar.destroyed,
+          'the signal behind the failing one must still be destroyed',
+        ).toBe(true);
+        expect(findObjectSignals(host)).toBeUndefined();
+        assertSignalsCount(0, 'both signals of the host are gone');
+      } finally {
+        try {
+          destroyObjectSignals(host);
+        } catch {
+          /* ignore */
+        }
+        try {
+          destroySignal(bar);
+        } catch {
+          /* ignore */
+        }
+      }
+    });
+
+    it('a throwing cleanup does not spare the objects behind it', () => {
+      const first: Record<string, unknown> = {};
+      const second: Record<string, unknown> = {};
+      const foo = createSignal(1);
+      const bar = createSignal(2);
+      storeAsObjectSignal(first, 'foo', foo);
+      storeAsObjectSignal(second, 'bar', bar);
+
+      createEffect(() => {
+        foo.get();
+        return () => {
+          throw new Error('cleanup boom');
+        };
+      });
+
+      try {
+        expect(() => destroyObjectSignals(first, second)).toThrow(
+          'cleanup boom',
+        );
+
+        expect(
+          bar.destroyed,
+          'the object behind the failing one must still be visited',
+        ).toBe(true);
+        expect(findObjectSignals(second)).toBeUndefined();
+        assertSignalsCount(0, 'both hosts are swept');
+      } finally {
+        try {
+          destroyObjectSignals(first, second);
+        } catch {
+          /* ignore */
+        }
+        try {
+          destroySignal(bar);
+        } catch {
+          /* ignore */
+        }
+      }
+    });
+
+    it('two failing cleanups arrive as an AggregateError in teardown order', () => {
+      const first: Record<string, unknown> = {};
+      const second: Record<string, unknown> = {};
+      const foo = createSignal(1);
+      const bar = createSignal(2);
+      storeAsObjectSignal(first, 'foo', foo);
+      storeAsObjectSignal(second, 'bar', bar);
+
+      createEffect(() => {
+        foo.get();
+        return () => {
+          throw new Error('boom 1');
+        };
+      });
+      createEffect(() => {
+        bar.get();
+        return () => {
+          throw new Error('boom 2');
+        };
+      });
+
+      try {
+        let err: any;
+        try {
+          destroyObjectSignals(first, second);
+        } catch (e) {
+          err = e;
+        }
+
+        expect(err?.message).toBe(
+          '[signalize] 2 errors while destroying the signals of an object',
+        );
+        expect(err).toBeInstanceOf(AggregateError);
+        expect(err.errors.map((e: Error) => e.message)).toEqual([
+          'boom 1',
+          'boom 2',
+        ]);
+      } finally {
+        try {
+          destroyObjectSignals(first, second);
+        } catch {
+          /* ignore */
+        }
+        try {
+          destroySignal(bar);
+        } catch {
+          /* ignore */
+        }
+      }
+    });
   });
 });

@@ -1,3 +1,4 @@
+import {collect, throwCollectedErrors} from './collect-errors.js';
 import type {Signal} from './Signal.js';
 import {destroySignal} from './signal-core.js';
 
@@ -97,18 +98,28 @@ export const storeAsObjectSignal = (
  * no-op and an unknown object is not an error. This reaches the signals
  * only — the object's `SignalGroup`, and any effect or link in it, stays.
  * `SignalGroup.delete(obj)` is the one that takes everything.
+ *
+ * A throwing effect cleanup does not stop the sweep: the remaining signals
+ * of the same object and every object behind it are still destroyed, every
+ * store still dropped, and the failures are re-raised afterwards — a lone
+ * one unchanged, several as an `AggregateError` holding them in teardown
+ * order (BUG-015).
  */
 export function destroyObjectSignals(...objects: object[]): void {
+  const errors: unknown[] = [];
   for (const obj of objects) {
     if (g_objectStores.has(obj)) {
       const store = g_objectStores.get(obj);
       if (store.signals) {
         for (const sig of store.signals.values()) {
-          destroySignal(sig);
+          collect(errors, () => destroySignal(sig));
         }
         store.signals.clear();
         store.signals = undefined;
       }
     }
   }
+  // Outside the object loop: the contract holds across all `...objects`, not
+  // per object.
+  throwCollectedErrors(errors, 'destroying the signals of an object');
 }

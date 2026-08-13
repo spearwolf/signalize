@@ -962,7 +962,7 @@ SignalAutoMap.fromProps<P>(obj: P, keys?: Extract<keyof P, string | symbol>[])
 | `update(map: Map<string \| symbol, unknown>)` | Apply a `Map` of values; missing keys are created. Wrapped in `batch()`. |
 | `updateFromProps(obj, keys?)`           | Apply object props; missing keys created. Wrapped in `batch()`. `keys` is restricted to `Extract<keyof T, string \| symbol>[]` — a numeric key cannot be named. |
 | `keys()` / `signals()` / `entries()`    | Iterators.                                                             |
-| `clear()`                               | Destroy all signals and empty the map.                                 |
+| `clear()`                               | Destroy all signals and empty the map. Every entry is dropped and every signal destroyed even if an earlier cleanup throws; the failures are collected and raised afterwards — a lone one unchanged, several as an `AggregateError` whose `errors` array holds them in teardown order, the same shape `SignalGroup#clear()` and `unlink()` use. |
 | `delete(key): boolean`                  | Destroy `key`'s signal and drop the entry; `true` if present.          |
 
 > If a stored signal is destroyed externally via `destroySignal()`, its entry
@@ -990,7 +990,7 @@ Signals stored on a host object by name (used by `@signal`).
 | `findObjectSignalByName(obj, name)`     | `Signal<T> \| undefined`.                                                |
 | `findObjectSignals(obj)`                | `Signal<unknown>[] \| undefined`.                                        |
 | `findObjectSignalNames(obj)`            | `(string \| symbol)[] \| undefined`.                                     |
-| `destroyObjectSignals(...objs)`         | Destroy all signals attached to each object.                             |
+| `destroyObjectSignals(...objs)`         | Destroy all signals attached to each object. Every object is visited and its store dropped even if an earlier cleanup throws; the failures are collected and raised afterwards — a lone one unchanged, several as an `AggregateError` whose `errors` array holds them in teardown order. |
 
 ---
 
