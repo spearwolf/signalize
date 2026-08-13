@@ -246,6 +246,7 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - `CLAUDE.md` points at `biome.json` for the rule list instead of naming five of the disabled rules, and says which rules are switched *on* (CONS-013)
 - `README.md` gains a "Versioning & stability" section: no compatibility promise below `1.0.0`, semver on the published surface from `1.0.0` on, everything `@internal` exempt at every version (API-011)
 - `CONTRIBUTING.md` gains a "Releasing" section: the `version` field in `package.json` is the publish trigger — dropping the `-dev` suffix and pushing to `main` is the release, with no tag and no manual approval in between
+- `CONTRIBUTING.md` states the rule that was only ever practice: source, comments, JSDoc, test names, error messages and everything under `docs/` are written in English (READ-015)
 
 ### Chores
 

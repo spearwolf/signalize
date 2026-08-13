@@ -24,8 +24,11 @@ export const $queueUnsubscribes = Symbol.for(
 // `$queueUnsubscribes` above — `src/SignalAutoMap.ts` has to hand exactly
 // this object to a `FinalizationRegistry` as its held value, a `#private`
 // field is unreachable from a test, and a public named field would be new
-// API surface. `src/constants.ts` rather than `SignalAutoMap.ts` because
-// `src/index.ts` re-exports the latter with `export *`.
+// API surface. Placed here next to `$queueUnsubscribes`, the symbol with
+// the same job, rather than in `SignalAutoMap.ts` — a preference, not a
+// constraint: `src/index.ts` names every export, so neither file would
+// publish it, and `SignalGroup.ts` keeps its own `$groupResources` in
+// place.
 export const $autoMapResources = Symbol.for(
   '@spearwolf/signalize/autoMapResources',
 );

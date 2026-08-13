@@ -282,8 +282,8 @@ describe('async effect callbacks', () => {
 
         await flush();
 
-        // Die Cleanups der überholten Runs laufen, sobald ihr Promise
-        // settelt — die Ressource dieses Runs gibt sonst niemand mehr frei.
+        // The cleanups of the superseded runs run as soon as their promise
+        // settles — nobody else would ever release this run's resource.
         expect(log).toEqual([
           'run:0',
           'run:1',
@@ -294,7 +294,7 @@ describe('async effect callbacks', () => {
 
         effect.destroy();
 
-        // Der Cleanup des jüngsten Runs läuft weiterhin erst beim destroy().
+        // The cleanup of the most recent run still runs only at destroy().
         expect(log).toEqual([
           'run:0',
           'run:1',
@@ -367,8 +367,8 @@ describe('async effect callbacks', () => {
 
         await flush();
 
-        // Der innere Run 2 wurde vom äußeren Run 3 überholt: sein Cleanup
-        // läuft jetzt beim Settle, statt verworfen zu werden.
+        // The inner run 2 was superseded by the outer run 3: its cleanup now
+        // runs when it settles, instead of being discarded.
         expect(log).toEqual([
           'run:1:0',
           'cleanup:1',

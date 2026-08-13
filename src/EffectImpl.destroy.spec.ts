@@ -431,14 +431,14 @@ describe('EffectImpl.destroy() teardown order', () => {
     let runs = 0;
     let effect: Effect;
 
-    // autorun:false, damit `effect` beim Lauf des Callbacks schon zugewiesen ist.
+    // autorun:false, so that `effect` is already assigned when the callback runs.
     effect = createEffect(
       () => {
         a();
         ++runs;
         effect.destroy();
-        // Der Rest des Callbacks läuft weiter — der tote Effect steht
-        // immer noch auf dem globalen Effect-Stack.
+        // The rest of the callback keeps running — the dead effect is still
+        // on the global effect stack.
         b();
       },
       {autorun: false},
@@ -450,7 +450,7 @@ describe('EffectImpl.destroy() teardown order', () => {
       expect(runs).toBe(1);
       expect(getEffectsCount()).toBe(0);
 
-      // Kein Abo, das niemand mehr abbestellen kann.
+      // No subscription that nobody can unsubscribe any more.
       expect(getSubscriptionCount(globalSignalQueue)).toBe(signalSubscriptions);
       expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(
         destroySubscriptions,
@@ -520,10 +520,10 @@ describe('EffectImpl.destroy() teardown order', () => {
     effect = createEffect(() => {
       const value = a();
       acquired += 1;
-      // Zweiter Lauf: der Effect zerstört sich mitten im Callback. run()
-      // läuft trotzdem bis zum Ende durch und reicht den Cleanup an
-      // storeCleanupCallback() weiter — destroy() hat sein
-      // runCleanupCallback() da längst hinter sich.
+      // Second run: the effect destroys itself in the middle of the callback.
+      // run() still goes through to the end and hands the cleanup on to
+      // storeCleanupCallback() — destroy() has long since put its own
+      // runCleanupCallback() behind it.
       if (value === 1) effect.destroy();
       return () => {
         released += 1;

@@ -204,25 +204,25 @@ const BUSY_CLEAR = 1 << 4;
 const CYCLE_REJECTED =
   '[signalize] Cannot attach a group to one of its own descendants: this would create a cycle in the group graph';
 
-// PERF-004: die selten benutzten Container entstehen erst beim ersten
-// Schreiben. Bis dahin zeigt das Feld auf einen modulweit geteilten
-// leeren Stellvertreter — nicht auf `undefined`.
+// PERF-004: the rarely used containers are only allocated on first write.
+// Until then the field points at a module-wide shared empty stand-in — not
+// at `undefined`.
 //
-// Das ist der ganze Grund für die Bauart: jeder Lesepfad bleibt
-// unverändert. `.size` ist 0, `.has()`/`.get()` antworten wie ein leerer
-// Container, `.delete()` und `.clear()` sind No-ops, Iteration liefert
-// nichts. Damit halten drei Zusagen von selbst, die `undefined` je
-// einzeln brechen würde: `memberCounts` antwortet weiter mit 0; die
-// `once(…, DESTROY, Priority.Max, …)`-Hooks aus `attachEffect()` und
-// `attachLink()` — das Erste, was beim Zerstören eines Members läuft,
-// vor jedem Anwendungs-Listener — können nicht am Kopf einer
-// eventize-Zustellung werfen und sie damit für alle abbrechen; und ein
-// Hook, der nach einem `clear()` feuert, findet weiterhin etwas vor.
+// That is the whole reason for the design: every read path stays
+// unchanged. `.size` is 0, `.has()`/`.get()` answer like an empty
+// container, `.delete()` and `.clear()` are no-ops, iteration yields
+// nothing. Three promises therefore hold by themselves that `undefined`
+// would each break on its own: `memberCounts` still answers with 0; the
+// `once(…, DESTROY, Priority.Max, …)` hooks from `attachEffect()` and
+// `attachLink()` — the first thing that runs when a member is destroyed,
+// ahead of every application listener — cannot throw at the head of an
+// eventize delivery and abort it for everyone; and a hook that fires after
+// a `clear()` still finds something there.
 //
-// Die Stellvertreter weisen jeden Schreibzugriff zurück, der sie
-// nicht-leer machen würde. Eine vergessene Übernahme würde sonst einen
-// Container füllen, den sich sämtliche SignalGroups des Prozesses
-// teilen — der lauteste Fehlschlag ist hier der billigste.
+// The stand-ins reject every write that would make them non-empty. A
+// forgotten take-over would otherwise fill a container that every
+// SignalGroup in the process shares — the loudest failure is the cheapest
+// one here.
 const SHARED_EMPTY_WRITE =
   '[signalize] internal error: a shared empty stand-in collection was written to';
 

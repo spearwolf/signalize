@@ -220,8 +220,8 @@ describe('SignalGroup#off()', () => {
     let runs = 0;
     let cleanupCalls = 0;
 
-    // Nicht an die Gruppe attached — der Effect hängt nur über seine
-    // Signal-Reads an ihr.
+    // Not attached to the group — the effect hangs on it only through its
+    // signal reads.
     createEffect(() => {
       runs += 1;
       a.get();
@@ -234,8 +234,8 @@ describe('SignalGroup#off()', () => {
     try {
       expect(runs).toBe(1);
 
-      // Harte Zerstörung zuerst: der Effect behält `a` in #signals, nur
-      // unsubscribed. Danach der Soft-Detach über off().
+      // Hard destruction first: the effect keeps `a` in #signals, only
+      // unsubscribed. Then the soft detach via off().
       a.destroy();
       group.off();
 

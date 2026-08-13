@@ -137,6 +137,7 @@ pnpm test:gc
 
 ## Code Style
 
+- **English only** — source, comments, JSDoc, test names, error messages and everything under `docs/` are written in English. Issues and pull requests may be discussed in any language; what lands in the repository is English
 - **Biome** enforces coding rules (lint + format) — run `pnpm check` (or `pnpm fix` to auto-fix)
 - Follow existing patterns in the codebase
 - Use TypeScript strict mode features appropriately (note: `strictNullChecks: false` is intentional)
