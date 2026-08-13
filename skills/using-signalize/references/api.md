@@ -235,7 +235,7 @@ hibernate(() => { /* outer reactive context suspended */ });   // sync callback 
 isQuiet();
 ```
 
-`hibernate` flushes an active outer batch before running its callback, so queued effects are not lost, and restores batches / quiet state / effect stack afterwards — also when it is the flush itself that throws. Its callback must be synchronous, like `batch()`'s and `beQuiet()`'s: an `async` one is refused at compile time, because the restore happens at the first `await` and everything past it runs outside the hibernation. There is no runtime check, only the type.
+`hibernate` flushes an active outer batch before running its callback, so queued effects are not lost, and restores batches / quiet state / effect stack afterwards — also when it is the flush itself that throws. A flush that throws does not skip the callback: it runs, and the flush error arrives at the caller afterwards — together with the callback's own, as an `AggregateError`, if that one failed too. Its callback must be synchronous, like `batch()`'s and `beQuiet()`'s: an `async` one is refused at compile time, because the restore happens at the first `await` and everything past it runs outside the hibernation. There is no runtime check, only the type.
 
 ## SignalGroup
 

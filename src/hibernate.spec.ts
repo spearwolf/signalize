@@ -465,9 +465,9 @@ describe('hibernate', () => {
         expect(seen.quietBefore).toBe(1);
         expect(seen.effectBefore).toBe(host);
 
-        // the flush throws before the hibernate callback gets to run
+        // the flush error is held, the callback runs, and the error arrives afterwards
         expect((seen.thrown as Error)?.message).toBe('effect boom');
-        expect(seen.hibernateCallbackRan).toBe(false);
+        expect(seen.hibernateCallbackRan).toBe(true);
 
         // The three restores must have run anyway
         expect(seen.batchAfter, 'the batch context is back').toBe(
@@ -499,6 +499,134 @@ describe('hibernate', () => {
         clearBeQuiet();
         host.destroy();
         boom.destroy();
+        destroySignal(a);
+      }
+    });
+  });
+
+  describe('the hibernated callback survives a failing flush', () => {
+    it('runs the callback and reports the lone flush error unchanged', () => {
+      const {get: a, set: setA} = createSignal(0);
+      const boom = createEffect(() => {
+        if (a() > 0) {
+          throw new Error('effect boom');
+        }
+      });
+
+      const seen: Record<string, unknown> = {callbackRan: false};
+      let escaped: unknown;
+
+      try {
+        try {
+          batch(() => {
+            setA(1); // queues `boom` for the flush hibernate() performs
+            try {
+              hibernate(() => {
+                seen.callbackRan = true;
+              });
+            } catch (err) {
+              seen.thrown = err;
+            }
+          });
+        } catch (err) {
+          escaped = err;
+        }
+
+        expect(seen.callbackRan, 'the hibernated callback ran').toBe(true);
+        expect(seen.thrown).toBeInstanceOf(Error);
+        expect(seen.thrown).not.toBeInstanceOf(AggregateError);
+        expect((seen.thrown as Error).message).toBe('effect boom');
+        expect(
+          escaped,
+          'the outer batch has nothing left to report',
+        ).toBeUndefined();
+      } finally {
+        boom.destroy();
+        destroySignal(a);
+      }
+    });
+
+    it('reports the flush error and the callback error together, flush error first', () => {
+      const {get: a, set: setA} = createSignal(0);
+      const boom = createEffect(() => {
+        if (a() > 0) {
+          throw new Error('effect boom');
+        }
+      });
+      const callbackError = new Error('callback boom');
+
+      const seen: Record<string, unknown> = {callbackRan: false};
+
+      try {
+        batch(() => {
+          setA(1);
+          try {
+            hibernate(() => {
+              seen.callbackRan = true;
+              throw callbackError;
+            });
+          } catch (err) {
+            seen.thrown = err;
+          }
+        });
+
+        expect(seen.callbackRan).toBe(true);
+        expect(seen.thrown).toBeInstanceOf(AggregateError);
+
+        const errors = (seen.thrown as AggregateError).errors;
+        expect(errors).toHaveLength(2);
+        expect(
+          (errors[0] as Error).message,
+          'the flush error comes first',
+        ).toBe('effect boom');
+        expect(errors[1], 'the callback error keeps its identity').toBe(
+          callbackError,
+        );
+        expect((seen.thrown as AggregateError).message).toBe(
+          '[signalize] 2 errors while hibernating',
+        );
+      } finally {
+        boom.destroy();
+        destroySignal(a);
+      }
+    });
+
+    it('rethrows a lone callback error unchanged, without wrapping it', () => {
+      const callbackError = new Error('callback boom');
+      let caught: unknown;
+
+      try {
+        hibernate(() => {
+          throw callbackError;
+        });
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught, 'the single error keeps its identity').toBe(callbackError);
+    });
+
+    it('hands back the callback result after a successful flush', () => {
+      const {get: a, set: setA} = createSignal(0);
+      let effectRuns = 0;
+      const eff = createEffect(() => {
+        effectRuns++;
+        a();
+      });
+
+      const seen: Record<string, unknown> = {};
+
+      try {
+        batch(() => {
+          setA(1); // queues `eff` for the flush hibernate() performs
+          seen.result = hibernate(() => 42);
+          seen.effectRunsInside = effectRuns;
+        });
+
+        expect(seen.result, 'the result survives the error check').toBe(42);
+        expect(seen.effectRunsInside, 'the saved batch was flushed').toBe(2);
+      } finally {
+        eff.destroy();
         destroySignal(a);
       }
     });

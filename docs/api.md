@@ -859,7 +859,11 @@ time, because the saved context is restored at the first `await`.
 > If a batch was active, its queued effects are flushed before the callback
 > runs (so they aren't lost or re-batched). The queue is emptied even when an
 > effect in it throws, so the restored batch never recalls anyone a second
-> time; the failure is reported once, here at the `hibernate()` caller.
+> time. A failing flush does not cost the callback its run: the failure is
+> held, the callback runs, and it reaches the `hibernate()` caller once the
+> batch, quiet counter and effect stack are back — alone and unchanged, or,
+> if the callback failed too, as an `AggregateError` with the flush error
+> first (`[signalize] 2 errors while hibernating`).
 
 ---
 
