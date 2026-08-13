@@ -327,6 +327,7 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - Removed the dead `/* eslint-disable no-console */` from `scripts/publishPackage.cjs` — ESLint left the project in v0.28, Biome has no matching rule directive and none is needed here
 - The bundle banner's `@version` line no longer carries a build date (`+esm.YYYYMMDD` → `+esm`), and the copyright year is frozen at `2022-2026` instead of computed — two builds of the same commit, from the same `pnpm-lock.yaml` on the same Node major version, now produce byte-identical output regardless of the day they run on. The shared chunk's hashed filename changes once as a result; it is not a public import path (SEC-001)
 - New `pnpm check:banner` (`scripts/check-banner.mjs`), wired into `pnpm check` and therefore into `pnpm world` and CI, after the same pattern as `check:refs`: it renders the bundle banner twice under different ambient clock/random state and fails the build if the two renders differ (SEC-001)
+- `scripts/publishPackage.cjs` runs `npm` through `execFile` with an argument list instead of a shell command line, for both calls it makes — the package name from `package.json` reaches npm as an argument, with no shell to interpret it
 
 ## `v0.31.1` (2026-07-25)
 
