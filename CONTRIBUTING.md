@@ -85,6 +85,7 @@ src/
 ├── signalize-error.ts       # Leaf: onSignalizeError — the fallback diagnostics channel
 ├── instances.ts             # Leaf: the multi-copy sentinel
 ├── effect-hook.ts           # Leaf: the createEffect placeholder that keeps the graph acyclic
+├── thenable-guard.ts        # Leaf: the isThenable predicate and the guard behind the thenable TypeError
 │
 ├── Signal.ts                # Signal<T> — the public wrapper
 ├── create-signal.ts         # SignalImpl, createSignal()

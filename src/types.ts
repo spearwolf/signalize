@@ -13,8 +13,9 @@ export type ValueChangedCallback<T> = (value: T) => VoidFunc | void;
  * runs: each of those three frames is closed by a `finally` that fires when
  * the callback returns its pending promise at the first `await`, leaving
  * everything past that point outside the frame it appears to be in. See
- * each function's JSDoc for its own version of that; only `batch()` also
- * checks for a duck-typed thenable at runtime.
+ * each function's JSDoc for its own version of that. All three also check
+ * for a duck-typed thenable at runtime and throw `TypeError`, which is what
+ * catches an untyped caller.
  */
 export type NonThenable<T> = T extends PromiseLike<unknown> ? never : T;
 

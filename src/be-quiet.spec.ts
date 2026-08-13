@@ -121,4 +121,57 @@ describe('beQuiet', () => {
       destroySignal(a);
     }
   });
+
+  describe('rejects thenable-returning actions', () => {
+    it('throws when the action is an async function, instead of silently letting reads track again', async () => {
+      let caught: unknown;
+      try {
+        // @ts-expect-error — async action is rejected at the type level too; calling it anyway to exercise the runtime guard
+        beQuiet(async () => {
+          await Promise.resolve();
+        });
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(TypeError);
+      expect((caught as TypeError).message).toContain('[signalize] beQuiet:');
+
+      // the quiet frame is closed before the TypeError reaches the caller
+      expect(isQuiet()).toBe(false);
+
+      // let the orphaned promise settle, as batch.spec.ts does
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    it('throws for a synchronous action that happens to return a thenable-shaped object', () => {
+      let caught: unknown;
+      try {
+        // biome-ignore lint/suspicious/noThenProperty: intentionally building a non-promise thenable to prove the runtime duck-type check catches it too
+        beQuiet(() => ({then: () => {}}));
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(TypeError);
+      expect(isQuiet()).toBe(false);
+    });
+
+    it('leaves an enclosing quiet frame open when a nested action is refused', () => {
+      let insideAfterThrow: boolean;
+
+      beQuiet(() => {
+        try {
+          // biome-ignore lint/suspicious/noThenProperty: as above
+          beQuiet(() => ({then: () => {}}));
+        } catch {
+          // the nested frame closed, the enclosing one did not
+        }
+        insideAfterThrow = isQuiet();
+      });
+
+      expect(insideAfterThrow, 'the outer frame survives').toBe(true);
+      expect(isQuiet(), 'and closes normally').toBe(false);
+    });
+  });
 });

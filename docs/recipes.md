@@ -512,7 +512,9 @@ nothing and loses every dependency.
 
 The frame hands back whatever the callback returns, same as `hibernate()` —
 that's what makes `peek` above usable. An `async` callback is rejected by the
-type, because the quiet zone closes at the first `await`.
+type, and a callback that returns a thenable anyway throws `TypeError` — the
+quiet zone closes at the first `await`, and every read after it is tracked
+again.
 
 ## Hibernate
 

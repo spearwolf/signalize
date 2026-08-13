@@ -33,6 +33,7 @@ import {
 import {SignalGroup} from './SignalGroup.js';
 import {signalImpl} from './signal-core.js';
 import {reportSignalizeError} from './signalize-error.js';
+import {isThenable} from './thenable-guard.js';
 import type {
   EffectCallback,
   EffectErrorPayload,
@@ -89,9 +90,6 @@ export interface EffectOptionsWithNameDeps {
   attach: object | SignalGroup;
   priority?: number;
 }
-
-const isThenable = (value: unknown): value is Promise<unknown> =>
-  value != null && typeof (value as Promise<unknown>).then === 'function';
 
 /**
  * Route an error that surfaced after the synchronous call stack was gone.

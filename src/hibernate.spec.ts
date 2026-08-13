@@ -632,6 +632,87 @@ describe('hibernate', () => {
     });
   });
 
+  describe('rejects thenable-returning callbacks', () => {
+    it('throws when the callback is an async function, instead of silently running outside the hibernation', async () => {
+      let caught: unknown;
+      try {
+        // @ts-expect-error — async callback is rejected at the type level too; calling it anyway to exercise the runtime guard
+        hibernate(async () => {
+          await Promise.resolve();
+        });
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(TypeError);
+      expect((caught as TypeError).message).toContain('[signalize] hibernate:');
+
+      // all three contexts are restored before the TypeError leaves
+      expect(getCurrentBatch()).toBeUndefined();
+      expect(isQuiet()).toBe(false);
+      expect(getCurrentEffect()).toBeUndefined();
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    it('throws for a synchronous callback that happens to return a thenable-shaped object', () => {
+      let caught: unknown;
+      try {
+        // biome-ignore lint/suspicious/noThenProperty: intentionally building a non-promise thenable to prove the runtime duck-type check catches it too
+        hibernate(() => ({then: () => {}}));
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(TypeError);
+      expect(getCurrentBatch()).toBeUndefined();
+    });
+
+    it('does not let a failing flush swallow the thenable TypeError', () => {
+      const {get: a, set: setA} = createSignal(0);
+      const boom = createEffect(() => {
+        if (a() > 0) {
+          throw new Error('effect boom');
+        }
+      });
+
+      const seen: Record<string, unknown> = {};
+
+      try {
+        batch(() => {
+          setA(1); // queues `boom` for the flush hibernate() performs
+          try {
+            // biome-ignore lint/suspicious/noThenProperty: as above
+            hibernate(() => ({then: () => {}}));
+          } catch (err) {
+            seen.thrown = err;
+          }
+        });
+
+        expect(seen.thrown).toBeInstanceOf(AggregateError);
+
+        const errors = (seen.thrown as AggregateError).errors;
+        expect(errors).toHaveLength(2);
+        expect(
+          (errors[0] as Error).message,
+          'the flush error comes first, as it happened first',
+        ).toBe('effect boom');
+        expect(errors[1], 'the guard is not overtaken').toBeInstanceOf(
+          TypeError,
+        );
+        expect((errors[1] as TypeError).message).toContain(
+          '[signalize] hibernate:',
+        );
+        expect((seen.thrown as AggregateError).message).toBe(
+          '[signalize] 2 errors while hibernating',
+        );
+      } finally {
+        boom.destroy();
+        destroySignal(a);
+      }
+    });
+  });
+
   describe('complex scenarios', () => {
     it('works correctly with all contexts combined', () => {
       const {get: a, set: setA} = createSignal(0);

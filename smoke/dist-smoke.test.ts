@@ -129,10 +129,14 @@ test("the shipped declarations hand back beQuiet()'s result", () => {
   const peek: number = beQuiet(() => sig.get() * 2);
   assert.equal(peek, 42);
 
-  // @ts-expect-error an async action is rejected by the declarations —
-  // the quiet frame closes at the first `await`. If that narrowing is
-  // ever lost, tsc fails on the unused directive (TS2578).
-  beQuiet(async () => sig.get());
+  // Both halves of the refusal in one line: the directive witnesses the
+  // narrowing — if it is ever lost, tsc fails on the unused directive
+  // (TS2578) — and the throw witnesses the runtime guard behind it.
+  assert.throws(() => {
+    // @ts-expect-error an async action is rejected by the declarations,
+    // because the quiet frame closes at the first `await`.
+    beQuiet(async () => sig.get());
+  }, TypeError);
 
   sig.destroy();
 });
@@ -156,10 +160,12 @@ test('the shipped declarations refuse a lazy value write and an async hibernate'
   sig.set(6, {lasy: true, touch: true});
   assert.equal(sig.get(), 6);
 
-  // @ts-expect-error an async callback is refused, the same
-  // narrowing beQuiet() carries above.
-  const pending = hibernate(async () => sig.get());
-  assert.ok(pending instanceof Promise);
+  assert.throws(() => {
+    // @ts-expect-error an async callback is refused, the same
+    // narrowing beQuiet() carries above — and the same runtime guard
+    // behind it.
+    hibernate(async () => sig.get());
+  }, TypeError);
 
   sig.destroy();
 });

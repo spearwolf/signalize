@@ -6,7 +6,14 @@ import {
   getGlobalEffectStackSnapshot,
   restoreGlobalEffectStack,
 } from './global-effect-stack.js';
+import {throwIfThenable} from './thenable-guard.js';
 import type {NonThenable} from './types.js';
+
+const THENABLE_HINT =
+  'hibernate() restores the saved batch, quiet counter and effect stack the ' +
+  'moment an async callback returns its pending promise at the first `await`, ' +
+  'so everything past that `await` runs outside the hibernation it was written ' +
+  'inside. Do the awaiting outside of hibernate(), and pass a synchronous callback.';
 
 /**
  * Execute a callback in a "hibernation" state where all previous context states
@@ -23,17 +30,22 @@ import type {NonThenable} from './types.js';
  *
  * This function is stackable - nested hibernate() calls work correctly.
  *
- * `callback` must be synchronous, and its signature rejects anything typed
- * to return a `Promise`/`PromiseLike` at `tsc` time: an `async` callback
- * returns its pending promise at the first `await`, the `finally` below
- * restores the saved batch, quiet counter and effect stack right there, and
- * everything past that `await` runs outside the hibernation it was written
- * inside. The same narrowing `batch()` and `beQuiet()` carry; as with
- * `beQuiet()`, there is no runtime check for a duck-typed thenable.
+ * `callback` must be synchronous. The three saved contexts are restored the
+ * moment an `async` callback returns its pending promise at the first
+ * `await`, so everything past it runs outside the hibernation it was written
+ * inside. Both sides are refused: the signature rejects anything typed to
+ * return a `Promise`/`PromiseLike` at `tsc` time, and a callback that hands
+ * back something with a callable `then` throws a `TypeError`, as it does in
+ * `batch()` and `beQuiet()`. That `TypeError` is collected like any other
+ * callback failure, so a flush that failed as well arrives together with it.
  *
  * @param callback - Synchronous function to execute in hibernation state
+ * @throws {TypeError} if `callback` returns a thenable and the flush of the
+ *   saved batch succeeds
  * @throws {AggregateError} if the flush of the saved batch *and* `callback`
- *   fail — the flush's error as `errors[0]`, the callback's as `errors[1]`
+ *   fail — the flush's error as `errors[0]`, itself an `AggregateError` over
+ *   every effect that failed in that flush when there was more than one, and
+ *   the callback's error (or the `TypeError` above) as `errors[1]`
  */
 export function hibernate<T>(callback: () => NonThenable<T>): T {
   // Save current states
@@ -60,6 +72,10 @@ export function hibernate<T>(callback: () => NonThenable<T>): T {
 
     collect(errors, () => {
       result = callback();
+      // Inside the collected step and behind the assignment: a failing
+      // flush is already in `errors`, and a TypeError thrown past the
+      // collector would replace it instead of joining it.
+      throwIfThenable(result, 'hibernate', 'callback', THENABLE_HINT);
     });
   } finally {
     // Restore all context states. Flat, not nested the way `Batch.run()`

@@ -710,11 +710,12 @@ describe('the published type surface', () => {
     const sig = createSignal(21);
 
     try {
-      // @ts-expect-error the saved batch, quiet counter and effect
-      // stack are restored by the `finally` at the first `await`, so
-      // everything after it runs outside hibernation.
-      const pending = hibernate(async () => sig.get());
-      expect(pending).toBeInstanceOf(Promise);
+      expect(() => {
+        // @ts-expect-error the saved batch, quiet counter and effect
+        // stack are restored by the `finally` at the first `await`, so
+        // everything after it runs outside hibernation.
+        hibernate(async () => sig.get());
+      }).toThrow(TypeError);
 
       // The documented repair for a generic pass-through wrapper, which the
       // narrowing breaks the same way it breaks `beQuiet()`'s:

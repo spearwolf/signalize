@@ -230,12 +230,12 @@ run.
 
 ```ts
 batch(() => { a.set(1); b.set(2); });   // dedup + flush in priority order — a HINT, not a guarantee
-const v = beQuiet(() => a.get());       // reads untracked, writes silent; counter-based, nests; returns the callback's result
-hibernate(() => { /* outer reactive context suspended */ });   // sync callback only — tsc rejects an async one
+const v = beQuiet(() => a.get());       // reads untracked, writes silent; counter-based, nests; returns the callback's result — sync only — a thenable result throws TypeError
+hibernate(() => { /* outer reactive context suspended */ });   // sync only — tsc rejects an async one, a thenable result throws TypeError
 isQuiet();
 ```
 
-`hibernate` flushes an active outer batch before running its callback, so queued effects are not lost, and restores batches / quiet state / effect stack afterwards — also when it is the flush itself that throws. A flush that throws does not skip the callback: it runs, and the flush error arrives at the caller afterwards — together with the callback's own, as an `AggregateError`, if that one failed too. Its callback must be synchronous, like `batch()`'s and `beQuiet()`'s: an `async` one is refused at compile time, because the restore happens at the first `await` and everything past it runs outside the hibernation. There is no runtime check, only the type.
+`hibernate` flushes an active outer batch before running its callback, so queued effects are not lost, and restores batches / quiet state / effect stack afterwards — also when it is the flush itself that throws. A flush that throws does not skip the callback: it runs, and the flush error arrives at the caller afterwards — together with the callback's own, as an `AggregateError`, if that one failed too. Its callback must be synchronous, like `batch()`'s and `beQuiet()`'s: an `async` one is refused at compile time, because the restore happens at the first `await` and everything past it runs outside the hibernation. A callback that hands back a thenable anyway — an untyped caller, or a synchronous callback returning a thenable-shaped object — throws `TypeError` at the call site, in all three frames. Inside `hibernate()` that `TypeError` is collected like any other callback failure and joins a failed flush in the same `AggregateError`, flush error first.
 
 ## SignalGroup
 

@@ -7,6 +7,7 @@ import {
 } from './collect-errors.js';
 import {RECALL} from './constants.js';
 import {globalEffectCalledQueue, globalEffectQueue} from './global-queues.js';
+import {throwIfThenable} from './thenable-guard.js';
 import type {NonThenable, VoidFunc} from './types.js';
 
 /*
@@ -190,11 +191,11 @@ export const restoreBatch = (batch: Batch | undefined): void => {
 
 // XXX `batch()` is a _hint_ not a _guarantee_ to run all effects in just _one_ strike.
 
-// duplicated on purpose, not imported from `EffectImpl.ts`: `batch.ts` sits
-// below `EffectImpl.ts` in the module graph and importing it back would
-// create the cycle `rollup.config.mjs` rejects (see CLAUDE.md).
-const isThenable = (value: unknown): value is PromiseLike<unknown> =>
-  value != null && typeof (value as PromiseLike<unknown>).then === 'function';
+const THENABLE_HINT =
+  'batch() only sees writes made on the current call stack — an async callback ' +
+  'stops being batched at its first `await`, so every write after that runs ' +
+  'unbatched without any error. Move the async work outside of batch(), or split ' +
+  'it into several synchronous batch() calls.';
 
 /**
  * Batch multiple signal updates together to defer effect execution.
@@ -253,15 +254,7 @@ export function batch<T>(callback: () => NonThenable<T>): void {
 
   try {
     const result = callback();
-    if (isThenable(result)) {
-      throw new TypeError(
-        '[signalize] batch: callback must be synchronous, but it returned a thenable. ' +
-          'batch() only sees writes made on the current call stack — an async callback ' +
-          'stops being batched at its first `await`, so every write after that runs ' +
-          'unbatched without any error. Move the async work outside of batch(), or split ' +
-          'it into several synchronous batch() calls.',
-      );
-    }
+    throwIfThenable(result, 'batch', 'callback', THENABLE_HINT);
   } catch (err) {
     // Held, not rethrown: the flush below runs either way, and a failing
     // effect in it must not take this error's place.

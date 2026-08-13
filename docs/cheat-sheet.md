@@ -141,10 +141,12 @@ getLinksCount(); getLinksCount(src);                              // link() warn
 import {batch, beQuiet, isQuiet, hibernate} from '@spearwolf/signalize';
 
 batch(() => { a.set(1); b.set(2); });   // dedup + priority flush
-                                         // callback must be sync — async throws TypeError (tsc rejects it too)
+                                         // callback must be sync — a thenable result throws TypeError (tsc rejects it too)
 const v = beQuiet(() => a.get());       // no track, no notify; returns the callback's result
+                                         // sync only — same TypeError, same tsc rejection
 hibernate(() => { /* outer ctx suspended; new ctx allowed */ });
-                                         // sync only — tsc rejects an async callback, no runtime check
+                                         // sync only — same TypeError, same tsc rejection
+                                         // flush of the saved batch + callback both failing → AggregateError, flush error first
 isQuiet();
 ```
 

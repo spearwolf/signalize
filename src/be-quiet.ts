@@ -1,6 +1,14 @@
+import {throwIfThenable} from './thenable-guard.js';
 import type {NonThenable} from './types.js';
 
 let g_numberOfBeQuietRequests = 0;
+
+const THENABLE_HINT =
+  'beQuiet() closes its frame the moment an async action returns its pending ' +
+  'promise at the first `await` — every read after that point is tracked again ' +
+  'and every write loud again, and the promise handed back would resolve outside ' +
+  'the frame that appeared to produce it. Do the awaiting outside of beQuiet(), ' +
+  'and pass a synchronous action.';
 
 /**
  * Execute a callback in "quiet mode" where signal reads do not create dependencies
@@ -15,21 +23,29 @@ let g_numberOfBeQuietRequests = 0;
  * the frame, and `const peek = beQuiet(() => b.get())` has to evaluate to
  * the read value. Same shape as `hibernate()`.
  *
- * `action` must be synchronous, and its signature rejects anything typed
- * to return a `Promise`/`PromiseLike` at `tsc` time: the quiet frame is
- * closed by the `finally` below the moment an `async` action returns its
- * pending promise at the first `await`, so every read and write after
- * that point is tracked and loud again — and the promise handed back
- * would resolve outside the frame that appeared to produce it. Unlike
- * `batch()`, there is no runtime check for a duck-typed thenable.
+ * `action` must be synchronous. `beQuiet()` closes its frame the moment an
+ * `async` action returns its pending promise at the first `await`, so every
+ * read and write after that point is tracked and loud again — and the promise
+ * handed back would resolve outside the frame that appeared to produce it.
+ * Both sides are refused: the signature rejects anything typed to return a
+ * `Promise`/`PromiseLike` at `tsc` time, and an action that hands back
+ * something with a callable `then` throws a `TypeError`, as it does in
+ * `batch()` and `hibernate()`. The frame is closed before that `TypeError`
+ * reaches the caller.
  *
  * @param action - Synchronous function to execute in quiet mode
  * @returns The action's return value
+ * @throws {TypeError} if `action` returns a thenable
  */
 export function beQuiet<T>(action: () => NonThenable<T>): T {
   g_numberOfBeQuietRequests++;
   try {
-    return action();
+    const result = action();
+    // Checked inside the frame: the `finally` below closes it before the
+    // TypeError reaches the caller, so a refused action leaves the quiet
+    // counter exactly where it found it.
+    throwIfThenable(result, 'beQuiet', 'action', THENABLE_HINT);
+    return result;
   } finally {
     g_numberOfBeQuietRequests--;
   }

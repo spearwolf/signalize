@@ -778,6 +778,14 @@ This is a synchronous throw at the `batch()` call site, unlike an async
 *effect* callback's rejection, which cannot be thrown at any caller and goes
 to `onEffectError()` instead (see `createEffect`).
 
+A refused `async` callback has already started running by the time the
+`TypeError` is thrown, and nothing observes the promise it handed back —
+`batch()` returns `void`, so there is no `await` on the call that could
+receive it. A rejection inside that promise therefore surfaces as an
+unhandled rejection, which ends the process under Node's default. Keep the
+async work outside the frame rather than catching the `TypeError` and
+carrying on.
+
 An effect that throws during the flush no longer holds up the remaining
 delayed effects; its failure reaches the `batch()` caller after the flush is
 complete, several failures as an `AggregateError`. If `callback` and the flush
@@ -818,14 +826,24 @@ effect; a plain signal write still leaves such an effect alone.
 > runs are correct either way; a `{batchWrites: true}` memo whose `computer`
 > writes other signals performs those side writes twice.
 
-### `beQuiet(callback): T`
+### `beQuiet(action): T`
 
-Inside `callback`, signal **reads do not subscribe** the surrounding effect,
+Inside `action`, signal **reads do not subscribe** the surrounding effect,
 and signal **writes do not emit**. Calls nest via an internal counter.
 
-`beQuiet()` returns whatever `callback` returns, and — like `batch()` —
-rejects an `async`/thenable-returning `callback` at compile time, because the
-quiet frame closes at the first `await`.
+`beQuiet()` returns whatever `action` returns, and — like `batch()` and
+`hibernate()` — refuses an `async`/thenable-returning `action` twice over:
+the signature rejects it at `tsc` time, and an action that hands back
+something with a callable `then` throws `TypeError` at the call site. The
+quiet frame closes at the first `await`, so everything past it reads tracked
+and writes loud again. The frame is closed before the `TypeError` leaves, so
+`isQuiet()` is back where it was.
+
+A refused `async` action has already started running, and the promise it
+handed back is unobserved from here on: a rejection inside it surfaces as an
+unhandled rejection instead of at any `await`, the same way it does in
+`batch()`. Keep the async work outside the frame rather than catching the
+`TypeError`.
 
 Wrapping a **whole effect run** in a quiet frame does not change that effect's
 dependency set — unlike the ordinary case above, where a `beQuiet()` around a
@@ -853,8 +871,18 @@ restored on exit, including after a throw — whether the throw came from
 `callback` or from the flush below. Stackable.
 
 `hibernate()` returns whatever `callback` returns, and — like `batch()` and
-`beQuiet()` — rejects an `async`/thenable-returning `callback` at compile
-time, because the saved context is restored at the first `await`.
+`beQuiet()` — refuses an `async`/thenable-returning `callback` twice over:
+the signature rejects it at `tsc` time, and a callback that hands back
+something with a callable `then` throws `TypeError`. The saved context is
+restored at the first `await`, so everything past it runs unhibernated. That
+`TypeError` is collected like any other callback failure: if the flush below
+failed too, both arrive as an `AggregateError` with the flush error first.
+
+A refused `async` callback has already started running, and the promise it
+handed back is unobserved from here on: a rejection inside it surfaces as an
+unhandled rejection instead of at any `await`, the same way it does in
+`batch()`. Keep the async work outside the frame rather than catching the
+`TypeError`.
 
 > If a batch was active, its queued effects are flushed before the callback
 > runs (so they aren't lost or re-batched). The queue is emptied even when an
@@ -864,6 +892,8 @@ time, because the saved context is restored at the first `await`.
 > batch, quiet counter and effect stack are back — alone and unchanged, or,
 > if the callback failed too, as an `AggregateError` with the flush error
 > first (`[signalize] 2 errors while hibernating`).
+> Several effects failing in that one flush put an `AggregateError` over
+> them into `errors[0]`; nothing is flattened, exactly as in `batch()`.
 
 ---
 
