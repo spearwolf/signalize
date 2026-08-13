@@ -120,7 +120,11 @@ keep them better. What stays is the present-tense reason the code is the way it
 is.
 
 **Keep it short.** A comment complements the code; it does not narrate it. Trim
-to the shortest form that still carries the reason. A paragraph explaining a
+to the shortest form that still carries the reason. Trimming an existing comment
+asks two questions, not one: is what survives still true without what was cut —
+dropping the condition of a claim leaves the claim standing, reading perfectly
+well and being wrong — and did the cut sentence carry a second, independent
+statement that the reason for cutting it never covered? A paragraph explaining a
 three-line function is a signal that the function needs a better name or a
 smaller body.
 
@@ -137,9 +141,30 @@ arbitrary. Decisions that are simply in force everywhere need no mention at
 all.
 
 **JSDoc is for consumers.** Public exports carry JSDoc describing what the
-thing does, its parameters, and the behaviour a caller can rely on. Internal
-reasoning does not belong there — `compile:types` ships these comments in
-`lib/*.d.ts`. Mark internals with `@internal` so they are stripped.
+thing is for, in one to three sentences; the conditions under which it behaves
+differently than a caller would expect; and what it returns or throws. Not what
+the name already says — `@param signal - The signal to mute` on
+`muteSignal(signal)` costs a line in every consumer's tooltip and pays nothing.
+Internal reasoning does not belong there either — `compile:types` ships these
+comments in `lib/*.d.ts`. Mark internals with `@internal` so they are stripped.
+
+**The overflow goes to `docs/api.md`.** Measured edge cases, the shapes an
+options object is accepted or refused in, inference behaviour — what a caller
+genuinely needs and no symbol can carry without burying its own purpose — is
+written in [api.md](./api.md) and linked from the JSDoc.
+
+**A warning with no test behind it is a `//`, not JSDoc.** Where a regression
+has nothing that would catch it — the order of two overloads is load-bearing,
+say — the warning goes above the declaration as a line comment. `tsc` does not
+emit `//` into `lib/*.d.ts`, so the note reaches a contributor reading `src/`
+and stays out of every consumer's tooltip, which is the right split for a
+sentence addressed to whoever edits the file next.
+
+**An error code is consumer knowledge.** A sentence naming a concrete error
+code, a message or a symptom stays at the symbol — however much it reads like
+internal reasoning, and whether it stands alone or as a clause inside another
+sentence. `TS2769` is what a caller finds on their screen; only the road that
+led to it is internal.
 
 ## Error and warning messages
 
@@ -228,6 +253,14 @@ When the public API changes, sync in this order:
    top-six list, `references/` for the detail
 6. `README.md` → "API at a glance"
 7. `CHANGELOG.md` → `## Unreleased`
+
+**No code archaeology in the prose either.** A published page describes how the
+library behaves today. "used to", "no longer", "an earlier revision of this page
+said" — same rule as for comments, same reason: the reader has the page, not the
+history. What changed between versions is `CHANGELOG.md`'s job, and it already
+does it. The one exception is the **Consequence** paragraph of an architecture
+decision in [architecture.md](./architecture.md), where a before and an after
+are the format.
 
 Keep `SKILL.md` lean: it carries the mental model, the silently-wrong
 behaviours and the pointer table. New API detail belongs in

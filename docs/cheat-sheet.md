@@ -22,7 +22,7 @@ const d = createSignal<number>();   // Signal<number | undefined> — undefined 
 createSignal(0, {lazy: true});      // does not compile: the flag is the factory's alone
 createSignal(undefined, {lazy: true});  // …nor via the no-value overload (strictNullChecks only)
 createSignal<number>(0, {lazy: true});  // …but naming T switches the check off (no partial inference)
-// a params VARIABLE with no key in common (e.g. {label: string}) is no longer caught — annotate it
+// a params VARIABLE with no key in common (e.g. {label: string}) goes through uncaught — annotate it
 
 c.get();           // tracked read
 c.value;           // untracked read
@@ -74,7 +74,7 @@ setMaxEffectDepth(256); // default; getMaxEffectDepth() reads it back
 
 // self-write: each nested run's cleanup runs at once when superseded — none is dropped
 // async: cleanup of a superseded run runs LATE (on settle), rejections are reported
-// a throwing callback no longer stops the other effects of that write
+// a throwing callback does not stop the other effects of that write
 // set() re-raises after the delivery — several failures as an AggregateError
 // but a throwing FIRST run destroys the effect and throws at createEffect()
 //   — unless {attach} holds it; same for createMemo() and its memo signal
@@ -88,7 +88,7 @@ onSignalizeError(({level, source, message, error}) => {});  // → unsubscribe
 // source: 'effect' | 'group-finalizer' | 'link-finalizer' | 'automap-finalizer'
 //       | 'link-count' | 'deprecation' | 'multiple-instances' | 'ignored-option'
 //                                       (may grow in a minor — use a default)
-// no handler → console.warn(message) / console.error(message, error), as before
+// no handler → console.warn(message) / console.error(message, error)
 // a handler OWNS the message — deprecation notices included, so log them
 // error is absent on a notice
 // handler throws → caught: console.error(handler), then the payload at its own
@@ -120,6 +120,7 @@ m();                 // SignalReader
 import {link, unlink, getLinksCount} from '@spearwolf/signalize';
 
 const con = link(src, target, {attach: obj});  // target: signal | callback (callback param inferred from src)
+// SignalLink<T> is invariant in T: SignalLink<unknown> takes no concrete link — write SignalLink<any> for "some link"
 unlink(src, target);  unlink(src);
 // unlink(src) throws TypeError for a source that is not a signal — the refusal link() gives
 // unlink(src) tears every link down, then reports — several failures as an AggregateError
@@ -131,6 +132,7 @@ con.touch(); con.destroy(); con.attach(obj);
 
 await con.nextValue({signal});                                    // rejects with an Error on destroy, with signal.reason on abort
 for await (const v of con.asyncValues((v, i) => i >= 5, {signal})) {/* … */} // last-value-only, shared retain across parallel iterators, dropped after the last iterator; abort THROWS, destroy ends quietly
+// closing is the caller's job — for await does it, an iterator driven by hand and dropped retains 'value' until destroy()
 
 getLinksCount(); getLinksCount(src);                              // link() warns once per source at 1000 links
 ```
@@ -221,6 +223,8 @@ class Foo {
     compare:     (a, b) => a === b,
     beforeRead:  () => {},          // never fires with readAsValue: true
     attach:      something,         // an ADDITIONAL group; the instance group stays
+                                    // destroying it destroys the signal: the name and the last
+                                    // value stay readable, the reactivity is gone
   }) accessor count = 0;
 
   // no memo decorator — bind a memo to the instance group instead

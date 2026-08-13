@@ -249,10 +249,8 @@ export interface SignalWriterParams<T>
  * `asyncValues()` actually touch. Every real `AbortSignal`, DOM or Node,
  * satisfies this shape.
  */
-// Not the global `AbortSignal`: it lives in `lib.dom.d.ts` or `@types/node`,
-// and a consumer compiling against plain `"lib": ["ES2023"]` has neither, so
-// the published declarations would not resolve for them. No compile run here
-// covers that — `smoke/` inherits `DOM` from the root config.
+// Not the global `AbortSignal` — see architecture.md, "The shipped
+// declarations resolve under `"lib": ["ES2023"]` alone".
 export interface AbortSignalLike {
   readonly aborted: boolean;
   readonly reason?: unknown;

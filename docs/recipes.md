@@ -85,9 +85,9 @@ Quirks:
   `set(v, p)` compile, whatever `p` holds at runtime. What both turn away
   there is every one of those four statically-`true` forms: on a plain value
   each is `TS2769`, because the flag promises a factory and a value is not
-  one. `createSignal(5, {lazy: true})` used to compile and leave the first
-  read to die with `TypeError: this.valueFn is not a function`; now it does
-  not compile. `createSignal(existingSignal, {lazy: true})` goes the same way,
+  one. `createSignal(5, {lazy: true})` does not compile, and that refusal is
+  what keeps the first read from dying with `TypeError: this.valueFn is not a
+  function`. `createSignal(existingSignal, {lazy: true})` goes the same way,
   and the passthrough drops the rest of its params too — not in silence:
   every such call reports the dropped options through
   `onSignalizeError()`. So does `createSignal(undefined, {lazy: true})` —
@@ -134,12 +134,12 @@ Quirks:
 - **The third outcome is a loss, and it is silent.** `{label: string}`,
   `{a: number; b: string}`, the rest object of a destructuring with no valid
   key left: TypeScript's weak-type check (`has no properties in common with`)
-  used to refuse exactly that shape, and generic params lose it, because an
+  would refuse exactly that shape, and generic params lose it, because an
   intersection is never weak. A disjoint object *literal* is still an error
-  through freshness; a disjoint *variable* now compiles and does nothing at
-  runtime. `set()` lost this when its value overload turned generic,
-  `createSignal` loses it here — so an options object built entirely from
-  foreign keys is one of the mistakes neither constructor catches any more.
+  through freshness; a disjoint *variable* compiles and does nothing at
+  runtime. Both constructors pay this for their generic value overload — so an
+  options object built entirely from foreign keys is one of the mistakes
+  neither of them catches.
   It has company two bullets down: the type-argument gap and, under
   `strictNullChecks: false`, the no-value form of the lazy flag.
 - **On `createSignal`, naming the type argument switches both params
@@ -320,10 +320,9 @@ createEffect(logB, {priority: 0});     // second
 
 ## When an effect callback throws
 
-A synchronous throw out of an effect callback used to end the whole fan-out:
-every effect behind the failing one was skipped and never learned that the
-value had changed. It is isolated now — all of them run, and the write throws
-afterwards.
+A synchronous throw out of an effect callback does not end the fan-out. Every
+effect behind the failing one runs and learns that the value changed; the write
+throws afterwards.
 
 ```ts
 const sig = createSignal(0);

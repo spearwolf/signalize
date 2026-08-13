@@ -384,6 +384,26 @@ collected, and re-raised after the whole set has been served.
 is confined to exactly those listener entry points — one frame further out it
 would be too late, and anywhere else it would hide a real failure.
 
+### The shipped declarations resolve under `"lib": ["ES2023"]` alone
+
+**Context.** A consumer compiling with plain `"lib": ["ES2023"]` has neither
+`lib.dom.d.ts` nor `@types/node`. Every global those two own is unresolvable on
+that machine, so a public type naming one turns the shipped `.d.ts` into a
+compile error in somebody else's project. `AbortSignal` is the global this API
+would otherwise reach for, in `nextValue()` and `asyncValues()`.
+
+**Decision.** The published types name nothing beyond ES2023. Where a platform
+type is needed, `types.ts` declares the structural subset the library actually
+touches — `AbortSignalLike` for the abort case, with `aborted`, `reason` and the
+two listener methods. Every real `AbortSignal`, DOM or Node, satisfies it, so
+passing one stays a plain call with no cast on either side.
+
+**Consequence.** No compile run in this repository covers the rule: `smoke/`
+inherits `DOM` from the root config, and `checkPkgTypes` resolves the `exports`
+map and the module modes, not the lib set. A global slipping back into a public
+type would pass every gate here and fail at a consumer. Treat a platform global
+in `types.ts` as the change of direction it is.
+
 ### No browser test run
 
 **Context.** The package is advertised as running in a modern browser, and there
@@ -438,6 +458,7 @@ import would need its own coverage.
 | `global-effect-stack.ts`   | Effect execution context stack                              |
 | `global-queues.ts`         | The four global eventize buses                              |
 | `batch.ts`, `be-quiet.ts`, `hibernate.ts`, `touch.ts`, `value.ts` | Context modes & helpers |
+| `thenable-guard.ts`        | Leaf — the structural `isThenable` test behind the `TypeError` that `batch()`, `beQuiet()` and `hibernate()` throw on a thenable result |
 | `constants.ts`             | Symbols (`$signal`, `$effect`, `RECALL`, …)                 |
 | `types.ts`                 | Public TypeScript types                                     |
 | `UniqIdGen.ts`             | Symbol-based unique ID generator (`Symbol('si1')`, `Symbol('ef1')`) |

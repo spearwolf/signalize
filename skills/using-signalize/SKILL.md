@@ -15,7 +15,7 @@ import {signal} from '@spearwolf/signalize/decorators';
 ## Mental model
 
 - **Signal** (reactive value) → **Effect** (auto-rerun) → **Memo** (cached derived signal) → **Link** (one-way flow). **SignalGroup** owns lifecycles.
-- Propagation is **synchronous and inline**. `signal.set(x)` runs every dependent effect *before it returns*. No scheduler, no microtask queue, no tearing — and no free debounce; an effect that throws no longer cuts the delivery short, `set()` re-raises once every effect has run.
+- Propagation is **synchronous and inline**. `signal.set(x)` runs every dependent effect *before it returns*. No scheduler, no microtask queue, no tearing — and no free debounce; an effect that throws does not cut the delivery short, `set()` re-raises once every effect has run.
 - Effects subscribe **on read**: calling `sig.get()` inside the callback registers the dependency. Deps are recomputed every run, so they may grow or shrink.
 - Memos are signals driven by a high-priority (`1000`) effect, so they settle before ordinary effects.
 - `async` effect callbacks are second-class citizens: nothing is awaited, the cleanup of a run that was superseded before its promise settled runs *late* rather than being dropped, and a rejection is reported via `onEffectError()` — or, with nobody listening there, via the general `onSignalizeError()` channel — instead of being thrown (`references/pitfalls.md`, 11a/11b).

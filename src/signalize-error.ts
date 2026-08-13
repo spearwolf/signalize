@@ -60,7 +60,9 @@ const trackSignalizeErrorHandler = (unsubscribe: () => void): (() => void) => {
  * process.
  *
  * As long as no handler is registered, every message goes to the console
- * exactly as before — same text, same argument shape. Once a handler is
+ * method its `level` names, with the failure as a second argument where the
+ * payload carries one — `console.warn(message)` for a notice,
+ * `console.error(message, error)` for a failure. Once a handler is
  * registered, the payload goes to it instead and the console stays quiet;
  * whoever installs this channel owns the message, **including the
  * deprecation notices** — if they should stay visible, log them.

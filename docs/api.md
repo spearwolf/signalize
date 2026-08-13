@@ -46,13 +46,13 @@ only possible when `T` is itself a function type — either named
 > object. That one is reported like the rest.
 
 > ⚠️ **No initial value means `Signal<T | undefined>`.** `createSignal<number>()`
-> holds `undefined` until something writes to it, and the type now says so:
+> holds `undefined` until something writes to it, and the type says so:
 > `const n: number = sig.value` is a `TS2322` instead of an `undefined` wearing
 > a `number` label. This only exists for you if you compile with
 > `strictNullChecks: true` — with the flag off the union collapses back to `T`
 > and nothing about your code changes. Without a type argument the result stays
 > `Signal<unknown>`, and `createSignal<T>(undefined, {attach: host})` — no
-> value, but a holder — keeps working as before. That overload puts the same
+> value, but a holder — is a valid call. That overload puts the same
 > conditions on its params as the value one below: `undefined` is the single
 > value that reaches it, so without them `createSignal(undefined, {lazy: true})`
 > would be the way around every one of them — and it builds a signal whose
@@ -124,15 +124,13 @@ only possible when `T` is itself a function type — either named
 > that reached a plain value would store it where the factory belongs and leave
 > the next read to die with `TypeError: this.valueFn is not a function`.
 >
-> An earlier revision of this page said the two were **not** symmetric on that
-> second point, `createSignal` relying on freshness while `set` forbade the
-> keys in its signature. That is withdrawn: `createSignal`'s value branch now
-> carries the same clause, because the `lazy` fix requires it. Refusing
-> `{lazy: true}` while letting `lazy?: boolean` through takes a generic params
-> type, and a generic params type costs the excess property check — without
-> the clause, `createSignal(5, {lasy: true, compare})` would start compiling.
-> A misspelled `lazy` buying silence on exactly the branch that fix exists to
-> close is the one trade not worth making.
+> `createSignal`'s value branch carries that clause in its signature, exactly
+> as `set` does, and it has to: refusing `{lazy: true}` while letting
+> `lazy?: boolean` through takes a generic params type, and a generic params
+> type costs the excess property check — without the clause,
+> `createSignal(5, {lasy: true, compare})` compiles. A misspelled `lazy` buying
+> silence on exactly the branch the flag rule exists to close is the one trade
+> not worth making.
 >
 > **What the exactness costs, as a rule and not a list.** The clause tests the
 > key set of the params type the compiler infers, so what a call gets depends
@@ -184,11 +182,11 @@ only possible when `T` is itself a function type — either named
 > own.
 >
 > **The third outcome is the second cost, and it is silent.** TypeScript's
-> weak-type check (`has no properties in common with`) used to refuse exactly
+> weak-type check (`has no properties in common with`) would refuse exactly
 > that shape, and generic params give it up, because an intersection is never
 > weak. A disjoint object *literal* is still an error — through freshness,
 > reported as "Object literal may only specify known properties" — while a
-> disjoint *variable* now compiles and does nothing at runtime. `set()` paid
+> disjoint *variable* compiles and does nothing at runtime. `set()` paid
 > this when it turned generic; `createSignal` pays it here. Both measured
 > against the generated declarations, before and after.
 
@@ -208,7 +206,7 @@ only possible when `T` is itself a function type — either named
 > and subsequent reads return it — only the notification (including
 > `{touch: true}`) is suppressed. See `recipes.md` → *Writes that don't notify*.
 
-> **A failing effect no longer costs its siblings their notification.**
+> **A failing effect does not cost its siblings their notification.**
 > `set()` runs *every* subscribed effect before it returns — including the
 > ones with a lower priority than the one that threw — and only then
 > re-raises what failed: a single failure unchanged, several as an
@@ -219,7 +217,7 @@ only possible when `T` is itself a function type — either named
 > still re-raised together with it.
 
 > The same holds for `destroySignal()`, with the same exception: a throwing
-> effect cleanup no longer ends the delivery, so a `link()`, a `SignalGroup`
+> effect cleanup does not end the delivery, so a `link()`, a `SignalGroup`
 > or a `SignalAutoMap` registered behind that effect still learns that the
 > signal is gone instead of keeping a dead one. Several failures arrive as an
 > `AggregateError` in delivery order, a lone one unchanged. Only effects are
@@ -265,7 +263,7 @@ overtook executes its cleanup at once instead of putting it in the slot, so an
 effect writing a signal it depends on gets the cleanup of **every** nested run,
 not only the oldest.
 A synchronous throw out of the callback arrives at whoever triggered the run —
-`set()`, `touch()`, `batch()`, `effect.run()` — but it no longer holds up the
+`set()`, `touch()`, `batch()`, `effect.run()` — but it does not hold up the
 other effects of that same write; they all run first, and the failure (or an
 `AggregateError` over several of them) is re-raised afterwards. The effect
 itself stays usable: it keeps its dependencies and runs again on the next
@@ -279,7 +277,7 @@ first run, keeps its dependencies, runs again on the next change, and goes
 down with `group.clear()` like any other member. Without it the creation is
 taken back even where something else was holding the effect — one created
 inside another effect's callback is a child of that parent and is rolled back
-all the same, so a parent that catches the failure no longer keeps it.
+all the same, so a parent that catches the failure does not keep it either.
 Should the rollback itself fail (an
 `onDestroyEffect()` handler or a cleanup throwing), both failures arrive
 together as an `AggregateError`, creation error first.
@@ -330,7 +328,7 @@ last value they held, so it reads as a frozen constant. `{attach}` gives the
 signal a `SignalGroup` membership and, optionally, a name; it does not take
 the signal out of the creating effect's ownership, so it dies on the same
 rerun the effect does, same as an unattached one. `{attach}` is not an escape
-hatch for a live memo — it no longer even saves the last value; `hibernate()`
+hatch for a live memo — it does not even save the last value; `hibernate()`
 around the creation is the only way to keep the memo itself recomputing past
 the parent's rerun.
 
@@ -445,8 +443,9 @@ const unsubscribe = onSignalizeError(({level, source, message, error}) => {
 The general channel for everything the library has to say when there is
 nobody left to say it to. Some of it is a failure inside a
 `FinalizationRegistry` callback, where a `throw` becomes an
-`uncaughtException` and ends the process; some of it is a notice. All of it
-used to go straight to the console, where no application could route it.
+`uncaughtException` and ends the process; some of it is a notice. Without a
+handler all of it goes straight to the console, where no application can route
+it.
 
 `cb` receives one `SignalizeErrorPayload`:
 
@@ -477,9 +476,11 @@ there. Measured, both ways.
 
 What a handler changes, exactly:
 
-1. **No handler.** Every message goes to the console as before — same text,
-   same argument shape. Nothing is taken away from code that does not know
-   this channel exists.
+1. **No handler.** Every message goes to the console method its `level` names,
+   with `error` as a second argument where the payload carries one —
+   `console.warn(message)` for a notice, `console.error(message, error)` for a
+   failure. Nothing is taken away from code that does not know this channel
+   exists.
 2. **Handler registered.** The payload goes to the handler and the console
    stays quiet. Whoever installs this owns the message, **deprecation notices
    included** — if they should stay visible, log them.
@@ -603,7 +604,7 @@ callback target — because `SignalReader<T>` is itself callable and TypeScript
 builds no contextual type for a union with more than one call signature, which
 leaves an unannotated callback parameter on implicit `any` (`TS7006` under
 `noImplicitAny`).
-`link` therefore carries two signatures now, and the cost is one rule:
+`link` therefore carries two signatures, and the cost is one rule:
 anything that reduces it back to a single signature — an assignment to a
 narrower one, generic inference, or a utility type — resolves to the callback
 signature. Four examples of that rule, not a closed list:
@@ -633,8 +634,8 @@ signature. Four examples of that rule, not a closed list:
   overloaded function type isn't assignable to a narrower one.
 - **A utility type that reduces the overloaded type to one signature**
   resolves it to the callback overload, not the union: `Parameters<typeof
-  link>[1]` is `ValueCallback<unknown>` now, so a variable typed from it no
-  longer accepts a signal. `ReturnType<typeof link>` is unaffected — both
+  link>[1]` is `ValueCallback<unknown>`, so a variable typed from it does not
+  accept a signal. `ReturnType<typeof link>` is unaffected — both
   overloads return the same type.
 
 The repair is the same across all four, with the same caveat: annotate the
@@ -656,7 +657,7 @@ being destroyed. Garbage collection alone is not a fifth way — a link on a
 still-live source is not reclaimed, no matter how thoroughly its return value
 is dropped. A link that becomes unreachable *together with* its source does
 get its subscriptions on the two global queues released by an internal
-finalizer these days, not just its entry in the count — but that is a
+finalizer, not just its entry in the count — but that is a
 backstop for links nobody can reach any more, and it can be neither scheduled
 nor observed. A long-lived source that keeps accumulating fresh links without
 ever tearing the old ones down grows this registry without bound, and every
@@ -788,8 +789,8 @@ to completion first. The outer one then gives up silently: it emits no
 `'value'` and leaves `lastValue` alone, because its value no longer exists
 on either signal. A consumer therefore sees values monotonically in write
 order and never a regression to an older one. The same holds if `action()`
-destroys the link: the link no longer throws out of the `signal.set()` that
-started the propagation, and `lastValue` stays `undefined`.
+destroys the link: a destroyed link throws nothing out of the `signal.set()`
+that started the propagation, and `lastValue` stays `undefined`.
 
 **Events** (eventize) emitted on the link object: `'value'`, `'mute'`,
 `'unmute'`, `'destroy'`. A `'destroy'` listener already sees the link with
@@ -831,11 +832,11 @@ unhandled rejection, which ends the process under Node's default. Keep the
 async work outside the frame rather than catching the `TypeError` and
 carrying on.
 
-An effect that throws during the flush no longer holds up the remaining
+An effect that throws during the flush does not hold up the remaining
 delayed effects; its failure reaches the `batch()` caller after the flush is
 complete, several failures as an `AggregateError`. If `callback` and the flush
 both fail, both failures arrive together as an `AggregateError`, the callback's
-error first — the flush no longer replaces what the callback threw.
+error first — the flush does not replace what the callback threw.
 
 Reading a memo inside the callback recomputes it there and then, instead of
 handing back the value it had before the batch — a memo whose dependency was
@@ -964,7 +965,7 @@ a single one unchanged, several as an `AggregateError` in sweep order.
 
 When a user object becomes unreachable without an explicit `clear()` / `delete()`,
 a `FinalizationRegistry` callback runs `clear()` on the orphaned group. Nothing
-in `SignalGroup` itself blocks that any more: the registry of live groups, the
+in `SignalGroup` itself blocks that: the registry of live groups, the
 registry's held value and the per-signal subscription on the global destroy
 queue all know a group through a `WeakRef`. A host whose only back-reference is
 a signal value — the `@signal() accessor self = this` shape — is reclaimed
@@ -1012,7 +1013,7 @@ The five walks over the group graph — `hasSignal()`, `signal()`, `runEffects()
 
 > **Teardown errors.** `clear()` and `off()` finish the entire teardown
 > before they report a failure. A cleanup callback that throws, or a
-> `DESTROY`/`OFF` listener that does, no longer aborts what comes after it.
+> `DESTROY`/`OFF` listener that does, does not abort what comes after it.
 > For `clear()`: sibling effects are still destroyed, signals still torn
 > down, links still released, the group is still deregistered. For `off()`:
 > sibling effects are still destroyed, links still released and external

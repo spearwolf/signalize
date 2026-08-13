@@ -140,7 +140,7 @@ onEffectError(({error, effect, effectId, phase}) => {}, priority?);  // → unsu
 
 Reports failures that have no caller left to throw at: rejections of `async` effect callbacks and `async` cleanups are the common case, plus a cleanup that throws synchronously when its throw can no longer reach a legitimate caller — a superseded run, an effect already destroyed, or one destroying itself as its own run winds down (pitfall 11b): it throws with a full stack present and still lands here. Without a handler they fall through to `onSignalizeError()` with `source: 'effect'`, and with nobody there either to `console.error` with the effect id — never to an unhandled rejection. Every other synchronous throw propagates to whoever triggered the run — but only after every other effect of that same write has run; several failures of one write arrive as an `AggregateError` in delivery order.
 
-Two constraints on the handler: it must be **synchronous or catch its own errors** (nothing awaits it, so `onEffectError(async p => { await report(p) })` with a failing `report` crashes the process exactly as before), and a synchronous throw out of it **stops the dispatch**, so lower-priority handlers miss that event.
+Two constraints on the handler: it must be **synchronous or catch its own errors** (nothing awaits it, so `onEffectError(async p => { await report(p) })` with a failing `report` becomes an unhandled rejection and ends the process), and a synchronous throw out of it **stops the dispatch**, so lower-priority handlers miss that event.
 
 The cleanup an `async` callback resolves to runs **late** — right when the promise settles — when the effect has re-run or been destroyed in the meantime (pitfall 11a). Nothing is awaited before the next run.
 
@@ -158,7 +158,7 @@ onSignalizeError(({level, source, message, error}) => {}, priority?);  // → un
 // error:   absent on a notice — none is invented to fill the field
 ```
 
-The general channel for what the library cannot throw at anyone: a teardown that threw inside the `FinalizationRegistry` callback of `SignalGroup`, `link()` or `SignalAutoMap`; the 1000-links threshold; the deprecation notices; a second copy of the library loaded into the same process, which shares no signals, effects, groups or links with the first; effect failures that no `onEffectError()` handler took; and an option that has no effect in the combination it was passed in (`createMemo({name})` without `attach`, `createSignal(existingSignal, …)` for anything but `attach`), on every such call, because that marks a misspelled call rather than a lifecycle event. Without a handler every one of them goes to `console.warn(message)` / `console.error(message, error)` exactly as before — the channel takes nothing away from code that ignores it.
+The general channel for what the library cannot throw at anyone: a teardown that threw inside the `FinalizationRegistry` callback of `SignalGroup`, `link()` or `SignalAutoMap`; the 1000-links threshold; the deprecation notices; a second copy of the library loaded into the same process, which shares no signals, effects, groups or links with the first; effect failures that no `onEffectError()` handler took; and an option that has no effect in the combination it was passed in (`createMemo({name})` without `attach`, `createSignal(existingSignal, …)` for anything but `attach`), on every such call, because that marks a misspelled call rather than a lifecycle event. Without a handler every one of them goes to `console.warn(message)` / `console.error(message, error)` — the channel takes nothing away from code that ignores it.
 
 With a handler, the console stays quiet and the handler owns the message, **deprecation notices included** — the one surprise here: a reporting handler that only forwards `level: 'error'` makes them invisible. Same two constraints as `onEffectError()` (synchronous or self-catching; a throwing handler stops the dispatch), and a throwing handler is caught rather than rethrown, because most call sites are registry callbacks where a throw kills the process. An effect failure never arrives twice: `onEffectError()` gets it first, this channel only when nobody listens there.
 
@@ -209,6 +209,11 @@ for await (const v of con.asyncValues((v, i) => i >= 5, {signal})) { /* … */ }
 // destroyed ends it quietly instead, same as `stop(value, i) → true`
 ```
 
+`SignalLink<T>` is invariant in `T`, so `SignalLink<unknown>` is not the "any
+link" annotation it looks like — it accepts no concrete link at all. Write
+`SignalLink<any>` where a parameter should take some link whatever its value
+type.
+
 A link is an eventize object and emits `'value'`, `'mute'`, `'unmute'`, `'destroy'` on itself.
 A `'destroy'` listener already sees `isDestroyed === true`, so calling `destroy()` again from
 one is a no-op. If a propagation is re-entered — the callback or a target effect writes the
@@ -225,6 +230,12 @@ release switches retaining off, so a `nextValue()` after the last iterator
 waits for the next value instead of resolving with a stale one — and a
 `retain(link, 'value')` you set yourself does not survive an `asyncValues()`
 run.
+
+The release is the caller's obligation, and only `for await` discharges it on
+its own (on `break` and on a throw alike). An iterator driven by hand and then
+simply dropped never brings its slot back: the active-iterator count stays
+above zero, so `'value'` remains retained until the link is destroyed. The
+iterator protocol gives the link no way to close what the caller opened.
 
 ## Context modes
 
@@ -328,7 +339,7 @@ class Foo {
 }
 ```
 
-Every instance gets its own per-property signal. Cleanup: `SignalGroup.delete(instance)` for everything, or `destroyObjectSignals(instance)` for signals only. A decorated field holding a reference to the instance (e.g. `@signal() accessor self = this`) no longer blocks the `FinalizationRegistry` backstop — instance and group are collected together. An effect whose callback closure captures the instance still does, with or without a group; see pitfall 16a.
+Every instance gets its own per-property signal. Cleanup: `SignalGroup.delete(instance)` for everything, or `destroyObjectSignals(instance)` for signals only. A decorated field holding a reference to the instance (e.g. `@signal() accessor self = this`) does not block the `FinalizationRegistry` backstop — instance and group are collected together. An effect whose callback closure captures the instance still does, with or without a group; see pitfall 16a.
 
 ## Counters
 
