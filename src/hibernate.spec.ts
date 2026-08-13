@@ -403,7 +403,7 @@ describe('hibernate', () => {
       }
     });
 
-    it('restores all three contexts when the flushed batch throws (ASYNC-001)', () => {
+    it('restores all three contexts when the flushed batch throws', () => {
       // The flush used to sit *before* the `try`, so an effect that threw in
       // it skipped all three `restore*` calls. Two of the three repair
       // themselves on the way out (`batch()` resets `Batch.current`,
@@ -412,7 +412,7 @@ describe('hibernate', () => {
       //
       // Not a single `expect()` runs inside the batch callback: an assertion
       // failure in there is thrown away by `Batch.run()` in `batch()`'s
-      // `finally` (BUG-012, fixed in the same package). The observations are
+      // `finally` (fixed in the same package). The observations are
       // recorded and asserted afterwards, where nothing can overwrite them.
       const {get: a, set: setA} = createSignal(0);
       let boomRuns = 0;
@@ -469,7 +469,7 @@ describe('hibernate', () => {
         expect((seen.thrown as Error)?.message).toBe('effect boom');
         expect(seen.hibernateCallbackRan).toBe(false);
 
-        // ASYNC-001: the three restores must have run anyway
+        // The three restores must have run anyway
         expect(seen.batchAfter, 'the batch context is back').toBe(
           seen.batchBefore,
         );

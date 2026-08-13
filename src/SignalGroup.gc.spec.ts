@@ -24,7 +24,7 @@ import type {SignalizeErrorPayload} from './types.js';
 // (the `gc` project in vitest.config.ts, which `pnpm test` also runs, and
 // `pnpm test:gc` for the whole suite). Skipping the suite when the flag is
 // gone would hide a lost `execArgv` behind a green reporter, so this file
-// refuses to load instead (BUILD-016).
+// refuses to load instead.
 const gc = (globalThis as {gc?: () => void}).gc;
 
 if (typeof gc !== 'function') {
@@ -142,7 +142,7 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
 
     // Re-entering clear() from a DESTROY listener used to recurse until the
     // stack gave out. From the FR callback that RangeError is uncatchable for
-    // application code and takes the whole process down (BUG-002).
+    // application code and takes the whole process down.
     on(group, DESTROY, () => {
       group.clear();
     });
@@ -333,13 +333,13 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
     }
   });
 
-  it('the DESTROY-hook guard does not pin a link the group has let go of (MEM-002)', async () => {
+  it('the DESTROY-hook guard does not pin a link the group has let go of', async () => {
     // The guard that keeps `attachLink()` from registering a second
     // counter-edge per (link, group) pair is a `WeakSet`, and a plain `Set`
     // in its place is functionally indistinguishable — every unit test
     // stays green. The difference is only visible here: a `Set` would hold
     // every link the group has ever seen for the group's whole lifetime,
-    // past `detachLink()` and past `destroy()`, which is MEM-002 again in
+    // past `detachLink()` and past `destroy()`, which is the destroy hook again in
     // another pocket.
     const host = {marker: 'link-destroy-hook-guard'};
     const group = SignalGroup.findOrCreate(host);
@@ -368,10 +368,10 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
     }
   });
 
-  it('a host whose only back-reference is a signal value is reclaimed (MEM-003)', async () => {
+  it('a host whose only back-reference is a signal value is reclaimed', async () => {
     // The everyday decorator shape, `@signal() accessor self = this`: the
     // host owns a group, the group owns a signal, and the signal's *value*
-    // is the host. Nothing else points at it. Before MEM-003 all three
+    // is the host. Nothing else points at it. With any of the three roots held strongly, all three
     // module-level roots of `SignalGroup.ts` — the `allGroups` set, the held
     // value of the FinalizationRegistry, and the per-signal listener on
     // `globalDestroySignalQueue` — held the group strongly, so the group was
@@ -401,7 +401,7 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
 
       // Two stop conditions. A silently collected group never runs `clear()`,
       // so its signals are not destroyed but collected with it — the counter
-      // only comes back through MEM-006's finalizer on the SignalImpl, and
+      // only comes back through the finalizer on the SignalImpl, and
       // that can land a sweep later than the group count.
       for (
         let i = 0;
@@ -429,7 +429,7 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
     }
   });
 
-  it('a throwing release handle in a collected group is reported, not thrown (MEM-003)', async () => {
+  it('a throwing release handle in a collected group is reported, not thrown', async () => {
     // The resource finalizer runs without a caller: a throw out of it takes
     // the process down. Same shape as the link and auto-map finalizers, and
     // the thrower goes in *front* of the real handles — one at the end would
@@ -478,7 +478,7 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
     }
   });
 
-  it('a group whose host dies while an effect keeps it alive is still cleared (MEM-003)', async () => {
+  it('a group whose host dies while an effect keeps it alive is still cleared', async () => {
     // The counter-direction to the test above, and the one nothing else
     // asserts: an attached effect is reachable from `globalEffectQueue` for
     // as long as it lives, and through the `once(effect, DESTROY, …)` hook

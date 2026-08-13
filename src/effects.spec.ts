@@ -13,7 +13,7 @@ import {
   onDestroyEffect,
 } from './effects.js';
 import {globalDestroySignalQueue, globalSignalQueue} from './global-queues.js';
-// Through the entry point on purpose: the re-export is half of what API-003
+// Through the entry point on purpose: the re-export is half of what the API
 // promises, and only an import from here can witness it.
 import {getMaxEffectDepth, setMaxEffectDepth} from './index.js';
 import {SignalGroup} from './SignalGroup.js';
@@ -98,7 +98,7 @@ describe('createEffect', () => {
 
       // 667 supersedes the 666 run before its promise settled — the cleanup
       // of the 666 run still runs, just late, once its promise settles below
-      // (MEM-004); it is not discarded.
+      //; it is not discarded.
       setA(667);
 
       expect(a()).toBe(667);
@@ -268,7 +268,7 @@ describe('createEffect', () => {
     }
   });
 
-  it('skips a static dependency that is already destroyed at construction time (BUG-003)', () => {
+  it('skips a static dependency that is already destroyed at construction time', () => {
     const sigQueueBaseline = getSubscriptionCount(globalSignalQueue);
     const destroyQueueBaseline = getSubscriptionCount(globalDestroySignalQueue);
 
@@ -330,7 +330,7 @@ describe('createEffect', () => {
 
   it('runaway self-triggering effect throws once maxDepth is exceeded', () => {
     const before = getMaxEffectDepth();
-    // The default is quoted in five documents and asserted nowhere (API-003).
+    // The default is quoted in five documents and asserted nowhere.
     expect(before).toBe(256);
     setMaxEffectDepth(8);
 
@@ -348,7 +348,7 @@ describe('createEffect', () => {
     }
   });
 
-  it('pins the maxDepth boundary exactly: N-1 recursive self-triggers pass, N throws (TEST-026)', () => {
+  it('pins the maxDepth boundary exactly: N-1 recursive self-triggers pass, N throws', () => {
     const before = getMaxEffectDepth();
     const N = 5;
     setMaxEffectDepth(N);
@@ -392,7 +392,7 @@ describe('createEffect', () => {
     }
   });
 
-  it('setMaxEffectDepth() refuses a cap that is not a positive integer (API-003)', () => {
+  it('setMaxEffectDepth() refuses a cap that is not a positive integer', () => {
     const before = getMaxEffectDepth();
 
     try {
@@ -407,7 +407,7 @@ describe('createEffect', () => {
     }
   });
 
-  it('onCreateEffect/onDestroyEffect deliver in priority order (API-002)', () => {
+  it('onCreateEffect/onDestroyEffect deliver in priority order', () => {
     // The promise `CHANGELOG.md` makes as a breaking change: priority sits in
     // second place, exactly where `onEffectError()` has always had it. Both
     // handlers of a pair subscribe in low-then-high order, so registration
@@ -595,7 +595,7 @@ describe('createEffect', () => {
     }
   });
 
-  // BUG-005 — createEffect must not mutate a caller-supplied options object.
+  // CreateEffect must not mutate a caller-supplied options object.
   it('does not mutate the caller-supplied options object (positional dependencies form)', () => {
     const {get} = createSignal(123);
 
@@ -618,7 +618,7 @@ describe('createEffect', () => {
     }
   });
 
-  // BUG-003 — an unresolvable string/symbol dependency must throw a
+  // An unresolvable string/symbol dependency must throw a
   // descriptive error naming the dependency, not an opaque TypeError.
   it('throws a descriptive error when a named dependency is not registered in the attached group', () => {
     const host = {};

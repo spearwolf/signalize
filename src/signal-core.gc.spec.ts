@@ -8,7 +8,7 @@ import {destroySignal, getSignalsCount} from './signal-core.js';
 // (the `gc` project in vitest.config.ts, which `pnpm test` also runs, and
 // `pnpm test:gc` for the whole suite). Skipping the suite when the flag is
 // gone would hide a lost `execArgv` behind a green reporter, so this file
-// refuses to load instead (BUILD-016).
+// refuses to load instead.
 const gc = (globalThis as {gc?: () => void}).gc;
 
 if (typeof gc !== 'function') {
@@ -28,8 +28,8 @@ const forceGc = async () => {
 // neighbouring specs: this file's whole subject is a counter that comes back
 // down at a time nobody can name. Each test takes its own baseline instead,
 // which keeps one failure from turning into three.
-describe('signal counter GC behavior (requires --expose-gc) — MEM-006', () => {
-  it('a signal dropped without destroySignal() stops being counted (MEM-006)', async () => {
+describe('signal counter GC behavior (requires --expose-gc)', () => {
+  it('a signal dropped without destroySignal() stops being counted', async () => {
     const signalsBefore = getSignalsCount();
     const sigBefore = getSubscriptionCount(globalSignalQueue);
     const destBefore = getSubscriptionCount(globalDestroySignalQueue);
@@ -68,7 +68,7 @@ describe('signal counter GC behavior (requires --expose-gc) — MEM-006', () => 
     expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
   });
 
-  it('a signal destroyed and then collected is not counted down twice (MEM-006)', async () => {
+  it('a signal destroyed and then collected is not counted down twice', async () => {
     const signalsBefore = getSignalsCount();
 
     const SIGNAL_COUNT = 200;

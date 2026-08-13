@@ -2,7 +2,7 @@ import {readdirSync, readFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-// No counter guards here (CONS-002): this file creates no signal, effect or
+// No counter guards here: this file creates no signal, effect or
 // link — it reads the sources of `src/` as text. There is nothing for
 // `assertEffectsCount` / `assertSignalsCount` / `assertLinksCount` to watch.
 // Same shape as `index.public-surface.spec.ts`.
@@ -19,7 +19,7 @@ import {fileURLToPath} from 'node:url';
 //
 // What a scanner *can* do instead is go quiet. A regex that stops matching
 // iterates over nothing and passes without a word — the same failure mode
-// `assertThresholdGlobsMatch()` in `vitest.config.ts` exists for (BUILD-015).
+// `assertThresholdGlobsMatch()` in `vitest.config.ts` exists for.
 // Five things stand against that here, and they matter more than the prefix
 // check itself:
 //
@@ -495,7 +495,7 @@ const occurrences = [...sources].flatMap(([file, src]) => scanFile(file, src));
 
 const at = (o: Occurrence) => `${o.file}:${o.line}`;
 
-describe('every message this library authors is prefixed (CONS-002)', () => {
+describe('every message this library authors is prefixed', () => {
   it('reads sources at all — the directory listing is not empty', () => {
     // A `readdirSync` pointed at the wrong place would make every assertion
     // below vacuous.

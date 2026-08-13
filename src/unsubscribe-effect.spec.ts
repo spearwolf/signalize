@@ -119,7 +119,7 @@ describe('unsubscribe as return function from effect callback', () => {
     }
   });
 
-  it('leaves no trace: subscriptions and counters return to their snapshot after teardown (TEST-010)', () => {
+  it('leaves no trace: subscriptions and counters return to their snapshot after teardown', () => {
     const effectSubscriptionsBefore = getSubscriptionCount(globalEffectQueue);
     const destroySubscriptionsBefore = getSubscriptionCount(
       globalDestroySignalQueue,

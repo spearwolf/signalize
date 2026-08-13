@@ -8,17 +8,17 @@ import {EffectImpl} from './EffectImpl.js';
 import {createEffect, onCreateEffect} from './effects.js';
 import type {FailingEffect} from './types.js';
 
-// PERF-009: `run` and `destroy` move from arrow properties to prototype
+// `run` and `destroy` move from arrow properties to prototype
 // methods; the user decision of 2026-08-12 takes `runImmediately` with them,
-// though the finding only names the first two. READ-006: `childEffects`
+// though the finding only names the first two. `childEffects`
 // moves from TS-erasable `private` to a real `#`-field.
 //
 // Z3 is written and confirmed green first, against the code as it stands
 // *before* the refactor below — it is the only thing standing between
-// PERF-009 and `Signal#onChange()`'s published unsubscribe contract, and a
+// the declaration form and `Signal#onChange()`'s published unsubscribe contract, and a
 // witness written after the fact would never have proven it catches
 // anything.
-describe('EffectImpl: how its members are declared (PERF-009, READ-006)', () => {
+describe('EffectImpl: how its members are declared', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');
@@ -92,7 +92,7 @@ describe('EffectImpl: how its members are declared (PERF-009, READ-006)', () => 
     });
   });
 
-  describe('Z1 — READ-006, the enumerable side', () => {
+  describe('Z1 — the enumerable side', () => {
     it('Object.keys() on the FailingEffect instance no longer lists childEffects', () => {
       let seen: FailingEffect | undefined;
       const unsubscribe = onCreateEffect((effect) => {
@@ -111,7 +111,7 @@ describe('EffectImpl: how its members are declared (PERF-009, READ-006)', () => 
     });
   });
 
-  describe('Z2 — READ-006, the writable side', () => {
+  describe('Z2 — the writable side', () => {
     it('an outside write to childEffects no longer derails destroy()', () => {
       let seen: FailingEffect | undefined;
       const unsubscribe = onCreateEffect((effect) => {
@@ -141,7 +141,7 @@ describe('EffectImpl: how its members are declared (PERF-009, READ-006)', () => 
     });
   });
 
-  describe('Z4 — PERF-009, the declaration form', () => {
+  describe('Z4 — the declaration form', () => {
     it('run, runImmediately and destroy sit on the prototype, not the instance', () => {
       let seen: FailingEffect | undefined;
       const unsubscribe = onCreateEffect((effect) => {

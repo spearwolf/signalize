@@ -12,7 +12,7 @@ import {
 // helper with the helper — a defect in the assertion could hide itself the
 // same way it hides everything else.
 describe('assertEffectSubscriptionsCountChange', () => {
-  it('reports the delta relative to a non-zero baseline (TEST-007)', () => {
+  it('reports the delta relative to a non-zero baseline', () => {
     // Build a non-zero baseline first: this is exactly where the helper
     // breaks, because g_initialEffectCount is not 0.
     const {get: sigOne} = createSignal(1);

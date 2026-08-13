@@ -120,7 +120,7 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('SignalGroup.delete() takes the group itself, like get() and findOrCreate() (API-014)', () => {
+    it('SignalGroup.delete() takes the group itself, like get() and findOrCreate()', () => {
       const host = {};
       const group = SignalGroup.findOrCreate(host);
       const signal = createSignal(1);
@@ -203,11 +203,11 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('reports the deprecation once per process, not once per call (CONS-004)', () => {
+    it('reports the deprecation once per process, not once per call', () => {
       // Zero, not one — and that is the whole assertion. The witness right
       // above already spent this call site's single notice, and the gate in
       // `deprecation-warnings.ts` is module-scoped, so nothing is left for
-      // these two calls. Before CONS-004 they produced two more notices.
+      // these two calls — the once-per-call-site gate is what keeps it at one.
       // Same shape as `create-signal.deprecation.spec.ts`'s second test.
       const seen: SignalizeErrorPayload[] = [];
       const unsubscribe = onSignalizeError((payload) => {
@@ -375,7 +375,7 @@ describe('SignalGroup', () => {
         expect(group.signal('mySignal')).toBe(signal2);
       } finally {
         // signal1 was displaced by the rebind and left the group with it
-        // (MEM-003) — it is still alive, so it is on us to destroy it.
+        // — it is still alive, so it is on us to destroy it.
         signal1.destroy();
         signal2.destroy();
         group.clear();
@@ -389,7 +389,7 @@ describe('SignalGroup', () => {
 
       try {
         // explicitly attached, so the rebind below keeps it around as a
-        // fallback candidate for the name (MEM-003)
+        // fallback candidate for the name
         group.attachSignal(signal1);
 
         group.attachSignalByName('mySignal', signal1);
@@ -622,7 +622,7 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('attachEffect() called repeatedly adds no second DESTROY listener (TEST-021)', () => {
+    it('attachEffect() called repeatedly adds no second DESTROY listener', () => {
       // The counterpart to the two `attachLink()` tests in `link.spec.ts`
       // (`re-attaching the same group on repeated cache hits …`, `no
       // combination of the two attach routes …`): eventize dedupes only
@@ -658,9 +658,9 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('attachEffect() takes the effect back out even when a DESTROY listener throws first (MEM-009)', () => {
+    it('attachEffect() takes the effect back out even when a DESTROY listener throws first', () => {
       // The counterpart to `attachLink()`'s hook, which has carried
-      // `Priority.Max` since MEM-002. eventize ends the delivery at the
+      // `Priority.Max`. eventize ends the delivery at the
       // first throwing listener, so a bookkeeping hook on normal priority
       // is at the mercy of whoever subscribed before it: the group kept the
       // dead `EffectImpl` and its callback closure until the next
@@ -700,7 +700,7 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('attachEffect() refuses a destroyed effect, like its two siblings (CONS-006)', () => {
+    it('attachEffect() refuses a destroyed effect, like its two siblings', () => {
       // `#addSignal()` and `attachLink()` both reject a corpse; this one
       // took it and held it. A destroyed `EffectImpl` has emitted its
       // DESTROY and run `off(this)`, so the `once(effect, DESTROY, …)`
@@ -732,8 +732,8 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('attachEffect() lets go of an attached wrapper when it is destroyed (API-001, MEM-002)', () => {
-      // The half of API-001 no compiler sees: before the unwrapping, a
+    it('attachEffect() lets go of an attached wrapper when it is destroyed', () => {
+      // The half no compiler sees: without the unwrapping, a
       // wrapper pushed in with `as any` was stored as-is, and the DESTROY
       // hook waited on an object that never fires it — the group kept the
       // dead effect until `clear()`. Measured against the old code this
@@ -761,8 +761,8 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('attachEffect() refuses a destroyed wrapper, like a destroyed impl (API-001, CONS-006)', () => {
-      // The other half: `Effect` has no `destroyed` getter, so the CONS-006
+    it('attachEffect() refuses a destroyed wrapper, like a destroyed impl', () => {
+      // The other half: `Effect` has no `destroyed` getter, so an unwrapped
       // guard read `undefined` on a wrapper and waved the corpse through.
       // Now the method unwraps first and asks the instance.
       const group = SignalGroup.findOrCreate({});
@@ -938,7 +938,7 @@ describe('SignalGroup', () => {
       }
     });
 
-    describe('MEM-002: a destroyed link takes itself out of the group', () => {
+    describe('A destroyed link takes itself out of the group', () => {
       it('attachLink() alone is enough — the counter-edge does not depend on attach()', () => {
         const group = SignalGroup.findOrCreate({});
         const source = createSignal(1);
@@ -1125,7 +1125,7 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('clear() on a group without a parent does not throw (TEST-026)', () => {
+    it('clear() on a group without a parent does not throw', () => {
       const group = SignalGroup.findOrCreate({});
 
       try {
@@ -1159,11 +1159,10 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('reports the deprecation once per process, not once per call (CONS-004)', () => {
+    it('reports the deprecation once per process, not once per call', () => {
       // Zero, not one — see the sibling witness for the static
       // `SignalGroup.destroy(obj)`: the test above already spent this call
-      // site's single notice. Before CONS-004 these two calls produced two
-      // more.
+      // site's single notice — the once-per-call-site gate keeps it at one.
       const seen: SignalizeErrorPayload[] = [];
       const unsubscribe = onSignalizeError((payload) => {
         seen.push(payload);
@@ -1377,7 +1376,7 @@ describe('SignalGroup', () => {
       try {
         // Attach three signals with the same name. signal1 and signal2 are
         // additionally attached explicitly, so a rebind does not drop them from
-        // the group (MEM-003) and they stay fallback candidates.
+        // the group and they stay fallback candidates.
         group.attachSignal(signal1);
         group.attachSignal(signal2);
 
@@ -1408,7 +1407,7 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('detachSignal() hands the name to the most recently bound candidate, not the first (TEST-025)', () => {
+    it('detachSignal() hands the name to the most recently bound candidate, not the first', () => {
       // The neighbour above stops one candidate short: after its two
       // detaches exactly one signal is left under the name, and "the last
       // one" and "the first one" are then the same signal. With two
@@ -1421,7 +1420,7 @@ describe('SignalGroup', () => {
 
       try {
         // Explicitly attached, so the rebind does not destroy them and they
-        // stay fallback candidates (MEM-003).
+        // stay fallback candidates.
         group.attachSignal(first);
         group.attachSignal(second);
 
@@ -1710,7 +1709,7 @@ describe('SignalGroup', () => {
         group.attachSignal(signal);
 
         // The effect the group just took must not survive its teardown. Until
-        // TEST-017 gave this test a `finally`, that was policed by the
+        // Before this test had a `finally`, it was policed by the
         // `afterEach` counter alone — a detector by accident. Here it is a
         // promise: drop the effect loop from `SignalGroup#clear()` and this
         // line goes red, not the rest of the file.
@@ -1743,7 +1742,7 @@ describe('SignalGroup', () => {
     });
   });
 
-  describe('cyclic group graphs (BUG-002)', () => {
+  describe('cyclic group graphs', () => {
     it('attachGroup() rejects a direct cycle', () => {
       const a = SignalGroup.findOrCreate({});
       const b = SignalGroup.findOrCreate({});
@@ -1936,7 +1935,7 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('hasSignal() answers instead of hanging when the parent chain is cyclic (TEST-018)', () => {
+    it('hasSignal() answers instead of hanging when the parent chain is cyclic', () => {
       const a = SignalGroup.findOrCreate({});
       const b = SignalGroup.findOrCreate({});
       const inB = createSignal(1);
@@ -1972,7 +1971,7 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('signal() answers instead of hanging when the parent chain is cyclic (TEST-018)', () => {
+    it('signal() answers instead of hanging when the parent chain is cyclic', () => {
       const a = SignalGroup.findOrCreate({});
       const b = SignalGroup.findOrCreate({});
       const inB = createSignal(1);
@@ -2005,7 +2004,7 @@ describe('SignalGroup', () => {
       }
     });
 
-    it('runEffects() ignores a re-entrant call from an effect callback (TEST-018)', () => {
+    it('runEffects() ignores a re-entrant call from an effect callback', () => {
       const group = SignalGroup.findOrCreate({});
       const order: string[] = [];
 
@@ -2044,8 +2043,8 @@ describe('SignalGroup', () => {
     });
   });
 
-  describe('named signal bookkeeping (MEM-003)', () => {
-    it('signal churn leaves no dead handles in the held value (MEM-003)', () => {
+  describe('named signal bookkeeping', () => {
+    it('signal churn leaves no dead handles in the held value', () => {
       // `#dropSignalSubscription()` takes the handle out of
       // `[$groupResources].unsubs` as well as out of
       // `#signalDestroySubscriptions`. Only the second one is load-bearing
@@ -2283,7 +2282,7 @@ describe('SignalGroup', () => {
     });
   });
 
-  describe('lazy member collections (PERF-004)', () => {
+  describe('lazy member collections', () => {
     it('the shared empty stand-ins refuse every write', () => {
       // The stand-ins are shared by every SignalGroup in the process, so a
       // forgotten `own*()` call would not corrupt one group, it would

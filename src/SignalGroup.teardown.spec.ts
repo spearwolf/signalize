@@ -496,7 +496,7 @@ describe('SignalGroup teardown robustness', () => {
     }
   });
 
-  it('static SignalGroup.clear() keeps a group created during the sweep registered (BUG-009)', () => {
+  it('static SignalGroup.clear() keeps a group created during the sweep registered', () => {
     const signalsBefore = getSignalsCount();
     const groupsBefore = getSignalGroupsCount();
 
@@ -542,7 +542,7 @@ describe('SignalGroup teardown robustness', () => {
     }
   });
 
-  it('the FinalizationRegistry backstop still works for a group created during the sweep (BUG-009)', () => {
+  it('the FinalizationRegistry backstop still works for a group created during the sweep', () => {
     const signalsBefore = getSignalsCount();
 
     const hostA = {};
@@ -644,7 +644,7 @@ describe('SignalGroup teardown robustness', () => {
     }
   });
 
-  it('the backstop leaves a group alone that is no longer registered (TEST-020)', () => {
+  it('the backstop leaves a group alone that is no longer registered', () => {
     // The counterpart to the test above: there the group is still filed in
     // the registry and the backstop has to reach it. Here it was cleared
     // explicitly first, and the membership check is all that keeps a
@@ -1011,7 +1011,7 @@ describe('SignalGroup teardown robustness', () => {
     });
   });
 
-  describe('the teardown order is part of the contract (TEST-019)', () => {
+  describe('the teardown order is part of the contract', () => {
     it('clear() emits DESTROY before it takes anything apart', () => {
       const obj = {};
       const group = SignalGroup.findOrCreate(obj);

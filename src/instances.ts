@@ -21,7 +21,7 @@ export interface SignalizeInstanceRecord {
 
 /**
  * Announce this copy of the library in the process-wide register and report
- * if it is not the only one (ARCH-001).
+ * if it is not the only one.
  *
  * Two copies in one process share no signals, effects, groups or links: the
  * module-level queues, the effect stack and the link map exist once per copy.

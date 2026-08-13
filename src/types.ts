@@ -233,7 +233,7 @@ export interface SignalReader<T> extends SignalLike<T> {
  *
  * - `set(value, params?)` stores the value. Its params are the published
  *   `SignalWriterParams<T>` and nothing wider: a statically `true` `lazy`
- *   closes this branch (BUG-014), and a key the type does not declare is
+ *   closes this branch, and a key the type does not declare is
  *   refused outright. A literal, a `SignalWriterParams<T>` variable and a
  *   pass-through argument of that type all pass it; see "What it costs"
  *   below for the shapes that do not.
@@ -244,11 +244,10 @@ export interface SignalReader<T> extends SignalLike<T> {
  * factory is not a `T` (unless `T` is itself a function type), so it misses
  * the value overload; and it only reaches the factory overload with a
  * `lazy` that is statically `true`. That is what makes a bare `set(fn)` a
- * compile error instead of a silent store-the-function (TYPE-002). The one
+ * compile error instead of a silent store-the-function. The one
  * condition the value branch does put on its params is the mirror of that
- * flag and nothing beyond it — two earlier attempts at TYPE-002 put a wider
- * one there and broke every caller holding a `SignalWriterParams<T>`
- * variable.
+ * flag and nothing beyond it — a wider one there breaks every caller holding
+ * a `SignalWriterParams<T>` variable.
  *
  * The value overload comes first on purpose. A signal whose `T` is itself a
  * function type keeps taking its functions as values, not as factories.
@@ -271,9 +270,9 @@ export interface SignalReader<T> extends SignalLike<T> {
  *   `TS2769` as well, to be read as "a value is not stored lazily, a factory
  *   is". It used to compile, put the value where the factory belongs, and
  *   leave the next read to die with `TypeError: this.valueFn is not a
- *   function` (BUG-014). Only a *statically* true `lazy` is refused; a
+ *   function`. Only a *statically* true `lazy` is refused; a
  *   `SignalWriterParams<T>` variable that happens to hold `{lazy: true}`
- *   still passes, which is the TYPE-002 boundary above seen from the other
+ *   still passes, which is the boundary above seen from the other
  *   side.
  *
  * **The `Record<Exclude<…>, never>` on the value params is load bearing, and
@@ -376,7 +375,7 @@ export interface SignalWriterParams<T>
  * Named as its own type rather than referencing the global `AbortSignal`:
  * that global lives in `lib.dom.d.ts` or in `@types/node`, and a consumer
  * compiling against plain `"lib": ["ES2023"]` has neither — the published
- * declarations would not resolve for them (BUILD-005). Every real
+ * declarations would not resolve for them. Every real
  * `AbortSignal`, DOM or Node, satisfies this shape.
  */
 export interface AbortSignalLike {

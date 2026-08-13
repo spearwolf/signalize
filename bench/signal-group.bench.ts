@@ -10,17 +10,17 @@ import {SignalGroup} from '../src/index.js';
  * re-entering `findOrCreate` on one already attached), so both get their
  * own bench rather than only measuring the cheaper lookup.
  *
- * What "full allocation" means has changed twice. Until PERF-004 the field
+ * What "full allocation" means has changed twice. With eager fields the
  * initializers built eleven containers — five Sets, three Maps, a WeakMap,
  * a WeakSet and the `[$groupResources]` wrapper object — plus WeakRef,
  * FinalizationRegistry.register and eventize(this) in the constructor
  * body. (An older revision of this comment claimed "four Sets, two Maps, a
- * WeakMap"; that was already wrong when it was written.) Since PERF-004
+ * WeakMap"; that was already wrong when it was written.) Today
  * nine of those eleven fields start out pointing at a module-level shared
  * empty stand-in and only allocate on their first write, so a fresh group
  * builds three: `#signals`, `#effects` and the wrapper.
  *
- * PERF-002 (package 12): `findOrCreate()` used to reach the lookup path
+ * The cache-hit check: `findOrCreate()` used to reach the lookup path
  * only *after* paying the fresh-object allocation cost — `new
  * SignalGroup(object)` ran unconditionally, and the constructor's own
  * `store.has()` check discarded the freshly built instance on a hit.
@@ -46,20 +46,20 @@ describe('SignalGroup.findOrCreate', () => {
 /*
  * Baseline history, single run, one dev laptop each time — not a gate.
  *
- * Before PERF-002 (commit 5cb75f4 — `findOrCreate()` always called `new
+ * Before the cache-hit check (commit 5cb75f4 — `findOrCreate()` always called `new
  * SignalGroup(object)`, even on a cache hit):
  *   create new group (fresh object)   ~582,887 hz
  *   lookup existing group             ~7,682,950 hz  (~13x faster)
  *
- * Same machine, same session, immediately before/after the PERF-002 change
- * (package 12 — `findOrCreate()` now checks `store.get(object)` first and
+ * Same machine, same session, immediately before/after that change
+ * (`findOrCreate()` now checks `store.get(object)` first and
  * only constructs on a miss):
  *   before: lookup existing group   6,327,903 hz
  *   after:  lookup existing group   18,859,414 hz  (~2.98x faster)
  *   (create new group (fresh object) is unaffected by this change — its
  *   allocation cost is unchanged: ~517,877 hz before, ~535,765 hz after)
  *
- * 2026-08-11, PERF-004 (package 19 — nine of the eleven containers start
+ * 2026-08-11, lazy containers (nine of the eleven start
  * out as shared empty stand-ins and allocate on first write). Method: this
  * file run three times against an unmodified copy of the tree and three
  * times against the rebuilt one, alternating, same machine and session,

@@ -65,8 +65,8 @@ describe('createSignal', () => {
     }
   });
 
-  it('holds undefined until first written when created without an initial value (API-013)', () => {
-    // The runtime half of API-013. The type half — `Signal<Type | undefined>`
+  it('holds undefined until first written when created without an initial value', () => {
+    // The runtime half. The type half — `Signal<Type | undefined>`
     // for this call — cannot be witnessed here: this project compiles with
     // `strictNullChecks: false`, where `number | undefined` collapses back to
     // `number` and any directive would go unused. It is witnessed against the
@@ -99,7 +99,7 @@ describe('createSignal', () => {
     }
   });
 
-  it('isSignal rejects fake signals with generic Symbol.for keys (BUG-006)', () => {
+  it('isSignal rejects fake signals with generic Symbol.for keys', () => {
     // A fake object using the old unnamespaced Symbol.for keys should not pass isSignal
     const fakeSignal = {
       [Symbol.for('signal')]: {id: Symbol('fake')},
@@ -310,7 +310,7 @@ describe('createSignal', () => {
     const sig = createSignal(1);
 
     // onChange passes whatever the callback returns on as the effect's
-    // cleanup. The signature no longer accepts that (TYPE-006) — the callback
+    // cleanup. The signature no longer accepts that — the callback
     // below returns `number`, so it needs a directive; a return type of
     // `any`, annotated or inferred, does still slip through, inline or
     // pre-declared alike — but the runtime still tolerates it: a returned
@@ -318,7 +318,7 @@ describe('createSignal', () => {
     // stored and then called on the *second* change, throwing
     // `cleanupCallback is not a function`.
     const seen: number[] = [];
-    // @ts-expect-error TYPE-006: the signature refuses the returned `number`
+    // @ts-expect-error the signature refuses the returned `number`
     // now; the runtime tolerance this test pins is unchanged.
     const unsubscribe = sig.onChange((val) => {
       seen.push(val);

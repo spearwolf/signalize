@@ -246,7 +246,7 @@ describe('batch', () => {
     }
   });
 
-  it('an effect that ran inside an outer flush, after a nested batch closed, is not run a second time by that flush (PERF-003)', () => {
+  it('an effect that ran inside an outer flush, after a nested batch closed, is not run a second time by that flush', () => {
     const a = createSignal(0);
     const b = createSignal(0);
     const c = createSignal(0);
@@ -279,7 +279,7 @@ describe('batch', () => {
 
     // Load-bearing, not scenery: it is what gives the nested batch something
     // to flush. Without it that batch finds an empty queue, returns early
-    // (PERF-002) and never touches the depth counter — and this test would
+    // and never touches the depth counter — and this test would
     // pass even with a flag in place of the counter.
     const inner = createEffect(() => {
       c.get();
@@ -308,7 +308,7 @@ describe('batch', () => {
     }
   });
 
-  describe('rejects thenable-returning callbacks (ASYNC-003)', () => {
+  describe('rejects thenable-returning callbacks', () => {
     it('throws when the callback is an async function, instead of silently unbatching writes after the first await', async () => {
       const {get: a, set: setA} = createSignal(0);
       const seen: number[] = [];
@@ -321,7 +321,7 @@ describe('batch', () => {
 
         let caught: unknown;
         try {
-          // @ts-expect-error — async callback is rejected at the type level too (ASYNC-003); calling it anyway to exercise the runtime guard
+          // @ts-expect-error — async callback is rejected at the type level too; calling it anyway to exercise the runtime guard
           batch(async () => {
             setA(1);
             await Promise.resolve();
@@ -393,7 +393,7 @@ describe('batch', () => {
     });
   });
 
-  describe('effect priority inside a batch (TEST-002)', () => {
+  describe('effect priority inside a batch', () => {
     it('a higher-priority effect is spliced in front of one already queued', () => {
       const low = createSignal(0);
       const high = createSignal(0);
@@ -497,7 +497,7 @@ describe('batch', () => {
     });
   });
 
-  describe('the callback error survives a failing flush (BUG-012)', () => {
+  describe('the callback error survives a failing flush', () => {
     it('reports both the callback error and the effect error, as an AggregateError', () => {
       const {get: a, set: setA} = createSignal(0);
       const boom = createEffect(() => {
@@ -549,7 +549,7 @@ describe('batch', () => {
         try {
           batch(() => {
             setA(1);
-            // biome-ignore lint/suspicious/noThenProperty: intentionally building a non-promise thenable, as in the ASYNC-003 block above
+            // biome-ignore lint/suspicious/noThenProperty: intentionally building a non-promise thenable, as in the deferred-read block above
             return {then: () => {}};
           });
         } catch (err) {
@@ -636,7 +636,7 @@ describe('batch', () => {
     });
   });
 
-  describe('a memo read inside a batch is current (ASYNC-003, audit 2026-08-08)', () => {
+  describe('a memo read inside a batch is current (audit 2026-08-08)', () => {
     it('a memo whose dependency was written in the same batch reads the new value', () => {
       const dep = createSignal(10);
       const memo = createMemo(() => dep.get() * 2);
@@ -753,7 +753,7 @@ describe('batch', () => {
           insideTheBatch = outer();
         });
 
-        // The boundary of ASYNC-003, pinned on purpose. `outer` does not read
+        // The boundary of the deferred read, pinned on purpose. `outer` does not read
         // `dep`, so nothing marked it dirty — the parked run belongs to
         // `inner`, and `#run()` returns at `!shouldRun` two lines before the
         // batch gate. A memo cannot ask its dependencies whether they are
@@ -874,7 +874,7 @@ describe('batch', () => {
         // very value it produced. `unbatch()` cannot help: it took the first
         // entry out before the run, and the second one is a genuine "a
         // dependency was written" as far as the effect can tell. Before
-        // ASYNC-003 the whole cascade ran inside the flush and came to one
+        // The whole cascade runs inside the flush and comes to one
         // recompute; an unbatched write plus read has always cost two.
         //
         // It takes *both* reads to get here: `outer` reads `dep`, which is

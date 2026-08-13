@@ -390,7 +390,7 @@ describe('destroySignal', () => {
     });
   });
 
-  describe('the destroy delivery is isolated, like a write (BUG-011)', () => {
+  describe('the destroy delivery is isolated, like a write', () => {
     it('serves every subscriber behind a throwing effect cleanup', () => {
       // Subscription order on `globalDestroySignalQueue` is registration
       // order, and the effect registers first — so everything created after
@@ -671,7 +671,7 @@ describe('destroySignal', () => {
     });
   });
 
-  it('lets the signal itself say whether it is gone (API-008)', () => {
+  it('lets the signal itself say whether it is gone', () => {
     const sig = createSignal(1);
 
     try {

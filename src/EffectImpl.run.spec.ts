@@ -23,7 +23,7 @@ describe('EffectImpl.run() lifecycle', () => {
     assertLinksCount(0, 'afterEach');
   });
 
-  it('a quiet run keeps the dependencies it is not allowed to re-register (BUG-005)', () => {
+  it('a quiet run keeps the dependencies it is not allowed to re-register', () => {
     const signalSubscriptions = getSubscriptionCount(globalSignalQueue);
 
     const {get: a, set: setA} = createSignal(0);
@@ -76,7 +76,7 @@ describe('EffectImpl.run() lifecycle', () => {
     }
   });
 
-  it('a throwing callback still releases the dependency it stopped reading (BUG-006)', () => {
+  it('a throwing callback still releases the dependency it stopped reading', () => {
     const signalSubscriptions = getSubscriptionCount(globalSignalQueue);
 
     const {get: cond, set: setCond} = createSignal(true);
@@ -211,7 +211,7 @@ describe('EffectImpl.run() lifecycle', () => {
     }
   });
 
-  it('every nested run of a self-writing effect releases its own resource (BUG-007)', () => {
+  it('every nested run of a self-writing effect releases its own resource', () => {
     const held = new Set<string>();
     const {get: n, set: setN} = createSignal(0);
 
@@ -240,7 +240,7 @@ describe('EffectImpl.run() lifecycle', () => {
     }
   });
 
-  it('a cleanup that re-enters run() does not drop the nested cleanup (BUG-007)', () => {
+  it('a cleanup that re-enters run() does not drop the nested cleanup', () => {
     const held = new Set<string>();
     const released: string[] = [];
     const {get: n, set: setN} = createSignal(0);

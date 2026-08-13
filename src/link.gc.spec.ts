@@ -10,7 +10,7 @@ import {destroySignal} from './signal-core.js';
 // (the `gc` project in vitest.config.ts, which `pnpm test` also runs, and
 // `pnpm test:gc` for the whole suite). Skipping the suite when the flag is
 // gone would hide a lost `execArgv` behind a green reporter, so this file
-// refuses to load instead (BUILD-016).
+// refuses to load instead.
 const gc = (globalThis as {gc?: () => void}).gc;
 
 if (typeof gc !== 'function') {
@@ -37,21 +37,21 @@ const waitUntilLinksCollected = async () => {
   }
 };
 
-describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
+describe('link() GC behavior (requires --expose-gc)', () => {
   // NB: this suite intentionally does not assert getSignalsCount() — the
   // whole point of the scenario is source signals that are dropped without
-  // ever calling destroySignal() on them. Since MEM-006 that count corrects
+  // ever calling destroySignal() on them. That count corrects
   // itself: `signal-core.ts` registers every signal with a
   // `FinalizationRegistry`, so a dropped signal leaves the count the same way
   // a dropped link leaves `getLinksCount()`. (Being attached to a
   // `SignalGroup` never had anything to do with it — a group has no GC-based
   // bookkeeping either, it just holds its signals.) The reason this file
   // still says nothing about the signal count is a different one: it is
-  // orthogonal to what MEM-002 measures (gLinks/the link's own subscriptions
+  // orthogonal to what the destroy hook measures (gLinks/the link's own subscriptions
   // pinning it in memory), and a second stop condition in the budget loop
   // below would only make these tests slower, not sharper.
   //
-  // MEM-007: `getLinksCount()` falling to 0 on its own is not proof that a
+  // `getLinksCount()` falling to 0 on its own is not proof that a
   // link's *subscriptions* were reclaimed too — only that its entry in the
   // strong inner `Map` in `src/link.ts` became unreachable, which happens
   // here only because the source signal is dropped in the same sweep (see
@@ -59,7 +59,7 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
   // for this exact scenario, `getLinksCount()` read 0 while both queue
   // subscription counts sat unchanged from before the GC pass.
   //
-  // MEM-001 closed that gap, and the last four tests hold it closed —
+  // The link finalizer closes that gap, and the last four tests hold it closed —
   // `getSubscriptionCount(queue)` snapshotted around the scenario, per the
   // pattern in CLAUDE.md → "Verifying subscription leaks". `getLinksCount()
   // === 0` now genuinely implies "the handles have run", because the
@@ -79,7 +79,7 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     // reference (signals, links, callbacks), force GC, and expect
     // getLinksCount() to fall all the way back to 0, not just "some". The
     // source signal falling away in the same sweep is load-bearing here
-    // (MEM-007): a link on a *live* source is held by the strong inner
+    //: a link on a *live* source is held by the strong inner
     // `Map` in `src/link.ts` and is not reclaimed by GC at all — see the
     // "held until unlink()" test below.
     const LINK_COUNT = 100;
@@ -115,7 +115,7 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     // SignalLinkToSignal has its own extra subscription (destroy-on-target-
     // destroy) that must also go through a WeakRef — otherwise this case
     // leaks even when the callback-target case above is fixed. As above
-    // (MEM-007), the source signal being dropped in the same sweep is what
+    //, the source signal being dropped in the same sweep is what
     // makes this collectible at all — a link on a live source is not.
     const LINK_COUNT = 100;
 
@@ -140,9 +140,9 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     }
   });
 
-  it('links on a live source signal are held until unlink() — GC does not reclaim them (MEM-007)', async () => {
+  it('links on a live source signal are held until unlink() — GC does not reclaim them', async () => {
     // Deliberate documentation of the current, decided behavior (see the
-    // revised MEM-007 entry in remediation-plan.md's "Entscheidungen"): the
+    // link registry's own lifetime rules): the
     // inner Map in src/link.ts's `gLinks` registry holds every link on a
     // live source strongly. This test is meant to go red the day someone
     // *does* switch that map to weak values without also updating this
@@ -177,13 +177,13 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     }
   });
 
-  // MEM-001. Why none of these needs a settle step of its own: the finalizer
+  // Why none of these needs a settle step of its own: the finalizer
   // callback runs to completion synchronously, so by the time
   // `waitUntilLinksCollected()` sees `getLinksCount() === 0` the releases in
   // that same callback have already happened. The budget loop is what makes
   // this deterministic — not the order of the two halves inside the callback,
   // which nothing here depends on.
-  it('a collected callback-target link releases both of its queue subscriptions (MEM-001)', async () => {
+  it('a collected callback-target link releases both of its queue subscriptions', async () => {
     const sigBefore = getSubscriptionCount(globalSignalQueue);
     const destBefore = getSubscriptionCount(globalDestroySignalQueue);
 
@@ -218,7 +218,7 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     }
   });
 
-  it('a collected signal-target link releases all three of its queue subscriptions (MEM-001)', async () => {
+  it('a collected signal-target link releases all three of its queue subscriptions', async () => {
     const sigBefore = getSubscriptionCount(globalSignalQueue);
     const destBefore = getSubscriptionCount(globalDestroySignalQueue);
 
@@ -256,7 +256,7 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     }
   });
 
-  it('a collected link releases the destroy hook on a target signal that is still alive (MEM-001)', async () => {
+  it('a collected link releases the destroy hook on a target signal that is still alive', async () => {
     // The counter-proof to the discarded `off(queue, eventName)` variant:
     // `off(globalDestroySignalQueue, target.id)` would also tear the destroy
     // hooks of effects, groups and memos off a *living* target signal. Here
@@ -294,7 +294,7 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     }
   });
 
-  it('a throwing release handle is reported and does not stop the rest (MEM-001)', async () => {
+  it('a throwing release handle is reported and does not stop the rest', async () => {
     const sigBefore = getSubscriptionCount(globalSignalQueue);
     const destBefore = getSubscriptionCount(globalDestroySignalQueue);
 
@@ -322,7 +322,7 @@ describe('link() GC behavior (requires --expose-gc) — MEM-002', () => {
     }
   });
 
-  it('a destroyed link is not counted down a second time when it is collected (TEST-020)', async () => {
+  it('a destroyed link is not counted down a second time when it is collected', async () => {
     // `destroy()` decrements `gLinksCount` and unregisters the link from
     // `gLinkFinalizer` in the same breath. Without the unregister the
     // finalizer fires later — the link is unreachable by then — and

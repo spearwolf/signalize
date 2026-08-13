@@ -54,7 +54,7 @@ describe('globalEffectStack', () => {
   });
 
   describe('runWithinEffect()', () => {
-    it('pops the effect when the callback throws (TEST-016)', () => {
+    it('pops the effect when the callback throws', () => {
       // The stack is module state. An effect left on it after a throwing
       // callback is picked up by the next top-level signal read, which then
       // subscribes a corpse. Drop the `finally` in
@@ -78,7 +78,7 @@ describe('globalEffectStack', () => {
       }
     });
 
-    it('restores the enclosing effect when a nested callback throws (TEST-016)', () => {
+    it('restores the enclosing effect when a nested callback throws', () => {
       // Not the same claim as above: this one pins the *restore*, not the
       // empty stack. A nested effect that throws must hand the frame back
       // to its parent, which is what nested effects rely on.

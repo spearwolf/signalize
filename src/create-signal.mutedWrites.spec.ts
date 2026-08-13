@@ -189,12 +189,12 @@ describe('writes on muted or destroyed signals', () => {
     }
   });
 
-  it('muteSignal() on a value that is not a signal is a no-op, not a throw (TEST-026)', () => {
+  it('muteSignal() on a value that is not a signal is a no-op, not a throw', () => {
     expect(() => muteSignal(undefined)).not.toThrow();
     expect(() => muteSignal(null)).not.toThrow();
   });
 
-  it('unmuteSignal() on a value that is not a signal is a no-op, not a throw (TEST-026)', () => {
+  it('unmuteSignal() on a value that is not a signal is a no-op, not a throw', () => {
     expect(() => unmuteSignal(undefined)).not.toThrow();
     expect(() => unmuteSignal(null)).not.toThrow();
   });

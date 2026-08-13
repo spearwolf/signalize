@@ -12,9 +12,8 @@ let g_numberOfBeQuietRequests = 0;
  * Calls can be nested - quiet mode remains active until all nested calls complete.
  *
  * Returns whatever `action` returns — the untracked read is the point of
- * the frame, and throwing its result away made the documented recipe
- * (`const peek = beQuiet(() => b.get())`) silently evaluate to
- * `undefined` (BUG-010). Same shape as `hibernate()`.
+ * the frame, and `const peek = beQuiet(() => b.get())` has to evaluate to
+ * the read value. Same shape as `hibernate()`.
  *
  * `action` must be synchronous, and its signature rejects anything typed
  * to return a `Promise`/`PromiseLike` at `tsc` time: the quiet frame is

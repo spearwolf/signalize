@@ -16,21 +16,16 @@ import type {ISignalImpl, SignalLike, SignalValueParams} from './types.js';
 
 let g_signalsCount = 0;
 
-// MEM-006: the counter's second half. `destroySignal()` is the only place
-// that decrements, and a signal that is merely dropped never gets there —
-// measured: 2000 signals collected (0 of 2000 WeakRefs survive a gc()) while
-// the counter stayed at 2000, for the life of the process. `getLinksCount()`
-// has had this correction since MEM-001; the signal counter is advertised for
-// exactly the same job and was the one place that quietly misled, in the
-// opposite direction.
+// The counter's second half. `destroySignal()` is the only place that
+// decrements, and a signal that is merely dropped never gets there — without
+// this the count stays at its high-water mark for the life of the process.
+// `getLinksCount()` carries the same correction.
 //
 // The held value is `undefined`, and that is the whole design: this callback
 // needs nothing but the module-level counter it closes over. A held value
 // that reaches the SignalImpl would keep it alive, and a SignalImpl holds its
-// value — in the decorator pattern that value *is* the host object. Measured
-// against the group rework of MEM-003: with `{sig: signal}` as the held
-// value, 1000 of 1000 hosts survive and the registry never fires; with
-// `undefined`, 0 of 1000.
+// value — in the decorator pattern that value *is* the host object, so the
+// registry would never fire.
 const signalFinalizer = new FinalizationRegistry<undefined>(() => {
   --g_signalsCount;
 });
@@ -55,7 +50,7 @@ export const incSignalsCount = (signal: ISignalImpl<any>): void => {
  *
  * A signal that is explicitly destroyed leaves the count immediately. A
  * signal that is merely dropped leaves it once the garbage collector gets to
- * it (MEM-006), which is a moment nobody can name or force: the counter is
+ * it, which is a moment nobody can name or force: the counter is
  * eventually consistent, never observably so. Treat a difference as a leak
  * only after explicit teardown.
  *
@@ -187,15 +182,10 @@ export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
         // belongs in neither `destroySignal()` nor `writeSignal()`: its
         // `throw` branch is unreachable, so it would be dead code.
         //
-        // That opening does not become conditional. PERF-008 proposed
-        // exactly this — tie it to a per-signal-id subscriber count — and
-        // was measured and closed on 2026-08-11 without a code change:
-        // removing the frame *entirely* buys 2.1 % on a write with no
-        // consumers, which is the ceiling, while the counter the finding
-        // recommends costs 17.2 %. This comment is the only record of that
-        // in the published package — the working is in the repo's
-        // `remediation-plan.md`, which is not shipped — so anyone who has
-        // the idea again finds the answer where they look for it.
+        // That opening does not become conditional, and the obvious
+        // candidate does not pay: gating it on a per-signal-id subscriber
+        // count costs 17.2 % on a write, while removing the frame entirely
+        // — the ceiling of what any such gate could buy — is 2.1 %.
         collectDeliveryError(err);
       } finally {
         endIsolatedDelivery(

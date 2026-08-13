@@ -45,8 +45,8 @@ export interface CreateMemoOptions {
    *
    * What that grouping costs depends on whether anything reacts. A memo
    * without a dependent effect defers nothing, and a batch with an empty
-   * queue skips its flush entirely (PERF-002) — `true` then measures within
-   * a few percent of the default, where it used to be 2.5x slower. With a
+   * queue skips its flush entirely — `true` then measures within a few
+   * percent of the default. With a
    * dependent effect the recompute pays a whole flush for that one deferred
    * effect: a `Set`, an array, two temporary queue subscriptions, a delivery
    * frame and a dispatch through eventize instead of a direct call, measured
@@ -57,12 +57,11 @@ export interface CreateMemoOptions {
    * `callback` is the exception, and the ordinary memo should not pay for it.
    *
    * The other half of that reasoning is gone. `true` used to mean that a
-   * memo read from inside `callback` while dirty came back with its *stale*
-   * pre-recompute value — not merely delayed but potentially permanent for a
-   * `{lazy: true}` one — because `beforeRead` deferred the recompute like
-   * any other run in an open batch. Since ASYNC-003 `beforeRead` recomputes
-   * at the read regardless of an open batch, so composed memos read fresh
-   * under either setting.
+   * memo read from inside `callback` while dirty would come back with its
+   * *stale* pre-recompute value if `beforeRead` deferred the recompute like
+   * any other run in an open batch. It does not: `beforeRead` recomputes at
+   * the read regardless of an open batch, so composed memos read fresh under
+   * either setting.
    */
   batchWrites?: boolean;
 }
@@ -117,7 +116,7 @@ export function createMemo<Type>(
   // and its effect — so there is nothing to take back; same rule and same
   // condition as in createEffect().
   try {
-    // CONS-015: an empty name is no name at all. `''` is the only falsy
+    // An empty name is no name at all. `''` is the only falsy
     // value the `string | symbol` type admits besides null/undefined, so
     // one truthy test settles both branches below at once — the same rule
     // `decorators.ts` applies with `options?.name || context.name`.
@@ -167,7 +166,7 @@ export function createMemo<Type>(
 
     const sImpl = signalImpl(si);
     // Not `e.run`: that one defers while a batch is open, and a read cannot
-    // be deferred without being answered wrongly (ASYNC-003). The write the
+    // be deferred without being answered wrongly. The write the
     // recompute makes still lands in the open batch.
     sImpl.beforeRead = e.runImmediately;
 
@@ -180,22 +179,21 @@ export function createMemo<Type>(
     );
 
     e.onDestroy(() => {
-      // MEM-005: the once() above binds the effect to the signal's
-      // destruction, but had no counterpart for the reverse direction.
-      // globalDestroySignalQueue is a permanent module-level queue, so if the
-      // effect dies first — its last live dependency was destroyed, or a
-      // parent rerun tore it down as a child effect — the leftover
-      // subscription holds the dead EffectImpl and its closure alive for as
-      // long as the memo signal lives. For a memo whose inputs are gone, that
-      // is forever. Unsubscribing here closes that side of the binding.
+      // The counterpart to the once() above, which binds the effect to the
+      // signal's destruction. globalDestroySignalQueue is a permanent
+      // module-level queue, so if the effect dies first — its last live
+      // dependency destroyed, or a parent rerun tearing it down as a child
+      // effect — the leftover subscription would hold the dead EffectImpl and
+      // its closure alive for as long as the memo signal lives. For a memo
+      // whose inputs are gone, that is forever.
       unsubscribeFromSignalDestroy();
 
-      // MEM-008: a memo created inside an effect body belongs to that effect.
-      // Its internal effect is registered there as a child effect and dies on
+      // A memo created inside an effect body belongs to that effect. Its
+      // internal effect is registered there as a child effect and dies on
       // every parent rerun and on parent destroy() — without a matching
-      // signal teardown, each rerun leaves a signal behind: orphaned when
-      // unnamed and {attach}-less, piling up in the group when {attach} is
-      // given. The named case has always self-healed through the rebind on
+      // signal teardown, each rerun would leave a signal behind: orphaned
+      // when unnamed and {attach}-less, piling up in the group when {attach}
+      // is given. The named case self-heals through the rebind on
       // recreation; this closes the same gap for the unnamed and the
       // {attach} case. A memo created outside any effect body is left alone
       // (see below) — {attach} gives the signal a group membership and,

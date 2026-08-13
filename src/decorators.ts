@@ -83,7 +83,7 @@ export function signal<T>(options?: SignalDecoratorOptions<T>) {
       init(this: C, value: T): T {
         // The `<T>` is load bearing, not decoration. `createSignal`'s value
         // overload infers its params type and refuses any key beyond
-        // `SignalParams` (BUG-014), and `SignalDecoratorOptions` carries two
+        // `SignalParams`, and `SignalDecoratorOptions` carries two
         // — `name` and `readAsValue`. Naming the type argument makes that
         // params type fall back to its default instead of being inferred,
         // which is the one thing that keeps this call compiling. Drop it and

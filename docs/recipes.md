@@ -87,8 +87,8 @@ Quirks:
   one. `createSignal(5, {lazy: true})` used to compile and leave the first
   read to die with `TypeError: this.valueFn is not a function`; now it does
   not compile. `createSignal(existingSignal, {lazy: true})` goes the same way,
-  and the passthrough drops the rest of its params too — since API-012 not in
-  silence: every such call reports the dropped options through
+  and the passthrough drops the rest of its params too — not in silence:
+  every such call reports the dropped options through
   `onSignalizeError()`. So does `createSignal(undefined, {lazy: true})` —
   `undefined` is the one value that reaches the no-initial-value overload, so
   that overload carries the same conditions; under `strictNullChecks: false`
@@ -162,8 +162,7 @@ is applied behind the `isSignal()` branch and belongs to both paths equally.
 `lazy`, `compare` and `beforeRead` are simply dropped. Every call that passes
 one of those three reports it through `onSignalizeError()` with `source:
 'ignored-option'` and `level: 'warn'` — on every such call, not once per
-process, because it flags a misspelled call rather than a lifecycle event
-(API-012).
+process, because it flags a misspelled call rather than a lifecycle event.
 
 The same passthrough is also reachable through the reader:
 `createSignal(existing.get, {lazy: true})` type-checks against the *factory*
@@ -478,8 +477,7 @@ batch(() => {
   batched at its first `await` — everything before that point still runs
   batched, everything after runs completely unbatched, with no error. To
   catch this, `batch()` throws `TypeError` if the callback returns a
-  thenable, and its signature rejects `async` callbacks at `tsc` time
-  (ASYNC-003):
+  thenable, and its signature rejects `async` callbacks at `tsc` time:
 
   ```ts
   batch(async () => {

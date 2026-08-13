@@ -15,12 +15,11 @@ function touch<Type>(source: SignalLike<Type>): void;
 function touch<O extends object, K extends keyof O>(source: [O, K]): void;
 
 function touch(source: any) {
-  // CONS-007: the same answer `link()` gives. Without this the non-tuple
-  // case ran straight into the spread below and the caller got
-  // `Spread syntax requires ...iterable[Symbol.iterator] to be a function`,
-  // which names neither this function nor its argument. The shape is
-  // checked, not the lookup result: `touch([obj, 'unknown'])` stays the
-  // documented no-op.
+  // The same answer `link()` gives. Without it the non-tuple case reaches
+  // the spread below and the caller gets `Spread syntax requires
+  // ...iterable[Symbol.iterator] to be a function`, which names neither this
+  // function nor its argument. The shape is checked, not the lookup result:
+  // `touch([obj, 'unknown'])` stays the documented no-op.
   if (!isSignal(source) && !Array.isArray(source)) {
     throw new TypeError(
       '[signalize] touch: source must be a signal or an [object, propertyName] tuple',

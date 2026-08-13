@@ -22,7 +22,7 @@ import type {SignalizeErrorPayload} from './types.js';
  * Which is why the assertion is on the set of *messages*, not on a count: a
  * count of three could also be reached by one site reporting three times.
  */
-describe('each deprecated call site keeps its own once-gate (CONS-004)', () => {
+describe('each deprecated call site keeps its own once-gate', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');

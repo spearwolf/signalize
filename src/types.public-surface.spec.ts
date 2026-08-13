@@ -7,9 +7,9 @@ import {createSignal} from './create-signal.js';
 import type {Effect} from './Effect.js';
 import type {EffectImpl} from './EffectImpl.js';
 // The three effect-surface tests import through the entry point on purpose:
-// the re-export is half of what API-002 and API-004 promise, and a module
-// import would witness the signature while missing the delivery. The
-// ASYNC-004 witness rides on the same reasoning for `hibernate`/`NonThenable`.
+// the re-export is half of the promise, and a module import would witness
+// the signature while missing the delivery. The `hibernate`/`NonThenable`
+// witness rides on the same reasoning.
 import {
   createEffect,
   type EffectDeps,
@@ -43,18 +43,17 @@ import type {
   SignalWriterParams,
 } from './types.js';
 
-// @ts-expect-error CONS-001: `reportSignalizeError` is internal — the entry
+// @ts-expect-error `reportSignalizeError` is internal — the entry
 // point publishes the subscribe function and nothing else. `stripInternal`
 // keeps it out of `lib/signalize-error.d.ts`; this keeps it out of the entry
 // point, which no other gate would notice.
 // The alias needs a use, or `noUnusedLocals` reports it — and the obvious
 // `export type {…}` is out: Biome's `noExportsInTest` forbids exporting from
-// a spec. So it is consumed by an annotation in the CONS-001 test below.
+// a spec. So it is consumed by an annotation in the reporter test below.
 type _NoReporter = typeof import('./index.js').reportSignalizeError;
 
 /**
- * The witness for TYPE-001, TYPE-002, TYPE-003, TYPE-005, API-001, API-002,
- * API-004 and CONS-001.
+ * The witness for every type-level promise the published surface makes.
  *
  * Everything this file guards is invisible to the rest of the gate: the
  * emitted JavaScript is unchanged, no other spec instantiates one of these
@@ -88,7 +87,7 @@ describe('the published type surface', () => {
     assertLinksCount(0, 'afterEach');
   });
 
-  it('hands out Signal<unknown>, not Signal<any>, where the container cannot know the value type (TYPE-001)', () => {
+  it('hands out Signal<unknown>, not Signal<any>, where the container cannot know the value type', () => {
     const groupHost = {};
     const group = SignalGroup.findOrCreate(groupHost);
     const objectHost: Record<string, unknown> = {};
@@ -99,17 +98,17 @@ describe('the published type surface', () => {
     map.get<string>('theme').set('dark');
 
     try {
-      // @ts-expect-error TYPE-001: a group holds heterogeneous signals and
+      // @ts-expect-error a group holds heterogeneous signals and
       // cannot know what hides behind a name — `unknown`, not `any`.
       const fromGroup: string = group.signal('theme').value;
 
-      // @ts-expect-error TYPE-001
+      // @ts-expect-error
       const fromObject: string = findObjectSignals(objectHost)[0].value;
 
-      // @ts-expect-error TYPE-001
+      // @ts-expect-error
       const fromMap: string = [...map.signals()][0].value;
 
-      // @ts-expect-error TYPE-001
+      // @ts-expect-error
       const fromEntries: string = [...map.entries()][0][1].value;
 
       // The repair is a type argument, not a cast:
@@ -129,31 +128,31 @@ describe('the published type surface', () => {
     }
   });
 
-  it('makes a bare SignalLike / SignalLink / ValueCallback annotation say what it carries (TYPE-001)', () => {
+  it('makes a bare SignalLike / SignalLink / ValueCallback annotation say what it carries', () => {
     const source = createSignal(1);
     const target = createSignal(0);
     const theLink = link(source, target);
     const seen: number[] = [];
 
     try {
-      // @ts-expect-error TYPE-001: `SignalLike` is `SignalLike<unknown>` now.
+      // @ts-expect-error `SignalLike` is `SignalLike<unknown>` now.
       const bare: SignalLike = source;
       const named: SignalLike<number> = source;
 
-      // API-007 gave this line back: with `source` narrowed to `LinkSource`,
-      // `SignalLink<T>` carries `Type` in covariant positions only, so a
-      // `SignalLink<number>` is a `SignalLink<unknown>` again. The TYPE-001
-      // promise it used to witness now rides on the next two lines instead.
+      // With `source` narrowed to `LinkSource`, `SignalLink<T>` carries
+      // `Type` in covariant positions only, so a `SignalLink<number>` is a
+      // `SignalLink<unknown>` again. The heterogeneity promise rides on the
+      // next two lines instead.
       const bareLink: SignalLink = theLink;
-      // @ts-expect-error TYPE-001: …and it carries `unknown`, not `any`.
+      // @ts-expect-error …and it carries `unknown`, not `any`.
       const stillUnknown: string = bareLink.lastValue;
       const namedLink: SignalLink<number> = theLink;
 
-      // @ts-expect-error TYPE-001: `ValueCallback` is `ValueCallback<unknown>`.
+      // @ts-expect-error `ValueCallback` is `ValueCallback<unknown>`.
       const bareCallback: ValueCallback = (v: number) => seen.push(v);
       const namedCallback: ValueCallback<number> = (v) => seen.push(v);
 
-      // @ts-expect-error TYPE-001: module-internal now (API-007), default
+      // @ts-expect-error module-internal now, default
       // still `unknown`.
       const bareImpl: ISignalImpl = signalImpl(source);
       const namedImpl: ISignalImpl<number> = signalImpl(source);
@@ -174,7 +173,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('gives the caller their own type back from attach/detach (TYPE-003)', () => {
+  it('gives the caller their own type back from attach/detach', () => {
     const groupHost = {};
     const group = SignalGroup.findOrCreate(groupHost);
     const source = createSignal(1);
@@ -192,22 +191,22 @@ describe('the published type surface', () => {
       // …and these three catch the other half of the same promise, which the
       // structural check above cannot see: a return type flattened to
       // `Signal<any>` would satisfy `Signal<number>` *and* `Signal<string>`.
-      // @ts-expect-error TYPE-003: the value type rides along, unerased.
+      // @ts-expect-error the value type rides along, unerased.
       const wrongAttached: Signal<string> = group.attachSignal(source);
-      // @ts-expect-error TYPE-003
+      // @ts-expect-error
       const wrongDetached: Signal<string> = group.detachSignal(source);
-      // @ts-expect-error TYPE-003
+      // @ts-expect-error
       const wrongByName: Signal<string> = group.attachSignalByName('n', source);
 
       const attachedLink: SignalLink<number> = group.attachLink(theLink);
       const detachedLink: SignalLink<number> = group.detachLink(attachedLink);
 
       // The link pair needs the wrong-type form to be guarded at all:
-      // `SignalLink<any>` — the pre-TYPE-003 return type — is assignable to
+      // `SignalLink<any>` — a return type that erases the value — is assignable to
       // `SignalLink<number>`, so the two lines above pass either way.
-      // @ts-expect-error TYPE-003
+      // @ts-expect-error
       const wrongAttachedLink: SignalLink<string> = group.attachLink(theLink);
-      // @ts-expect-error TYPE-003
+      // @ts-expect-error
       const wrongDetachedLink: SignalLink<string> = group.detachLink(theLink);
 
       // Calling it without a signal releases the name and is still legal —
@@ -237,7 +236,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('keeps the implementation layer out of the entry point and off the link (API-007)', () => {
+  it('keeps the implementation layer out of the entry point and off the link', () => {
     const source = createSignal(1);
     const target = createSignal(0);
     const theLink = link(source, target);
@@ -247,20 +246,20 @@ describe('the published type surface', () => {
       // `import('./index.js')` on purpose: it catches exactly one `TS2694`,
       // and a multi-line `import type {…}` would report at the specifier
       // line rather than at the statement the directive covers.
-      // @ts-expect-error API-007: `ISignalImpl` is module-internal now — the
+      // @ts-expect-error `ISignalImpl` is module-internal now — the
       // entry point does not hand the implementation layer out any more.
       type PublicImpl = import('./index.js').ISignalImpl<number>;
       const stillReachableInside: PublicImpl = signalImpl(source);
 
       const narrow: LinkSource<number> = theLink.source;
 
-      // @ts-expect-error API-007: no writer on the narrow view.
+      // @ts-expect-error no writer on the narrow view.
       const writer = theLink.source.writer;
-      // @ts-expect-error API-007: no reader either.
+      // @ts-expect-error no reader either.
       const reader = theLink.source.reader;
-      // @ts-expect-error API-007: and no way back to the Signal wrapper.
+      // @ts-expect-error and no way back to the Signal wrapper.
       const object = theLink.source.object;
-      // @ts-expect-error API-007: nor to the lazy factory.
+      // @ts-expect-error nor to the lazy factory.
       const valueFn = theLink.source.valueFn;
 
       const id: symbol = narrow.id;
@@ -288,10 +287,10 @@ describe('the published type surface', () => {
     }
   });
 
-  it('takes a factory only where {lazy: true} says so (TYPE-002)', () => {
+  it('takes a factory only where {lazy: true} says so', () => {
     const count = createSignal(0);
 
-    // @ts-expect-error TYPE-002: a bare factory has no overload to land on.
+    // @ts-expect-error a bare factory has no overload to land on.
     // It used to compile, store the function as the value, and leave `.value`
     // claiming `number`.
     const lied = createSignal<number>(() => 42);
@@ -302,7 +301,7 @@ describe('the published type surface', () => {
     const holdsAFunction = createSignal<() => number>(() => 42);
 
     try {
-      // @ts-expect-error TYPE-002: same lie on the writer side.
+      // @ts-expect-error same lie on the writer side.
       count.set(() => 7);
 
       count.set(() => 7, {lazy: true});
@@ -318,15 +317,15 @@ describe('the published type surface', () => {
     }
   });
 
-  it('leaves the value branch open to any params, variable or not (TYPE-002)', () => {
+  it('leaves the value branch open to any params, variable or not', () => {
     // The discrimination sits on the *value* argument. For `createSignal` the
     // value branch puts no condition on its params at all; for `set` the only
-    // condition is a statically `true` `lazy` (BUG-014) — everything else
+    // condition is a statically `true` `lazy` — everything else
     // passes it, a variable, an explicit type argument and a wrapper's
     // pass-through argument alike. Not a directive test: this has to compile.
     // Put a wider `lazy` condition on the value overload of
     // `createSignal`/`SignalWriter` and every call below reports TS2769 —
-    // which is exactly how the first two attempts at TYPE-002 broke.
+    // which is exactly how a wider condition here breaks every caller.
     const params: SignalParams<number> = {};
     const fromVariable = createSignal(5, params);
     const withExplicitType = createSignal<number>(6, params);
@@ -360,16 +359,16 @@ describe('the published type surface', () => {
     }
   });
 
-  it('refuses a factory whose {lazy: true} is only statically boolean (TYPE-002)', () => {
+  it('refuses a factory whose {lazy: true} is only statically boolean', () => {
     // `SignalParams<T>`/`SignalWriterParams<T>` declare `lazy?: boolean`, and
     // `boolean` is not a promise that the flag is `true`. The factory branch
     // therefore does not open for a variable of the published options type,
     // however it was initialised — the runtime would be lazy here, the
-    // checker just cannot know it. This is the breaking edge of TYPE-002.
+    // checker just cannot know it. This is the breaking edge of the rule.
     const lazyish: SignalParams<number> = {lazy: true};
     const writerLazyish: SignalWriterParams<number> = {lazy: true};
 
-    // @ts-expect-error TYPE-002: `lazy?: boolean` does not reach `{lazy: true}`.
+    // @ts-expect-error `lazy?: boolean` does not reach `{lazy: true}`.
     const refused = createSignal(() => 42, lazyish);
 
     // The two measured repairs. `{...lazyish}` is *not* one of them — a spread
@@ -381,7 +380,7 @@ describe('the published type surface', () => {
     const count = createSignal(0);
 
     try {
-      // @ts-expect-error TYPE-002: same on the writer side.
+      // @ts-expect-error same on the writer side.
       count.set(() => 7, writerLazyish);
 
       count.set(() => 7, {lazy: true});
@@ -398,18 +397,18 @@ describe('the published type surface', () => {
     }
   });
 
-  it('refuses a lazy flag on a value write (BUG-014)', () => {
+  it('refuses a lazy flag on a value write', () => {
     const count = createSignal(0);
     const pinned = {lazy: true} as const;
     const annotated: SignalWriterParams<number> & {lazy: true} = {lazy: true};
 
     try {
-      // @ts-expect-error BUG-014: a value is not a factory. This used to
+      // @ts-expect-error a value is not a factory. This used to
       // compile, store 5 in `valueFn`, and leave the next read to die.
       count.set(5, {lazy: true});
-      // @ts-expect-error BUG-014: pinning the literal changes nothing.
+      // @ts-expect-error pinning the literal changes nothing.
       count.set(5, pinned);
-      // @ts-expect-error BUG-014: nor does annotating the variable.
+      // @ts-expect-error nor does annotating the variable.
       count.set(5, annotated);
 
       // The damage the type now prevents, from the runtime side:
@@ -423,7 +422,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('keeps a stray key out of the value branch (BUG-014)', () => {
+  it('keeps a stray key out of the value branch', () => {
     // The generic `P` that closes the branch for a statically true `lazy`
     // would otherwise take the excess property check with it: an inferred
     // type parameter is checked against its constraint, and freshness does
@@ -434,9 +433,9 @@ describe('the published type surface', () => {
     const count = createSignal(0);
 
     try {
-      // @ts-expect-error BUG-014: `comapre` is not `compare`.
+      // @ts-expect-error `comapre` is not `compare`.
       count.set(5, {touch: true, comapre: (a: number, b: number) => a === b});
-      // @ts-expect-error BUG-014: `lasy` is not `lazy` — the one typo that
+      // @ts-expect-error `lasy` is not `lazy` — the one typo that
       // would otherwise buy silence on the branch this package closes.
       count.set(6, {lasy: true, touch: true});
 
@@ -447,7 +446,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('lets a params object with an index signature through (BUG-014)', () => {
+  it('lets a params object with an index signature through', () => {
     // The other side of the exactness clause, and the reason it is guarded:
     // for a params type carrying an index signature `keyof P` *is* `string`
     // (or `number`, or `symbol`), so `Record<Exclude<keyof P, …>, never>`
@@ -488,7 +487,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('refuses a lazy flag on a value at construction (BUG-014)', () => {
+  it('refuses a lazy flag on a value at construction', () => {
     // The constructor half of the promise `set()` carries above. All four of
     // these used to compile, put the value where the factory belongs, and
     // leave the first read to die with `TypeError: this.valueFn is not a
@@ -500,13 +499,13 @@ describe('the published type surface', () => {
     const flag: boolean = true;
     const cmpNum = (a: number, b: number) => a === b;
 
-    // @ts-expect-error BUG-014: a value is not a factory.
+    // @ts-expect-error a value is not a factory.
     const lazySig = createSignal(5, {lazy: true});
-    // @ts-expect-error BUG-014: pinning the literal changes nothing.
+    // @ts-expect-error pinning the literal changes nothing.
     const fromPinned = createSignal(5, pinned);
-    // @ts-expect-error BUG-014: nor does annotating the variable.
+    // @ts-expect-error nor does annotating the variable.
     const fromAnnotated = createSignal(5, annotated);
-    // @ts-expect-error BUG-014: nor does hiding the flag in a variable the
+    // @ts-expect-error nor does hiding the flag in a variable the
     // checker has already narrowed to `true`.
     const fromFlag = createSignal(5, {lazy: flag});
 
@@ -518,7 +517,7 @@ describe('the published type surface', () => {
     // assignable to `() => Type` and the call lands on the factory overload
     // instead. That half is witnessed in `smoke/dist-smoke.test.ts`.
     const stray = {label: 'x', compare: cmpNum};
-    // @ts-expect-error BUG-014: a stray key is refused with no value too.
+    // @ts-expect-error a stray key is refused with no value too.
     const fromStray = createSignal(undefined, stray);
 
     try {
@@ -542,7 +541,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('keeps a stray key out of createSignal params (BUG-014)', () => {
+  it('keeps a stray key out of createSignal params', () => {
     // Same trade the writer makes above, for the same reason: the generic `P`
     // that closes the branch for a statically true `lazy` takes the excess
     // property check with it, and the exactness clause puts it back. Without
@@ -559,10 +558,10 @@ describe('the published type surface', () => {
     // one-line reach.
     const cmp = (a: number, b: number) => a === b;
 
-    // @ts-expect-error BUG-014: `lasy` is not `lazy` — the one typo that would
+    // @ts-expect-error `lasy` is not `lazy` — the one typo that would
     // otherwise buy silence on the branch this package closes.
     const typoLazy = createSignal(5, {lasy: true, compare: cmp});
-    // @ts-expect-error BUG-014: `comapre` is not `compare`.
+    // @ts-expect-error `comapre` is not `compare`.
     const typoCompare = createSignal(6, {comapre: cmp, lazy: false});
 
     try {
@@ -574,7 +573,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('lets a params object with an index signature through createSignal (BUG-014)', () => {
+  it('lets a params object with an index signature through createSignal', () => {
     // The other side of the exactness clause, and the reason it needs a guard
     // in front of it: for a params type carrying an index signature `keyof P`
     // *is* `string` (or `number`, or `symbol`), so `Record<Exclude<keyof P,
@@ -620,7 +619,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('types the onChange callback by what its return value means (TYPE-006)', () => {
+  it('types the onChange callback by what its return value means', () => {
     const sig = createSignal(1);
     const seen: number[] = [];
     const cleaned: number[] = [];
@@ -661,11 +660,11 @@ describe('the published type surface', () => {
     };
     const offWiderParam = sig.onChange(widerParam);
 
-    // @ts-expect-error TYPE-006: a returned value is not a cleanup. It used
+    // @ts-expect-error a returned value is not a cleanup. It used
     // to be swallowed by `any`; the runtime still ignores it.
     const offValue = sig.onChange((v) => v * 2);
 
-    // @ts-expect-error TYPE-006: `ValueChangedCallback` is synchronous, and
+    // @ts-expect-error `ValueChangedCallback` is synchronous, and
     // that is the whole reason this is refused — not because the resolved
     // return of an `async` callback goes unused. It doesn't:
     // EffectImpl#storeCleanupCallback() honors a cleanup arriving late from
@@ -679,7 +678,7 @@ describe('the published type surface', () => {
     // A pre-typed callback that widened its return type is refused at the
     // argument (TS2345), not at the return expression (TS2322).
     const unknownCb: (v: number) => unknown = (v) => v;
-    // @ts-expect-error TYPE-006
+    // @ts-expect-error
     const offUnknown = sig.onChange(unknownCb);
 
     try {
@@ -707,11 +706,11 @@ describe('the published type surface', () => {
     }
   });
 
-  it('refuses an async callback in hibernate() (ASYNC-004)', () => {
+  it('refuses an async callback in hibernate()', () => {
     const sig = createSignal(21);
 
     try {
-      // @ts-expect-error ASYNC-004: the saved batch, quiet counter and effect
+      // @ts-expect-error the saved batch, quiet counter and effect
       // stack are restored by the `finally` at the first `await`, so
       // everything after it runs outside hibernation.
       const pending = hibernate(async () => sig.get());
@@ -726,7 +725,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('types a link callback target from its source (TYPE-007)', () => {
+  it('types a link callback target from its source', () => {
     const source = createSignal(1);
     const target = createSignal(0);
     const seen: number[] = [];
@@ -734,7 +733,7 @@ describe('the published type surface', () => {
     // No annotation and no directive: under `noImplicitAny` this used to be
     // TS7006, and `docs/api.md` carried the annotate-it workaround.
     const toCallback = link(source, (v) => {
-      // @ts-expect-error TYPE-007: `v` is `number`, not `any` — an `any`
+      // @ts-expect-error `v` is `number`, not `any` — an `any`
       // would take this assignment in silence.
       const wrong: string = v;
       void wrong;
@@ -748,7 +747,7 @@ describe('the published type surface', () => {
     // The measured cost of the split: a target whose static type is a union
     // mixing a callback with a signal reaches neither overload.
     const eitherOr = target as Signal<number> | ValueCallback<number>;
-    // @ts-expect-error TYPE-007: TS2769 — narrow it or split the call.
+    // @ts-expect-error TS2769 — narrow it or split the call.
     link(source, eitherOr);
 
     try {
@@ -766,18 +765,18 @@ describe('the published type surface', () => {
     }
   });
 
-  it('takes only string and symbol keys (TYPE-005)', () => {
+  it('takes only string and symbol keys', () => {
     const map = new SignalAutoMap();
     const numericObj = {1: 'a'} as Record<number, string>;
 
-    // @ts-expect-error TYPE-005: `Extract<number, string | symbol>` is
+    // @ts-expect-error `Extract<number, string | symbol>` is
     // `never`, which is what makes a numeric key unnameable here.
     const numeric = SignalAutoMap.fromProps(numericObj, [1]);
 
     try {
       map.update(new Map<string, unknown>([['a', 1]]));
 
-      // @ts-expect-error TYPE-005: a numeric key would land in a map whose
+      // @ts-expect-error a numeric key would land in a map whose
       // `keys()` promises `string | symbol`.
       map.update(new Map<number, unknown>([[1, 'x']]));
 
@@ -792,7 +791,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('attachEffect takes the wrapper and gives it back (API-001)', () => {
+  it('attachEffect takes the wrapper and gives it back', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
     const effect = createEffect(() => {}, {autorun: false});
@@ -805,7 +804,7 @@ describe('the published type surface', () => {
     // position only. The runtime assertion below is there for
     // `noUnusedLocals`, nothing more.
     const rejected = () => {
-      // @ts-expect-error API-001: a value that is neither shape stays out.
+      // @ts-expect-error a value that is neither shape stays out.
       group.attachEffect({});
     };
 
@@ -814,7 +813,7 @@ describe('the published type surface', () => {
       // `EffectImpl`: no directive, so it has to keep compiling.
       const back: Effect = group.attachEffect(effect);
 
-      // @ts-expect-error API-001: what comes back is the caller's own type,
+      // @ts-expect-error what comes back is the caller's own type,
       // not the unwrapped instance — this catches a return flattened to `any`.
       const wrong: EffectImpl = group.attachEffect(effect);
 
@@ -827,7 +826,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('types the two subscribe callbacks (API-002)', () => {
+  it('types the two subscribe callbacks', () => {
     const seen: symbol[] = [];
 
     // No annotation and no directive: under `noImplicitAny` these two used
@@ -839,7 +838,7 @@ describe('the published type surface', () => {
       seen.push(eff.id);
     });
 
-    // @ts-expect-error API-002: the callback is handed a `FailingEffect`;
+    // @ts-expect-error the callback is handed a `FailingEffect`;
     // a handler demanding more is refused — parameters are checked
     // contravariantly, and that is exactly what `(...args: unknown[])`
     // used to wave through.
@@ -864,12 +863,12 @@ describe('the published type surface', () => {
     }
   });
 
-  it('publishes the diagnostics channel and its payload (CONS-001)', () => {
+  it('publishes the diagnostics channel and its payload', () => {
     // Through the entry point, not the module: the re-export is half of what
     // this package promises, and `src/index.ts` carries a by-name list that
     // no step of `pnpm world` checks for completeness. Still true for the
     // type list; the value list gained a witness in Paket 5
-    // (`index.public-surface.spec.ts`, API-017) and no longer qualifies.
+    // (`index.public-surface.spec.ts`) and no longer qualifies.
     let seen: SignalizeErrorPayload | undefined;
     // The use that keeps `_NoReporter` alive for `noUnusedLocals`; the
     // directive on its declaration is the actual assertion.
@@ -877,7 +876,7 @@ describe('the published type surface', () => {
 
     // No annotation and no directive — the callback parameter is typed by the
     // signature alone. Priority in second place, as everywhere in this
-    // library (API-002).
+    // library.
     const unsubscribe = onSignalizeError((payload) => {
       seen = payload;
     }, 10);
@@ -893,11 +892,11 @@ describe('the published type surface', () => {
 
       const level: 'error' | 'warn' = seen.level;
       const source: SignalizeErrorPayload['source'] = seen.source;
-      // ARCH-001 added a member to that union, and the entry point is what
+      // The multi-copy sentinel added a member to that union, and the entry point is what
       // publishes it — an annotation, so `tsc` is the one asserting here.
       const multipleInstances: SignalizeErrorPayload['source'] =
         'multiple-instances';
-      // API-009 added the next one, the same way and for the same reason.
+      // The ignored-option notice added the next one, the same way.
       const ignoredOption: SignalizeErrorPayload['source'] = 'ignored-option';
       const message: string = seen.message;
       const error: unknown = seen.error;
@@ -915,7 +914,7 @@ describe('the published type surface', () => {
     }
   });
 
-  it('names the option types at the call site (API-004)', () => {
+  it('names the option types at the call site', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
     const source = createSignal(1);
@@ -946,7 +945,7 @@ describe('the published type surface', () => {
       attach: host,
     });
 
-    // @ts-expect-error API-004: the wide form reaches no overload. Its
+    // @ts-expect-error the wide form reaches no overload. Its
     // `dependencies?: EffectDeps` may hold names while `attach` stays
     // optional — the one pairing the four overloads forbid, because a name
     // without a group throws at runtime. The repair is one of the two

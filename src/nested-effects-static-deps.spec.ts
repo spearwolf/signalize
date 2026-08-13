@@ -29,7 +29,7 @@ describe('nested effects inside a static-deps effect', () => {
     assertLinksCount(0, 'afterEach');
   });
 
-  it('does not leak an orphaned child effect per rerun (MEM-001)', () => {
+  it('does not leak an orphaned child effect per rerun', () => {
     const a = createSignal(0);
     const trigger = createSignal(0);
 
@@ -56,7 +56,7 @@ describe('nested effects inside a static-deps effect', () => {
     }
   });
 
-  it('destroys the child effect when the parent is destroyed (MEM-001)', () => {
+  it('destroys the child effect when the parent is destroyed', () => {
     const signalSubscriptionsBefore = getSubscriptionCount(globalSignalQueue);
     const effectSubscriptionsBefore = getSubscriptionCount(globalEffectQueue);
     const destroySubscriptionsBefore = getSubscriptionCount(
@@ -227,7 +227,7 @@ describe('nested effects inside a static-deps effect', () => {
     }
   });
 
-  it('creates a fresh child effect instance on every rerun (IMP-001)', () => {
+  it('creates a fresh child effect instance on every rerun', () => {
     const a = createSignal(0);
     const trigger = createSignal(0);
 
@@ -307,7 +307,7 @@ describe('nested effects inside a static-deps effect', () => {
     }
   });
 
-  it('Signal.onChange callbacks no longer orphan nested effects (MEM-001)', () => {
+  it('Signal.onChange callbacks no longer orphan nested effects', () => {
     const a = createSignal(0);
     const trigger = createSignal(0);
 

@@ -25,10 +25,10 @@ import type {ISignalImpl, SignalLike} from './types.js';
 const store = new WeakMap<object, SignalGroup>();
 
 // Iteration set: holds a WeakRef per live SignalGroup so the static `clear()`
-// can walk all groups. Weak, not strong (MEM-003): a plain `Set` here is a
+// can walk all groups. Weak, not strong: a plain `Set` here is a
 // module-level GC root for every group ever created, and a group reaches its
 // host through anything attached to it — an `@signal accessor` whose value is
-// `this` was enough to keep 1000 of 1000 hosts alive. Dead husks are dropped
+// `this` is enough to keep that host alive for good. Dead husks are dropped
 // by the group's own resource finalizer below, and skipped by the two readers
 // as a safety net. SignalGroups remove themselves from this set in their
 // instance `clear()`.
@@ -46,7 +46,7 @@ export const $groupResources = Symbol.for(
   '@spearwolf/signalize/groupResources',
 );
 
-// MEM-003: what has to happen when a group is collected *without* its
+// What has to happen when a group is collected *without* its
 // `clear()` ever running — the price of holding the two roots above weakly.
 // The held value is resources only: the unsubscribe handles of the group's
 // per-signal destroy-queue subscriptions, plus the WeakRef this group is
@@ -126,12 +126,9 @@ export const clearGroupFromFinalizer = (group: SignalGroup): void => {
 const groupFinalizationRegistry = new FinalizationRegistry<
   WeakRef<SignalGroup>
 >((groupRef) => {
-  // MEM-003: the held value is a WeakRef, not the group. As the group
-  // itself, it kept the group alive, the group kept the host alive through
-  // anything attached to it, and this callback never ran. Measured in
-  // isolation: 200 registrations whose held value points at the target
-  // produce 200 survivors and 0 callbacks; through a WeakRef, 0 survivors
-  // and 200 callbacks.
+  // The held value is a WeakRef, not the group. As the group itself it would
+  // keep the group alive, the group would keep the host alive through
+  // anything attached to it, and this callback would never run.
   const group = groupRef.deref();
   if (group !== undefined) clearGroupFromFinalizer(group);
 });
@@ -204,7 +201,7 @@ const BUSY_CLEAR = 1 << 4;
 const CYCLE_REJECTED =
   '[signalize] Cannot attach a group to one of its own descendants: this would create a cycle in the group graph';
 
-// PERF-004: the rarely used containers are only allocated on first write.
+// The rarely used containers are only allocated on first write.
 // Until then the field points at a module-wide shared empty stand-in — not
 // at `undefined`.
 //
@@ -314,12 +311,12 @@ export class SignalGroup {
 
   readonly #effects = new Set<EffectImpl>();
 
-  // One `globalDestroySignalQueue` unsubscribe handle per attached signal
-  // (MEM-002): the group has to hear about a signal it holds being destroyed,
-  // or a long-lived group accumulates dead SignalImpls until `clear()`.
+  // One `globalDestroySignalQueue` unsubscribe handle per attached signal:
+  // the group has to hear about a signal it holds being destroyed, or a
+  // long-lived group accumulates dead SignalImpls until `clear()`.
   #signalDestroySubscriptions: Map<ISignalImpl, () => void> = EMPTY_MAP;
 
-  // MEM-003: symbol-keyed rather than `#private` for the same reason as
+  // Symbol-keyed rather than `#private` for the same reason as
   // `$queueUnsubscribes` in `SignalLink` — the module-level finalizer and
   // guard have to reach it, a `#` field is out of their reach, and a public
   // named field would be new API surface.
@@ -328,7 +325,7 @@ export class SignalGroup {
 
   #links: Set<SignalLink<any>> = EMPTY_SET;
 
-  // MEM-002: which links this group has already registered its DESTROY
+  // Which links this group has already registered its DESTROY
   // counter-edge for. Not `#links.has(link)` as the guard: `detachLink()` is
   // public API and takes a *live* link back out, so every detach/attach
   // cycle would append another listener. And not a second `Set` either: that
@@ -369,12 +366,12 @@ export class SignalGroup {
     if (object == null) {
       throw new Error('[signalize] Cannot create a group with a null object');
     }
-    // PERF-002: check the store before constructing. The field initializers
+    // Check the store before constructing. The field initializers
     // alone allocated eleven collections — six Sets, three Maps, a WeakMap
     // and a WeakSet — plus the `[$groupResources]` wrapper object, so
     // `new SignalGroup(object)` on a cache hit built and discarded all of
     // that just to have the constructor's own `store.has()` check hand back
-    // the existing instance. Since PERF-004 the cache-miss side allocates
+    // the existing instance. The cache-miss side allocates
     // three objects — `#signals`, `#effects` and the wrapper — while the
     // other nine collections point at the shared empty stand-ins until
     // something writes to them; eight of the nine are fields, the ninth is
@@ -395,7 +392,7 @@ export class SignalGroup {
    * Delete and clear the group associated with an object, and warn about it.
    *
    * Behaves exactly like {@link SignalGroup.delete}, plus a `deprecation`
-   * notice — once per process, not once per call (CONS-004).
+   * notice — once per process, not once per call.
    *
    * @deprecated Use {@link SignalGroup.delete} instead.
    * @param object - The object whose group should be deleted, or the group
@@ -415,7 +412,7 @@ export class SignalGroup {
    * @param object - The object whose group should be deleted, or the group
    */
   static delete(object: object) {
-    // API-014: a group is a valid argument for itself, exactly as in `get()`
+    // A group is a valid argument for itself, exactly as in `get()`
     // and `findOrCreate()`. A group made by `findOrCreate(host)` is filed
     // under `host`, never under itself, so the store lookup alone turned
     // `SignalGroup.delete(group)` — the documented public destructor — into
@@ -447,7 +444,7 @@ export class SignalGroup {
     // of the set alone would leave them uncounted by
     // `getSignalGroupsCount()`, out of reach of the next sweep, and with a
     // FinalizationRegistry callback that can never fire again, because it
-    // starts with `allGroups.has(group)` (BUG-009). They survive the sweep
+    // starts with `allGroups.has(group)`. They survive the sweep
     // instead, fully registered. Deliberately no loop-until-empty: a
     // listener that recreates a group on every teardown would turn that
     // into a hang.
@@ -475,7 +472,7 @@ export class SignalGroup {
 
     // One WeakRef, three uses: the element in `allGroups`, the held value of
     // the host finalizer, and the way back for `clearGroupFromFinalizer()`.
-    // None of them strong (MEM-003).
+    // None of them strong.
     const selfRef = new WeakRef(this);
     this[$groupResources].selfRef = selfRef;
     allGroups.add(selfRef);
@@ -597,7 +594,7 @@ export class SignalGroup {
         // would be consumed by that one — leaving nobody to hear the real
         // destruction later.
         //
-        // MEM-003: both captures are WeakRefs. `globalDestroySignalQueue` is
+        // Both captures are WeakRefs. `globalDestroySignalQueue` is
         // a module-level object and holds this listener for as long as the
         // subscription lives, so a strong `this` made every group with an
         // attached signal reachable from a GC root — and through the group,
@@ -847,15 +844,15 @@ export class SignalGroup {
    * door. Emptying only `#signals`/`#directSignals` would leave the dead
    * `SignalImpl` reachable through `#namedSignals`/`#signalsByName` — which is
    * the whole of the `@signal` decorator path, where `attachSignalByName()`
-   * is the only way in (MEM-002).
+   * is the only way in.
    */
   #removeSignal(si: ISignalImpl) {
     // The unsubscribe is the one step here that can throw: the handle comes
     // from a queue this group does not own. It must not take the rest of the
     // removal with it — a signal left standing in `#signals` and
     // `#directSignals` with its destroy subscription already gone is one the
-    // group can never hear about again. Same shape as `clear()` and `off()`
-    // since CONS-005; a lone error comes back out unchanged, so
+    // group can never hear about again. Same shape as `clear()` and `off()`;
+    // a lone error comes back out unchanged, so
     // `detachSignal()` still throws exactly what the handle threw.
     const errors: unknown[] = [];
     collect(errors, () => this.#dropSignalSubscription(si));
@@ -903,15 +900,15 @@ export class SignalGroup {
    *
    * Takes both forms: the `Effect` that `createEffect()` hands out and the
    * internal instance behind it. The unwrapping happens here, so a consumer
-   * no longer needs `as any` to call a documented method (API-001).
+   * does not need `as any` to call a documented method.
    *
-   * A destroyed effect takes itself out of the group again (MEM-002) —
+   * A destroyed effect takes itself out of the group again —
    * without that, a long-lived group with effect churn keeps every dead
    * `EffectImpl` and its callback closure alive until `clear()`. Because the
    * bookkeeping below hangs on the unwrapped instance, that also holds for a
    * wrapper: its `destroy()` reaches the same DESTROY the hook listens to.
    *
-   * Throws on an effect that is already destroyed (CONS-006), the same rule
+   * Throws on an effect that is already destroyed, the same rule
    * `#addSignal()` and `attachLink()` already apply: its DESTROY has fired
    * and `off(this)` has run, so the counter-hook below never fires again —
    * the group would carry the corpse and its callback closure until
@@ -946,7 +943,7 @@ export class SignalGroup {
     // `attachEffect(sameEffect)` would grow the DESTROY list without bound.
     if (!this.#effects.has(impl)) {
       this.#effects.add(impl);
-      // MEM-009: the counter-edge to `attachLink()`'s hook (see its comment
+      // The counter-edge to `attachLink()`'s hook (see its comment
       // at `Priority.Max` above). On normal priority, a higher-priority
       // application `DESTROY` listener that throws aborts eventize's
       // delivery before this line runs, and the group keeps the dead
@@ -983,7 +980,7 @@ export class SignalGroup {
    * Attach a link to this group. The link will be destroyed when the group
    * is cleared.
    *
-   * A destroyed link takes itself out of the group again (MEM-002),
+   * A destroyed link takes itself out of the group again,
    * whichever route attached it — `link(…, {attach})`, `link.attach(obj)`
    * or a direct `attachLink()` call.
    *
@@ -1005,7 +1002,7 @@ export class SignalGroup {
         (this.#linksWithDestroyHook = ownWeakSet(
           this.#linksWithDestroyHook,
         )).add(link);
-        // MEM-002: the counter-edge to `attachEffect()`'s hook. It lives
+        // The counter-edge to `attachEffect()`'s hook. It lives
         // here rather than in `SignalLink.attach()` because `attachLink()`
         // is the common passage of both routes — `link({attach})` and
         // `link.attach(obj)` come through here, a direct
@@ -1083,7 +1080,7 @@ export class SignalGroup {
    *
    * Behaves exactly like {@link SignalGroup#clear} — the group itself
    * survives and stays usable — plus a `deprecation` notice, once per
-   * process, not once per call (CONS-004).
+   * process, not once per call.
    *
    * @deprecated Use {@link SignalGroup#clear} instead.
    */

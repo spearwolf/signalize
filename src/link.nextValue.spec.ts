@@ -64,7 +64,7 @@ describe('link.nextValue', () => {
 
       con.destroy();
 
-      // ASYNC-004: a destroyed-while-pending nextValue() rejects with an
+      // A destroyed-while-pending nextValue() rejects with an
       // Error, not `undefined` — a caller catching it gets a message and a
       // stack instead of an unidentifiable rejection reason.
       await expect(nextValue).rejects.toThrow(

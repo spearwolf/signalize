@@ -76,7 +76,7 @@ describe('link() comprehensive tests', () => {
       }
     });
 
-    // Contract test, not a guard pin (TEST-026 review round 1): the
+    // Contract test, not a guard pin: the
     // `sourceSignal != null` ternary in getLinksCount() (link.ts:397) is dead
     // defense — `signalImpl()` returns `undefined` for a non-signal, and
     // `WeakMap.prototype.get` on a non-object key returns `undefined` by
@@ -604,7 +604,7 @@ describe('link() comprehensive tests', () => {
     });
   });
 
-  describe('BUG-004: attach on cache hit', () => {
+  describe('Attach on cache hit', () => {
     it('attaches the cached link to a second group instead of dropping attach', () => {
       const sigA = createSignal(1);
       const sigB = createSignal(-1);
@@ -632,7 +632,7 @@ describe('link() comprehensive tests', () => {
     });
 
     it('re-attaching the same group on repeated cache hits does not grow the link subscription count', () => {
-      // Regression for the leak the first BUG-004 fix introduced:
+      // Regression for a leak in the cache-hit path:
       // SignalLink.attach() used to register a fresh `once(this, DESTROY,
       // ...)` listener on every call, unconditionally. Since eventize does
       // not dedupe plain function listeners, calling link() with the same
@@ -666,8 +666,8 @@ describe('link() comprehensive tests', () => {
       }
     });
 
-    it("no combination of the two attach routes grows the link's DESTROY listener list (MEM-002)", () => {
-      // Not a regression test for MEM-002 itself — this one is green before
+    it("no combination of the two attach routes grows the link's DESTROY listener list", () => {
+      // Not a regression test for the destroy hook itself — this one is green before
       // the fix too. It is the guard against the two mistakes the naive fix
       // makes once the counter-edge moves into `SignalGroup.attachLink()`:
       // deduping on `#links.has(link)` (reopened by every public
@@ -710,7 +710,7 @@ describe('link() comprehensive tests', () => {
     });
 
     it('re-attach after an explicit detachLink() actually re-attaches, not just returns the group', () => {
-      // Regression for a narrower BUG-004 symptom introduced by the
+      // Regression for a narrower cache-hit symptom introduced by the
       // idempotency guard `SignalLink.attach()` used to carry: it recorded
       // "this link has been attached to `g` at some point" and never forgot
       // it, not even after `SignalGroup.detachLink()` — the documented,
@@ -718,7 +718,7 @@ describe('link() comprehensive tests', () => {
       // Calling `link.attach(g)` again after such a detach returned early,
       // so `group.attachLink(this)` never ran a second time: `attach()`
       // reported success (returned the group) but `g.clear()` no longer
-      // destroyed the link. Since MEM-002 the guard sits in `attachLink()`
+      // destroyed the link. The guard sits in `attachLink()`
       // and covers only the DESTROY hook, so membership is re-established
       // unconditionally — this test's claim is unchanged either way.
       const sigA = createSignal(1);
@@ -744,7 +744,7 @@ describe('link() comprehensive tests', () => {
     });
   });
 
-  describe('BUG-007: invalid source is validated before any registry entry is created', () => {
+  describe('Invalid source is validated before any registry entry is created', () => {
     it('throws a clear, explicit error when source is not a signal, and leaves getLinksCount() at 0', () => {
       const notASignal = {} as any;
 
@@ -760,7 +760,7 @@ describe('link() comprehensive tests', () => {
     });
   });
 
-  describe('MEM-005: an unbounded link register on one source is reported once', () => {
+  describe('An unbounded link register on one source is reported once', () => {
     it('stays silent below the threshold and warns once when a source reaches it', () => {
       const src = createSignal(0);
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -819,13 +819,13 @@ describe('link() comprehensive tests', () => {
     });
   });
 
-  // TEST-026 (review round 1): the `if (links.size === 0) gLinks.delete(sourceSignal)`
+  // The `if (links.size === 0) gLinks.delete(sourceSignal)`
   // guard in the DESTROY handler at link.ts:313-314 survives plain removal —
   // the resulting stale, empty Map is silently reused by the next link() on
   // the same source, and getLinksCount(source) reads `.size` either way. It
   // only shows up under inversion (`links.size !== 0`), which wipes the
   // registry entry for a source that still has a live link on it.
-  describe('TEST-026: the DESTROY handler only drops a source entry once it is actually empty', () => {
+  describe('The DESTROY handler only drops a source entry once it is actually empty', () => {
     it('destroying one of several links on a source leaves getLinksCount(source) accurate for the rest', () => {
       // The one test in this block that actually discriminates: red under
       // `links.size !== 0`, green under plain removal of the guard.
@@ -880,7 +880,7 @@ describe('link() comprehensive tests', () => {
   // Last block in the file on purpose: before the fix the counter drift
   // this test exposes is permanent for the whole module, so every test
   // behind it would fail as collateral in the red run.
-  describe('MEM-010: the registry lets go even when a DESTROY listener throws first', () => {
+  describe('The registry lets go even when a DESTROY listener throws first', () => {
     it('a throwing listener does not strand the entry, the counter or the next link()', () => {
       const src = createSignal(1);
       const target = createSignal(0);

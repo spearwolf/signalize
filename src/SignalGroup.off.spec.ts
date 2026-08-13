@@ -211,7 +211,7 @@ describe('SignalGroup#off()', () => {
     }
   });
 
-  it('external effect is destroyed by off() even after one dep was destroyed first (MEM-006)', () => {
+  it('external effect is destroyed by off() even after one dep was destroyed first', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
     const a = createSignal(0, {attach: host});
@@ -292,7 +292,7 @@ describe('SignalGroup#off()', () => {
     }
   });
 
-  it('static-deps effect with mixed deps survives off() and re-declares its deps on the next run (BUG-003)', () => {
+  it('static-deps effect with mixed deps survives off() and re-declares its deps on the next run', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
 
@@ -354,7 +354,7 @@ describe('SignalGroup#off()', () => {
     }
   });
 
-  it('static-deps effect whose only dep is a group signal is still destroyed by off() (BUG-003)', () => {
+  it('static-deps effect whose only dep is a group signal is still destroyed by off()', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
     const sig = createSignal(0, {attach: host});
@@ -385,7 +385,7 @@ describe('SignalGroup#off()', () => {
     }
   });
 
-  it('a static dep destroyed while detached is not re-subscribed on the next run (BUG-003)', () => {
+  it('a static dep destroyed while detached is not re-subscribed on the next run', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
 
@@ -428,7 +428,7 @@ describe('SignalGroup#off()', () => {
     }
   });
 
-  it('the re-declaration works inside a beQuiet() frame (BUG-003)', () => {
+  it('the re-declaration works inside a beQuiet() frame', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
     const groupSig = createSignal(0, {attach: host});
@@ -469,7 +469,7 @@ describe('SignalGroup#off()', () => {
     }
   });
 
-  it('re-declares the static deps before the callback, so a throwing rerun still re-subscribes (BUG-003)', () => {
+  it('re-declares the static deps before the callback, so a throwing rerun still re-subscribes', () => {
     const host = {};
     const group = SignalGroup.findOrCreate(host);
 
@@ -496,7 +496,7 @@ describe('SignalGroup#off()', () => {
       // The rerun fails again — and a deterministically failing callback never
       // has a successful run to heal on. The re-declaration therefore has to
       // happen *before* the callback: moving it behind the call re-opens
-      // BUG-003 for every effect in this shape, with all other tests still
+      // Reproduced for every effect in this shape, with all other tests still
       // green.
       expect(() => otherSig.set(1)).toThrow('boom');
       expect(runs).toBe(2);
@@ -669,7 +669,7 @@ describe('SignalGroup#off()', () => {
       // itself doesn't keep a subscription on its own id.
       expect(getSubscriptionCount(globalSignalQueue)).toBe(sigQueueBaseline);
 
-      // One subscription survives `off()` by design (MEM-002): the group's own
+      // One subscription survives `off()` by design: the group's own
       // destroy hook for `sig`. `off()` keeps the signal attached and the group
       // reusable, so the group must still hear about that signal being
       // destroyed later — otherwise a dead SignalImpl would sit in `#signals`
@@ -689,7 +689,7 @@ describe('SignalGroup#off()', () => {
     }
   });
 
-  it('the soft-detach loop skips a signal a sibling notification just hard-destroyed (TEST-026)', () => {
+  it('the soft-detach loop skips a signal a sibling notification just hard-destroyed', () => {
     // The loop snapshots #signals before it starts. If reacting to one
     // signal's soft-detach notice hard-destroys a *later* signal in that
     // snapshot — synchronously, before the loop gets to it — the `!si.destroyed`

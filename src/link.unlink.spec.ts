@@ -186,7 +186,7 @@ describe('unlink()', () => {
     }
   });
 
-  it('unlink() with an unknown target on a source that has other links is a no-op (TEST-026)', () => {
+  it('unlink() with an unknown target on a source that has other links is a no-op', () => {
     const {get: sigA, set: setA} = createSignal(1);
     const {get: sigB} = createSignal(-1);
     const {get: sigC} = createSignal(-2); // never linked from sigA
@@ -334,7 +334,7 @@ describe('unlink()', () => {
     }
   });
 
-  describe('MEM-011: one failing link does not cost its siblings their teardown', () => {
+  describe('One failing link does not cost its siblings their teardown', () => {
     it('unlink(source) tears every link down and reports afterwards', () => {
       const src = createSignal(0);
       const first = link(src, () => {});

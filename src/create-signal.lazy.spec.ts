@@ -53,7 +53,7 @@ describe('create lazy signal', () => {
       //
       // Note: TypeScript rejects both shapes of this. The unary form
       // `count.set((v: number) => v + 1)` never matched the parameter type,
-      // and since TYPE-002 the nullary form `count.set(() => 42)` is rejected
+      // and the nullary form `count.set(() => 42)` is rejected
       // too — a factory needs `{lazy: true}`. What is tested here is the
       // runtime behaviour, which is reachable from untyped JS only.
       const updater = (v: number) => v + 1;
@@ -107,7 +107,7 @@ describe('create lazy signal', () => {
       expect(val()).toBe('foo');
       expect(lazy0).toHaveBeenCalledTimes(1);
 
-      // Since TYPE-002 this call is not reachable from typed code: a bare
+      // This call is not reachable from typed code: a bare
       // factory has no overload to land on. The cast sits on the writer, not
       // on the argument — the test holds the runtime behaviour for untyped JS.
       (setValue as (v: unknown) => void)(lazy1);
@@ -121,7 +121,7 @@ describe('create lazy signal', () => {
     }
   });
 
-  it('set(undefined) replaces the factory of a lazy signal that was never read (TEST-024)', () => {
+  it('set(undefined) replaces the factory of a lazy signal that was never read', () => {
     // `lazy !== this.lazy` is the only clause of the writer condition that
     // sees this write: the new value is `undefined` and so is `#value` on an
     // unread lazy signal, so the value comparison in the third clause says
@@ -144,7 +144,7 @@ describe('create lazy signal', () => {
     }
   });
 
-  it('the first read releases the factory function (TEST-024)', () => {
+  it('the first read releases the factory function', () => {
     // A lazy factory is a closure over whatever the caller had in scope. It
     // is needed exactly once; keeping it after that pins everything it
     // captured for the lifetime of the signal, and nothing in the public

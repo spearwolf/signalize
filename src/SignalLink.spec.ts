@@ -30,7 +30,7 @@ describe('SignalLink', () => {
     assertLinksCount(0, 'afterEach');
   });
 
-  describe('MEM-004: destroy() releases the globalDestroySignalQueue subscriptions', () => {
+  describe('Destroy() releases the globalDestroySignalQueue subscriptions', () => {
     it('signal-to-signal link: subscribes twice (source + target), releases both on destroy()', () => {
       const baseline = getSubscriptionCount(globalDestroySignalQueue);
       const sigA = createSignal(1);
@@ -110,7 +110,7 @@ describe('SignalLink', () => {
     });
   });
 
-  describe('ASYNC-004: nextValue() rejects with an Error and is abortable', () => {
+  describe('NextValue() rejects with an Error and is abortable', () => {
     it('rejects with an Error (not undefined) when the link is destroyed while nextValue() is pending', {
       timeout: 500,
     }, async () => {
@@ -321,7 +321,7 @@ describe('SignalLink', () => {
   describe('K1: nextValue({signal}) survives a synchronous retained-VALUE replay', () => {
     // eventize replays a retained event synchronously, inside the once()
     // call itself, before that call returns (see the using-eventize skill /
-    // docs/retain.md). asyncValues() retains VALUE (ASYNC-005), so once one
+    // docs/retain.md). asyncValues() retains VALUE, so once one
     // is running, every nextValue({signal}) call that follows resolves via
     // that synchronous replay instead of a later, genuinely async emit.
     // Subscribing VALUE before DESTROY/abort used to mean the replay fired
@@ -386,7 +386,7 @@ describe('SignalLink', () => {
       }
     });
 
-    it('a nextValue({signal}) settling through the replay releases its DESTROY subscription on the link too, repeatedly (TEST-022)', {
+    it('a nextValue({signal}) settling through the replay releases its DESTROY subscription on the link too, repeatedly', {
       timeout: 500,
     }, async () => {
       const sigA = createSignal(1);
@@ -451,7 +451,7 @@ describe('SignalLink', () => {
           // VALUE listener subscribed: the emit goes straight into the
           // retained slot, and the `iter.next()` below picks it up through
           // the synchronous replay — K1's trigger, now without relying on the
-          // same value being handed out over and over (ASYNC-005).
+          // same value being handed out over and over.
           sigA.set(3 + i);
           const {value, done} = await iter.next();
           expect(done).toBe(false);
@@ -468,7 +468,7 @@ describe('SignalLink', () => {
     });
   });
 
-  describe('ASYNC-004 / W2: asyncValues({signal}) abort handling', () => {
+  describe('asyncValues({signal}) abort handling', () => {
     it('asyncValues({signal}) throws the abort reason instead of ending quietly when the signal is already aborted', {
       timeout: 500,
     }, async () => {
@@ -596,7 +596,7 @@ describe('SignalLink', () => {
     });
   });
 
-  describe('ASYNC-005: asyncValues() shares retain() across parallel iterators', () => {
+  describe('AsyncValues() shares retain() across parallel iterators', () => {
     it('a finishing asyncValues() iterator does not clear the retained value while a sibling iterator is still active', {
       timeout: 1000,
     }, async () => {
@@ -626,8 +626,8 @@ describe('SignalLink', () => {
         // for this test to pull the next one). This is deliberately *not*
         // the `2` iter2 already saw (W4): asserting that exact duplicate
         // would pin down retain()'s synchronous-replay behavior — real, but
-        // not what ASYNC-005 is about, and not documented as a promise. What
-        // ASYNC-005 promises is narrower: iter1 finishing does not cut iter2
+        // not what the shared cursor is about, and not documented as a
+        // promise. What it promises is narrower: iter1 finishing does not cut iter2
         // off. If iter1's cleanup had wrongly cleared the shared retained
         // slot, iter2's next read would have nothing to synchronously replay
         // and would hang until a *further* emission that never comes here.
@@ -642,7 +642,7 @@ describe('SignalLink', () => {
           //
           // Against a release *one iterator too early* — the failure mode
           // this test is named for — the assertion bites only since the
-          // MEM-004 fix. Back when iter1's cleanup called `retainClear()`,
+          // retain policy. With iter1's cleanup calling `retainClear()`,
           // an early release was invisible here: the policy survived it, so
           // `sigA.set(3)` refilled the slot either way and iter2's read was
           // replayed regardless. Now the cleanup calls `unretain()` and takes
@@ -666,17 +666,17 @@ describe('SignalLink', () => {
     });
   });
 
-  // Deliberately not built like the ASYNC-005 test above. That one is
+  // Deliberately not built like the shared-cursor test above. That one is
   // sensitive to a release one iterator too early (see its comment), but not
-  // to what MEM-004 is actually about: whether the release after the *last*
+  // to what the retain policy is about: whether the release after the *last*
   // iterator drops the retain policy or only the stored value. It never
   // looks at the link again once its last iterator is gone — every read it
   // makes happens while iter2 is still alive and VALUE is still retained
   // under either implementation. Measured: swap `unretain()` back for
-  // `retainClear()` at the correct moment and ASYNC-005 stays green, while
+  // `retainClear()` at the correct moment and that test stays green, while
   // both tests below fail. They see it because they do the opposite: they
   // write *after* the last iterator and claim that nothing sticks.
-  describe('MEM-004: the last asyncValues() iterator switches VALUE retaining off', () => {
+  describe('The last asyncValues() iterator switches VALUE retaining off', () => {
     it('drops the retain policy, not just the stored value', {
       timeout: 1000,
     }, async () => {
@@ -827,7 +827,7 @@ describe('SignalLink', () => {
     });
   });
 
-  describe('BUG-001/002/008: destroy and re-entrancy during propagation', () => {
+  describe('Destroy and re-entrancy during propagation', () => {
     it('a callback destroying its own link mid-propagation lets the rest of the delivery finish', () => {
       const sigA = createSignal(1);
 

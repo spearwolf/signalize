@@ -328,10 +328,12 @@ The full list lives in [Recipes & quirks](./docs/recipes.md).
 | Document                                  | Purpose                                     |
 | ----------------------------------------- | ------------------------------------------- |
 | [Quickstart](./docs/quickstart.md)        | Install + 5-minute tour.                    |
-| [Architecture](./docs/architecture.md)    | Concepts, internals, source map.            |
+| [Architecture](./docs/architecture.md)    | Concepts, internals, source map, the decisions behind them. |
 | [API reference](./docs/api.md)            | Every export, every option.                 |
 | [Recipes & quirks](./docs/recipes.md)     | Patterns, gotchas, lifecycle.               |
 | [Cheat sheet](./docs/cheat-sheet.md)      | One-page lookup.                            |
+| [Conventions](./docs/conventions.md)      | How code is written here — for contributors and coding agents. |
+| [Contributing](./CONTRIBUTING.md)         | Setup, commands, pull requests, releasing.  |
 
 For changes between releases, see [CHANGELOG.md](./CHANGELOG.md).
 
@@ -380,13 +382,17 @@ blocking CI scope: `.github/workflows/ci.yml` runs `check`, `dist`,
 informative, non-blocking).
 
 Tests are `*.spec.ts` files sitting next to the implementation in `src/`; only
-`src/` is edited by hand, `lib/` and `dist/` are generated. Details and code
-style are in [CONTRIBUTING.md](./CONTRIBUTING.md).
+`src/` is edited by hand, `lib/` and `dist/` are generated. The process is in
+[CONTRIBUTING.md](./CONTRIBUTING.md), the rules code has to follow in
+[docs/conventions.md](./docs/conventions.md).
 
 ## Contributing
 
-Issues and pull requests are welcome. See
-[CONTRIBUTING.md](./CONTRIBUTING.md) and
+Issues and pull requests are welcome. Start with
+[CONTRIBUTING.md](./CONTRIBUTING.md) for setup and workflow, and
+[docs/conventions.md](./docs/conventions.md) for how code is written here —
+naming, imports, comments, tests, the public surface. Architectural decisions
+live in [docs/architecture.md](./docs/architecture.md). Also see
 [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
 
 ## License

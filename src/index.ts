@@ -4,7 +4,7 @@
 // form — `export *` publishes every future export of a module unasked,
 // `export type *` does the same for its types. Publishing is meant to be an
 // edit to this file, not a side effect of something new landing anywhere in
-// `src/` (API-017).
+// `src/`.
 //
 // Who holds this: `performance/noReExportAll` (`biome.json`) fails `pnpm
 // check` on a value star, `index.public-surface.spec.ts` on both star forms
@@ -54,7 +54,7 @@ export {
 export {onSignalizeError} from './signalize-error.js';
 export {touch} from './touch.js';
 // `ISignalImpl` is the implementation layer and stays inside the module
-// graph — `LinkSource` is what a consumer gets instead (API-007).
+// graph — `LinkSource` is what a consumer gets instead.
 export type {
   AbortSignalLike,
   BeforeReadFunc,

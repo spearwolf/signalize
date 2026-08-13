@@ -1,7 +1,7 @@
 // Leaf module — it may import, **type-only**, `./Effect.js` and `./types.js`.
 // Nothing else, and `./effects.js` or `./EffectImpl.js` least of all: those
 // modules write this placeholder, so a value import back would close exactly
-// the ring this module exists to open (ARCH-002). `Signal.ts` and
+// the ring this module exists to open. `Signal.ts` and
 // `create-signal.ts` read it, `effects.ts` fills it on module evaluation.
 
 import type {Effect} from './Effect.js';

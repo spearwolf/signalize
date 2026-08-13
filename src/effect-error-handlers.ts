@@ -51,8 +51,8 @@ export const getEffectErrorHandlerCount = (): number => handlerCount;
  * gone; `handlerCount` does not know it. Measured: counter at 1, queue
  * subscriptions for `$effectError` at 0, the next report calls `emit()`
  * against nobody and is silently dropped — no `console.error`, no
- * `onSignalizeError()` fallback, where the pre-PERF-005 scan would have
- * seen the empty queue and fallen back correctly. Closing this would mean
+ * `onSignalizeError()` fallback, which a probe of the queue itself would
+ * have got right. Closing this would mean
  * tracking removal by listener identity, which needs a hook eventize does
  * not expose; the type system already blocks every caller that stays
  * inside `tsc`.

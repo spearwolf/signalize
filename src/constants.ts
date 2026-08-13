@@ -9,7 +9,7 @@ export const $signalizeError = Symbol.for(
   '@spearwolf/signalize/signalizeError',
 );
 
-// MEM-001: a `SignalLink`'s handles for its own subscriptions on the two
+// A `SignalLink`'s handles for its own subscriptions on the two
 // module-level global queues. Symbol-keyed rather than a `#private` field
 // because `src/link.ts` has to hand exactly this array to the
 // `FinalizationRegistry` as its held value, and a private field is
@@ -19,7 +19,7 @@ export const $queueUnsubscribes = Symbol.for(
   '@spearwolf/signalize/queueUnsubscribes',
 );
 
-// MEM-007: a `SignalAutoMap`'s handles for the per-entry subscriptions it
+// A `SignalAutoMap`'s handles for the per-entry subscriptions it
 // holds on `globalDestroySignalQueue`. Symbol-keyed for the same reason as
 // `$queueUnsubscribes` above — `src/SignalAutoMap.ts` has to hand exactly
 // this object to a `FinalizationRegistry` as its held value, a `#private`
@@ -33,7 +33,7 @@ export const $autoMapResources = Symbol.for(
   '@spearwolf/signalize/autoMapResources',
 );
 
-// ARCH-001: the register in which two copies of this library find each other.
+// The register in which two copies of this library find each other.
 // It carries no major version on purpose — a versioned key would never meet
 // the other copy, which is the whole point of looking.
 export const $signalizeInstances = Symbol.for('@spearwolf/signalize/instances');

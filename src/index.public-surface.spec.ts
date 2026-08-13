@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import * as api from './index.js';
 
-// No counter guards here (API-017): this file creates no signal, effect or
+// No counter guards here: this file creates no signal, effect or
 // link — it reads the module source as text and inspects the entry point's
 // own namespace object. There is nothing for `assertEffectsCount` /
 // `assertSignalsCount` / `assertLinksCount` to watch.
@@ -13,7 +13,7 @@ import * as api from './index.js';
 // list below is not a bug in the list; it is `index.ts` publishing something
 // nobody decided to publish. Reading that as "the test is wrong, update the
 // list" defeats the point of writing it down twice.
-describe('the entry point publishes a named surface, not a star (API-017)', () => {
+describe('the entry point publishes a named surface, not a star', () => {
   it('carries no `export *`, in either form', () => {
     const indexSource = readFileSync(
       fileURLToPath(new URL('./index.ts', import.meta.url)),

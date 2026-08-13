@@ -2,7 +2,7 @@ import {warnDeprecatedOnce} from './deprecation-warnings.js';
 import {onSignalizeError} from './signalize-error.js';
 import type {SignalizeErrorPayload} from './types.js';
 
-// No counter guards here (CONS-004): this file creates no signal, no effect
+// No counter guards here: this file creates no signal, no effect
 // and no link — it calls the deprecation gate directly and collects what it
 // reports. There is nothing for `assertEffectsCount` / `assertSignalsCount` /
 // `assertLinksCount` to watch.
@@ -10,7 +10,7 @@ import type {SignalizeErrorPayload} from './types.js';
 // The gate is module-scoped, so the state these tests build up is shared
 // between them and reset only by Vitest's per-file isolation. That is the
 // subject, not an accident: read the tests in order.
-describe('warnDeprecatedOnce() gates a notice per call site (CONS-004)', () => {
+describe('warnDeprecatedOnce() gates a notice per call site', () => {
   let seen: SignalizeErrorPayload[];
   let unsubscribe: () => void;
 

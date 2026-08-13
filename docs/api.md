@@ -89,7 +89,7 @@ see the passthrough box below the table). Omitted, or passed an explicit
 | `lazy`   | `boolean` | If `true`, store `value` as a factory; evaluate on next read. Required for the factory form — `set(fn)` without it does not compile — and reserved for it: `set(v, {lazy: true})` on a plain value does not compile either. |
 
 > ⚠️ **No updater function.** `set((v) => v + 1)` stores the function as the
-> value. Use `set(sig.value + 1)` instead. Since TYPE-002 the nullary form
+> value. Use `set(sig.value + 1)` instead. The nullary form
 > `set(() => 42)` is rejected too — a factory needs `{lazy: true}` — so both
 > shapes are compile errors and the storing behaviour is reachable only from
 > untyped JS.
@@ -112,7 +112,7 @@ see the passthrough box below the table). Omitted, or passed an explicit
 > holds at runtime, for the same reason they do not open the factory branch —
 > `lazy?: boolean` promises nothing either way. What they turn away there is
 > each of the four statically-`true` spellings above, every one a `TS2769` on
-> a plain value, because that flag promises a factory (BUG-014) — and any
+> a plain value, because that flag promises a factory — and any
 > params type whose keys reach past the published options type.
 >
 > An earlier revision of this page said the two were **not** symmetric on that
@@ -531,9 +531,9 @@ memo's own write so a downstream effect depending on both sees one
 consistent run instead of one per write with a torn intermediate value.
 
 What that grouping costs depends on whether anything downstream reacts. A
-memo with no dependent effect defers nothing, and since PERF-002 a batch with
-an empty queue skips its flush entirely — measured, `batchWrites: true` is then
-within single-digit percent of the default (it used to be about 2.5x slower).
+memo with no dependent effect defers nothing, and a batch with an empty queue
+skips its flush entirely — measured, `batchWrites: true` is then within
+single-digit percent of the default.
 As soon as the memo *has* a dependent effect, the recompute pays a complete
 flush for that single deferred effect: a `Set`, an array, two temporary queue
 subscriptions, a delivery frame, and one dispatch through eventize instead of

@@ -25,7 +25,7 @@ function value<Type>(source: SignalLike<Type> | SignalReader<Type>): Type;
 function value<O extends object, K extends keyof O>(source: [O, K]): O[K];
 
 function value(source: any) {
-  // CONS-007: see `touch()` — same guard, same reason. The shape is checked,
+  // See `touch()` — same guard, same reason. The shape is checked,
   // not the lookup result: `value([obj, 'unknown'])` stays `undefined`.
   if (!isSignal(source) && !Array.isArray(source)) {
     throw new TypeError(

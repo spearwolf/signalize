@@ -61,7 +61,7 @@ class Batch {
    *
    * The counterpart of {@link batch}, for the one run that cannot be
    * deferred: a memo whose value is being read right now runs past the
-   * batch gate (ASYNC-003), and the entry an earlier write left for it is
+   * batch gate, and the entry an earlier write left for it is
    * then a duplicate of a run that has already happened. A later write
    * re-queues the effect through `batch()` as before — this takes the
    * pending run away, not the effect's place in the priority order.
@@ -112,9 +112,9 @@ class Batch {
    * It is here because an empty queue is the normal case for every batch
    * whose writes did not reach a single effect: `SignalAutoMap.update()` on
    * unobserved props, a `{batchWrites: true}` memo without a downstream
-   * effect, and every defensive `batch()` in application code. Those used to
-   * pay for a `Set`, an array and two subscriptions to deliver nothing
-   * (PERF-002).
+   * effect, and every defensive `batch()` in application code. Without it
+   * each of those pays for a `Set`, an array and two subscriptions to
+   * deliver nothing.
    */
   run() {
     if (this.delayedEffects.length === 0) return;
@@ -264,7 +264,7 @@ export function batch<T>(callback: () => NonThenable<T>): void {
     }
   } catch (err) {
     // Held, not rethrown: the flush below runs either way, and a failing
-    // effect in it must not take this error's place (BUG-012).
+    // effect in it must not take this error's place.
     errors = [err];
   } finally {
     if (curBatch) {

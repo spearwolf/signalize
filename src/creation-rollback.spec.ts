@@ -169,7 +169,7 @@ describe('a creation that throws leaves nothing behind (P1, P2)', () => {
       }
     });
 
-    it('reports a failing rollback next to the run error instead of in its place (BUG-012)', () => {
+    it('reports a failing rollback next to the run error instead of in its place', () => {
       const boom = new Error('boom');
       const reporterBoom = new Error('reporter boom');
 
@@ -313,7 +313,7 @@ describe('a creation that throws leaves nothing behind (P1, P2)', () => {
       }
     });
 
-    it('a constructor that throws never counted anything to roll back (BUG-003)', () => {
+    it('a constructor that throws never counted anything to roll back', () => {
       const host = {};
 
       let caught: unknown;
@@ -411,7 +411,7 @@ describe('a creation that throws leaves nothing behind (P1, P2)', () => {
       }
     });
 
-    it('reports a failing signal teardown next to the compute error (BUG-012)', () => {
+    it('reports a failing signal teardown next to the compute error', () => {
       const boom = new Error('memo boom');
       const destroyBoom = new Error('destroy boom');
 

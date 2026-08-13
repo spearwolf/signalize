@@ -339,7 +339,7 @@ describe('connect signals', () => {
 
       expect(destroyMock).toHaveBeenCalledTimes(2);
     } finally {
-      // MEM-007 exception: destroying the signals is itself under test
+      // Counter-guard exception: destroying the signals is itself under test
       // above and stays exactly where it was (rule c). This finally only
       // adds the idempotent safety net (rule b) in case an assertion fails
       // before the body's own teardown runs.

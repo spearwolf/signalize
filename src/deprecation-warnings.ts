@@ -33,14 +33,14 @@ const gWarnedKeys = new Set<DeprecationKey>();
  * Report a deprecation notice at most once per process, per call site.
  *
  * Deliberately once, unlike the `ignored-option` notices: a deprecated call
- * is a lifecycle fact about the codebase, not a typo in one call, and the
- * unconditional variant floods the console from a render loop (CONS-004).
+ * is a lifecycle fact about the codebase, not a typo in one call, and an
+ * unconditional notice floods the console from a render loop.
  *
  * The `[signalize] ` prefix stays with the caller's message rather than being
  * built here, so that one rule holds across the whole tree — every
  * self-authored message begins with it — and `message-prefix.spec.ts` can
  * check it in one place instead of demanding its *absence* at these three
- * call sites (CONS-002).
+ * call sites.
  *
  * @param key - Which deprecated call site is reporting
  * @param message - The full notice, prefix included

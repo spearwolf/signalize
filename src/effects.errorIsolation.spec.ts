@@ -15,7 +15,7 @@ import {destroySignal, getSignalsCount} from './signal-core.js';
 const effectIdOf = (effect: {[$effect]?: {id: symbol}}): symbol =>
   effect[$effect]!.id;
 
-describe('a throwing effect callback does not silence its siblings (BUG-004)', () => {
+describe('a throwing effect callback does not silence its siblings', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');

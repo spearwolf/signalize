@@ -264,7 +264,7 @@ describe('async effect callbacks', () => {
   });
 
   describe('cleanup generations', () => {
-    it('runs the cleanup of a run that was superseded before it settled (MEM-004)', async () => {
+    it('runs the cleanup of a run that was superseded before it settled', async () => {
       const log: string[] = [];
       const {get: a, set: setA} = createSignal(0);
 
@@ -391,7 +391,7 @@ describe('async effect callbacks', () => {
       }
     });
 
-    it('a cleanup that settles after the run it was superseded by does not take the slot (TEST-023)', async () => {
+    it('a cleanup that settles after the run it was superseded by does not take the slot', async () => {
       // The sibling above pins the *sequence*, this one the *numbering*. Move
       // the `++this.#generation` from just before the callback to the top of
       // `run()` and the sibling stays green: with both promises settling in
@@ -472,7 +472,7 @@ describe('async effect callbacks', () => {
       }
     });
 
-    it('runs a cleanup that settles after the effect was destroyed (MEM-004)', async () => {
+    it('runs a cleanup that settles after the effect was destroyed', async () => {
       const log: string[] = [];
       const {get: a} = createSignal(0);
 
@@ -497,7 +497,7 @@ describe('async effect callbacks', () => {
       }
     });
 
-    it('reports a throwing stale cleanup through onEffectError (MEM-004)', async () => {
+    it('reports a throwing stale cleanup through onEffectError', async () => {
       const errors: EffectErrorPayload[] = [];
       const unsubscribe = onEffectError((payload) => {
         errors.push(payload);

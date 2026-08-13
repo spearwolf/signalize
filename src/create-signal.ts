@@ -56,7 +56,7 @@ type _PassthroughListCoversSignalParams =
       ];
 declare const _checkPassthroughListCoversSignalParams: _AssertTrue<_PassthroughListCoversSignalParams>;
 
-// PERF-006: one instance instead of a fresh arrow built on every `writer()`
+// One instance instead of a fresh arrow built on every `writer()`
 // call. `CompareFunc<any>` assigns to `CompareFunc<Type>` (measured clean
 // under `tsc --noEmit`), so no cast is needed. Not a `sideEffects: false`
 // exception — a plain allocation with no observable effect, tree-shakeable
@@ -202,7 +202,7 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
  * `{lazy: true}` is required here, not optional, and it has to be statically
  * `true` — that is the whole mechanism. A bare `createSignal<T>(fn)` has no
  * overload to land on and is rejected instead of silently storing the
- * function as the value (TYPE-002).
+ * function as the value.
  *
  * This overload is declared **first** so a factory call wins the inference:
  * `createSignal(() => 42, {lazy: true})` is a `Signal<number>`, not a
@@ -216,7 +216,7 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
  *
  * A `SignalReader<T>` — `sig.get` off an existing signal — is also a
  * `() => T`, so `createSignal(sig.get, {lazy: true})` type-checks against
- * this very overload (API-012). At runtime `isSignal()` recognises that same
+ * this very overload. At runtime `isSignal()` recognises that same
  * reader and routes the call into the passthrough below instead of building
  * a new lazy signal from it: `sig.get` is not called as a factory, the
  * returned signal is `sig` itself, and the dropped options are reported the
@@ -236,7 +236,7 @@ export function createSignal<Type = unknown>(
  * The signal holds `undefined` until the first write, and the type says so:
  * `createSignal<number>()` is a `Signal<number | undefined>`, so
  * `const n: number = sig.value` is a compile error rather than a runtime
- * `undefined` wearing a `number` label (API-013). Under
+ * `undefined` wearing a `number` label. Under
  * `strictNullChecks: false` the union collapses back to `Type` and nothing
  * about this changes — the promise only exists for consumers who asked for it.
  *
@@ -292,7 +292,7 @@ export function createSignal<
  * the single exception, because it is applied behind the branch and belongs
  * to both paths; `lazy`, `compare` and `beforeRead` are dropped, and every
  * such call reports the ones it was given through `onSignalizeError()` with
- * `source: 'ignored-option'` (API-012). The line worth keeping is the
+ * `source: 'ignored-option'`. The line worth keeping is the
  * branch, not the three names: an option that configures a *new* signal has
  * nothing to configure when no new signal is made, and that stays true as
  * the options change. The same call also reaches here through the factory
@@ -308,7 +308,7 @@ export function createSignal<
  * the argument (`createSignal(fn)` is a `Signal<() => R>`).
  *
  * **The params carry the same three clauses `SignalWriter<T>` carries**, and
- * for the same reasons — this is the constructor half of BUG-014:
+ * for the same reasons — this is the constructor half of the same rule:
  *
  * - A statically `true` `lazy` is refused. A value is not a factory; the
  *   factory overload above is where `{lazy: true}` belongs. It used to
@@ -318,8 +318,8 @@ export function createSignal<
  *   variable annotated `SignalParams<T> & {lazy: true}`, and `{lazy: flag}`
  *   with `flag` already narrowed to `true` — a `const flag: boolean = true`
  *   does exactly that. A `SignalParams<T>` variable holding `{lazy: true}`
- *   still passes: `lazy?: boolean` is not a promise that it is `true`, and
- *   that boundary is TYPE-002. Spreading (`{...params}`) does not change it.
+ *   still passes: `lazy?: boolean` is not a promise that it is `true`.
+ *   Spreading (`{...params}`) does not change it.
  * - A key `SignalParams<Type>` does not declare is refused outright. Inferring
  *   `P` from the argument is what makes the `lazy` clause possible at all, and
  *   it costs the excess property check on the way — a type parameter is
@@ -364,7 +364,7 @@ export function createSignal<
  *   freshness, reported as "Object literal may only specify known properties"
  *   — while a *variable* typed `{label: string}` is accepted in silence and
  *   does nothing at runtime. `SignalWriter<T>` paid the same price for the
- *   same reason when it turned generic (BUG-014, package 3a); the loss is new
+ *   same reason when it turned generic; the loss is new
  *   for `createSignal` and shared by both from here on.
  *
  * A plain `string`, `number` or `symbol` index signature is exempt from the
@@ -416,7 +416,7 @@ export function createSignal<Type = unknown>(
     // NOTE createSignal(otherSignal) returns otherSignal and does NOT create a new signal
     signal = signalImpl(initialValue as SignalLike<Type>);
 
-    // API-012: the signal that comes back is the one that went in, so nothing
+    // The signal that comes back is the one that went in, so nothing
     // in `params` has anything to configure — `attach` below is the exception
     // and applies to both branches. Reported on every such call, not once per
     // process: this marks a misspelled call, not a lifecycle event, and the

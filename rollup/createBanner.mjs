@@ -1,6 +1,6 @@
 // The copyright year is frozen, not computed. `new Date().getFullYear()`
 // here made every New Year's Eve change the bytes of an unchanged commit
-// (SEC-001). Bump the range by hand when a release warrants it.
+// Bump the range by hand when a release warrants it.
 export const createBanner = ({name, description, version}) => `/*!
 @file ${name} - ${description}
 @author Wolfger Schramm <wolfger@spearwolf.de>

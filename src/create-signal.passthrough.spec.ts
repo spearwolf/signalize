@@ -10,7 +10,7 @@ import {destroySignal} from './signal-core.js';
 import {onSignalizeError} from './signalize-error.js';
 import type {SignalizeErrorPayload, SignalParams} from './types.js';
 
-describe('createSignal(existingSignal, params) passthrough (API-012)', () => {
+describe('createSignal(existingSignal, params) passthrough', () => {
   let warnSpy: MockInstance;
 
   beforeEach(() => {
@@ -27,7 +27,7 @@ describe('createSignal(existingSignal, params) passthrough (API-012)', () => {
     assertLinksCount(0, 'afterEach');
   });
 
-  it('reports the options a passthrough drops, naming each one (API-012)', () => {
+  it('reports the options a passthrough drops, naming each one', () => {
     const seen: SignalizeErrorPayload[] = [];
     const unsubscribe = onSignalizeError((payload) => {
       seen.push(payload);

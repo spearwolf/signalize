@@ -95,7 +95,7 @@ describe('link.asyncValues', () => {
     }
   });
 
-  it('delivers one propagated value once, without a writing loop body (ASYNC-005)', async () => {
+  it('delivers one propagated value once, without a writing loop body', async () => {
     const a = createSignal(23);
     const b = createSignal(0);
 
@@ -128,7 +128,7 @@ describe('link.asyncValues', () => {
     }
   });
 
-  it('two parallel iterators each see every value once (ASYNC-005)', async () => {
+  it('two parallel iterators each see every value once', async () => {
     const a = createSignal(23);
 
     try {

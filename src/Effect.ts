@@ -75,7 +75,7 @@ export class Effect {
    * them: `Signal#onChange()` returns `destroy` as a standalone unsubscribe
    * function, and `createMemo()` passes `runImmediately` and `destroy` on to
    * event queues the same way. Nobody detaches `onDestroy()`, so a plain
-   * prototype method costs it nothing (PERF-009, audit 2026-08-12).
+   * prototype method costs it nothing.
    */
   onDestroy(callback: VoidFunc): () => void {
     const effect = this[$effect];

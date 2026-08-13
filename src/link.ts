@@ -15,10 +15,10 @@ import type {ISignalImpl, SignalLike, SignalReader} from './types.js';
 // Weak on the source signal: the search always goes through the source, so
 // there is no need to iterate `gLinks` itself, and a WeakMap ties the *set*
 // of links for a source to that source's own lifetime — once the source is
-// gone, so is the Map holding its links (MEM-002).
+// gone, so is the Map holding its links.
 //
 // That WeakMap outer layer does not make an individual link collectible
-// while its source is still reachable, though (MEM-007). The inner `Map` is
+// while its source is still reachable, though. The inner `Map` is
 // a strong map: as long as the source signal is reachable, every link ever
 // created on it — its callback closure, its target reference, all of its
 // subscriptions on the global queues (two for a callback target, three for
@@ -35,7 +35,7 @@ import type {ISignalImpl, SignalLike, SignalReader} from './types.js';
 // source was never `destroySignal()`d, just dropped along with every link
 // on it), `gLinkFinalizer` below does eventually correct `getLinksCount()`
 // to match, and releases the link's subscriptions on the two global queues
-// along with it (MEM-001) — see that finalizer's comment for what that path
+// along with it — see that finalizer's comment for what that path
 // still does not do; it is not equivalent to the three explicit ways above.
 //
 // Against a long-lived, still-reachable source, a hot path that keeps
@@ -47,7 +47,7 @@ import type {ISignalImpl, SignalLike, SignalReader} from './types.js';
 // That measurement lives here and nowhere else (2026-08-11, Node 25.9,
 // `lib/` build, 1000 `set()` calls on one signal, medians over five
 // processes). With no links the cost has three regimes, and keeping them
-// apart is the whole of READ-010: 59 µs warm; 96 µs for a signal written
+// apart is the whole point: 59 µs warm; 96 µs for a signal written
 // for the first time in an otherwise warm process; ~0.5 ms as the first
 // thing a fresh process does. With 1000 callback links: 55 ms warm, 60 ms
 // cold. The three figures this file used to carry — 75 µs "warm", 116 µs
@@ -75,7 +75,7 @@ let gLinksCount = 0;
 // *is* destroyed is never double-counted (nor double-released) here.
 //
 // The held value is the link's own `[$queueUnsubscribes]` array — two
-// handles for a callback target, three for a signal target. MEM-001: a
+// handles for a callback target, three for a signal target. A
 // dropped link never runs `destroy()`, so these handles are the *only* thing
 // left that can take its subscriptions off two queues that live as long as
 // the process does. The array is safe to hold: the handles reach only the
@@ -90,7 +90,7 @@ let gLinksCount = 0;
 // a GC test that waits for the counter is just as settled with the two
 // halves swapped. Nothing depends on the order, and no test guards it.
 //
-// What this still is *not* (MEM-007): a fourth-and-a-half teardown route. It
+// What this still is *not*: a fourth-and-a-half teardown route. It
 // emits no DESTROY, does not call `destroy()`, detaches nothing from a group
 // (a group-attached link is held strongly by `SignalGroup#links` and is
 // never collectible in the first place) and does not touch the target. It is
@@ -122,7 +122,7 @@ const gLinkFinalizer = new FinalizationRegistry<(() => void)[]>(
   },
 );
 
-// MEM-005: `gLinks` is weak on the source but strong on the inner Map, so
+// `gLinks` is weak on the source but strong on the inner Map, so
 // every link ever created against a still-reachable source stays alive — and
 // every write to that source pays for the backlog (measured at `gLinks`
 // above). There is no dev-mode flag to hang this off and no runtime switch
@@ -240,10 +240,10 @@ export function link<ValueType>(
   target: LinkableTarget<ValueType>,
   options?: LinkOptions,
 ): SignalLink<ValueType> {
-  // Validation first (BUG-007): reject an invalid source before any registry
-  // entry exists. Previously `gLinks.set(sourceSignal, links)` ran before
-  // the SignalLink constructor's own `signalImpl(source)` check, so a
-  // failed `link()` left a permanent `undefined` key with an empty Map.
+  // Validate before touching the registry: reaching `gLinks.set()` with an
+  // invalid source leaves a permanent `undefined` key with an empty Map
+  // behind, which the SignalLink constructor's own check comes too late to
+  // prevent.
   const sourceSignal = signalImpl(source);
   if (sourceSignal == null) {
     throw new TypeError('[signalize] link: source must be a signal');
@@ -258,7 +258,7 @@ export function link<ValueType>(
     links = new Map<object | Function, SignalLink<any>>();
     gLinks.set(sourceSignal, links);
   } else if (links.has(targetKey)) {
-    // Cache hit (BUG-004): attach the existing link to the newly requested
+    // Cache hit: attach the existing link to the newly requested
     // group too, instead of silently dropping `options.attach`. The link
     // now dies with whichever of its attached groups clears first — see the
     // `LinkOptions.attach` JSDoc.
@@ -297,7 +297,7 @@ export function link<ValueType>(
     });
   }
 
-  // MEM-010: unlike `attachEffect()`'s hook above, the damage here is
+  // Unlike `attachEffect()`'s hook above, the damage here is
   // permanent, not just until the next `clear()`. On normal priority a
   // higher-priority application `DESTROY` listener that throws aborts
   // eventize's delivery before this line runs — `getLinksCount()` then
@@ -330,7 +330,7 @@ export function link<ValueType>(
  * @param target - Optional specific target to unlink (if omitted, all targets are unlinked)
  *
  * Every matching link is torn down, even if an earlier one's `DESTROY`
- * listener throws (MEM-011). A single failure is rethrown unchanged; several
+ * listener throws. A single failure is rethrown unchanged; several
  * are bundled into an `AggregateError`, in teardown order.
  */
 export function unlink<ValueType>(
@@ -342,7 +342,7 @@ export function unlink<ValueType>(
   if (gLinks.has(sourceSignal)) {
     const links = gLinks.get(sourceSignal)!;
 
-    // MEM-011: collected rather than let through — without this, the first
+    // Collected rather than let through — without this, the first
     // link whose DESTROY listener throws ends the loop, every link behind
     // it stays fully subscribed, and `links.clear()` never runs.
     const errors: unknown[] = [];
@@ -384,8 +384,8 @@ export function unlink<ValueType>(
  * source/signal target does that, and each of those also releases the
  * link's subscriptions on the global queues. If a link becomes unreachable
  * *together with* its source instead (dropped, never explicitly destroyed),
- * this count is eventually corrected too — nondeterministically, but these
- * days including those subscriptions (MEM-001); see the `gLinkFinalizer`
+ * this count is eventually corrected too — nondeterministically, and
+ * including those subscriptions; see the `gLinkFinalizer`
  * comment above `link()` for why that backstop is still not a fifth
  * teardown route.
  */

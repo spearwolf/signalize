@@ -90,14 +90,11 @@ const trackSignalizeErrorHandler = (unsubscribe: () => void): (() => void) => {
  * arrives here carries the effect id and the phase inside `message` as text,
  * not as fields; whoever needs them as fields takes `onEffectError`.
  *
- * The handler probe used to be `getSubscribedEventNames(globalEffectQueue)
- * .includes($signalizeError)` — one array entry per subscribed event name,
- * scanned linearly, on every call. Measured on Node 25.9 over 1000 runs per
- * call: 0.17 µs with no live effects · 0.65 µs at 100 · 3.15 µs at 1000 ·
- * 34.9 µs at 10 000 — quadratic in the number of live effects, the same
- * shape `emitEffectError()` used to have (PERF-005). It now reads a
- * module-local handler counter instead — same idea as
- * `effect-error-handlers.ts`, kept local here because this module is
+ * Whether anyone listens is read from a module-local counter, not probed on
+ * the queue: `getSubscribedEventNames()` builds an array with one entry per
+ * subscribed event name and scans it linearly, which is quadratic in the
+ * number of live effects because each subscribes under its own id. Same idea
+ * as `effect-error-handlers.ts`, kept local here because this module is
  * already a leaf and gains nothing from a module of its own. The counter
  * can only be wrong on the safe side: `trackSignalizeErrorHandler()`'s
  * `released` guard keeps a double unsubscribe (eventize's own unsubscribe is

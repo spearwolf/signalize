@@ -7,6 +7,9 @@
 | Need | Read |
 | --- | --- |
 | Architecture, eventize internals, source-file map, full public API, common change patterns | `AGENTS.md` — read before any non-trivial change |
+| How code is written here — naming, imports, comments, tests, public surface | `docs/conventions.md` — canonical; read before writing code |
+| Architecture decisions (context → decision → consequence) | `docs/architecture.md` → "Architecture decisions" |
+| Contributor process — setup, commands, pull requests, releasing | `CONTRIBUTING.md` |
 | How to *use* signalize (mental model, pitfalls, patterns) | `skills/using-signalize/` |
 | Getting started, behaviour details and quirks | every file under `docs/` — `quickstart.md` first, then `api.md` for the full surface |
 
@@ -31,7 +34,7 @@ Full command table in `AGENTS.md`.
 - **Imports carry a `.js` extension** in `src/` (NodeNext): `import {x} from './foo.js'` even though the source is `foo.ts`. Always.
 - **`strict: true` but `strictNullChecks: false`** is intentional. Null-ish values are passed around freely; don't add defensive `?:` to "fix" errors that aren't errors here.
 - **Decorators are TC39 standard** (no `experimentalDecorators`) — `accessor` keyword, standard descriptor signatures.
-- **Biome only** (`biome.json`); ESLint and Prettier are gone. Read the rule block there rather than a copy here — 16 rules are off, and four are set to `error`, two of which `recommended` does not carry at all. Only the non-obvious ones are worth a word: `style/useImportType` is `error`, and it is what keeps the value-import graph acyclic (`AGENTS.md` → "Module layering"); `performance/noReExportAll` fails a value star in `index.ts` but never sees `export type *` (API-017); `suspicious/noConsole` is `error` across `src/` with two named exemptions and misses the destructured alias (CONS-002). The disabled ones each match a pattern the code actually uses, with three measured exceptions — `noUselessConstructor`, `noThisInStatic` and `noUselessElse` match nothing in the tree today.
+- **Biome only** (`biome.json`); ESLint and Prettier are gone. Read the rule block there rather than a copy here — 16 rules are off, and four are set to `error`, two of which `recommended` does not carry at all. Only the non-obvious ones are worth a word: `style/useImportType` is `error`, and it is what keeps the value-import graph acyclic (`AGENTS.md` → "Module layering"); `performance/noReExportAll` fails a value star in `index.ts` but never sees `export type *`; `suspicious/noConsole` is `error` across `src/` with two named exemptions and misses the destructured alias. The disabled ones each match a pattern the code actually uses, with three measured exceptions — `noUselessConstructor`, `noThisInStatic` and `noUselessElse` match nothing in the tree today.
 - **`biome.json` takes no comments.** It is parsed as strict JSON, so a `//` or `/* … */` anywhere in it fails `pnpm check` with a parse error naming the line and column — measured in all three natural placements, never silently. What differs is the wreckage behind that error: an inline comment after a value aborts the run before a single file is checked, while a comment on its own line lets Biome fall back to a default config, lose `files.includes` and lint files nobody meant to lint — so the parse error arrives buried under a few hundred unrelated diagnostics. Reasons for a rule belong here, not there.
 - **TypeScript needs the explicit `types: ["vitest/globals", "node"]`** in `tsconfig.json`; auto-include from `node_modules/@types/*` no longer fires. Removing it breaks `__testing__/assert-helpers.ts`, which calls the global `expect` — including the two-argument message form Vitest supports natively.
 - **Vitest transpiles via SWC, not oxc** (`vitest.config.ts` sets `oxc: false` and loads `unplugin-swc`). Vite 8's oxc pass hands TC39 decorators straight through and Node then rejects `@signal() accessor foo`. Don't drop the plugin unless oxc has learned to lower decorators.
@@ -41,7 +44,7 @@ Full command table in `AGENTS.md`.
 - **A new file in `src/` is invisible to consumers** until re-exported through `src/index.ts` (default entry) or `src/decorators.ts` (`./decorators` subpath).
 - Tests are `*.spec.ts` adjacent to the implementation; Vitest is rooted at `src/` only.
 - **pnpm 11 ignores the `pnpm` field in `package.json`** — settings live in `pnpm-workspace.yaml` (`allowBuilds` replaces `onlyBuiltDependencies`).
-- `sideEffects: false` — keep module top-levels side-effect-free so tree-shaking holds. Exactly two named exceptions exist, both last lines: the ARCH-001 sentinel in `signalize-error.ts` (losing it costs a warning) and `setCreateEffectHook(createEffect)` in `effects.ts` (losing it makes `Signal.onChange()` throw); the full measurement, and what each costs, is in `AGENTS.md` → "No top-level side effects".
+- `sideEffects: false` — keep module top-levels side-effect-free so tree-shaking holds. Exactly two named exceptions exist, both last lines: the multi-copy sentinel in `signalize-error.ts` (losing it costs a warning) and `setCreateEffectHook(createEffect)` in `effects.ts` (losing it makes `Signal.onChange()` throw); the full measurement, and what each costs, is in `AGENTS.md` → "No top-level side effects".
 
 ## Verifying subscription leaks
 

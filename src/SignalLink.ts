@@ -157,14 +157,14 @@ export abstract class SignalLink<ValueType = unknown> {
   // through `releaseOnDestroy()`. Two handles for a callback target, three
   // for a signal target.
   //
-  // MEM-004: `destroy()` runs all of them. Without it, the closures (routed
-  // through `selfRef`, so they no longer pin the link *from the queues* —
-  // see MEM-002 below; `src/link.ts`'s comments cover what still does) stay
+  // `destroy()` runs all of them. Without it, the closures (routed
+  // through `selfRef`, so they do not pin the link *from the queues* — see
+  // the weak self-reference below; `src/link.ts` covers what still does) stay
   // subscribed on a queue that lives as long as the process, until the
   // *other* side's signal is destroyed too — which for a link torn down well
   // before its signals is never.
   //
-  // MEM-001: `destroy()` is not the only reader. `src/link.ts` registers
+  // `destroy()` is not the only reader. `src/link.ts` registers
   // this very array as the held value of its `FinalizationRegistry`, so a
   // link that is merely dropped — never destroyed, so no DESTROY, no
   // teardown — still gets these handles run once it is collected. That is
@@ -182,17 +182,17 @@ export abstract class SignalLink<ValueType = unknown> {
   // rules out a second run pushing anything new.
   readonly [$queueUnsubscribes]: (() => void)[] = [];
 
-  // ASYNC-005: how many `asyncValues()` generators are currently iterating
+  // How many `asyncValues()` generators are currently iterating
   // this link. `unretain(this, VALUE)` in that generator's `finally` block
   // only runs once this drops back to 0.
   #activeAsyncValuesCount = 0;
 
-  // BUG-008: bumped once per `updateValue()` frame, before control goes
+  // Bumped once per `updateValue()` frame, before control goes
   // to `action()`. Only ever compared for equality — the absolute value
   // carries no meaning, and no path reads it from outside this class.
   #propagationGeneration = 0;
 
-  // ASYNC-005: the generation of the most recent VALUE emit — assigned on
+  // The generation of the most recent VALUE emit — assigned on
   // every emit, whether anything retains VALUE or not, and never cleared
   // (`unretain()` empties eventize's slot without touching this). It is
   // read in one place only, from inside a VALUE delivery, where it always
@@ -206,7 +206,7 @@ export abstract class SignalLink<ValueType = unknown> {
   /**
    * The signal this link reads from.
    *
-   * The view is deliberately narrow (API-007): {@link LinkSource} exposes
+   * The view is deliberately narrow: {@link LinkSource} exposes
    * `id`, `value`, `muted` and `destroyed` and nothing else. At runtime this
    * *is* the signal implementation, it is simply no longer typed as one — a
    * link is a one-way read connection, not a second handle to drive its own
@@ -220,9 +220,9 @@ export abstract class SignalLink<ValueType = unknown> {
    *
    * Two frames deliberately leave it alone: one whose `action()`
    * destroyed this link (`destroy()` sets it to `undefined` and that
-   * stands, BUG-001), and one that a nested, re-entrant frame superseded
-   * while `action()` was running — the nested frame's newer value is the
-   * one that stays (BUG-008).
+   * stands), and one that a nested, re-entrant frame superseded while
+   * `action()` was running — the nested frame's newer value is the one
+   * that stays.
    */
   lastValue?: ValueType;
 
@@ -233,7 +233,7 @@ export abstract class SignalLink<ValueType = unknown> {
 
     this.source = signalImpl(source);
 
-    // Weak self-reference (MEM-002): these two callbacks subscribe on
+    // Weak self-reference: these two callbacks subscribe on
     // module-level global queues that live for the whole process. A plain
     // `this` closure here would keep the link (and everything it reaches —
     // the source signal, the target, a callback's closure) permanently
@@ -242,14 +242,14 @@ export abstract class SignalLink<ValueType = unknown> {
     // pinning path; once a link is genuinely collected, the dereffed
     // callbacks are silent no-ops.
     //
-    // It does not, on its own, make an orphaned link collectible (MEM-007):
+    // It does not, on its own, make an orphaned link collectible:
     // `src/link.ts`'s `gLinks` registry holds every link on a live source
     // signal in an ordinary, strongly-referencing `Map`, for as long as that
     // source lives — see the comment there. This WeakRef only rules out the
     // queues as an *additional* permanent root; the registry is still one.
     //
-    // MEM-001 leans on it a second time, so it is load-bearing twice over:
-    // the unsubscribe handles collected below are handed to `link.ts`'s
+    // It is load-bearing twice over: the unsubscribe handles collected
+    // below are handed to `link.ts`'s
     // `FinalizationRegistry` as its held value, and a held value that could
     // reach its own registered object keeps that object alive forever — the
     // finalizer would never fire. The only path from a handle back to this
@@ -287,7 +287,7 @@ export abstract class SignalLink<ValueType = unknown> {
    * Anything registered here is released by **both** teardown routes:
    * `destroy()` runs it (before `Object.freeze(this)`), and so does
    * `src/link.ts`'s `FinalizationRegistry` if the link is merely collected
-   * instead (MEM-001). Which means the handle must survive being called on a
+   * instead. Which means the handle must survive being called on a
    * link that no longer exists — eventize's handles do, and a subclass
    * handing over anything else has to.
    */
@@ -335,7 +335,7 @@ export abstract class SignalLink<ValueType = unknown> {
    * With a cursor, a synchronous replay of an already-consumed generation is
    * ignored and the call keeps waiting for the *next* propagation — that is
    * what stops an `asyncValues()` loop from being handed the retained value
-   * over and over (ASYNC-005). Without one (`null`, i.e. every public
+   * over and over. Without one (`null`, i.e. every public
    * `nextValue()` call) the behaviour is unchanged: whatever sits in the
    * retained slot settles the promise right away.
    */
@@ -385,7 +385,7 @@ export abstract class SignalLink<ValueType = unknown> {
       // replays a *retained* event synchronously, inside the subscribe call
       // itself (`on()` for VALUE below, `once()` for the rest), before that
       // call returns — and `asyncValues()` retains
-      // VALUE (ASYNC-005). If VALUE were subscribed first, its own replay
+      // VALUE. If VALUE were subscribed first, its own replay
       // could run before the read's handle list holds anything else at all —
       // including the not-yet-registered DESTROY/abort handles — so the
       // `releaseAll()` it calls would walk an empty array and release
@@ -405,11 +405,11 @@ export abstract class SignalLink<ValueType = unknown> {
         // settles the promise first must detach the *other* listeners too,
         // this one included — otherwise a `nextValue()` that resolves
         // normally leaves its abort listener on the caller's `AbortSignal`
-        // for as long as that signal lives (ASYNC-004).
+        // for as long as that signal lives.
         read.add(() => signal.removeEventListener('abort', onAbort));
       }
 
-      // ASYNC-005: `on`, not `once` — which is what the line that used to
+      // `on`, not `once` — which is what the line that used to
       // stand here ("we can not just use 'once' here because the value is
       // retained") was reaching for, three refactors ago. A retained VALUE is
       // replayed synchronously inside this very call (see the K1 block
@@ -445,7 +445,7 @@ export abstract class SignalLink<ValueType = unknown> {
    * cursor is advanced.
    *
    * A cursor that takes a delivery moves to its generation in the same step,
-   * so a later replay of that same generation is refused (ASYNC-005). A
+   * so a later replay of that same generation is refused. A
    * plain `nextValue()` passes no cursor and therefore still settles on the
    * replay, exactly as before.
    *
@@ -482,13 +482,13 @@ export abstract class SignalLink<ValueType = unknown> {
    * lost, same as a single `retain()`'d event anywhere else. Each iterator
    * sees each propagated value at most once: a read that finds nothing new
    * waits for the next propagation instead of being handed the retained
-   * value again (ASYNC-005). A plain `nextValue()` is unchanged — it still
+   * value again. A plain `nextValue()` is unchanged — it still
    * settles on whatever is in the slot. Several
    * `asyncValues()` iterators may run over the same link concurrently; they
    * share that one retained slot, released only once the *last* active
-   * iterator stops (ASYNC-005) — an iterator finishing early must not cut a
+   * iterator stops — an iterator finishing early must not cut a
    * still-running sibling off from the next value. "Released" is literal
-   * (MEM-004 — the retain policy, not the queue handles at the top of this
+   * (the retain policy, not the queue handles at the top of this
    * file): the last iterator switches retaining off entirely, so a later
    * `nextValue()` waits for the next value instead of resolving
    * synchronously with a stale one. The flip side: `asyncValues()` claims
@@ -517,8 +517,8 @@ export abstract class SignalLink<ValueType = unknown> {
     // W1: an async generator suspended in an `await` — which is where this
     // one spends every idle phase, inside `#nextValue()` — cannot be closed
     // from the outside: `.return()`/`.throw()` are queued behind the pending
-    // read and only run once it settles. With ASYNC-005 fixed, a read that
-    // finds nothing new waits for the next propagation, so that queue can
+    // read and only run once it settles. A read that finds nothing new
+    // waits for the next propagation, so that queue can
     // sit there forever, and `.return()` — the very call this method's
     // contract asks callers to make — would never settle, never run the
     // `finally` below, never release the retain policy.
@@ -552,7 +552,7 @@ export abstract class SignalLink<ValueType = unknown> {
   ) {
     retain(this, VALUE);
     this.#activeAsyncValuesCount += 1;
-    // ASYNC-005: this iterator's own cursor into the shared retained slot.
+    // This iterator's own cursor into the shared retained slot.
     // 0 accepts whatever is in the slot right now — a second iterator
     // joining a running one still starts with the current value, as before —
     // and from then on the same generation is never handed out twice.
@@ -588,8 +588,8 @@ export abstract class SignalLink<ValueType = unknown> {
     } finally {
       this.#activeAsyncValuesCount -= 1;
       if (this.#activeAsyncValuesCount === 0) {
-        // MEM-004 (the retain policy, not the queue handles at the top of
-        // this file): `unretain`, not `retainClear`. The one clears the
+        // The retain policy, not the queue handles at the top of this
+        // file: `unretain`, not `retainClear`. The one clears the
         // slot, the other takes the policy with it — and only the policy is
         // the problem here. After a `retainClear()` VALUE stays retained:
         // every further propagated value lands in the slot with nobody
@@ -607,22 +607,22 @@ export abstract class SignalLink<ValueType = unknown> {
   destroy() {
     if (this.isDestroyed) return;
 
-    // BUG-002: flag first, teardown second — same rule and the same
-    // reason as `EffectImpl.destroy()`'s "flag first, unsubscribe second".
+    // Flag first, teardown second — same rule and the same reason as
+    // `EffectImpl.destroy()`'s "flag first, unsubscribe second".
     // Everything below reaches application code: `emit(this, DESTROY,
     // this)` serves every listener, and an `on()` listener — unlike a
     // `once()` one — is still subscribed while it runs. One that calls
-    // `destroy()` again used to walk into an unguarded teardown and
-    // recurse until the stack blew; the guard above now catches it. It
+    // `destroy()` again would walk into an unguarded teardown and recurse
+    // until the stack blew; the guard above catches it. It
     // also makes `isDestroyed` tell the truth *inside* a DESTROY
     // listener, which is what `updateValue()`'s post-`action()` check
     // relies on when the callback destroys the link.
     this.isDestroyed = true;
 
-    // MEM-004: release every global-queue subscription this link (and its
-    // subclass, if any) registered — the `globalSignalQueue` one included
-    // (MEM-001), which used to be unsubscribed one line above this loop,
-    // outside the collecting pattern. Safe to call even for an obligation
+    // Release every global-queue subscription this link (and its
+    // subclass, if any) registered — the `globalSignalQueue` one included,
+    // inside the collecting pattern rather than beside it. Safe to call
+    // even for an obligation
     // that already fired and self-removed (e.g. this destroy() run *is* the
     // callback from one of them) — eventize's once() handles are inert once
     // their obligation is settled.
@@ -645,11 +645,10 @@ export abstract class SignalLink<ValueType = unknown> {
     // independent guards against a double release.)
     this[$queueUnsubscribes].length = 0;
 
-    // S6, second half: `emit()` reaches application code too, and a throwing
-    // DESTROY listener used to be survivable — the error escaped before the
-    // old `this.isDestroyed = true` at the tail, so a later `destroy()` got
-    // past the guard and finished the job. With the flag set up front
-    // (BUG-002) that second chance is gone: an escaping error would leave a
+    // `emit()` reaches application code too, and with the flag set up front
+    // a throwing DESTROY listener gets no second chance from a later
+    // `destroy()` — that call returns at the guard. An escaping error would
+    // leave a
     // link that reports `isDestroyed === true` while still being subscribed,
     // unfrozen and holding its last value, permanently. So the emit joins the
     // same collect-and-carry-on pattern as the release loop above.
@@ -702,7 +701,7 @@ export abstract class SignalLink<ValueType = unknown> {
 
   protected updateValue(action: (value: ValueType) => void) {
     if (!this.#muted && !this.isDestroyed) {
-      // BUG-008: claim a generation *before* handing control over. Every
+      // Claim a generation *before* handing control over. Every
       // line below the `action()` call can have been re-entered by then;
       // this counter is how the outer frame finds out that it was.
       const generation = ++this.#propagationGeneration;
@@ -711,7 +710,7 @@ export abstract class SignalLink<ValueType = unknown> {
 
       action(value);
 
-      // BUG-001: `action()` is application code — the link callback, or
+      // `action()` is application code — the link callback, or
       // the target signal's write plus every effect it triggers. Tearing
       // this link down from in there is the normal case ("take the first
       // value, then unsubscribe"), and `destroy()` ends with
@@ -723,7 +722,7 @@ export abstract class SignalLink<ValueType = unknown> {
       // set `lastValue` to `undefined` on purpose.
       if (this.isDestroyed) return;
 
-      // BUG-008: a nested `updateValue()` ran to completion while
+      // A nested `updateValue()` ran to completion while
       // `action()` was on the stack — a feedback loop wrote the source
       // again. That frame read a newer value, emitted it and stored it.
       // `value` is stale on both signals by now; emitting it here would
@@ -747,8 +746,8 @@ export class SignalLinkToSignal<
   constructor(source: SignalLike<ValueType>, target: SignalLike<ValueType>) {
     super(source);
     this.target = signalImpl(target);
-    // Weak self-reference, same reasoning as the base constructor
-    // (MEM-002): `globalDestroySignalQueue` is a permanent module-level
+    // Weak self-reference, same reasoning as the base constructor:
+    // `globalDestroySignalQueue` is a permanent module-level
     // root, so a plain `this` closure here would pin this link — and
     // through it `source`/`target` — for the process lifetime, same as the
     // base class's two subscriptions did before they were fixed.

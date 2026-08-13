@@ -44,9 +44,7 @@ for (const n of [1, 10, 100]) {
 }
 
 /*
- * Baseline (reference point for package 12 / PERF-001, PERF-002, PERF-004,
- * 2026-07 audit — a different PERF-001/PERF-002 than Package 17's below),
- * measured on commit 5cb75f4, single run, one dev laptop — ops/sec (hz),
+ * Baseline, measured on commit 5cb75f4, single run, one dev laptop — ops/sec (hz),
  * not a gate, just "was it in this ballpark before":
  *
  *   write, no consumers        ~13,685,001 hz
@@ -58,10 +56,10 @@ for (const n of [1, 10, 100]) {
  * from there it scales roughly linearly with subscriber count, as expected
  * for a synchronous fan-out with no batching.
  *
- * Package 17 (PERF-001, PERF-002, PERF-003 — no error array per rerun, no
- * flush for an empty batch, no emit on `globalEffectCalledQueue` outside a
- * flush), measured 2026-08-11 on commit 8cc46e9 against the same tree with
- * all three guards.
+ * The three flush guards — no error array per rerun, no flush for an empty
+ * batch, no emit on `globalEffectCalledQueue` outside a flush — measured
+ * 2026-08-11 on commit 8cc46e9 against the same tree with all three in
+ * place.
  *
  * Method, so the numbers are reproducible: `pnpm bench signal-write`, this
  * file in full, with the options it declares (none — Vitest's 500 ms
@@ -80,9 +78,9 @@ for (const n of [1, 10, 100]) {
  * separate sessions. That case measures code layout and machine mood, not
  * this change.
  *
- * Package 29a (2026-08-11), measured on HEAD — several commits past Package
- * 17, including READ-011's `EffectImpl.run()` refactor and CONS-001's new
- * diagnostics channel. Same method: `pnpm bench signal-write`, this file in
+ * 2026-08-11, measured on HEAD — several commits later, including the
+ * `EffectImpl.run()` refactor and the new diagnostics channel. Same method:
+ * `pnpm bench signal-write`, this file in
  * full, median of five runs, ops/sec (hz):
  *
  *   write, no consumers        11,890,299 hz

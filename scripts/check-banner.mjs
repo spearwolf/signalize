@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Guard for SEC-001: the bundle banner must be a pure function of
+// The bundle banner must be a pure function of
 // package.json. Anything ambient that leaks into it — a build date, a
 // random, a clock — makes two builds of the same commit produce different
 // bytes, and a consumer can no longer verify the published artifact against
@@ -86,7 +86,7 @@ if (first !== second) {
   fail(
     'the banner is not reproducible — two renders under different ambient ' +
       'state produced different text. Two builds of the same commit would ' +
-      'ship different bytes (SEC-001).\n' +
+      'ship different bytes.\n' +
       `--- render A ---\n${first}\n--- render B ---\n${second}`,
   );
 }

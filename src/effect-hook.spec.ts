@@ -7,7 +7,7 @@ import {createSignal} from './create-signal.js';
 import {requireCreateEffect} from './effect-hook.js';
 // Imported for its side effect as much as for the counter: the last line of
 // `effects.ts` is what fills the hook, and nothing else in this file's graph
-// reaches that module any more — that is the whole point of ARCH-002.
+// reaches that module any more — that is the whole point of the placeholder.
 import {getEffectsCount} from './effects.js';
 
 describe('effect-hook', () => {

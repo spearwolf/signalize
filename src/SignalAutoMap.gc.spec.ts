@@ -8,7 +8,7 @@ import {destroySignal, getSignalsCount, signalImpl} from './signal-core.js';
 // (the `gc` project in vitest.config.ts, which `pnpm test` also runs, and
 // `pnpm test:gc` for the whole suite). Skipping the suite when the flag is
 // gone would hide a lost `execArgv` behind a green reporter, so this file
-// refuses to load instead (BUILD-016).
+// refuses to load instead.
 const gc = (globalThis as {gc?: () => void}).gc;
 
 if (typeof gc !== 'function') {
@@ -28,8 +28,8 @@ const forceGc = async () => {
 // neighbouring specs: this file's whole subject is a counter that comes back
 // down at a time nobody can name. Each test takes its own baseline instead,
 // which keeps one failure from turning into three.
-describe('SignalAutoMap GC behavior (requires --expose-gc) — MEM-007', () => {
-  it('a dropped map is collected and releases its destroy-queue subscriptions (MEM-007)', async () => {
+describe('SignalAutoMap GC behavior (requires --expose-gc)', () => {
+  it('a dropped map is collected and releases its destroy-queue subscriptions', async () => {
     const destBefore = getSubscriptionCount(globalDestroySignalQueue);
     const signalsBefore = getSignalsCount();
 
@@ -54,7 +54,7 @@ describe('SignalAutoMap GC behavior (requires --expose-gc) — MEM-007', () => {
 
     // Two stop conditions, because this test proves both findings at once:
     // the signals inside a collected map are never destroyed, so their
-    // counter only comes back through MEM-006's finalizer.
+    // counter only comes back through the per-signal finalizer.
     for (
       let i = 0;
       i < 20 &&
@@ -70,7 +70,7 @@ describe('SignalAutoMap GC behavior (requires --expose-gc) — MEM-007', () => {
     expect(getSignalsCount()).toBe(signalsBefore);
   });
 
-  it('the per-entry listener holds nothing but its WeakRef and its key (MEM-007)', async () => {
+  it('the per-entry listener holds nothing but its WeakRef and its key', async () => {
     // The invariant this pins is the one the comment in `#create()` states:
     // exactly one inner function in that scope. V8 allocates one context per
     // scope and shares it between every closure in it, so a second inner
@@ -127,7 +127,7 @@ describe('SignalAutoMap GC behavior (requires --expose-gc) — MEM-007', () => {
     }
   });
 
-  it('a destroy that arrives after its map was collected is ignored (MEM-007)', async () => {
+  it('a destroy that arrives after its map was collected is ignored', async () => {
     // The listener knows its map through a WeakRef, and the window in which
     // that deref comes back empty is real: a map can be collected while a
     // signal it handed out is still alive, and the destroy of that signal
@@ -167,7 +167,7 @@ describe('SignalAutoMap GC behavior (requires --expose-gc) — MEM-007', () => {
     expect(getSubscriptionCount(globalDestroySignalQueue)).toBe(destBefore);
   });
 
-  it('a throwing release handle in a collected map is reported, not thrown (MEM-007)', async () => {
+  it('a throwing release handle in a collected map is reported, not thrown', async () => {
     const destBefore = getSubscriptionCount(globalDestroySignalQueue);
 
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});

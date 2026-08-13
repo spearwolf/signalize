@@ -40,7 +40,7 @@ describe('EffectImpl.destroy() teardown order', () => {
     assertLinksCount(0, 'afterEach');
   });
 
-  it('a cleanup that writes to a dependency does not trigger another run (MEM-007)', () => {
+  it('a cleanup that writes to a dependency does not trigger another run', () => {
     const signalSubscriptions = getSubscriptionCount(globalSignalQueue);
     const effectSubscriptions = getSubscriptionCount(globalEffectQueue);
     const destroySubscriptions = getSubscriptionCount(globalDestroySignalQueue);
@@ -86,7 +86,7 @@ describe('EffectImpl.destroy() teardown order', () => {
     }
   });
 
-  it('an onDestroyEffect handler sees an effect that no longer runs (BUG-008)', () => {
+  it('an onDestroyEffect handler sees an effect that no longer runs', () => {
     const {get: a} = createSignal(1);
 
     let runCount = 0;
@@ -421,7 +421,7 @@ describe('EffectImpl.destroy() teardown order', () => {
     }
   });
 
-  it('an effect that destroys itself mid-callback stops tracking (MEM-003)', () => {
+  it('an effect that destroys itself mid-callback stops tracking', () => {
     const signalSubscriptions = getSubscriptionCount(globalSignalQueue);
     const destroySubscriptions = getSubscriptionCount(globalDestroySignalQueue);
 
@@ -464,7 +464,7 @@ describe('EffectImpl.destroy() teardown order', () => {
     }
   });
 
-  it('an effect destroyed while it is being created never saves its static deps (MEM-003)', () => {
+  it('an effect destroyed while it is being created never saves its static deps', () => {
     const signalSubscriptions = getSubscriptionCount(globalSignalQueue);
     const destroySubscriptions = getSubscriptionCount(globalDestroySignalQueue);
 
@@ -510,7 +510,7 @@ describe('EffectImpl.destroy() teardown order', () => {
     }
   });
 
-  it('a cleanup returned after a mid-callback self-destroy still runs (MEM-004)', () => {
+  it('a cleanup returned after a mid-callback self-destroy still runs', () => {
     const {get: a, set: setA} = createSignal(0);
 
     let acquired = 0;
@@ -542,7 +542,7 @@ describe('EffectImpl.destroy() teardown order', () => {
     }
   });
 
-  it('an effect is destroyed once its last live dependency dies, even when an earlier one was hard-destroyed mid-callback (MEM-006)', () => {
+  it('an effect is destroyed once its last live dependency dies, even when an earlier one was hard-destroyed mid-callback', () => {
     const a = createSignal(0);
     const b = createSignal(0);
 
@@ -624,7 +624,7 @@ describe('EffectImpl.destroy() teardown order', () => {
     });
   });
 
-  describe('every teardown step is guarded on its own (MEM-008)', () => {
+  describe('every teardown step is guarded on its own', () => {
     it('runs the cleanup callback even when an onDestroyEffect handler throws', () => {
       // The finding's own scenario, reachable through fully public API: the
       // four steps used to share one `try`, so a throwing reporter took the
@@ -805,7 +805,7 @@ describe('EffectImpl.destroy() teardown order', () => {
     });
   });
 
-  describe('Effect#destroyed (API-008)', () => {
+  describe('Effect#destroyed', () => {
     it('flips once the wrapper tears its effect down', () => {
       const {get: a} = createSignal(0);
       const effect = createEffect(() => {

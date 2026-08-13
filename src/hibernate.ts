@@ -46,7 +46,7 @@ export function hibernate<T>(callback: () => NonThenable<T>): T {
     // in there must not cost the three `restore*` calls below. It used to sit
     // in front of the `try`, and a failing flush then left the process with a
     // cleared batch, a quiet counter of 0 and an empty effect stack, in the
-    // middle of frames that were still open (ASYNC-001).
+    // middle of frames that were still open.
     if (savedBatch) {
       savedBatch.flush();
     }

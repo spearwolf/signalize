@@ -13,7 +13,7 @@ import {SignalGroup} from './SignalGroup.js';
 // (the `gc` project in vitest.config.ts, which `pnpm test` also runs, and
 // `pnpm test:gc` for the whole suite). Skipping the suite when the flag is
 // gone would hide a lost `execArgv` behind a green reporter, so this file
-// refuses to load instead (BUILD-016).
+// refuses to load instead.
 const gc = (globalThis as {gc?: () => void}).gc;
 
 if (typeof gc !== 'function') {

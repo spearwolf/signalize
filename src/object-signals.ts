@@ -112,7 +112,7 @@ export const storeAsObjectSignal = (
  * of the same object and every object behind it are still destroyed, every
  * store still dropped, and the failures are re-raised afterwards — a lone
  * one unchanged, several as an `AggregateError` holding them in teardown
- * order (BUG-015).
+ * order.
  */
 export function destroyObjectSignals(...objects: object[]): void {
   const errors: unknown[] = [];

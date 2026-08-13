@@ -201,8 +201,8 @@ describe('SignalAutoMap', () => {
     }
   });
 
-  it('updateFromProps() with empty object does nothing (PERF-004, 2026-07 audit)', () => {
-    // NOTE this is not a regression test for the PERF-004 guard itself: an
+  it('updateFromProps() with empty object does nothing', () => {
+    // NOTE this is not a regression test for the lazy-allocation guard itself: an
     // empty `updateFromProps({})` behaved identically before the fix — it
     // opened a `batch()` whose loop body never ran, so there was no write
     // and no rerun either way. The guard's actual effect (skipping the
@@ -294,7 +294,7 @@ describe('SignalAutoMap', () => {
       expect(effectCallCount).toBe(3);
       expect(lastValue).toBe(10);
 
-      // Redundant with the finally's sm.clear() (see PERF-004 test above).
+      // Redundant with the finally's sm.clear() (see the empty-object test above).
       effect.destroy();
     } finally {
       sm.clear();
@@ -330,7 +330,7 @@ describe('SignalAutoMap', () => {
       expect(effectCallCount).toBe(2);
       expect(lastValues).toEqual({a: 10, b: 20, c: 30});
 
-      // Redundant with the finally's sm.clear() (see PERF-004 test above).
+      // Redundant with the finally's sm.clear() (see the empty-object test above).
       effect.destroy();
     } finally {
       sm.clear();
@@ -355,14 +355,14 @@ describe('SignalAutoMap', () => {
       expect(sm.get('x').value).toBe('hello');
       expect(sm.get('y').value).toBe('world');
 
-      // Redundant with the finally's sm.clear() (see PERF-004 test above).
+      // Redundant with the finally's sm.clear() (see the empty-object test above).
       effect.destroy();
     } finally {
       sm.clear();
     }
   });
 
-  it('churn leaves no dead handles in the held value (MEM-007)', () => {
+  it('churn leaves no dead handles in the held value', () => {
     // `#drop()` takes the handle out of `[$autoMapResources].unsubs` as well
     // as out of `#unsubs`. Only the second one is load-bearing for the map's
     // own behaviour, which is why the first survives every functional test:
@@ -396,7 +396,7 @@ describe('SignalAutoMap', () => {
       expect([...sm.keys()].length).toBe(0);
       assertSignalsCount(0, 'no entry survived either route');
     } finally {
-      // MEM-007 exception: both churn routes destroy their own entries as
+      // Counter-guard exception: both churn routes destroy their own entries as
       // the thing under test, so there is nothing to move here. This
       // finally only adds the idempotent safety net (rule b) in case an
       // earlier assertion fails before a route finishes its own cleanup.
@@ -404,8 +404,8 @@ describe('SignalAutoMap', () => {
     }
   });
 
-  it('clear() releases the hook of an entry whose signal is already dead (MEM-007)', () => {
-    // Two ways such an entry can exist after MEM-007, and both go through
+  it('clear() releases the hook of an entry whose signal is already dead', () => {
+    // Two ways such an entry can exist, and both go through
     // `fromProps()` with a value that already *is* a signal, because
     // `createSignal(sig)` hands that back unchanged instead of creating
     // anything. Either the signal is already a corpse when the map takes it
@@ -442,7 +442,7 @@ describe('SignalAutoMap', () => {
         destroySubscriptions,
       );
     } finally {
-      // MEM-007 exception (rule c + b): clear() is the act under test and
+      // Counter-guard exception (rule c + b): clear() is the act under test and
       // stays exactly where it is. The finally still needs a handle on sm
       // (rule a): fromProps() sits inside the try, so a failure before it
       // completes would otherwise leave the corpse's subscription on
@@ -455,7 +455,7 @@ describe('SignalAutoMap', () => {
     }
   });
 
-  it('clear() keeps an entry a re-entrant get() created during the teardown (MEM-007)', () => {
+  it('clear() keeps an entry a re-entrant get() created during the teardown', () => {
     // `clear()` drops the keys first and destroys a snapshot afterwards, so
     // a cleanup that runs inside one of those destroys and calls `get(key)`
     // gets a fresh, live signal — and it stays. Emptying `#signals` after
@@ -508,14 +508,14 @@ describe('SignalAutoMap', () => {
       expect(sm.has('b')).toBe(false);
       expect(sm.has('c')).toBe(false);
     } finally {
-      // MEM-007-style exception (rule c + b): clear() is the act under
+      // Counter-guard exception (rule c + b): clear() is the act under
       // test and stays exactly where it is; the finally only adds the
       // idempotent safety net.
       sm.clear();
     }
   });
 
-  describe('teardown errors (MEM-013)', () => {
+  describe('teardown errors', () => {
     it('clear() destroys every entry even when an earlier cleanup throws', () => {
       const sm = new SignalAutoMap();
       sm.get('a');
@@ -683,12 +683,12 @@ describe('SignalAutoMap', () => {
     }
   });
 
-  // MEM-007: a SignalAutoMap subscribes to the destruction of every signal
+  // A SignalAutoMap subscribes to the destruction of every signal
   // it creates, so an entry whose signal is destroyed from the outside leaves
   // the map in the same synchronous turn. There is no lingering corpse in the
   // map any more — only in the hands of whoever kept the `Signal` object.
   describe('externally destroyed signals', () => {
-    it('an externally destroyed signal drops out of the map (MEM-007)', () => {
+    it('an externally destroyed signal drops out of the map', () => {
       const sm = new SignalAutoMap();
       try {
         const sig = sm.get<number>('a');
@@ -709,7 +709,7 @@ describe('SignalAutoMap', () => {
       }
     });
 
-    it('1000 externally destroyed entries leave no keys behind (MEM-007)', () => {
+    it('1000 externally destroyed entries leave no keys behind', () => {
       const sm = new SignalAutoMap();
 
       try {
@@ -735,14 +735,14 @@ describe('SignalAutoMap', () => {
           destroySubscriptions,
         );
       } finally {
-        // MEM-007 exception: every entry is destroyed from the outside as
+        // Counter-guard exception: every entry is destroyed from the outside as
         // the thing under test, so there is nothing left to move here. This
         // finally only adds the idempotent safety net (rule b).
         sm.clear();
       }
     });
 
-    it('a soft detach does not evict the entry (MEM-007)', () => {
+    it('a soft detach does not evict the entry', () => {
       // The reason the per-entry hook is `on` and not `once`:
       // `SignalGroup#off()` emits on the same queue with `{detach: true}`,
       // and a `once` would be spent on that — leaving nobody to hear the
@@ -770,7 +770,7 @@ describe('SignalAutoMap', () => {
       }
     });
 
-    it('a re-entrant get() during an external destroy keeps the fresh entry (MEM-007)', () => {
+    it('a re-entrant get() during an external destroy keeps the fresh entry', () => {
       const sm = new SignalAutoMap();
       try {
         const sig = sm.get('a');
@@ -830,7 +830,7 @@ describe('SignalAutoMap', () => {
 
         sig.destroy();
 
-        // MEM-007: the entry goes with the signal, so the corpse is only
+        // The entry goes with the signal, so the corpse is only
         // reachable through the reference the caller kept — asking the map
         // would hand out a fresh, live signal instead.
         expect(sm.has('a')).toBe(false);
@@ -843,7 +843,7 @@ describe('SignalAutoMap', () => {
         // nothing reactive observes it.
         expect(sig.value).toBe(99);
 
-        // Redundant with the finally's sm.clear() (see PERF-004 test above)
+        // Redundant with the finally's sm.clear() (see the empty-object test above)
         // — and likely already a no-op here, since the effect's only
         // dependency died with sig.destroy() above.
         effect.destroy();
@@ -940,7 +940,7 @@ describe('SignalAutoMap', () => {
       }
     });
 
-    it('delete() on an entry destroyed from the outside reports false (MEM-007)', () => {
+    it('delete() on an entry destroyed from the outside reports false', () => {
       const sm = new SignalAutoMap();
 
       try {
@@ -956,14 +956,14 @@ describe('SignalAutoMap', () => {
         assertSignalsCount(0);
         expect(sm.has('a')).toBe(false);
       } finally {
-        // MEM-007 exception: the signal is destroyed from the outside as
+        // Counter-guard exception: the signal is destroyed from the outside as
         // the thing under test, so there is nothing left to move here. This
         // finally only adds the idempotent safety net (rule b).
         sm.clear();
       }
     });
 
-    it('delete() releases the hook of an entry whose signal is already dead (MEM-007)', () => {
+    it('delete() releases the hook of an entry whose signal is already dead', () => {
       // Same entry as the `clear()` case above, reachable by the same two
       // routes (an already-dead signal handed to `fromProps()`, set up here,
       // or a live one whose destroy emit a throwing earlier subscriber cuts
@@ -992,7 +992,7 @@ describe('SignalAutoMap', () => {
           destroySubscriptions,
         );
       } finally {
-        // MEM-007 exception (rule c + b): delete() is the act under test
+        // Counter-guard exception (rule c + b): delete() is the act under test
         // and stays exactly where it is. The finally still needs a handle
         // on sm (rule a) for the same reason as the clear() sister test
         // above: fromProps() sits inside the try, and a failure before it
@@ -1020,7 +1020,7 @@ describe('SignalAutoMap', () => {
       }
     });
 
-    it('delete() leaves nothing behind — signals, effects and subscriptions (MEM-009)', () => {
+    it('delete() leaves nothing behind — signals, effects and subscriptions', () => {
       const signalSubscriptions = getSubscriptionCount(globalSignalQueue);
       const destroySubscriptions = getSubscriptionCount(
         globalDestroySignalQueue,
@@ -1078,7 +1078,7 @@ describe('SignalAutoMap', () => {
     });
   });
 
-  describe('duplicate keys in fromProps() (MEM-012)', () => {
+  describe('duplicate keys in fromProps()', () => {
     it('does not orphan the signal a duplicate key displaces', () => {
       // `fromProps(obj, ['a', 'b', 'a'])` used to call `#create('a', …)`
       // twice: the second call overwrote `#signals`/`#unsubs` for 'a'
@@ -1099,7 +1099,7 @@ describe('SignalAutoMap', () => {
         );
         expect(getSignalsCount()).toBe(signalsBefore);
       } finally {
-        // MEM-007-style idempotent safety net: clear() is the act under
+        // Idempotent safety net: clear() is the act under
         // test and stays exactly where it is.
         sm.clear();
       }

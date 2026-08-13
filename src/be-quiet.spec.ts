@@ -59,7 +59,7 @@ describe('beQuiet', () => {
     }
   });
 
-  it('returns what the action returns, so an untracked peek is usable (BUG-010)', () => {
+  it('returns what the action returns, so an untracked peek is usable', () => {
     const {get: a, set: setA} = createSignal(0);
     const {get: b, set: setB} = createSignal(23);
 
@@ -88,7 +88,7 @@ describe('beQuiet', () => {
     }
   });
 
-  it('closes the quiet frame when the action throws, so the next write is loud again (TEST-016)', () => {
+  it('closes the quiet frame when the action throws, so the next write is loud again', () => {
     // The counter behind `beQuiet()` is module state, so a frame that is
     // not closed on the way out is not a local mistake: every later write
     // in the process stays muted and every effect stays deaf. Drop the

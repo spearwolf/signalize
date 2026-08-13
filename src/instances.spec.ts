@@ -127,7 +127,7 @@ describe('registerSignalizeInstance', () => {
     expect(registerSignalizeInstance('file:///new/index.js', () => {})).toBe(0);
   });
 
-  it('notices a real second copy of the library (ARCH-001)', async () => {
+  it('notices a real second copy of the library', async () => {
     // How two copies are made at all: `vi.resetModules()` plus a dynamic
     // import. `import('./index.js?v=2')` does **not** work — Node hands back
     // the very same module. Outside Vitest only a second file path does.
@@ -152,7 +152,7 @@ describe('registerSignalizeInstance', () => {
         '2 copies of @spearwolf/signalize are loaded in this process',
       );
 
-      // And the trap ARCH-001 names, in the same test: the foreign signal is
+      // And the trap the sentinel names, in the same test: the foreign signal is
       // accepted and then never heard from again.
       const sigA = A.createSignal(1);
       try {

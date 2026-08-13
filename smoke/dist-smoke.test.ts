@@ -125,7 +125,7 @@ test("the shipped declarations hand back beQuiet()'s result", () => {
 
   // Pins the return type on the shipped `.d.ts`: if `beQuiet()` ever
   // degrades to `void` again, this assignment stops compiling and the
-  // smoke suite never runs (BUG-010).
+  // smoke suite never runs.
   const peek: number = beQuiet(() => sig.get() * 2);
   assert.equal(peek, 42);
 
@@ -140,7 +140,7 @@ test("the shipped declarations hand back beQuiet()'s result", () => {
 test('the shipped declarations refuse a lazy value write and an async hibernate', () => {
   const sig = createSignal(21);
 
-  // @ts-expect-error BUG-014: `{lazy: true}` on a value write is refused by
+  // @ts-expect-error `{lazy: true}` on a value write is refused by
   // the shipped declarations. If that narrowing is ever lost, tsc fails on
   // the unused directive (TS2578) and this suite never runs.
   sig.set(5, {lazy: true});
@@ -150,13 +150,13 @@ test('the shipped declarations refuse a lazy value write and an async hibernate'
   sig.set(5);
   assert.equal(sig.get(), 5);
 
-  // @ts-expect-error BUG-014: the generic params of the value overload must
+  // @ts-expect-error the generic params of the value overload must
   // not cost the excess property check — `lasy` is the typo that would buy
   // silence on exactly the branch this narrowing closes.
   sig.set(6, {lasy: true, touch: true});
   assert.equal(sig.get(), 6);
 
-  // @ts-expect-error ASYNC-004: an async callback is refused, the same
+  // @ts-expect-error an async callback is refused, the same
   // narrowing beQuiet() carries above.
   const pending = hibernate(async () => sig.get());
   assert.ok(pending instanceof Promise);
@@ -167,7 +167,7 @@ test('the shipped declarations refuse a lazy value write and an async hibernate'
 test('the shipped declarations type a signal without an initial value as possibly undefined', () => {
   const sig = createSignal<number>();
 
-  // @ts-expect-error API-013: with no initial value the signal holds
+  // @ts-expect-error with no initial value the signal holds
   // `undefined` until the first write, and the declarations say so. This is
   // the one witness for it — the suite in `src/` compiles with
   // `strictNullChecks: false`, where the union collapses and no directive
@@ -185,7 +185,7 @@ test('the shipped declarations type a signal without an initial value as possibl
 });
 
 test('the shipped declarations refuse a lazy flag at construction', () => {
-  // @ts-expect-error BUG-014: `{lazy: true}` on a value is refused at
+  // @ts-expect-error `{lazy: true}` on a value is refused at
   // construction, not only on a write. It used to compile and leave the first
   // read to die.
   const lazySig = createSignal(5, {lazy: true});
@@ -199,14 +199,14 @@ test('the shipped declarations refuse a lazy flag at construction', () => {
   // key, out of a directive's one-line reach otherwise.
   const cmp = (a: number, b: number) => a === b;
 
-  // @ts-expect-error BUG-014: the generic params of the value overload must
+  // @ts-expect-error the generic params of the value overload must
   // not cost the excess property check — `lasy` is the typo that would buy
   // silence on exactly the branch above.
   const typo = createSignal(6, {lasy: true, compare: cmp});
   assert.equal(typo.get(), 6);
   typo.destroy();
 
-  // @ts-expect-error BUG-014: and the no-initial-value overload is not the way
+  // @ts-expect-error and the no-initial-value overload is not the way
   // around it — `undefined` is the one value that reaches it. This half is
   // witnessed here rather than in `src/`: with `strictNullChecks` off,
   // `undefined` is assignable to `() => Type` and the call lands on the
@@ -221,7 +221,7 @@ test('the shipped declarations type a link callback from its source', () => {
   const seen: number[] = [];
 
   const con = link(src, (v) => {
-    // @ts-expect-error TYPE-007: `v` is `number` on the shipped declarations
+    // @ts-expect-error `v` is `number` on the shipped declarations
     // too. Degrade it back to `any` and tsc fails on the unused directive
     // (TS2578).
     const wrong: string = v;

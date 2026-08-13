@@ -110,16 +110,11 @@ const isThenable = (value: unknown): value is Promise<unknown> =>
  * them out structured. A handler that throws is treated the same way:
  * reported, never re-raised.
  *
- * The handler probe used to be `getSubscribedEventNames(globalEffectQueue)
- * .includes($effectError)` — an array built with one entry per subscribed
- * event name, scanned linearly, on every reported error. Measured at 8000
- * live effects: 15,96 µs per call, and quadratic in the number of live
- * effects (0,089 µs at 0, 22,9 µs at 16 000) — every one of them subscribes
- * to the queue under its own id, so the array the probe builds grows with
- * them. `hasEffectErrorHandler()` replaces it with a module-local counter
- * (`effect-error-handlers.ts`), 0,013 µs regardless of live effect count —
- * roughly 1200× cheaper at 8000 effects, and a measured 77,5 % less time
- * end-to-end for a write-then-report cycle at the same count (PERF-005).
+ * Whether a handler is subscribed is read from `hasEffectErrorHandler()`, a
+ * module-local counter in `effect-error-handlers.ts`, not probed on the
+ * queue: `getSubscribedEventNames()` builds an array with one entry per
+ * subscribed event name and scans it linearly, which is quadratic in the
+ * number of live effects because each subscribes under its own id.
  *
  * The counter lives in its own leaf module and not here or in `effects.ts`,
  * because `effects.ts` already imports this module — a counter written
@@ -190,7 +185,7 @@ const emitEffectError = (
  * The snapshot/prune pair of `#lostSignals` for a single dynamic run, with
  * the "may I commit" criterion that belongs to it.
  *
- * BUG-005: `signal-core.ts`'s `readSignal()` reports a read only while no
+ * `signal-core.ts`'s `readSignal()` reports a read only while no
  * quiet frame is open, so a run inside `beQuiet()` re-reads
  * nothing this instance can hear. Filling `#lostSignals` anyway and
  * pruning afterwards would therefore unsubscribe *every* dependency
@@ -219,7 +214,7 @@ class TrackedReadScope {
   }
 
   /**
-   * The second half of the BUG-006 note that stands at the `finally` in
+   * The second half of the note that stands at the `finally` in
    * {@link EffectImpl.runDynamicCallback} — read that one first; the
    * `though` below turns against it.
    *
@@ -228,12 +223,12 @@ class TrackedReadScope {
    * is emptied read by read, so a callback that throws before its
    * first read leaves it complete — pruning there would read "not
    * read anymore" off a run that never got as far as reading, and
-   * unsubscribe the lot. That is the deaf shell of BUG-005 again,
-   * reached from the other side: one transient failure and the effect
-   * never wakes again. A run that did read commits its partial set as
-   * before (that is BUG-006, and it heals on the next run because
-   * something is still subscribed); a completed run always commits,
-   * including the one that legitimately read nothing at all.
+   * unsubscribe the lot — the same deaf shell the quiet-run case above
+   * avoids, reached from the other side: one transient failure and the
+   * effect never wakes again. A run that did read commits its partial set,
+   * which heals on the next run because something is still subscribed; a
+   * completed run always commits, including the one that legitimately read
+   * nothing at all.
    */
   mayCommit(readsNow: number): boolean {
     return this.active && (this.#completed || readsNow > this.#readsBefore);
@@ -305,7 +300,7 @@ export class EffectImpl {
 
   /**
    * Set while an explicitly requested run of a **non-autorun** effect sits
-   * parked in an open batch (ASYNC-002).
+   * parked in an open batch.
    *
    * `[RECALL]` drops the flush's redispatch for a non-autorun effect — that
    * is what `{autorun: false}` means for a *signal write*. But `run()` is
@@ -426,7 +421,7 @@ export class EffectImpl {
               // group that never registered `dep` as a named signal. Both
               // are user mistakes worth naming precisely instead of
               // surfacing as an opaque TypeError from a null deref further
-              // down the line (BUG-003).
+              // down the line.
               if (group == null) {
                 throw new Error(
                   `[signalize] createEffect: cannot resolve dependency "${String(dep)}" — no SignalGroup is attached (missing "attach" option)`,
@@ -454,9 +449,9 @@ export class EffectImpl {
     on(globalEffectQueue, this.id, RECALL, this);
 
     // Deferred from where `group` was resolved above: attaching before
-    // dependency resolution could succeed left a half-built instance
-    // registered in the group's `#effects` set whenever a name lookup threw
-    // (BUG-003). Such an instance never reaches `++EffectImpl.count` below,
+    // dependency resolution can succeed would register a half-built instance
+    // in the group's `#effects` set whenever a name lookup throws. Such an
+    // instance never reaches `++EffectImpl.count` below,
     // but a later `destroy()` on it — reachable through the group's own
     // teardown — decrements that counter regardless, since every field
     // `destroy()` touches has a default initializer and none of it requires
@@ -481,7 +476,7 @@ export class EffectImpl {
    * one-way door for a static-deps effect: the soft-detach drops the
    * subscription, and the effect's next run puts it back — the same moment
    * a dynamic effect re-subscribes, and by the same trigger, except that
-   * this one re-declares where the other re-reads (BUG-003).
+   * this one re-declares where the other re-reads.
    *
    * A destroyed dependency is skipped. `whenSignalIsRead()` cannot tell the
    * difference, but the dynamic path can and does — `signalReader` reports
@@ -537,15 +532,15 @@ export class EffectImpl {
 
     // Build a fresh options object instead of writing into the caller's own
     // `opts` — mutating it would corrupt a shared options object reused
-    // across multiple createEffect() calls (BUG-005).
+    // across multiple createEffect() calls.
     const options: EffectOptions | undefined = dependencies
       ? {...opts, dependencies}
       : (optsOrDeps as EffectOptions | undefined);
 
     const effect = new EffectImpl(callback, options);
 
-    // BUG-012, from the other side: the constructor has counted and
-    // subscribed, but the caller holds nothing yet. If anything behind it
+    // The constructor has counted and subscribed, but the caller holds
+    // nothing yet. If anything behind it
     // throws, `new Effect(effect)` is never reached and the effect is
     // unreachable for everyone — unless something else is already holding
     // it. `{attach}` is exactly that holder: the constructor has put the
@@ -601,7 +596,7 @@ export class EffectImpl {
    * Run the effect callback now, even while a batch is open.
    *
    * The entry point for a read that demands a current value — a memo's
-   * `beforeRead` (ASYNC-003). Everything else about the run is identical,
+   * `beforeRead`. Everything else about the run is identical,
    * including that its own writes go into the open batch.
    *
    * @internal
@@ -617,7 +612,7 @@ export class EffectImpl {
     const curBatch = getCurrentBatch();
     if (curBatch) {
       if (!immediate) {
-        // ASYNC-002: the id is the only thing that reaches the flush, and
+        // The id is the only thing that reaches the flush, and
         // `[RECALL]` cannot tell a redispatched write from a run somebody
         // asked for. The note travels with the effect instead.
         if (!this.autorun) {
@@ -626,7 +621,7 @@ export class EffectImpl {
         curBatch.batch(this.id, this.priority);
         return;
       }
-      // ASYNC-003: a read that demands a current value is not deferrable —
+      // A read that demands a current value is not deferrable —
       // postponing it does not delay the answer, it falsifies it. The write
       // this run is about to make still goes into the open batch, and that
       // is the point: the value is current *and* the notification stays
@@ -653,10 +648,10 @@ export class EffectImpl {
 
       this.shouldRun = false;
 
-      // Only a running flush listens on that queue (PERF-003), and it is the
-      // only thing the emit is for: telling the flush this effect has already
-      // run so it is not recalled a second time. Outside a flush the emit was
-      // an eventize dispatch for zero listeners, on every single effect run.
+      // Only a running flush listens on that queue, and it is the only thing
+      // the emit is for: telling the flush this effect has already run so it
+      // is not recalled a second time. Outside a flush it would be an
+      // eventize dispatch for zero listeners, on every single effect run.
       if (isFlushingBatch()) {
         emit(globalEffectCalledQueue, this.id, this.id);
       }
@@ -705,7 +700,7 @@ export class EffectImpl {
   private runStaticCallback(generation: number): void {
     // Re-declare before the callback, not after: a callback that throws
     // must not cost the effect its subscriptions — the same reason the
-    // dynamic branch prunes in a `finally` (BUG-006). Idempotent, because
+    // dynamic branch prunes in a `finally`. Idempotent, because
     // `whenSignalIsRead()` subscribes only to ids it does not already
     // hold, so an ordinary rerun changes nothing — it pays two property
     // reads, a `#lostSignals.delete()`, a `#signals.has()` and a counter
@@ -737,15 +732,15 @@ export class EffectImpl {
       );
       scope.complete();
     } finally {
-      // BUG-006: the callback is application code and may throw. Without
-      // this `finally` the prune was skipped while `shouldRun` was already
-      // `false` and the cleanup already consumed — the effect kept a live
-      // RECALL subscription on a signal it no longer reads, every write to
-      // which re-triggered it into (typically) the same throw. It also
-      // left `hasNoLiveSignals()` — and therefore the deferred
-      // self-destruction below — reading a dependency set that no run
-      // built. It healed on the next successful run, which a
-      // deterministically failing callback never has.
+      // The callback is application code and may throw. Without this
+      // `finally` the prune is skipped while `shouldRun` is already `false`
+      // and the cleanup already consumed — the effect keeps a live RECALL
+      // subscription on a signal it no longer reads, every write to which
+      // re-triggers it into (typically) the same throw, and
+      // `hasNoLiveSignals()` — with it the deferred self-destruction below —
+      // reads a dependency set no run built. That heals on the next
+      // successful run, which a deterministically failing callback never
+      // has.
       if (scope.mayCommit(this.#trackedReads)) {
         this.cleanupLostSignals();
         this.#destroyedSignals.clear();
@@ -774,7 +769,7 @@ export class EffectImpl {
    * This sets `shouldRun = true`, and that is the whole of what happens for
    * most effects. `run()` follows for an `autorun` effect, and for a
    * non-autorun one whose explicitly requested run is parked in an open
-   * batch (`#explicitRunRequested`, ASYNC-002). Every other non-autorun
+   * batch (`#explicitRunRequested`). Every other non-autorun
    * effect leaves here with the flag set and nothing run — the next
    * explicit `run()` picks it up.
    *
@@ -788,7 +783,7 @@ export class EffectImpl {
    * hand-emitted RECALL — still throws immediately, at its caller.
    *
    * A `run()` an open batch parked is carried out here when the batch
-   * closes, `autorun` or not (ASYNC-002): what the missing `autorun` waives
+   * closes, `autorun` or not: what the missing `autorun` waives
    * is the redispatch of a *write*, never a run somebody asked for.
    */
   [RECALL]() {
@@ -797,7 +792,7 @@ export class EffectImpl {
     try {
       this.run();
     } catch (err) {
-      // BUG-004: this is the listener eventize calls, and the only place
+      // This is the listener eventize calls, and the only place
       // where swallowing helps — one frame further out, around `emit()`,
       // the dispatch loop has already given up on the siblings. Isolation
       // is a property of the *delivery*, not of `run()`: without an open
@@ -827,7 +822,7 @@ export class EffectImpl {
   }
 
   [$destroySignal](signalId: symbol, params?: {detach?: boolean}): void {
-    // BUG-011: this is the listener eventize calls, and — exactly as in
+    // This is the listener eventize calls, and — exactly as in
     // `[RECALL]` — the only place where swallowing helps. One frame
     // further out, around `emit()`, the dispatch loop has already given
     // up on every subscriber behind this one: the link that is still
@@ -969,7 +964,7 @@ export class EffectImpl {
    * immediately for an empty list. It is here because `#run()` calls this
    * method on *every* rerun while the overwhelming majority of effects never
    * have a child — without it, each rerun allocated an error array and paid
-   * a call for nothing (PERF-001).
+   * a call for nothing.
    */
   private destroyChildEffects(): void {
     if (this.#childEffects.length === 0) return;
@@ -1063,8 +1058,8 @@ export class EffectImpl {
    * {@link runOrphanedCleanupCallback} because nobody will ever call it
    * from that slot.
    *
-   * Two ways to be too late, and both used to end in a silently dropped
-   * cleanup on the synchronous path (BUG-007):
+   * Two ways to be too late, and both would silently drop the cleanup on
+   * the synchronous path:
    *
    * - **Superseded.** An effect that writes a signal it depends on
    *   re-enters `run()`; the `#runDepth` guard exists precisely because
@@ -1189,11 +1184,10 @@ export class EffectImpl {
     // orphaned child effects and a counter that never comes back down. So
     // nothing here rethrows before the last step is done.
     //
-    // MEM-008: and each of the four steps carries its own guard, not one
-    // shared `try`. A failing first step used to take the three behind it —
-    // among them the cleanup callback, the one place userland releases its
-    // resources, on an effect that already counts as destroyed and gets no
-    // second attempt.
+    // Each of the four steps carries its own guard, not one shared `try`. A
+    // failing first step would take the three behind it — among them the
+    // cleanup callback, the one place userland releases its resources, on an
+    // effect that already counts as destroyed and gets no second attempt.
     const errors: unknown[] = [];
 
     collect(errors, () => emit(this, DESTROY, this));

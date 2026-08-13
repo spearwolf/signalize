@@ -188,11 +188,12 @@ export const getMaxEffectDepth = (): number => EffectImpl.maxDepth;
  */
 export const getEffectsCount = (): number => EffectImpl.count;
 
-// The edge that ARCH-002 was about, turned around: `Signal.onChange()` and the
-// deprecated `signalReader(callback)` used to import this module, which drags
-// `EffectImpl`, `SignalGroup` and `batch` into every bundle that only wanted
-// `createSignal`. Now they read the hook and this line fills it. It is
-// load-bearing — without it `requireCreateEffect()` throws — and it belongs
-// here, in the one module that knows `createEffect` without being imported
-// for it.
+// Fills the placeholder in `effect-hook.ts`, which is how `Signal.onChange()`
+// and the deprecated `signalReader(callback)` reach `createEffect` without
+// importing this module — an import that would drag `EffectImpl`,
+// `SignalGroup` and `batch` into every bundle that only wanted `createSignal`.
+// Load-bearing: without this line `requireCreateEffect()` throws. It belongs
+// here, in the one module that knows `createEffect` without being imported for
+// it. See docs/architecture.md, "The effect subsystem is reachable through a
+// placeholder, not an import".
 setCreateEffectHook(createEffect);

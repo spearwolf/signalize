@@ -6,8 +6,7 @@
  * generator carry the same description for as long as the process lives.
  * That costs one integer and nothing else — the generator keeps no
  * reference to anything it hands out, so there is no growth behind the
- * number, only the theoretical ceiling at `Number.MAX_SAFE_INTEGER`
- * (IMPL-002).
+ * number, only the theoretical ceiling at `Number.MAX_SAFE_INTEGER`.
  */
 export class UniqIdGen {
   readonly #prefix: string;

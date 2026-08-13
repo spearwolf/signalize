@@ -12,7 +12,7 @@ export type SignalAutoMapKeyType = string | symbol;
 
 type AutoMapResources = {unsubs: Set<() => void>};
 
-// MEM-007: what has to happen when a map is collected without its `clear()`
+// What has to happen when a map is collected without its `clear()`
 // ever running. The held value is resources only — the unsubscribe handles of
 // the per-entry destroy-queue subscriptions. None of them reaches the map:
 // each handle closes over the listener, and the listener knows its map
@@ -52,7 +52,7 @@ const autoMapResourceFinalizer = new FinalizationRegistry<AutoMapResources>(
  * The map follows the lifetime of the signals it hands out: destroying an
  * entry's signal from the outside — `destroySignal(sig)`, `sig.destroy()`, or
  * the group it is attached to — removes the entry in the same synchronous
- * turn (MEM-007). `has(key)` is `false` immediately afterwards and `get(key)`
+ * turn. `has(key)` is `false` immediately afterwards and `get(key)`
  * creates a fresh, live signal. A soft detach (`SignalGroup#off()`) is not a
  * destruction and leaves the entry alone.
  */
@@ -64,7 +64,7 @@ export class SignalAutoMap {
    *   Only `string` and `symbol` keys can be named: the map is keyed on
    *   {@link SignalAutoMapKeyType}, so a numeric key collapses to `never` and
    *   `TS2322: Type 'number' is not assignable to type 'never'` means exactly
-   *   that (TYPE-005).
+   *   that.
    * @returns A new SignalAutoMap with signals for each property
    */
   static fromProps<PropsObjectType extends object>(
@@ -104,7 +104,7 @@ export class SignalAutoMap {
     // `fromProps()` deduplicates its key list and runs on a fresh map. No
     // guard here on purpose: the branch would be unreachable, and an
     // unreachable branch breaks the 100 % gate this file stands under in
-    // `vitest.config.ts` (package 1, CONS-005/MEM-012).
+    // `vitest.config.ts`.
     //
     // What it buys: the two `set()` calls below would otherwise overwrite an
     // entry. The displaced signal is never destroyed and its unsubscribe
@@ -113,7 +113,7 @@ export class SignalAutoMap {
     // longer reach either.
     const signal = createSignal<T>(initialValue as T);
     this.#signals.set(key, signal);
-    // MEM-007: `on`, not `once` — the same queue carries the soft-detach
+    // `on`, not `once` — the same queue carries the soft-detach
     // emit from `SignalGroup#off()`, and a `once` would be consumed by that
     // one, leaving nobody to hear the real destruction later.
     //
@@ -178,7 +178,7 @@ export class SignalAutoMap {
     // When it does, the entry must not stay behind in all three registers
     // while the caller already holds the error — it would be unreachable
     // bookkeeping nobody can clean up again. Same shape as
-    // `SignalGroup#dropSignalSubscription()` (CONS-016).
+    // `SignalGroup#dropSignalSubscription()`.
     //
     // No `if (unsubscribe)` around it, unlike the template: the invariant
     // above says the lookup cannot miss, and an unreachable branch breaks the
@@ -224,7 +224,7 @@ export class SignalAutoMap {
    * A throwing cleanup callback does not abort the teardown: every entry is
    * dropped, every signal destroyed, and the failures are re-raised
    * afterwards — a lone one unchanged, several as an `AggregateError` holding
-   * them in teardown order (MEM-013).
+   * them in teardown order.
    */
   clear() {
     // Drop every entry (and its hook) first, then destroy the snapshot: the
@@ -250,10 +250,10 @@ export class SignalAutoMap {
    * return the last value, writes notify nobody (see `clear()` and the note
    * on externally destroyed entries).
    *
-   * Deleting an unknown key is a no-op — and since MEM-007 that includes a
-   * key whose signal was destroyed from the outside: the entry left the map
-   * with its signal, so `delete()` reports `false`. `Map.prototype.delete`
-   * semantics are unchanged; the precondition is what disappeared.
+   * Deleting an unknown key is a no-op, and that includes a key whose signal
+   * was destroyed from the outside: the entry left the map with its signal,
+   * so `delete()` reports `false`. `Map.prototype.delete` semantics are
+   * unchanged.
    *
    * The entry is dropped before the signal is destroyed, so an effect
    * cleanup that runs as part of that destroy (its dependency just died) and
@@ -272,9 +272,9 @@ export class SignalAutoMap {
     // cleanups, and one of those may call get(key) again: with the entry
     // already gone that call hands out a fresh, live signal which stays in
     // the map. The other order hands out the corpse and then deletes
-    // whatever the re-entrant call had just stored. Since MEM-007 the order
-    // is doubly motivated: `#drop()` takes the destroy hook off the queue
-    // before the destroy below could make it fire.
+    // whatever the re-entrant call had just stored. The order is doubly
+    // motivated: `#drop()` takes the destroy hook off the queue before the
+    // destroy below could make it fire.
     this.#drop(key);
     signal.destroy();
     return true;
@@ -306,7 +306,7 @@ export class SignalAutoMap {
    * Creates signals for keys that don't exist.
    * @param props - Map of key-value pairs to update. Keys are
    *   {@link SignalAutoMapKeyType} — a `Map<number, …>` is rejected, because
-   *   `keys()` would afterwards claim `string | symbol` for it (TYPE-005).
+   *   `keys()` would afterwards claim `string | symbol` for it.
    */
   update(props: Map<SignalAutoMapKeyType, unknown>): void {
     if (props.size) {
@@ -324,8 +324,7 @@ export class SignalAutoMap {
    * @param obj - The source object
    * @param propKeys - Optional array of specific keys to update (defaults to all enumerable keys).
    *   Same restriction as {@link SignalAutoMap.fromProps}: only `string` and
-   *   `symbol` keys can be named, and a numeric one collapses to `never`
-   *   (TYPE-005).
+   *   `symbol` keys can be named, and a numeric one collapses to `never`.
    */
   updateFromProps<PropsObjType extends object>(
     obj: PropsObjType,

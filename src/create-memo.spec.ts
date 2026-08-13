@@ -116,7 +116,7 @@ describe('createMemo', () => {
     }
   });
 
-  describe('memo signal lifecycle inside an effect body (MEM-005)', () => {
+  describe('memo signal lifecycle inside an effect body', () => {
     it('destroys the internal memo signal on every rerun instead of leaking it (Probe P)', () => {
       const trigger = createSignal(0);
       const src = createSignal(1);
@@ -143,7 +143,7 @@ describe('createMemo', () => {
         ).toBe(signalsAfterFirstRun);
         expect(
           getEffectsCount(),
-          'effect count must stay constant over 10 reruns (MEM-001)',
+          'effect count must stay constant over 10 reruns',
         ).toBe(effectsAfterFirstRun);
 
         outer.destroy();
@@ -186,8 +186,8 @@ describe('createMemo', () => {
     });
 
     it('a memo attached to a group outside any effect body is destroyed once, by the group', () => {
-      // This memo is created outside any effect body, so the MEM-005/
-      // MEM-008 lifetime hook never applies to it — it stays entirely a
+      // This memo is created outside any effect body, so the parent-effect
+      // lifetime hook never applies to it — it stays entirely a
       // group affair. group.clear() must still be the one and only thing
       // that destroys it, with no double-counting.
       const host = {};
@@ -210,7 +210,7 @@ describe('createMemo', () => {
     });
 
     it('a memo created outside any effect body survives its dependencies being destroyed', () => {
-      // Regression guard: an earlier version of the MEM-005 fix hooked
+      // Regression guard: hooking
       // *every* memo's signal to its internal effect's DESTROY, not just the
       // ones created inside another effect's body. That broke this — the
       // memo's own effect self-destroys via EffectImpl[$destroySignal] once
@@ -379,7 +379,7 @@ describe('createMemo', () => {
       }
     });
 
-    it('a memo created with {attach} inside an effect body is destroyed on the parent rerun instead of piling up in the group (MEM-008)', () => {
+    it('a memo created with {attach} inside an effect body is destroyed on the parent rerun instead of piling up in the group', () => {
       const host = {};
       const group = SignalGroup.findOrCreate(host);
       const trigger = createSignal(0);
@@ -435,7 +435,7 @@ describe('createMemo', () => {
       }
     });
 
-    it('a memo created with {attach} inside an effect body dies with the effect that created it, not with the group (MEM-008)', () => {
+    it('a memo created with {attach} inside an effect body dies with the effect that created it, not with the group', () => {
       // {attach} gives a memo signal a group membership and, optionally, a
       // name — it does not take a memo created inside an effect body out of
       // that effect's ownership. The internal effect still dies as a child
@@ -472,7 +472,7 @@ describe('createMemo', () => {
         ).toBe(2);
         expect(
           group.signal('doubled'),
-          'a hard-destroyed signal loses its name (MEM-002)',
+          'a hard-destroyed signal loses its name',
         ).toBeUndefined();
         expect(group.hasSignal('doubled')).toBe(false);
       } finally {
@@ -518,7 +518,7 @@ describe('createMemo', () => {
     });
   });
 
-  describe('destroy-queue subscription of the internal effect (MEM-005)', () => {
+  describe('destroy-queue subscription of the internal effect', () => {
     it('is released when the internal effect dies with its last dependency', () => {
       const destroySubscriptionsBefore = getSubscriptionCount(
         globalDestroySignalQueue,
@@ -580,7 +580,7 @@ describe('createMemo', () => {
     });
   });
 
-  describe('batchWrites option (PERF-001, 2026-07 audit)', () => {
+  describe('batchWrites option', () => {
     // The memo effect used to unconditionally wrap `si.set(callback())` in
     // `batch()`. Two consequences follow from that, pulling in opposite
     // directions — this describe block covers both:
@@ -598,7 +598,7 @@ describe('createMemo', () => {
     //    batch(), a memo callback that read another dirty (or lazy and
     //    never-autorun) memo got that memo's *stale* pre-recompute value —
     //    permanently stale for a lazy one, since nothing forced it to run on
-    //    its own. That mechanism is gone: since ASYNC-003 a memo's
+    //    its own. That mechanism is gone — a memo's
     //    `beforeRead` is not `e.run` but `e.runImmediately`, which recomputes
     //    past the batch gate. Both settings now read the same fresh value —
     //    see the third and fourth tests below, which are twins rather than
@@ -694,11 +694,11 @@ describe('createMemo', () => {
     // batch flush was *also* a no-op — it stayed stale until something read
     // it directly, outside any batch.
     //
-    // Since ASYNC-003 `beforeRead` is `e.runImmediately`, which recomputes at
+    // `beforeRead` is `e.runImmediately`, which recomputes at
     // the read regardless of an open batch, so both settings read the same
     // fresh value. The recompute's own write still goes into the batch.
 
-    it('{batchWrites: true}: reading a dirty lazy memo from within a batched outer memo returns its fresh value (ASYNC-003, audit 2026-08-08)', () => {
+    it('{batchWrites: true}: reading a dirty lazy memo from within a batched outer memo returns its fresh value (audit 2026-08-08)', () => {
       const dep = createSignal(1);
 
       const inner = createMemo(() => dep.get() * 10, {lazy: true});
@@ -780,7 +780,7 @@ describe('createMemo', () => {
     });
   });
 
-  describe('{name} without {attach} (API-009)', () => {
+  describe('{name} without {attach}', () => {
     it('reports every such call, not once per process', () => {
       const seen: SignalizeErrorPayload[] = [];
       const unsubscribe = onSignalizeError((payload) => {
@@ -843,7 +843,7 @@ describe('createMemo', () => {
     });
   });
 
-  describe('an empty {name} is no name (CONS-015)', () => {
+  describe('an empty {name} is no name', () => {
     it('reports nothing without {attach}', () => {
       const seen: SignalizeErrorPayload[] = [];
       const unsubscribe = onSignalizeError((payload) => {

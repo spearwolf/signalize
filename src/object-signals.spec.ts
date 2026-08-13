@@ -126,7 +126,7 @@ describe('object signals', () => {
     }
   });
 
-  it('touch() and value() reject a source that is neither a signal nor a tuple (CONS-007)', () => {
+  it('touch() and value() reject a source that is neither a signal nor a tuple', () => {
     const notASignal = {} as any;
 
     expect(() => touch(notASignal)).toThrow(TypeError);
@@ -147,7 +147,7 @@ describe('object signals', () => {
     );
   });
 
-  it('value([obj, name]) stays a plain undefined when no signal is stored under that name (CONS-007)', () => {
+  it('value([obj, name]) stays a plain undefined when no signal is stored under that name', () => {
     const host: Record<string, unknown> = {};
     const foo = createSignal(1);
     storeAsObjectSignal(host, 'foo', foo);
@@ -182,7 +182,7 @@ describe('object signals', () => {
     }
   });
 
-  describe('destroyObjectSignals() teardown errors (BUG-015)', () => {
+  describe('destroyObjectSignals() teardown errors', () => {
     it('a throwing cleanup does not spare the remaining signals of the same object', () => {
       const host: Record<string, unknown> = {};
       const foo = createSignal(1);

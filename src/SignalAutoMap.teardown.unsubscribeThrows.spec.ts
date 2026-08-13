@@ -1,4 +1,4 @@
-// CONS-016: a throwing `unsubscribe()` handle has no legal way into the
+// A throwing `unsubscribe()` handle has no legal way into the
 // public API — every subscription this package creates unsubscribes
 // cleanly. The witness needs a seam, so this file wraps `on()` from
 // `@spearwolf/eventize` itself and hands back a throwing handle for a
@@ -52,7 +52,7 @@ vi.mock('@spearwolf/eventize', async (importOriginal) => {
   };
 });
 
-describe('SignalAutoMap teardown survives a throwing unsubscribe (CONS-016)', () => {
+describe('SignalAutoMap teardown survives a throwing unsubscribe', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
     assertSignalsCount(0, 'beforeEach');
