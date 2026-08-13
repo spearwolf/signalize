@@ -1188,7 +1188,7 @@ export class SignalGroup {
       const errors: unknown[] = [];
 
       collect(errors, () => emit(this, DESTROY, this));
-      off(this);
+      collect(errors, () => off(this));
 
       // Snapshots throughout: a destroyed effect takes itself out of
       // `#effects`, a destroyed signal out of `#signals`, mid-loop.

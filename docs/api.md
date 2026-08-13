@@ -686,6 +686,16 @@ eventually corrected too — nondeterministically, but subscriptions included
 The link is destroyed automatically when `source` or `target` (if it's a
 signal) is destroyed.
 
+> **Teardown errors.** `destroy()` guards each of its teardown steps
+> individually — releasing every subscription it holds on the global queues,
+> emitting `DESTROY`, and dropping its remaining listeners — and runs all of
+> them regardless of whether an earlier one throws. The link still ends up
+> destroyed, frozen and with `lastValue` cleared either way. The failures are
+> collected and raised afterwards: a lone one unchanged, several as an
+> `AggregateError` whose `errors` array holds them in teardown order, message
+> `[signalize] N errors while tearing down a SignalLink` — the same shape
+> `SignalGroup#clear()` and `unlink()` use above.
+
 > **On the spelling.** This class names its state flags `isMuted` /
 > `isDestroyed`; `Signal` names its pair `muted` / `destroyed`, and `Effect`
 > — which has no mute concept at all — names its one flag `destroyed`. Each

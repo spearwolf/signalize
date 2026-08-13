@@ -659,7 +659,7 @@ export abstract class SignalLink<ValueType = unknown> {
     // `keeper.removeAll()`, dropping every retain policy and every stored
     // value in one go. The line that was here cleared a slot that the next
     // line was about to remove outright.
-    off(this);
+    collect(releaseErrors, () => off(this));
 
     this.lastValue = undefined;
 
