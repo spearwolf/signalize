@@ -31,6 +31,34 @@ export type SignalDecoratorOptions<T> = Omit<SignalParams<T>, 'lazy'> &
     readAsValue?: boolean;
   };
 
+/**
+ * Turn a class field declared with `accessor` into a per-instance signal.
+ *
+ * `accessor` is mandatory. The returned decorator is typed as a class
+ * accessor decorator, so TypeScript refuses it on a plain field, on a
+ * method and on a getter — there is no runtime fallback for those.
+ *
+ * Each instance gets its own signal, created when the field initializes,
+ * and it is registered twice — neither registration is optional. Once
+ * under `name` in the object store that `findObjectSignalByName()`,
+ * `findObjectSignals()` and `findObjectSignalNames()` read; once under the
+ * same `name` in `SignalGroup.findOrCreate(this)`, the group of the
+ * instance the field lives on. `name` defaults to the property name.
+ *
+ * Reading the property tracks the signal in the surrounding effect
+ * (`signal.get()`); with `readAsValue: true` it reads untracked
+ * (`signal.value`). Writing the property writes the signal. After
+ * `destroyObjectSignals(this)` the store entry is gone and both ends go
+ * quiet: the getter returns `undefined`, the setter is a no-op.
+ *
+ * `attach` names an **additional** group and does not replace the instance
+ * group — see {@link SignalDecoratorOptions} for that option and every
+ * other one.
+ *
+ * ```ts
+ * class Foo { @signal() accessor bar = 23; }
+ * ```
+ */
 export function signal<T>(options?: SignalDecoratorOptions<T>) {
   return function <C extends object>(
     _target: ClassAccessorDecoratorTarget<C, T>,

@@ -634,10 +634,13 @@ describe('the published type surface', () => {
       cleaned.push(v);
     });
 
-    // Four more forms that keep compiling too, each one a call shape a
-    // future narrowing could take away without this file noticing, since
-    // none of them carries a directive to turn red. No directive on any of
-    // the four below either: they have to compile.
+    // Four more forms that keep compiling too. None of them carries a
+    // directive, so all four have to compile — but only two would notice a
+    // future narrowing. Tightening `ValueChangedCallback` to `(value: T) =>
+    // VoidFunc` turns `offNullary` and `offWiderParam` red (TS2345, `void` is
+    // not a `VoidFunc`) and leaves `offConditional` and `offAnyVariable`
+    // green: `strictNullChecks: false` admits the `undefined` branch, and
+    // `any` goes anywhere.
     const takeCleanup = true;
     const conditionalCleanup = () => cleaned.push(-1);
     const offConditional = sig.onChange((_v) =>

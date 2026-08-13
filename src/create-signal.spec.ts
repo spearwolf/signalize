@@ -310,9 +310,10 @@ describe('createSignal', () => {
     const sig = createSignal(1);
 
     // onChange passes whatever the callback returns on as the effect's
-    // cleanup — and its signature allows `any`. A returned value that is not
-    // a function counts as "no cleanup"; it used to be stored and then called
-    // on the *second* change, throwing `cleanupCallback is not a function`.
+    // cleanup. The signature no longer allows anything else (TYPE-006), but
+    // the runtime still tolerates it: a returned value that is not a function
+    // counts as "no cleanup"; it used to be stored and then called on the
+    // *second* change, throwing `cleanupCallback is not a function`.
     const seen: number[] = [];
     // @ts-expect-error TYPE-006: the signature refuses the returned `number`
     // now; the runtime tolerance this test pins is unchanged.

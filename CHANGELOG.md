@@ -247,6 +247,8 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - `README.md` gains a "Versioning & stability" section: no compatibility promise below `1.0.0`, semver on the published surface from `1.0.0` on, everything `@internal` exempt at every version (API-011)
 - `CONTRIBUTING.md` gains a "Releasing" section: the `version` field in `package.json` is the publish trigger — dropping the `-dev` suffix and pushing to `main` is the release, with no tag and no manual approval in between
 - `CONTRIBUTING.md` states the rule that was only ever practice: source, comments, JSDoc, test names, error messages and everything under `docs/` are written in English (READ-015)
+- The `@signal()` factory in `@spearwolf/signalize/decorators` has a JSDoc block: `accessor` is mandatory, the signal is always registered both in the object store and in the group of its instance, and `SignalDecoratorOptions` carries the options (INF-001)
+- `storeAsObjectSignal` is marked `@internal` and no longer appears in the shipped `lib/object-signals.d.ts`. It was never reachable — `index.ts` does not export it and the `exports` map blocks deep imports (CONS-017)
 
 ### Chores
 

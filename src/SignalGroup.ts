@@ -214,10 +214,11 @@ const CYCLE_REJECTED =
 // nothing. Three promises therefore hold by themselves that `undefined`
 // would each break on its own: `memberCounts` still answers with 0; the
 // `once(…, DESTROY, Priority.Max, …)` hooks from `attachEffect()` and
-// `attachLink()` — the first thing that runs when a member is destroyed,
-// ahead of every application listener — cannot throw at the head of an
-// eventize delivery and abort it for everyone; and a hook that fires after
-// a `clear()` still finds something there.
+// `attachLink()` — which run ahead of every application listener below
+// `Priority.Max`, though not ahead of one registered there first, see the
+// note at `attachLink()` — cannot throw at the head of an eventize
+// delivery and abort it for everyone; and a hook that fires after a
+// `clear()` still finds something there.
 //
 // The stand-ins reject every write that would make them non-empty. A
 // forgotten take-over would otherwise fill a container that every

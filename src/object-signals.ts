@@ -80,6 +80,15 @@ export const findObjectSignalNames = <O extends object>(
   return undefined;
 };
 
+/**
+ * Register `signal` on `obj` under `name`, creating the store on demand.
+ *
+ * The write side of {@link findObjectSignal}; the only caller is the
+ * `@signal` decorator. An entry already sitting under the same name is
+ * replaced, not destroyed.
+ *
+ * @internal
+ */
 export const storeAsObjectSignal = (
   obj: any,
   name: string | symbol,
