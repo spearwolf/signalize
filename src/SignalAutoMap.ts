@@ -44,28 +44,30 @@ const autoMapResourceFinalizer = new FinalizationRegistry<AutoMapResources>(
 );
 
 /**
- * A Map-like container that automatically creates signals for keys on first access.
- *
- * Useful for dynamic scenarios where signal keys are not known ahead of time,
- * such as mapping component props to signals.
+ * A Map-like container that creates a signal for a key on first access — for
+ * keys that are not known ahead of time, component props being the usual
+ * case.
  *
  * The map follows the lifetime of the signals it hands out: destroying an
  * entry's signal from the outside — `destroySignal(sig)`, `sig.destroy()`, or
  * the group it is attached to — removes the entry in the same synchronous
- * turn. `has(key)` is `false` immediately afterwards and `get(key)`
- * creates a fresh, live signal. A soft detach (`SignalGroup#off()`) is not a
+ * turn, so `has(key)` is `false` immediately afterwards and `get(key)`
+ * creates a fresh, live one. A soft detach (`SignalGroup#off()`) is not a
  * destruction and leaves the entry alone.
  */
 export class SignalAutoMap {
   /**
-   * Create a SignalAutoMap pre-populated with signals from an object's properties.
-   * @param obj - The source object
-   * @param propKeys - Optional array of specific keys to include (defaults to all enumerable keys).
-   *   Only `string` and `symbol` keys can be named: the map is keyed on
-   *   {@link SignalAutoMapKeyType}, so a numeric key collapses to `never` and
-   *   `TS2322: Type 'number' is not assignable to type 'never'` means exactly
-   *   that.
-   * @returns A new SignalAutoMap with signals for each property
+   * A new SignalAutoMap, pre-populated with one signal per property of
+   * `obj`.
+   *
+   * Only `string` and `symbol` keys can be named: the map is keyed on
+   * {@link SignalAutoMapKeyType}, so a numeric key collapses to `never` and
+   * earns `TS2322: Type 'number' is not assignable to type 'never'`.
+   *
+   * `docs/api.md`, "SignalAutoMap" → "Methods"
+   *
+   * @param propKeys - Restricts which properties to include; without it,
+   *   every enumerable key.
    */
   static fromProps<PropsObjectType extends object>(
     obj: PropsObjectType,
@@ -194,25 +196,23 @@ export class SignalAutoMap {
   }
 
   /**
-   * Get an iterator over all keys in the map.
+   * An iterator over all keys.
    */
   keys(): IterableIterator<SignalAutoMapKeyType> {
     return this.#signals.keys();
   }
 
   /**
-   * Get an iterator over all signals in the map.
-   *
-   * The map is heterogeneous, so the elements come out as `Signal<unknown>`.
+   * An iterator over all signals. The map is heterogeneous, so they come out
+   * as `Signal<unknown>`.
    */
   signals(): IterableIterator<Signal<unknown>> {
     return this.#signals.values();
   }
 
   /**
-   * Get an iterator over [key, signal] pairs.
-   *
-   * The map is heterogeneous, so the signals come out as `Signal<unknown>`.
+   * An iterator over all [key, signal] pairs. The map is heterogeneous, so
+   * the signals come out as `Signal<unknown>`.
    */
   entries(): IterableIterator<[SignalAutoMapKeyType, Signal<unknown>]> {
     return this.#signals.entries();
@@ -245,25 +245,19 @@ export class SignalAutoMap {
    * Destroy the signal stored under `key` and remove its entry.
    *
    * The signal is destroyed, not merely evicted: every effect reading it is
-   * notified, and an effect left without a single live dependency destroys
-   * itself. Whoever still holds the `Signal` object holds a corpse — reads
-   * return the last value, writes notify nobody (see `clear()` and the note
-   * on externally destroyed entries).
+   * notified, and whoever still holds the `Signal` object holds a corpse.
    *
-   * Deleting an unknown key is a no-op, and that includes a key whose signal
-   * was destroyed from the outside: the entry left the map with its signal,
-   * so `delete()` reports `false`. `Map.prototype.delete` semantics are
-   * unchanged.
+   * Deleting an unknown key is a no-op — and that includes a key whose
+   * signal was destroyed from the outside, because the entry left the map
+   * together with it.
    *
    * The entry is dropped before the signal is destroyed, so an effect
-   * cleanup that runs as part of that destroy (its dependency just died) and
-   * calls `get(key)` again gets a fresh, live signal — and that signal stays
-   * in the map. `has(key)` is `true` again once `delete()` returns, and the
-   * key count is back up by one.
+   * cleanup that runs as part of that destroy and calls `get(key)` again
+   * gets a fresh, live signal — and that signal stays in the map: `has(key)`
+   * is `true` again once `delete()` returns.
    *
-   * @param key - The key to remove
    * @returns `true` if the key was in the map, `false` otherwise — the same
-   *   contract as `Map.prototype.delete`
+   *   contract as `Map.prototype.delete`.
    */
   delete(key: SignalAutoMapKeyType): boolean {
     const signal = this.#signals.get(key);
@@ -281,18 +275,14 @@ export class SignalAutoMap {
   }
 
   /**
-   * Check if a signal exists for the given key.
-   * @param key - The key to check
+   * Whether a signal exists for that key.
    */
   has(key: SignalAutoMapKeyType): boolean {
     return this.#signals.has(key);
   }
 
   /**
-   * Get or create a signal for the given key.
-   * If the signal doesn't exist, it will be automatically created.
-   * @param key - The key to get the signal for
-   * @returns The signal (existing or newly created)
+   * The signal for that key, created on the spot if there is none yet.
    */
   get<T = unknown>(key: SignalAutoMapKeyType): Signal<T> {
     if (!this.#signals.has(key)) {
@@ -302,11 +292,11 @@ export class SignalAutoMap {
   }
 
   /**
-   * Update multiple signals from a Map, batching all updates together.
-   * Creates signals for keys that don't exist.
-   * @param props - Map of key-value pairs to update. Keys are
-   *   {@link SignalAutoMapKeyType} — a `Map<number, …>` is rejected, because
-   *   `keys()` would afterwards claim `string | symbol` for it.
+   * Write a `Map` of values, all in one batch. A key that has no signal yet
+   * gets one.
+   *
+   * @param props - Keys are {@link SignalAutoMapKeyType}; a `Map<number, …>`
+   *   is rejected.
    */
   update(props: Map<SignalAutoMapKeyType, unknown>): void {
     if (props.size) {
@@ -319,12 +309,13 @@ export class SignalAutoMap {
   }
 
   /**
-   * Update multiple signals from an object's properties, batching all updates together.
-   * Creates signals for keys that don't exist.
-   * @param obj - The source object
-   * @param propKeys - Optional array of specific keys to update (defaults to all enumerable keys).
-   *   Same restriction as {@link SignalAutoMap.fromProps}: only `string` and
-   *   `symbol` keys can be named, and a numeric one collapses to `never`.
+   * Write an object's properties, all in one batch. A key that has no signal
+   * yet gets one.
+   *
+   * @param propKeys - Restricts which properties to write; without it, every
+   *   enumerable key. Same restriction as {@link SignalAutoMap.fromProps}:
+   *   only `string` and `symbol` keys can be named, a numeric one collapses
+   *   to `never`.
    */
   updateFromProps<PropsObjType extends object>(
     obj: PropsObjType,

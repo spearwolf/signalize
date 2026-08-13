@@ -148,87 +148,67 @@ type LinkableTarget<ValueType> =
  */
 export interface LinkOptions {
   /**
-   * Attach the link to this group, so it will be destroyed when the group is destroyed.
+   * Attach the link to this group; it is destroyed when the group is
+   * cleared.
    *
-   * `link()` deduplicates by `(source, target)`: calling it again for a pair
-   * that already has a link returns the existing instance. If that call
-   * passes `attach`, the existing link is attached to that group *too* —
-   * it is not replaced or ignored. A link with multiple attached groups is
-   * destroyed as soon as any one of them clears; it does not wait for all
-   * of them.
+   * On a cache hit — `link()` deduplicates by `(source, target)` — the
+   * existing link is attached to this group *too*, neither replaced nor
+   * ignored. A link with several attached groups is destroyed as soon as any
+   * one of them clears; it does not wait for the rest.
    */
   attach?: object;
 }
 
 /**
- * Create a one-way data flow connection from a source signal to a target.
- * When the source signal changes, the target is automatically updated.
- * The target can be another signal or a callback function.
- *
- * @param source - The source signal to link from
- * @param target - The target signal or callback to link to
- * @param options - Configuration options (attach)
- * @returns A SignalLink object that can be destroyed to break the connection
+ * Create a one-way data flow from a source signal to a target: when the
+ * source changes, the target is updated. The target is another signal or a
+ * callback, and it receives the source's current value right away.
  *
  * Lifetime: the returned `SignalLink` is held by an internal registry keyed
- * on `source`, and stays reachable there until one of four things happens —
- * `link.destroy()`, `unlink(source, target?)`, a `{attach}` group being
- * cleared, or `source`/a signal `target` being destroyed. Discarding the
- * return value is fine and does not shorten this: it only makes the link
- * unreachable to the caller, not to the registry. There is no fifth way —
- * garbage collection alone does not reclaim a link on a live source. (Once a
- * link becomes unreachable *together with* its source, the finalizer does
- * release its global-queue subscriptions as well as correcting the count —
- * but that is a backstop for a link nobody can reach any more, not a
- * teardown you can schedule.)
+ * on `source` until one of four things happens — `link.destroy()`,
+ * `unlink(source, target?)`, a `{attach}` group being cleared, or
+ * `source`/a signal `target` being destroyed. Discarding the return value
+ * does not shorten that, and while the source is alive garbage collection
+ * is no fifth way.
  *
- * Warns once per source signal — via `console.warn`, or through
- * `onSignalizeError()` with `source: 'link-count'` where a handler is
- * registered — as soon as 1000 links
- * hang off it: the point where the linear cost of a write to that source
- * has grown two orders of magnitude (measured) and an unbounded register is
- * the likelier explanation than intent. Diagnostic only: nothing is thrown
- * and nothing is refused.
+ * As soon as 1000 links hang off one source, `link()` says so once for that
+ * source — via `console.warn`, or through `onSignalizeError()` with
+ * `source: 'link-count'` where a handler is registered. Diagnostic only:
+ * nothing is thrown and nothing is refused.
  *
  * Two overloads, not one union signature: `SignalReader<T>` is itself
- * callable, so `LinkableTarget<T>` is a union with more than one call
- * signature, and TypeScript builds no contextual type against that — an
- * unannotated callback target's parameter used to fall back to implicit
- * `any` (`TS7006` under `noImplicitAny`). The signal overload is listed
- * first on purpose, so that `link(src, dst)` and `link(src, dst.get)` both
- * land on it — the same overload that `signalImpl(target)` matches at
- * runtime. A target whose *static* type is already the union
- * `SignalReader<T> | ValueCallback<T>` still lands on the callback overload
- * regardless of ordering, because the whole union is assignable to
- * `ValueCallback<T>` — harmless, since both overloads return the same
- * `SignalLink<ValueType>`. The similarly-spelled `Signal<T> |
- * ValueCallback<T>` is the opposite case: it is assignable to *neither*
- * overload and is rejected with `TS2769`. That is one face of a wider rule:
- * `link` carries two signatures, and anything that reduces it back to one —
- * an assignment to a narrower signature, generic inference, or a utility
- * type such as `Parameters<typeof link>` — resolves to the callback
- * signature, not the union (`pitfalls.md` 17b has the full rule, its other
- * faces and their repairs).
+ * callable, so a union target leaves TypeScript with no contextual type to
+ * offer, and an unannotated callback parameter falls back to implicit `any`
+ * (`TS7006` under `noImplicitAny`). The signal overload is listed first, so
+ * that `link(src, dst)` and `link(src, dst.get)` both land on it — the same
+ * overload `signalImpl(target)` matches at runtime. The cost is one rule:
+ * anything that reduces the overloaded type back to a single signature
+ * resolves to the callback signature, and a target whose *static* type is
+ * `Signal<T> | ValueCallback<T>` fits neither overload and is rejected with
+ * `TS2769`. The other faces of that rule, and their repairs, are in
+ * `pitfalls.md` 17b.
+ *
+ * `docs/api.md`, "Links" → "link<T>(source, target, options?):
+ * SignalLink<T>"
+ *
+ * @returns A SignalLink that can be destroyed to break the connection.
  */
-// Order matters and nothing here re-checks it: keep the signal overload
-// first. Both overloads return the same `SignalLink<ValueType>`, so
-// swapping them compiles clean and no test catches it — it only changes
-// which overload a callable target lands on, per the paragraph above.
+// Order matters: keep the signal overload first, so `link(src, dst)` and
+// `link(src, dst.get)` land on it — the overload `signalImpl(target)`
+// matches at runtime. Both overloads return the same
+// `SignalLink<ValueType>`, so a swap compiles clean everywhere else; what
+// catches it is the type witness `reduces link() to its callback signature`
+// in `src/types.public-surface.spec.ts`, which then fails with two TS2322.
 export function link<ValueType>(
   source: LinkableSource<ValueType>,
   target: SignalReader<ValueType> | Signal<ValueType>,
   options?: LinkOptions,
 ): SignalLink<ValueType>;
 /**
- * Callback-target form of `link()`. See the signal-target overload above
- * for `@param source`, lifetime, dedup and the 1000-link warning — all
- * identical here; `target`'s parameter type is inferred from `source`
+ * Callback-target form of `link()`. Everything the signal-target overload
+ * above documents — lifetime, dedup, the 1000-link warning — holds here
+ * unchanged; only `target`'s parameter type is inferred from `source`
  * rather than left implicit.
- *
- * @param source - The source signal to link from
- * @param target - The callback that receives the source's value
- * @param options - Configuration options (attach)
- * @returns A SignalLink object that can be destroyed to break the connection
  */
 export function link<ValueType>(
   source: LinkableSource<ValueType>,
@@ -323,16 +303,14 @@ export function link<ValueType>(
 }
 
 /**
- * Remove a link between a source signal and a target.
- * If no target is specified, all links from the source are removed.
+ * Remove the link between a source signal and a target. Without a target,
+ * every link from that source falls.
  *
- * @param source - The source signal
- * @param target - Optional specific target to unlink (if omitted, all targets are unlinked)
- * @throws TypeError if source is not a signal
+ * Every matching link is torn down even if an earlier one's `DESTROY`
+ * listener throws. A single failure is rethrown unchanged; several are
+ * bundled into an `AggregateError`, in teardown order.
  *
- * Every matching link is torn down, even if an earlier one's `DESTROY`
- * listener throws. A single failure is rethrown unchanged; several
- * are bundled into an `AggregateError`, in teardown order.
+ * @throws TypeError if `source` is not a signal.
  */
 export function unlink<ValueType>(
   source: LinkableSource<ValueType>,
@@ -378,24 +356,16 @@ export function unlink<ValueType>(
 }
 
 /**
- * Get the count of active links.
- * If a source is provided, returns only links from that source.
- * If no source is provided, returns the total count of all links.
+ * The number of active links — those of one source, or the total when
+ * called without one.
  *
- * @param source - Optional source signal to count links for
- * @returns The number of active links
+ * Counted are exactly the links held by the registry `link()` describes
+ * under "Lifetime". While its source signal is reachable, a link never
+ * drops out of this count through garbage collection alone; a link that
+ * becomes unreachable *together with* its source does correct it, but
+ * nondeterministically.
  *
- * This counts exactly the links held by the registry described in `link()`'s
- * "Lifetime" section. While its source signal is reachable, a link never
- * drops out of this count through garbage collection alone — only
- * `destroy()`, `unlink()`, a cleared `{attach}` group, or destroying the
- * source/signal target does that, and each of those also releases the
- * link's subscriptions on the global queues. If a link becomes unreachable
- * *together with* its source instead (dropped, never explicitly destroyed),
- * this count is eventually corrected too — nondeterministically, and
- * including those subscriptions; see the `gLinkFinalizer`
- * comment above `link()` for why that backstop is still not a fifth
- * teardown route.
+ * `docs/api.md`, "Links" → "getLinksCount(source?)"
  */
 export function getLinksCount(source?: SignalLike<any>): number {
   if (source == null) {

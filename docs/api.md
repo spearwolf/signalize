@@ -600,7 +600,9 @@ construction).
 
 `link()` is an overload pair — one signature for a signal target, one for a
 callback target — because `SignalReader<T>` is itself callable and TypeScript
-builds no contextual type for a union with more than one call signature.
+builds no contextual type for a union with more than one call signature, which
+leaves an unannotated callback parameter on implicit `any` (`TS7006` under
+`noImplicitAny`).
 `link` therefore carries two signatures now, and the cost is one rule:
 anything that reduces it back to a single signature — an assignment to a
 narrower one, generic inference, or a utility type — resolves to the callback
@@ -769,6 +771,16 @@ yourself does not survive an `asyncValues()` run. Closing a manually driven
 iterator works at any time, including while it is waiting for a value that
 never comes: `.return()` and `.throw()` cancel the pending read, so they
 settle instead of queueing behind it forever.
+
+That guarantee has a flip side, and avoiding it is the caller's job. The
+bookkeeping that hands the retained slot back sits in the generator's
+`finally`, and a `finally` only runs once the generator is driven to
+completion or closed — `.return()`, `.throw()`, or the implicit `.return()` a
+`for await` issues on `break` or an exception. Drive an iterator by hand and
+then simply drop it: the active-iterator count never comes back to 0, so
+`unretain()` never runs again for that link and `'value'` stays retained until
+the link is destroyed. The iterator protocol offers no way for the link to
+close what the caller opened.
 
 **Re-entrant propagation.** If `action()` — the link callback, or an effect
 on the target signal — writes the source again, the nested propagation runs
@@ -1046,6 +1058,11 @@ SignalAutoMap.fromProps<P>(obj: P, keys?: Extract<keyof P, string | symbol>[])
 | `clear()`                               | Destroy all signals and empty the map. Every entry is dropped and every signal destroyed even if an earlier cleanup throws; the failures are collected and raised afterwards — a lone one unchanged, several as an `AggregateError` whose `errors` array holds them in teardown order, the same shape `SignalGroup#clear()` and `unlink()` use. |
 | `delete(key): boolean`                  | Destroy `key`'s signal and drop the entry; `true` if present.          |
 
+`fromProps()` and `updateFromProps()` share one key restriction: `keys` is
+`Extract<keyof P, string | symbol>[]`, so a numeric key collapses to `never`
+and passing one reports `TS2322: Type 'number' is not assignable to type
+'never'`.
+
 > If a stored signal is destroyed externally via `destroySignal()`, its entry
 > leaves the map in the same synchronous turn: `has(key)` is `false`
 > immediately afterwards, and `get(key)` creates a fresh, live signal instead
@@ -1129,7 +1146,7 @@ Exported from `@spearwolf/signalize`:
 | `EffectErrorPhase`           | `'callback' \| 'cleanup'` — which half of the effect run failed. |
 | `EffectErrorCallback`        | `(payload: EffectErrorPayload) => void`.                         |
 | `FailingEffect`              | The narrow view of the failed effect inside that payload: `id` and `destroy()`, nothing else. |
-| `SignalLink<T>`, `ValueCallback<T>` | Link types. `T` defaults to `unknown` in both.             |
+| `SignalLink<T>`, `ValueCallback<T>` | Link types. `T` defaults to `unknown` in both — and for `SignalLink<T>` that default claims nothing rather than everything: `ValueType` is invariant, so a parameter typed `SignalLink<unknown>` accepts no concrete link. Write `SignalLink<any>` where "some link, any value type" is meant, for the same reason the note below gives for `SignalLike`. |
 | `LinkOptions`                | Options for `link()` (`attach`).                                 |
 | `SignalAutoMapKeyType`       | `string \| symbol` — the key type a `SignalAutoMap` accepts.     |
 | `LinkSource<T>`              | The narrow read-only view of a link's source signal: `id`, `value`, `muted`, `destroyed`. |

@@ -142,8 +142,11 @@ export interface SignalLink<ValueType = unknown> extends EventizedObject {}
  * The value type defaults to `unknown`; a bare `SignalLink` claims nothing
  * about the value it carries. Where "some link, any value type" is meant —
  * a parameter position, a heterogeneous collection — `SignalLink<any>` is
- * the right spelling, for callers as much as for this library: `ValueType`
- * is invariant, so `SignalLink<unknown>` accepts no concrete link.
+ * the spelling to reach for, for callers as much as for this library:
+ * `ValueType` is invariant, so `SignalLink<unknown>` accepts no concrete
+ * link.
+ *
+ * `docs/api.md`, "Types"
  */
 export abstract class SignalLink<ValueType = unknown> {
   #muted = false;
@@ -204,25 +207,25 @@ export abstract class SignalLink<ValueType = unknown> {
   #emittedGeneration = 0;
 
   /**
-   * The signal this link reads from.
+   * The signal this link reads from, as a deliberately narrow view:
+   * {@link LinkSource} exposes `id`, `value`, `muted` and `destroyed` and
+   * nothing else. At runtime this *is* the signal implementation, only typed
+   * down — a link is a one-way read connection, and whoever needs to write
+   * holds the `Signal` the link was made from.
    *
-   * The view is deliberately narrow: {@link LinkSource} exposes
-   * `id`, `value`, `muted` and `destroyed` and nothing else. At runtime this
-   * *is* the signal implementation, it is simply no longer typed as one — a
-   * link is a one-way read connection, not a second handle to drive its own
-   * source. Whoever needs to write holds the `Signal` the link was made from.
+   * `docs/api.md`, "Links" → "What `source.value` shows"
    */
   readonly source: LinkSource<ValueType>;
 
   /**
-   * The last value this link actually announced — i.e. the value of the
-   * most recent `updateValue()` frame that ran to completion.
+   * The last value this link announced — the value of the most recent
+   * propagation frame that ran to completion.
    *
-   * Two frames deliberately leave it alone: one whose `action()`
-   * destroyed this link (`destroy()` sets it to `undefined` and that
-   * stands), and one that a nested, re-entrant frame superseded while
-   * `action()` was running — the nested frame's newer value is the one
-   * that stays.
+   * Two frames deliberately leave it alone: one whose propagation destroyed
+   * this link, and one that a nested, re-entrant frame superseded — there,
+   * the nested frame's newer value is the one that stays.
+   *
+   * `docs/api.md`, "Links" → "Re-entrant propagation"
    */
   lastValue?: ValueType;
 
@@ -279,17 +282,16 @@ export abstract class SignalLink<ValueType = unknown> {
   }
 
   /**
-   * Register an unsubscribe handle (from a `once(globalDestroySignalQueue,
-   * ...)` subscription or similar) for release. Subclasses that add their own
-   * subscriptions on a permanent global queue (see `SignalLinkToSignal`) go
+   * Register an unsubscribe handle for release. A subclass that adds its own
+   * subscription on a permanent global queue (see `SignalLinkToSignal`) goes
    * through this instead of touching the field directly.
    *
    * Anything registered here is released by **both** teardown routes:
-   * `destroy()` runs it (before `Object.freeze(this)`), and so does
-   * `src/link.ts`'s `FinalizationRegistry` if the link is merely collected
-   * instead. Which means the handle must survive being called on a
-   * link that no longer exists — eventize's handles do, and a subclass
-   * handing over anything else has to.
+   * `destroy()` runs it, and so does the link registry's
+   * `FinalizationRegistry` if the link is merely collected instead. Which
+   * means the handle must survive being called on a link that no longer
+   * exists — eventize's handles do, and a subclass handing over anything
+   * else has to.
    */
   protected releaseOnDestroy(unsubscribe: () => void) {
     this[$queueUnsubscribes].push(unsubscribe);
@@ -306,23 +308,11 @@ export abstract class SignalLink<ValueType = unknown> {
    * with an `Error` if the link is destroyed first.
    *
    * `options.signal` — an `AbortSignal` — rejects (and unsubscribes) early:
-   * an already-aborted signal rejects immediately, without waiting for the
-   * next value or a destroy. The parameter type is `AbortSignalLike`, a
-   * structural subset of `AbortSignal`; every real `AbortSignal` satisfies
-   * it.
+   * an already-aborted one rejects immediately, without waiting for the next
+   * value or a destroy.
    *
-   * Deliberately a hand-rolled `Promise` rather than eventize's own
-   * `onceAsync(obj, name, {signal})` (which does support an `AbortSignal`
-   * out of the box, and — despite taking a single `eventName` parameter
-   * here — does accept an array of names, so watching both `VALUE` and
-   * `DESTROY` in one call isn't the blocker). What `onceAsync` can't do is
-   * tell the two apart: it always *resolves*, with whichever event's first
-   * argument arrived — `VALUE`'s value or `DESTROY`'s payload (`this`, the
-   * link itself). A `VALUE` of `this` is exactly the value a link carrying
-   * itself would propagate, so a `result === this` check to tell "resolved
-   * because of DESTROY" from "resolved because of VALUE" is not reliable.
-   * `DESTROY` needs to *reject* here, and `onceAsync` has no way to make
-   * one name in its list do that while another resolves.
+   * `docs/api.md`, "Links" → "nextValue(options?) / asyncValues(stop?,
+   * options?)"
    */
   nextValue(options?: {signal?: AbortSignalLike}): Promise<ValueType> {
     return this.#nextValue(null, options);
@@ -461,54 +451,36 @@ export abstract class SignalLink<ValueType = unknown> {
   }
 
   /**
-   * An `AsyncIterable` of values propagated through this link. Stops when
-   * `stopAction(value, index)` returns `true`, or when the link is
-   * destroyed — in both cases the loop simply ends, `for await` sees a
-   * normal completion.
+   * An `AsyncIterable` of the values propagated through this link. It ends
+   * when `stopAction(value, index)` returns `true`, or when the link is
+   * destroyed — either way `for await` sees a normal completion.
    *
-   * `options.signal` — an `AbortSignal` (typed as `AbortSignalLike`, a
-   * structural subset every real `AbortSignal` satisfies), forwarded to
-   * every internal `nextValue()` call — makes an *aborted* iteration end
-   * differently: it
-   * **throws** the abort reason out of the loop instead of ending quietly.
-   * That is deliberate, not an oversight: destroy is this link's own
-   * lifecycle, expected and unremarkable; abort is the caller cancelling
-   * their own wait from the outside, and swallowing that silently would
-   * make a signalled cancellation indistinguishable from `stopAction`
-   * returning `true` on its own.
+   * An *abort* ends it differently. `options.signal` is forwarded to every
+   * internal `nextValue()` call, and an abort **throws** the reason out of
+   * the loop instead of ending quietly: destruction is this link's own
+   * lifecycle, an abort is the caller cancelling from the outside, and the
+   * two are meant to be told apart.
    *
-   * Retains only the **last** propagated value (a sampler, not a lossless
-   * stream) — a value that arrives between two reads of a slow consumer is
-   * lost, same as a single `retain()`'d event anywhere else. Each iterator
-   * sees each propagated value at most once: a read that finds nothing new
-   * waits for the next propagation instead of being handed the retained
-   * value again. A plain `nextValue()` is unchanged — it still
-   * settles on whatever is in the slot. Several
-   * `asyncValues()` iterators may run over the same link concurrently; they
-   * share that one retained slot, released only once the *last* active
-   * iterator stops — an iterator finishing early must not cut a
-   * still-running sibling off from the next value. "Released" is literal
-   * (the retain policy, not the queue handles at the top of this
-   * file): the last iterator switches retaining off entirely, so a later
-   * `nextValue()` waits for the next value instead of resolving
-   * synchronously with a stale one. The flip side: `asyncValues()` claims
-   * the `'value'` event's retain policy for itself and hands it back at the
-   * end, so a `retain(link, VALUE)` set by the caller does not survive it.
+   * Only the **last** propagated value is retained — a sampler, not a
+   * lossless stream — and each iterator sees each propagated value at most
+   * once: a read that finds nothing new waits for the next propagation
+   * rather than taking the retained value again. A plain `nextValue()` goes
+   * the other way and settles on whatever is in the slot. Several iterators
+   * may run over the same link concurrently and share that one slot.
    *
-   * Caveat shared with every JS async generator, not specific to this one:
-   * the `finally` block below — where the iterator count is decremented —
-   * only runs if the generator is driven to completion or explicitly closed
-   * (`.return()`, `.throw()`, or the implicit `.return()` a `for await`
-   * loop issues on `break`/an exception). A caller that calls `.next()` a
-   * few times and then simply drops the generator without closing it takes
-   * this link's retained-value bookkeeping down with it: the count never
-   * comes back to 0, so `unretain()` never runs again for this link and
-   * VALUE stays retained until the link is destroyed.
-   * There is no fix within the iterator protocol itself; the caller closing
-   * what it opens is the contract, same as any other manually-driven
-   * iterator. What the contract *does* guarantee is that closing works at
-   * any time: `.return()`/`.throw()` settle even while the iterator is
-   * waiting for a value that never comes (W1).
+   * Caveat, shared with every JS async generator: the bookkeeping that gives
+   * the retained slot back sits in a `finally`, and a `finally` only runs
+   * once the generator is driven to completion or closed — `.return()`,
+   * `.throw()`, or the implicit `.return()` a `for await` issues on `break`
+   * or an exception. Drive the iterator by hand and then drop it without
+   * closing it, and the active-iterator count never comes back to 0, so
+   * `unretain()` never runs again for this link and VALUE stays retained
+   * until the link is destroyed. Closing what you open is the contract, and
+   * it is possible at any time — including while the iterator waits for a
+   * value that never comes.
+   *
+   * `docs/api.md`, "Links" → "nextValue(options?) / asyncValues(stop?,
+   * options?)"
    */
   asyncValues(
     stopAction?: (value: ValueType, index: number) => boolean,

@@ -134,13 +134,11 @@ const groupFinalizationRegistry = new FinalizationRegistry<
 });
 
 /**
- * Get the current count of live SignalGroups.
- * Useful for debugging and detecting leaks (e.g. a forgotten `clear()` or
- * `delete()`).
+ * The number of live SignalGroups — for debugging and leak checks, e.g. a
+ * forgotten `clear()` or `delete()`.
  *
- * A group that was collected together with its host is not counted, even
- * before its resource finalizer has run: the husk is dropped on the way past.
- * `Set.prototype.delete` during the set's own iteration is specified and safe.
+ * A group collected together with its host is not counted, even before its
+ * resource finalizer has run.
  */
 export const getSignalGroupsCount = (): number => {
   let count = 0;
@@ -277,15 +275,12 @@ export const SHARED_EMPTY_COLLECTIONS = {
 };
 
 /**
- * A container for managing the lifecycle of signals, effects, links, and
- * child groups.
+ * A lifecycle container for signals, effects, links and child groups:
+ * clearing a group destroys everything attached to it, and groups nest for
+ * scoped teardown.
  *
- * SignalGroups provide automatic cleanup - when a group is cleared, all
- * attached signals, effects, links, and child groups are destroyed. Groups
- * can be nested hierarchically for scoped lifecycle management.
- *
- * Use `SignalGroup.findOrCreate(object)` to create or retrieve a group
- * associated with any object, enabling component-based lifecycle management.
+ * `SignalGroup.findOrCreate(object)` is the way in — one group per object,
+ * which is what makes component-shaped lifecycles work.
  */
 // Eventize injects EventizedObject members at runtime via eventize(this) in
 // the constructor — declaration merging tells TS the brand is present.
@@ -343,10 +338,8 @@ export class SignalGroup {
   #storeKey?: WeakRef<object>;
 
   /**
-   * Get an existing SignalGroup associated with an object, or undefined if
-   * none exists.
-   * @param object - The object to look up
-   * @returns The associated SignalGroup or undefined
+   * The SignalGroup associated with an object, or `undefined` if there is
+   * none.
    */
   static get(object: object) {
     if (object == null) return undefined;
@@ -357,10 +350,8 @@ export class SignalGroup {
   }
 
   /**
-   * Get or create a SignalGroup associated with an object.
-   * If the object already has an associated group, returns that group.
-   * @param object - The object to associate with a group
-   * @returns The SignalGroup (existing or newly created)
+   * The SignalGroup associated with an object, created if there is none yet.
+   * An object that already has one gets that one back.
    */
   static findOrCreate(object: object) {
     if (object == null) {
@@ -395,7 +386,6 @@ export class SignalGroup {
    * notice — once per process, not once per call.
    *
    * @deprecated Use {@link SignalGroup.delete} instead.
-   * @param object - The object whose group should be deleted, or the group
    */
   static destroy(object: object) {
     warnDeprecatedOnce(
@@ -406,10 +396,9 @@ export class SignalGroup {
   }
 
   /**
-   * Delete and clear the SignalGroup associated with an object.
-   * Passing a group itself works too and clears that group directly, the
-   * same argument `get()` and `findOrCreate()` accept.
-   * @param object - The object whose group should be deleted, or the group
+   * Delete and clear the SignalGroup associated with an object. A group
+   * itself is a valid argument too and is cleared directly — the same
+   * argument `get()` and `findOrCreate()` accept.
    */
   static delete(object: object) {
     // A group is a valid argument for itself, exactly as in `get()`
@@ -492,10 +481,7 @@ export class SignalGroup {
   }
 
   /**
-   * Attach a child group to this group. The child will be cleared when this
-   * group is cleared.
-   * @param group - The child group to attach
-   * @returns The attached group
+   * Attach a child group; it is cleared when this group is cleared.
    */
   attachGroup(group: SignalGroup) {
     if (group === this) {
@@ -542,9 +528,7 @@ export class SignalGroup {
   }
 
   /**
-   * Detach a child group from this group.
-   * @param group - The child group to detach
-   * @returns The detached group
+   * Detach a child group. It stays alive; only the parent edge goes.
    */
   detachGroup(group: SignalGroup) {
     if (group !== this && this.#groups.has(group)) {
@@ -560,11 +544,9 @@ export class SignalGroup {
   }
 
   /**
-   * Attach a signal to this group. The signal will be destroyed when the
-   * group is cleared.
-   * @param signal - The signal to attach
-   * @returns The attached signal — the caller's own type, unchanged, so
-   *   `group.attachSignal(createSignal(1))` still reads as `Signal<number>`
+   * Attach a signal; it is destroyed when the group is cleared.
+   *
+   * @returns The argument, with its own type intact.
    */
   attachSignal<S extends SignalLike<any>>(signal: S): S {
     const si = this.#addSignal(signal);
@@ -706,25 +688,23 @@ export class SignalGroup {
   }
 
   /**
-   * Attach a signal with a name for later retrieval via `signal(name)`.
+   * Attach a signal under a name, for later retrieval via `signal(name)`.
    *
    * Binding a name is a transfer of ownership: unless the signal is also
    * handed to `attachSignal()`, the name is the group's only hold on it.
+   * Rebinding the name therefore *destroys* the signal it displaces — with
+   * two exemptions: a signal still held by another name, and one attached
+   * explicitly via `attachSignal()`. Both stay alive, and the second stays
+   * group-owned.
    *
-   * Rebinding the name therefore *destroys* the signal it displaces — nothing
-   * could reach it any more. Exempt are signals held by another name and
-   * signals attached explicitly via `attachSignal()`; those stay alive and, in
-   * the second case, group-owned. Without this, a repeatedly rebound slot
-   * would pile up every signal it ever held until `clear()`.
-   *
-   * Passing `undefined` as the signal releases the name the same way: every
-   * signal still listed under it loses that name, and loses its life with it
+   * Passing `undefined` instead of a signal releases the name the same way:
+   * every signal listed under it loses that name, and loses its life with it
    * if the name was all the group had on it.
    *
-   * @param name - The name to associate with the signal
-   * @param signal - The signal to attach (or undefined to remove)
-   * @returns The attached signal — the caller's own type, unchanged — or
-   *   `undefined` when called without a signal to release the name
+   * `docs/api.md`, "SignalGroup" → "Instance"
+   *
+   * @returns The argument with its own type intact, or `undefined` when
+   *   called without a signal.
    */
   attachSignalByName<S extends SignalLike<any>>(
     name: SignalNameType,
@@ -776,10 +756,7 @@ export class SignalGroup {
   }
 
   /**
-   * Check if a signal with the given name exists in this group or in a
-   * parent group.
-   * @param name - The signal name to check
-   * @returns True if a signal with that name exists
+   * Whether a signal of that name exists in this group or in a parent group.
    */
   hasSignal(name: SignalNameType): boolean {
     if (this.#busy & BUSY_HAS_SIGNAL) return false;
@@ -794,14 +771,11 @@ export class SignalGroup {
   }
 
   /**
-   * Get a signal by name from this group or parent groups.
+   * The signal of that name, from this group or a parent group, or
+   * `undefined`.
    *
-   * Without a type argument the result is `Signal<unknown>`: a group holds
-   * heterogeneous signals and cannot know what hides behind a name. Pass the
-   * type you expect — `group.signal<string>('theme')`.
-   *
-   * @param name - The signal name to look up
-   * @returns The Signal object or undefined if not found
+   * Without a type argument the result is `Signal<unknown>` — pass the type
+   * you expect: `group.signal<string>('theme')`.
    */
   signal<Type = unknown>(name: SignalNameType): Signal<Type> | undefined {
     if (this.#busy & BUSY_SIGNAL) return undefined;
@@ -819,9 +793,9 @@ export class SignalGroup {
   }
 
   /**
-   * Detach a signal from this group (does not destroy it).
-   * @param signal - The signal to detach
-   * @returns The detached signal — the caller's own type, unchanged
+   * Detach a signal. It is not destroyed.
+   *
+   * @returns The argument, with its own type intact.
    */
   detachSignal<S extends SignalLike<any>>(signal: S): S {
     const si = signalImpl(signal);
@@ -895,29 +869,18 @@ export class SignalGroup {
   }
 
   /**
-   * Attach an effect to this group. The effect will be destroyed when the
-   * group is cleared.
+   * Attach an effect; it is destroyed when the group is cleared.
    *
-   * Takes both forms: the `Effect` that `createEffect()` hands out and the
-   * internal instance behind it. The unwrapping happens here, so a consumer
-   * does not need `as any` to call a documented method.
+   * Takes both forms — the `Effect` that `createEffect()` hands out and the
+   * internal instance behind it — and unwraps here. A destroyed effect takes
+   * itself out of the group again; because the bookkeeping hangs on the
+   * unwrapped instance, that holds for a wrapper too.
    *
-   * A destroyed effect takes itself out of the group again —
-   * without that, a long-lived group with effect churn keeps every dead
-   * `EffectImpl` and its callback closure alive until `clear()`. Because the
-   * bookkeeping below hangs on the unwrapped instance, that also holds for a
-   * wrapper: its `destroy()` reaches the same DESTROY the hook listens to.
-   *
-   * Throws on an effect that is already destroyed, the same rule
-   * `#addSignal()` and `attachLink()` already apply: its DESTROY has fired
-   * and `off(this)` has run, so the counter-hook below never fires again —
-   * the group would carry the corpse and its callback closure until
-   * `clear()`. One message covers three shapes of the same mistake — a dead
-   * instance, a dead wrapper, and nothing at all — because they are one
-   * error class, and a second wording would be a second promise.
-   *
-   * @param effect - The effect to attach: the wrapper or the instance
-   * @returns The attached effect — the caller's own type, unchanged
+   * @throws Error on an effect that is already destroyed, in all three
+   *   shapes of that mistake: a dead instance, a dead wrapper, and nothing
+   *   at all. `attachSignal()` and `attachLink()` enforce the same rule for
+   *   their own kind.
+   * @returns The argument, with its own type intact.
    */
   attachEffect<E extends Effect | EffectImpl>(effect: E): E {
     // `$effect in effect`, not `instanceof Effect`: the latter needs a value
@@ -977,15 +940,13 @@ export class SignalGroup {
   }
 
   /**
-   * Attach a link to this group. The link will be destroyed when the group
-   * is cleared.
+   * Attach a link; it is destroyed when the group is cleared.
    *
-   * A destroyed link takes itself out of the group again,
-   * whichever route attached it — `link(…, {attach})`, `link.attach(obj)`
-   * or a direct `attachLink()` call.
+   * A destroyed link takes itself out of the group again, whichever route
+   * attached it — `link(…, {attach})`, `link.attach(obj)` or a direct
+   * `attachLink()` call.
    *
-   * @param link - The link to attach
-   * @returns The attached link — the caller's own type, unchanged
+   * @returns The argument, with its own type intact.
    */
   attachLink<L extends SignalLink<any>>(link: L): L {
     if (link?.isDestroyed) {
@@ -1033,9 +994,9 @@ export class SignalGroup {
   }
 
   /**
-   * Detach a link from this group (does not destroy it).
-   * @param link - The link to detach
-   * @returns The detached link — the caller's own type, unchanged
+   * Detach a link. It is not destroyed.
+   *
+   * @returns The argument, with its own type intact.
    */
   detachLink<L extends SignalLink<any>>(link: L): L {
     if (link) {
@@ -1093,26 +1054,24 @@ export class SignalGroup {
   }
 
   /**
-   * Tear down all subscriptions associated with this group without destroying
-   * the group itself.
+   * Tear down the group's subscriptions without destroying the group itself:
+   * attached effects and links are destroyed, external subscribers of group
+   * signals lose their subscription, and child groups are `off()`'d
+   * recursively. Attached signals stay alive and reachable by name, and the
+   * group accepts new attachments — except a memo signal `{attach}`ed inside
+   * an effect body, which belongs to that effect and dies with it, name
+   * included. An external effect whose only dependency was a group signal is
+   * destroyed along with the detach.
    *
-   * - Attached effects and links are destroyed (their cleanup callbacks run).
-   * - External effects/links that subscribed to signals in this group lose
-   *   their subscription; if a group signal was an external effect's only
-   *   dependency, that effect is destroyed too.
-   * - Attached signals stay alive and reachable (incl. by name); the group
-   *   remains in the registry and accepts new attachments — except a memo
-   *   signal `{attach}`ed inside an effect body, which belongs to that
-   *   effect and dies with it, name included.
-   * - Child groups are recursively `off()`'d (not cleared).
-   *
-   * Use this when a component-style group should be paused/swapped without
-   * losing its signal identities. For a full teardown use `clear()`.
+   * Use this to pause or swap a component-style group without losing its
+   * signal identities; `clear()` is the full teardown.
    *
    * A throwing cleanup callback or listener does not abort the teardown: every
    * failure is collected, the remaining work runs to the end, and the errors
    * are re-raised afterwards — a lone one unchanged, several as an
    * `AggregateError` holding them in teardown order.
+   *
+   * `docs/api.md`, "SignalGroup" → "Instance"
    */
   off(): void {
     if (this.#busy & BUSY_OFF) return;
@@ -1175,10 +1134,10 @@ export class SignalGroup {
    * teardown: every failure is collected, the group is dismantled to the end
    * and deregistered, and the errors are re-raised afterwards — a lone one
    * unchanged, several as an `AggregateError` holding them in teardown order.
-   * This matters most where nobody is listening: `clear()` also runs from the
-   * FinalizationRegistry callback, out of reach of any application try/catch —
-   * there, the error is reported via `onSignalizeError()`, and to
-   * `console.error` while nobody listens, instead of escaping.
+   * On one path nobody is there to receive them: `clear()` also runs from
+   * the FinalizationRegistry callback, out of reach of any application
+   * try/catch, and the throw is caught there and reported via
+   * `onSignalizeError()` — and to `console.error` while nobody listens.
    */
   clear() {
     if (this.#busy & BUSY_CLEAR) return;
