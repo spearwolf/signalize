@@ -39,6 +39,13 @@ createEffect(() => render(pos.value));   // ✗ runs once, never again
 createEffect(() => render(pos.get()));   // ✓
 ```
 
+The decorator has the same switch, and one of its options depends on it:
+`@signal({readAsValue: true}) accessor pos = 0` makes the *property* an
+untracked read, so the `beforeRead` hook that `@signal()` and
+`createSignal()` both accept never fires for that property access — the
+hook sits in the reader, and `.value` bypasses the reader. The decorator's
+other options are `name`, `compare` and `attach` (`references/api.md`).
+
 **3 — Static deps disable autorun *and* auto-tracking.** `createEffect(cb, [a, b])` (or `{dependencies: [...]}`) does not run on creation, and signals read inside the callback are not subscribed — only `a` and `b` trigger reruns.
 
 ```ts

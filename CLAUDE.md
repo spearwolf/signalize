@@ -8,7 +8,7 @@
 | --- | --- |
 | Architecture, eventize internals, source-file map, full public API, common change patterns | `AGENTS.md` — read before any non-trivial change |
 | How to *use* signalize (mental model, pitfalls, patterns) | `skills/using-signalize/` |
-| Behaviour details and quirks | `docs/` (`api.md`, `recipes.md`, `architecture.md`, `cheat-sheet.md`) |
+| Getting started, behaviour details and quirks | every file under `docs/` — `quickstart.md` first, then `api.md` for the full surface |
 
 Everything below is the short list that is expensive to discover by reading code.
 
@@ -17,7 +17,7 @@ Everything below is the short list that is expensive to discover by reading code
 Package manager is **pnpm** (`pnpm@11.20.0`) — never `npm install`.
 
 - `pnpm cbt` — clean + compile + bundle + test. The local "done" gate.
-- `pnpm world` — the full blocking CI scope: `check`, `compile`, `bundle`, `test:smoke`, `checkPkgTypes`, `test` and `test:gc`. `.github/workflows/ci.yml` additionally runs `bench`, informative and `continue-on-error`.
+- `pnpm world` — the full blocking CI scope: `clean`, `check`, `typecheck`, `compile`, `bundle`, `test:smoke`, `checkPkgTypes`, `test` and `test:gc`. `typecheck` is the only stage that type-checks `src/**/*.spec.ts` — `compile` runs on `tsconfig.lib.json`, which excludes them. `.github/workflows/ci.yml` additionally runs `bench`, informative and `continue-on-error`.
 - `pnpm test <file>` / `pnpm test -t "<name>"` — single spec / by test name. Such a filtered run always exits 1 because the per-file coverage gate fails for every file that did not run; that is not a test failure.
 - `pnpm test:gc` — `pnpm test` already runs all `src/**/*.gc.spec.ts` via a dedicated `gc` project in `vitest.config.ts`, on the same default `forks` pool every project uses — there's no cross-file state that project alone would expose. `test:gc` instead runs every file serially (`fileParallelism: false`) with `--expose-gc` applied to the whole suite, not just those GC spec files.
 - `pnpm test:smoke` — runs `smoke/dist-smoke.test.ts` on plain Node (`node --test`) against the built `dist/`, type-checked against the `lib/*.d.ts`, not `src/` and not Vitest. It's the only test where **tsc**, not SWC, lowers a `@signal() accessor` application — the one decorator lowering this library ships but never otherwise exercises. `pnpm smoke` builds first (`pnpm dist`) and then runs it.

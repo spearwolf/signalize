@@ -81,7 +81,8 @@ c.muted = true;             // muted signals neither notify nor touch — set() 
 c.destroyed;                // true once destroyed — still holds its value, just silent
 const off = c.onChange((v) => {});   // → unsubscribe; does NOT fire on subscribe
                                      // cb returns a cleanup fn or nothing;
-                                     // a value or an async cb does not compile
+                                     // a value or an async cb does not compile;
+                                     // a return type of any does — inline or pre-declared
 ```
 
 Top-level helpers:
@@ -315,7 +316,7 @@ class Foo {
     name:        'count',       // override the registered name
     readAsValue: false,         // true → the property getter is .value (untracked)
     compare:     (a, b) => a === b,
-    beforeRead:  () => {},
+    beforeRead:  () => {},      // never fires with readAsValue: true
     attach:      something,     // an ADDITIONAL group; the instance group stays
   }) accessor count = 0;
 

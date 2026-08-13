@@ -179,7 +179,7 @@ Also avoid reading an imported binding at module-eval time across module boundar
 | Command | Runs |
 | --- | --- |
 | `pnpm cbt` | `clean + compile + bundle + test` — local "done" gate |
-| `pnpm world` | `clean + check + compile + bundle + test:smoke + checkPkgTypes + test + test:gc` — the full blocking CI scope |
+| `pnpm world` | `clean + check + typecheck + compile + bundle + test:smoke + checkPkgTypes + test + test:gc` — the full blocking CI scope |
 | `pnpm test` | Vitest (SWC transform, v8 coverage); roots = `src/`. Runs two projects — `unit` and `gc` (`--expose-gc`, `fileParallelism: false`) — as a single run with one combined coverage map; per-file thresholds in `vitest.config.ts`, which refuses to start if a threshold glob group matches no file |
 | `pnpm test <pattern>` | single spec, e.g. `pnpm test create-signal.spec.ts` |
 | `pnpm test -t "<name>"` | filter by test name |
@@ -208,7 +208,7 @@ Also avoid reading an imported binding at module-eval time across module boundar
 
 Any filtered run (`pnpm test <pattern>`, `pnpm test -t "<name>"`) ends with exit 1: the per-file coverage thresholds are evaluated against the files that did *not* run, so the gate always fails. Read the test result, not the exit code — it is not a test failure.
 
-`.github/workflows/ci.yml` runs `pnpm check`, `pnpm typecheck`, `pnpm dist`, `pnpm test:smoke`, `pnpm checkPkgTypes`, `pnpm test`, `pnpm test:gc` and `pnpm bench` (the last one informative, non-blocking) — in that order, because `pnpm dist` starts with `clean`, which deletes `coverage/`, so every build step must run before `pnpm test` or the final coverage-summary step finds nothing to publish. `pnpm world` covers exactly the blocking steps (`check`, `test:smoke`, `checkPkgTypes`, `test`, `test:gc`); `pnpm bench` is CI's informative step and has no local gate of its own. `pnpm cbt` additionally skips `check`, `test:smoke`, `checkPkgTypes` and `test:gc`. Tooling is **Biome 2.x** (replaced ESLint + Prettier in v0.28) and **Vitest 4** (replaced Jest + ts-jest in v0.31). `ci.yml` runs the whole job as a matrix over Node 22 and Node 24 — the two ends of the range `engines.node` promises (BUILD-009) — with `fail-fast: false` so a version-specific failure stays visible; `pnpm bench` runs only on the Node 24 leg.
+`.github/workflows/ci.yml` runs `pnpm check`, `pnpm typecheck`, `pnpm dist`, `pnpm test:smoke`, `pnpm checkPkgTypes`, `pnpm test`, `pnpm test:gc` and `pnpm bench` (the last one informative, non-blocking) — in that order, because `pnpm dist` starts with `clean`, which deletes `coverage/`, so every build step must run before `pnpm test` or the final coverage-summary step finds nothing to publish. `pnpm world` covers exactly the blocking steps (`check`, `typecheck`, `test:smoke`, `checkPkgTypes`, `test`, `test:gc`); `pnpm bench` is CI's informative step and has no local gate of its own. `pnpm cbt` additionally skips `check`, `typecheck`, `test:smoke`, `checkPkgTypes` and `test:gc`. Tooling is **Biome 2.x** (replaced ESLint + Prettier in v0.28) and **Vitest 4** (replaced Jest + ts-jest in v0.31). `ci.yml` runs the whole job as a matrix over Node 22 and Node 24 — the two ends of the range `engines.node` promises (BUILD-009) — with `fail-fast: false` so a version-specific failure stays visible; `pnpm bench` runs only on the Node 24 leg.
 
 `ci.yml` triggers on push (except to `main`), on `pull_request` against `main`, and on `workflow_call`; `main.yml` calls `ci.yml` via `workflow_call`, so the deploy path runs the same steps.
 
