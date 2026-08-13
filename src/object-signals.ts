@@ -22,7 +22,7 @@ const getObjStore = (obj: object): ObjectStore => {
  *
  * `undefined` covers both misses and does not tell them apart: an object
  * that never had a signal store, and a name that is not in the one it has.
- * Signals get registered by the `@signal` decorator.
+ * `docs/api.md`, "Object signals".
  */
 export const findObjectSignalByName = <O extends object, K extends keyof O>(
   obj: O,
@@ -48,11 +48,8 @@ export const findObjectSignal = (
 /**
  * Every signal registered on `obj`, or `undefined` when there are none.
  *
- * `undefined`, never an empty array — the only path that empties the store
- * (`destroyObjectSignals`) drops it as well, so an empty one is not
- * reachable from here. The map is heterogeneous, so the elements come out
- * as `Signal<unknown>`; use `findObjectSignalByName` when the value type
- * matters.
+ * `undefined`, never an empty array. Use `findObjectSignalByName` when the
+ * value type matters.
  */
 export const findObjectSignals = <O extends object>(
   obj: O,
@@ -103,16 +100,13 @@ export const storeAsObjectSignal = (
  * Destroy every signal registered on each of `objects` and drop their
  * stores.
  *
- * An object without a store is skipped silently, so a second call is a
- * no-op and an unknown object is not an error. This reaches the signals
- * only — the object's `SignalGroup`, and any effect or link in it, stays.
- * `SignalGroup.delete(obj)` is the one that takes everything.
+ * An unknown object is skipped silently, so a second call is a no-op. This
+ * reaches the signals only — `SignalGroup.delete(obj)` is the one that
+ * takes the object's group, and any effect or link in it, too.
  *
- * A throwing effect cleanup does not stop the sweep: the remaining signals
- * of the same object and every object behind it are still destroyed, every
- * store still dropped, and the failures are re-raised afterwards — a lone
- * one unchanged, several as an `AggregateError` holding them in teardown
- * order.
+ * @throws A lone failing effect cleanup unchanged, several as an
+ *   `AggregateError` in teardown order. `docs/api.md`, "Object signals",
+ *   `destroyObjectSignals(...objs)`.
  */
 export function destroyObjectSignals(...objects: object[]): void {
   const errors: unknown[] = [];

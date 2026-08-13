@@ -12,6 +12,11 @@ import type {
 } from './types.js';
 import {value} from './value.js';
 
+/**
+ * The object `createSignal()` returns: a stored value, a tracked and an
+ * untracked read, and the lifecycle operations that go with it.
+ * `docs/api.md`, "Signals" → "Signal<T> instance".
+ */
 export class Signal<ValueType> implements SignalLike<ValueType> {
   readonly [$signal]: ISignalImpl<ValueType>;
 
@@ -22,11 +27,10 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
   /**
    * The tracked read, as a callable reader.
    *
-   * Called inside the body of a running effect, it registers this signal as a
-   * dependency of that effect; called anywhere else it just returns the
-   * value. A `beforeRead` hook given to `createSignal()` runs on every such
-   * read — that hook is what makes a `{lazy: true}` memo recompute at the
-   * read. Use `value` for a read that does neither.
+   * Called inside a running effect, it registers this signal as a dependency;
+   * called anywhere else it just returns the value. Use `value` for a read
+   * that does neither. `beforeRead` and lazy-memo recompute: `docs/api.md`,
+   * "Signals" → "createSignal<T>(initial?, params?)".
    */
   get get(): SignalReader<ValueType> {
     return this[$signal].reader;
@@ -35,14 +39,12 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
   /**
    * The write, as a callable writer.
    *
-   * `set(value, params?)` stores a value — with params that name only
-   * declared options and never a statically `true` `lazy`, which belongs to
-   * the other branch and is a compile error here; `set(factory, {lazy:
-   * true})` stores a factory and evaluates it on the next read. The `lazy`
-   * must be statically `true` — a bare `set(fn)` is a compile error rather
-   * than a silent store-the-function. See {@link SignalWriter} for why the
-   * discrimination sits on the value argument, and for the nine params
-   * shapes those two conditions cost.
+   * `set(value, params?)` stores a value, with params that name only
+   * declared options; `set(factory, {lazy: true})` stores a factory,
+   * evaluated on the next read — a bare `set(fn)` and `{lazy: true}` on a
+   * plain value are both compile errors. `docs/api.md`, "Signals" →
+   * "Signal<T> instance", "What the exactness costs, as a rule and not a
+   * list".
    */
   get set(): SignalWriter<ValueType> {
     return this[$signal].writer;
@@ -51,14 +53,8 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
   /**
    * The untracked read, and its matching write.
    *
-   * Reading `.value` registers no dependency, even inside a running effect,
-   * and a `beforeRead` hook does **not** fire for it — so a `{lazy: true}`
-   * memo read this way answers with what its last recompute stored:
-   * `undefined` while none has run, the previous value once a dependency has
-   * changed. Use `get()` for the tracked read.
-   *
-   * Writing `.value` is shorthand for `set(val)` with no params: no
-   * `{touch}`, no `{lazy}`. Pass those to `set()` directly.
+   * Use `get()` for the tracked read; for `{touch}` or `{lazy}` on a write,
+   * use `set()` directly. `docs/api.md`, "Signals" → "Signal<T> instance".
    */
   get value(): ValueType {
     return value(this.get);
@@ -71,39 +67,17 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
   /**
    * Run `action` whenever this signal's value changes.
    *
-   * The callback does **not** run when you subscribe: it drives an effect
-   * with static dependencies, which does not autorun. The first call comes
-   * with the first change.
+   * `action` drives a static-deps effect, so it does **not** fire on
+   * subscribe. The returned function is one way to unsubscribe; destroying
+   * the signal is another, and so is the parent when `onChange()` runs
+   * inside an effect body — wrap it in `hibernate()` for its own lifetime.
    *
-   * The returned function destroys that internal effect — that is the
-   * unsubscribe. It is not the only thing that ends the subscription:
-   * destroying the signal ends it, and so does the parent when `onChange()`
-   * was called inside an effect body. The internal effect is a *child effect*
-   * there, and dies with that parent — or with a group holding it — while
-   * the returned handle was never called. `hibernate()` around the
-   * `onChange()` call gives it back its own lifetime.
+   * The parameter is {@link ValueChangedCallback}: a plain value is a compile
+   * error — from untyped JS, though, a non-function return just counts as
+   * "no cleanup". An `async` callback is refused too — use `createEffect()`
+   * for one whose cleanup must survive. `docs/api.md`, "Signals" →
+   * "Signal<T> instance", `onChange(cb)`.
    *
-   * Two things about the callback itself: an effect created inside it is a
-   * *child effect* and is destroyed on the next change, before the callback
-   * runs again — wrap the creation in `hibernate()` to keep it. And what the
-   * callback returns is the effect's cleanup: a function is called before the
-   * next run and on unsubscribe, nothing at all means there is none. The
-   * parameter is {@link ValueChangedCallback}, so a plain value is a compile
-   * error instead of a silently discarded return — untyped JS keeps the old
-   * runtime tolerance, a non-function return counts as "no cleanup". An
-   * `async` callback is refused too, but not because its resolved cleanup
-   * would go unused: the effect subsystem honors a late cleanup arriving
-   * from a resolved promise like any other. `onChange()`'s callback type is
-   * synchronous by design; use `createEffect()` to drive an `async` callback
-   * and keep that cleanup.
-   *
-   * The callback is handed the tracked read. A `beforeRead` hook fires for
-   * it like for any other `get()`, so a `{lazy: true}` memo recomputes
-   * before the callback sees the value; the read registers no dependency,
-   * because static deps switch subscribe-on-read off for the callback.
-   *
-   * @param action - Receives the new value on every change; returns a cleanup
-   *   function or nothing
    * @returns Unsubscribe function
    */
   onChange(action: ValueChangedCallback<ValueType>): VoidFunc {
@@ -121,11 +95,8 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
    * Whether notifications are paused.
    *
    * A muted signal still **stores** what `set()` writes — only the
-   * notification is withheld, so effects and `onChange()` callbacks stay
-   * where they are. Even `set(val, {touch: true})` stays silent. Unmuting
-   * replays nothing: changes made while muted are not announced afterwards,
-   * and a listener that has to see the current value reads it or gets a
-   * `touch()`.
+   * notification is withheld. See `muteSignal()` for the unmuting
+   * behaviour.
    */
   get muted(): boolean {
     return this[$signal].muted;
@@ -136,11 +107,11 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
   }
 
   /**
-   * Whether this signal has been destroyed.
+   * `true` once this signal has been destroyed.
    *
-   * A destroyed signal stays usable as a plain value container — `set()`
-   * stores, reads return — it just no longer notifies. There is no way
-   * back; see `destroySignal()`.
+   * It stays usable as a plain value container — `set()` stores, reads
+   * return — it just no longer notifies. There is no way back; see
+   * {@link destroySignal}.
    */
   get destroyed(): boolean {
     return this[$signal].destroyed;
@@ -160,9 +131,8 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
   /**
    * Destroy this signal — an alias for `destroySignal(this)`.
    *
-   * Dependent effects lose their dependency, and the signal leaves the group
-   * that held it, its name in that group included. What is left is a quiet
-   * value container that still stores and still reads; see `destroyed`.
+   * See {@link destroyed} for what is left afterwards, and `docs/api.md`,
+   * "SignalGroup" for what leaving a group means for its name.
    */
   destroy() {
     destroySignal(this);

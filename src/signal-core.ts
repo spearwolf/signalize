@@ -45,21 +45,12 @@ export const incSignalsCount = (signal: ISignalImpl<any>): void => {
 };
 
 /**
- * Get the current count of live signals — created, not destroyed, and still
- * reachable. Useful for debugging and testing to detect signal leaks.
+ * The count of live signals — created, not destroyed, still reachable.
  *
- * A signal that is explicitly destroyed leaves the count immediately. A
- * signal that is merely dropped leaves it once the garbage collector gets to
- * it, which is a moment nobody can name or force: the counter is
- * eventually consistent, never observably so. Treat a difference as a leak
- * only after explicit teardown.
- *
- * The other direction matters just as much for tests: `0` does not mean
- * "everything was cleaned up", it means "nothing is reachable any more" —
- * dropping the last reference to a signal gets the count there without a
- * single `destroySignal()` ever running.
- *
- * @returns The number of live signals
+ * `0` means "nothing is reachable any more", not "everything was cleaned
+ * up". `docs/api.md`, "Signals" → "Top-level helpers"; the self-correcting
+ * detail: `docs/architecture.md` → "Resource counters are eventually
+ * consistent, never observably so".
  */
 export const getSignalsCount = (): number => g_signalsCount;
 
@@ -111,8 +102,6 @@ export function writeSignal(
 
 /**
  * Check if a value is a signal (Signal, SignalReader, or SignalWriter).
- * @param signalLike - The value to check
- * @returns True if the value is a signal-like object
  */
 export const isSignal = (signalLike: any): signalLike is SignalLike<unknown> =>
   signalLike != null && signalLike[$signal] != null;
@@ -128,23 +117,14 @@ export const signalImpl = <Type = unknown>(
 /**
  * Destroy one or more signals, cleaning up all subscriptions and resources.
  *
- * Destroyed signals no longer trigger effects when read or written — but they
- * remain usable as plain value containers: `set()` stores the new value and
- * reads return it. There is no way to revive them.
+ * A destroyed signal stops triggering effects, but stays usable as a plain
+ * value container — `set()` stores, reads return — with no way to revive it.
+ * `docs/api.md`, "Signals" → "Signal<T> instance", "The same holds for
+ * `destroySignal()`…".
  *
- * A throwing effect cleanup no longer ends the delivery: it is collected until
- * every subscriber of that signal has run, so a link, a group or an auto map
- * registered behind that effect still learns that the signal is gone. A single
- * failure is then re-raised unchanged, several as an `AggregateError` in
- * delivery order.
- *
- * Only effects are isolated, the same exception a write makes: everything else
- * on this queue is library code without a `catch` of its own, and its throw
- * does end the delivery — the failures collected before it are re-raised with
- * it. The frame is per signal, not per call: with several arguments, a failing
- * delivery still leaves the signals behind it untouched.
- *
- * @param signalLikes - Signals to destroy
+ * @throws A single failing effect cleanup unchanged, several as an
+ *   `AggregateError`; a throw from anything else on the queue ends the
+ *   delivery instead, with what was already collected re-raised with it.
  */
 export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
   for (const sigLike of signalLikes) {
@@ -200,14 +180,10 @@ export const destroySignal = (...signalLikes: SignalLike<any>[]): void => {
 /**
  * Mute a signal so that value changes do not trigger dependent effects.
  *
- * Reads and writes keep working: `set()` still stores the new value (and
- * `set(fn, {lazy: true})` still installs the factory), only the notification
- * is suppressed — as is `touch()`. Unmuting does not replay a write that
- * happened while muted; since the value is already stored, re-setting it
- * compares equal and stays silent. Use `touch()` after `unmuteSignal()` to
- * push the current value.
- *
- * @param signalLike - The signal to mute
+ * Reads and writes keep working, `touch()` included — only the notification
+ * is suppressed. Use `touch()` after {@link unmuteSignal} to push the
+ * current value; unmuting alone does not replay it. `docs/recipes.md` →
+ * "Writes that don't notify".
  */
 export const muteSignal = <Type = unknown>(
   signalLike: SignalLike<Type>,
@@ -220,7 +196,6 @@ export const muteSignal = <Type = unknown>(
 
 /**
  * Unmute a previously muted signal, restoring normal effect triggering.
- * @param signalLike - The signal to unmute
  */
 export const unmuteSignal = <Type = unknown>(
   signalLike: SignalLike<Type>,

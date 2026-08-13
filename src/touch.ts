@@ -3,9 +3,8 @@ import {isSignal, signalImpl, writeSignal} from './signal-core.js';
 import type {SignalLike} from './types.js';
 
 /**
- * Force a signal to notify its dependents even if its value hasn't changed.
- * Useful for triggering effects when the signal's internal state may have
- * mutated without a new value assignment.
+ * Force a signal to notify its dependents even if its value hasn't changed —
+ * for a mutation this library cannot see, like a pushed array element.
  *
  * @param source - A signal or [object, propertyName] tuple
  * @throws TypeError if source is neither a signal nor an [object, propertyName] tuple

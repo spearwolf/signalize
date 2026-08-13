@@ -76,11 +76,11 @@ only possible when `T` is itself a function type — either named
 | ----------------- | ------------------------------------------------------------------------------------------ |
 | `get(): T`        | Read **with** dependency tracking.                                                         |
 | `get(cb)`         | **Deprecated.** Internally creates an effect with no handle. Use `onChange()` instead.     |
-| `value` (getter)  | Read **without** dependency tracking.                                                      |
+| `value` (getter)  | Read **without** dependency tracking. Skips `beforeRead` too, so a `{lazy: true}` memo read this way answers with what its last recompute stored — `undefined` while none has run. |
 | `set(v, params?)` | Write. `v` may be a value or, with `{lazy: true}`, a factory — and only with it; a bare factory is a compile error, and so is a plain value carrying `{lazy: true}`. |
 | `value = v`       | Setter shortcut for `set(v)`.                                                              |
 | `touch()`         | Emit a change without changing the value.                                                  |
-| `onChange(cb)`    | Subscribe to changes. `cb` is a `ValueChangedCallback<T>` — it returns a cleanup function or nothing; returning a value, or the `Promise` of an `async` callback, is a compile error; a return type of `any` compiles — annotated (`(v): any => …`) or inferred from a body that is itself `any`, inline or pre-declared alike. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect, so it does **not** fire on subscribe — an effect created inside it is a child effect and is destroyed on the next change (see below). The value handed to `cb` is the tracked read: a `beforeRead` hook fires for it, so a `{lazy: true}` memo recomputes before the callback sees it, and the read registers no dependency of its own. |
+| `onChange(cb)`    | Subscribe to changes. `cb` is a `ValueChangedCallback<T>` — it returns a cleanup function or nothing; returning a value, or the `Promise` of an `async` callback, is a compile error; a return type of `any` compiles — annotated (`(v): any => …`) or inferred from a body that is itself `any`, inline or pre-declared alike. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect, so it does **not** fire on subscribe — an effect created inside it is a child effect and is destroyed on the next change (see below). The value handed to `cb` is the tracked read: a `beforeRead` hook fires for it, so a `{lazy: true}` memo recomputes before the callback sees it, and the read registers no dependency of its own. `createEffect()` is the way to drive an `async` callback and keep its cleanup — `onChange()`'s callback type is synchronous by design. |
 | `muted`           | `boolean` getter/setter — pause/resume notifications. Writes still store their value.      |
 | `destroyed`       | `boolean` getter — `true` once the signal has been destroyed. It stays usable as a plain value container; it just no longer notifies. |
 | `destroy()`       | Destroy the signal (alias for `destroySignal(this)`).                                      |
@@ -236,9 +236,9 @@ only possible when `T` is itself a function type — either named
 | `destroySignal(...sigs)`       | Destroy one or more signals; subscriptions and groups are cleaned up.  |
 | `muteSignal(sig)`              | Suppress notifications without destroying; reads and writes keep working. |
 | `unmuteSignal(sig)`            | Resume notifications. Does not replay writes made while muted.         |
-| `getSignalsCount()`            | Count of live signals — created, not destroyed, still reachable. Self-corrects once a dropped signal is collected, at a time you cannot observe or force (debugging / leak checks). |
-| `value(sig \| [obj, key])`     | Untracked read (signal or `[host, name]`). Throws `TypeError` on anything else. Skips `beforeRead`; `beQuiet(() => sig.get())` does not. |
-| `touch(sig \| [obj, key])`     | Force a notify. Throws `TypeError` on anything else.                   |
+| `getSignalsCount()`            | Count of live signals — created, not destroyed, still reachable. Self-corrects once a dropped signal is collected, at a time you cannot observe or force (debugging / leak checks). `0` means "nothing is reachable any more", not "everything was cleaned up" — a difference only reads as a leak after explicit teardown. |
+| `value(sig \| [obj, key])`     | Untracked read (signal or `[host, name]`). Throws `TypeError` on anything else — the shape is checked, not whether `[obj, key]` finds anything: `value([obj, 'unknown'])` is `undefined`, the same as a `[obj, key]` that finds nothing on a live store. Skips `beforeRead`; `beQuiet(() => sig.get())` does not — so a `{lazy: true}` memo does not recompute through this path. |
+| `touch(sig \| [obj, key])`     | Force a notify — a muted or destroyed signal stays silent, same as `signal.touch()`. Throws `TypeError` on anything else — same shape check as `value()`: `touch([obj, 'unknown'])` is a no-op, not an error. |
 
 > **A non-signal argument.** Four functions object to one: `link()`, `unlink()`, `touch()` and `value()` throw a `TypeError` prefixed with `[signalize] <fn>:` — `unlink()` among them because it is `link()`'s counterpart on the same source argument, and the pair answers it the same way. Three do not: `destroySignal()`, `muteSignal()` and `unmuteSignal()` do nothing and report nothing — they are teardown-shaped, and a teardown that refuses an argument it does not recognise is harder to use than one that shrugs. `getLinksCount(notASignal)` answers `0`, the same answer a signal without links gives. Do not read that silence as confirmation that the argument was a signal; `isSignal(v)` is the way to ask.
 
@@ -1068,8 +1068,8 @@ Signals stored on a host object by name (used by `@signal`).
 | Function                                | Returns                                                                  |
 | --------------------------------------- | ------------------------------------------------------------------------ |
 | `findObjectSignalByName(obj, name)`     | `Signal<T> \| undefined`.                                                |
-| `findObjectSignals(obj)`                | `Signal<unknown>[] \| undefined`.                                        |
-| `findObjectSignalNames(obj)`            | `(string \| symbol)[] \| undefined`.                                     |
+| `findObjectSignals(obj)`                | `Signal<unknown>[] \| undefined` — `undefined`, never an empty array.    |
+| `findObjectSignalNames(obj)`            | `(string \| symbol)[] \| undefined`, same `undefined`-not-empty rule. Insertion order. |
 | `destroyObjectSignals(...objs)`         | Destroy all signals attached to each object. Every object is visited and its store dropped even if an earlier cleanup throws; the failures are collected and raised afterwards — a lone one unchanged, several as an `AggregateError` whose `errors` array holds them in teardown order. |
 
 ---
