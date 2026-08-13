@@ -17,7 +17,11 @@ without one it is `Signal<T | undefined>` — see the note below the table.
 **`initial`** — initial value, a `() => T` factory (when `lazy: true`), or an
 existing signal-like (then this very signal is returned, no new one created —
 see the passthrough box below the table). Omitted, or passed an explicit
-`undefined`, the signal holds `undefined` until the first write.
+`undefined`, the signal holds `undefined` until the first write. A function
+that lands on the value form instead is stored **as the value**, and that is
+only possible when `T` is itself a function type — either named
+(`createSignal<() => number>(fn)`) or inferred from the argument, which makes
+`createSignal(fn)` a `Signal<() => R>`.
 
 **`params`** *(`SignalParams<T>`)*:
 
@@ -92,7 +96,9 @@ see the passthrough box below the table). Omitted, or passed an explicit
 > value. Use `set(sig.value + 1)` instead. The nullary form
 > `set(() => 42)` is rejected too — a factory needs `{lazy: true}` — so both
 > shapes are compile errors and the storing behaviour is reachable only from
-> untyped JS.
+> untyped JS. What separates the two branches is the *value* argument, not the
+> params: a factory is not a `T` as long as `T` is not itself a function type,
+> so it misses the value overload before its params are ever looked at.
 
 > ⚠️ **The factory form wants a literal `{lazy: true}`, not a variable.** Both
 > overload sets discriminate on the *value* argument, and the factory branch
@@ -113,7 +119,10 @@ see the passthrough box below the table). Omitted, or passed an explicit
 > `lazy?: boolean` promises nothing either way. What they turn away there is
 > each of the four statically-`true` spellings above, every one a `TS2769` on
 > a plain value, because that flag promises a factory — and any
-> params type whose keys reach past the published options type.
+> params type whose keys reach past the published options type. On the write
+> side the refusal buys the same thing the constructor's does: a `{lazy: true}`
+> that reached a plain value would store it where the factory belongs and leave
+> the next read to die with `TypeError: this.valueFn is not a function`.
 >
 > An earlier revision of this page said the two were **not** symmetric on that
 > second point, `createSignal` relying on freshness while `set` forbade the
@@ -132,9 +141,12 @@ see the passthrough box below the table). Omitted, or passed an explicit
 > 1. **It resolves to a concrete key set** — refused (`TS2769`) if that set
 >    holds a key the published options type does not declare, required or
 >    optional, declared or inferred. Sharing keys with the options is not what
->    decides it: a *pattern* index key such as `data-${string}` survives
->    `Exclude` whole, so its whole key set counts as beyond and it is refused
->    although it shares nothing. Examples, not an exhaustive tally: an
+>    decides it: a *pattern* index key — one whose key is a template literal
+>    type, `data-${string}` or `on${string}` — survives `Exclude` whole, so its
+>    whole key set counts as beyond and it is refused although it shares
+>    nothing. That is the one index shape the guard below does not reach, and
+>    it is refused as an annotation, an intersection and a `Record` alike.
+>    Examples, not an exhaustive tally: an
 >    interface extending the params type; a variable whose inferred type picked
 >    up a stray key; an unrelated annotated type with an *optional* stray key;
 >    an intersection (`SignalParams<T> & {mine: string}`); a class instance
@@ -153,8 +165,9 @@ see the passthrough box below the table). Omitted, or passed an explicit
 >    signature (`{label: string}`, `{a: number; b: string}`).
 >
 > The flag adds one refusal of its own, independent of all three: `{lazy: flag}`
-> with `flag` narrowed to `true`. A params object carrying a plain `string`,
-> `number` or `symbol` index signature (`Record<string, unknown>`,
+> with `flag` narrowed to `true`. Widen it back with `{lazy: flag as boolean}`,
+> or name the params type as everywhere else. A params object carrying a plain
+> `string`, `number` or `symbol` index signature (`Record<string, unknown>`,
 > `{[k: number]: unknown}`, `Record<symbol, unknown>`) is exempt from the first
 > outcome — that is what the guard in front of the clause is for. The repair
 > for everything the first two refuse is the same: name the params type —
@@ -162,6 +175,13 @@ see the passthrough box below the table). Omitted, or passed an explicit
 > it at the call; for the wrapper, drop the type parameter and type the
 > argument by the published name. **A spread repairs none of them** — it drops
 > freshness, not keys.
+>
+> **That exemption buys a typo no silence.** A fresh object literal *can* carry
+> an index signature — through a computed key, or the spread of a variable that
+> has one — so the guard does fire on shapes you write by hand. It costs
+> nothing: `set(5, {[k]: 1, lasy: true})` is `TS2769` with the exactness clause
+> and without it alike, because the constraint check catches that shape on its
+> own.
 >
 > **The third outcome is the second cost, and it is silent.** TypeScript's
 > weak-type check (`has no properties in common with`) used to refuse exactly
@@ -673,7 +693,7 @@ eventually corrected too — nondeterministically, but subscriptions included
 | Member                  | Description                                                              |
 | ----------------------- | ------------------------------------------------------------------------ |
 | `lastValue`             | Last value announced — see the note below on re-entrant propagation.     |
-| `source`                | The source signal, as a narrow read-only view (`LinkSource<T>`): `id`, `value`, `muted`, `destroyed`. |
+| `source`                | The source signal, as a narrow read-only view (`LinkSource<T>`): `id`, `value`, `muted`, `destroyed` — see the note below. |
 | `isMuted` / `isDestroyed` | State flags.                                                           |
 | `mute()` / `unmute()`   | Pause / resume propagation.                                              |
 | `toggleMute()`          | Flip mute state; returns the new state.                                  |
@@ -682,6 +702,18 @@ eventually corrected too — nondeterministically, but subscriptions included
 | `destroy()`             | Drop the link and free subscriptions.                                    |
 | `nextValue(options?)`   | `Promise<T>` that resolves on the next propagation, rejects with an `Error` if the link is destroyed first. |
 | `asyncValues(stop?, options?)` | `AsyncIterable<T>` of propagated values; stops on `stop(value, i) → true` or destroy. |
+
+> **What `source.value` shows.** The stored property, read raw: untracked, and
+> without running the source's `beforeRead` hook. Only a source that computes
+> on read is affected by that — a `createMemo(fn, {lazy: true})`, whose
+> recompute hangs off exactly that hook, or a `createSignal(v, {beforeRead})`
+> of your own. For a lazy memo this is whatever the last recompute stored:
+> `undefined` while none has run, the previous value once a dependency has
+> changed. Calling the source's own reader runs the hook; the top-level
+> `value()` reads the property raw, exactly as this does. A plain signal is
+> always current — `set()` stores at once and only the notification waits — and
+> so is an eager memo, outside a batch: inside an open one it recomputes from
+> that same hook at the read, so the property trails until something reads it.
 
 The link is destroyed automatically when `source` or `target` (if it's a
 signal) is destroyed.
@@ -1079,7 +1111,7 @@ Exported from `@spearwolf/signalize`:
 | `Signal<T>`                  | The reactive object returned by `createSignal()`.                |
 | `SignalReader<T>`            | The callable form of `signal.get` (also a `SignalLike<T>`).      |
 | `SignalWriter<T>`            | The callable form of `signal.set`, as an overload pair: a value — with params that name only declared options and never a statically `true` `lazy` — or a factory with `{lazy: true}`. |
-| `SignalLike<T>`              | Internal brand that only `createSignal()` produces. `$signal` is not exported, so the type is inspectable but not implementable from the outside — use `isSignal(v)` to recognise one. `T` defaults to `unknown`. |
+| `SignalLike<T>`              | Internal brand that only `createSignal()` produces. `$signal` is not exported, so the type is inspectable but not implementable from the outside — use `isSignal(v)` to recognise one. `T` defaults to `unknown` — see the note below the table. |
 | `SignalParams<T>`            | Options for `createSignal` (`lazy`, `compare`, `beforeRead`, `attach`). On the value branch it is also the exact bound: no statically `true` `lazy`, and no key beyond these four. |
 | `SignalWriterParams<T>`      | Options for `set()` — `SignalParams<T>` plus `touch`, joined by `extends`, not a union. On the value branch it is the exact bound, the same way `SignalParams<T>` is for `createSignal`: no key beyond these five, and no statically `true` `lazy` — that one belongs to the factory overload, and `lazy?: boolean` here is not narrow enough for it. |
 | `SignalValueParams`          | The `{touch?: boolean}` half of `SignalWriterParams`, on its own.  |
@@ -1107,6 +1139,25 @@ Exported from `@spearwolf/signalize`:
 | `BeforeReadFunc`             | `() => void`.                                                    |
 | `VoidFunc`                   | `() => void`.                                                    |
 | `ValueChangedCallback<T>`    | `(value: T) => void \| (() => void)`. The callback of `Signal#onChange()` and of the deprecated `signalReader(cb)`; a returned function becomes the cleanup. |
+
+> ⚠️ **A bare `SignalLike` in a parameter position.** `Type` defaults to
+> `unknown`, so a bare `SignalLike` claims nothing about the value — and that
+> is not the same as claiming anything. Where "some signal, whatever it
+> carries" is the actual meaning — a parameter, a heterogeneous collection —
+> `SignalLike<any>` is the spelling you want, for your code as much as for this
+> library's own signatures. The reason is invariance: `SignalLike<Type>` is
+> invariant in `Type`, because `compare?: CompareFunc<Type>` is checked
+> contravariantly under `strictFunctionTypes`. A parameter typed
+> `SignalLike<unknown>` therefore rejects every concrete `Signal<T>` handed to
+> it, which is the opposite of what the annotation looks like it promises.
+>
+> **Implementing one by hand is not a way around it.** The `$signal` brand is
+> exported from no entry point, and rebuilding the key does not satisfy the
+> type either: `Symbol.for(…)` in a class member position earns `TS1166`
+> ("a computed property name in a class property declaration must have a simple
+> literal type"), and a class that gets past that still fails `TS2420` for the
+> missing `[$signal]`. Signals come from `createSignal()`; `isSignal(v)` is how
+> you recognise one.
 
 From `@spearwolf/signalize/decorators`:
 `SignalDecoratorOptions`, `SignalReaderDecoratorOptions`.

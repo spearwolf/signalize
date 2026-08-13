@@ -204,28 +204,16 @@ class SignalImpl<Type> implements ISignalImpl<Type> {
  * overload to land on and is rejected instead of silently storing the
  * function as the value.
  *
- * This overload is declared **first** so a factory call wins the inference:
- * `createSignal(() => 42, {lazy: true})` is a `Signal<number>`, not a
- * `Signal<() => number>`.
- *
- * A params *variable* typed `SignalParams<T>` does not fit — that type says
- * `lazy?: boolean`, which is not a promise that it is `true`. Write the
- * literal, pin it (`{lazy: true} as const`), or annotate the variable
- * `SignalParams<T> & {lazy: true}`. Spreading (`{...params}`) does *not*
- * help: the spread keeps `lazy?: boolean`.
- *
- * A `SignalReader<T>` — `sig.get` off an existing signal — is also a
- * `() => T`, so `createSignal(sig.get, {lazy: true})` type-checks against
- * this very overload. At runtime `isSignal()` recognises that same
- * reader and routes the call into the passthrough below instead of building
- * a new lazy signal from it: `sig.get` is not called as a factory, the
- * returned signal is `sig` itself, and the dropped options are reported the
- * same way the value overload's passthrough reports them.
+ * Which spellings of `lazy` count as statically `true`: `docs/api.md`,
+ * "Signals" → "createSignal<T>(initial?, params?)".
  *
  * @param initialValue - Factory evaluated on the first read
  * @param params - Configuration, with a statically `true` `lazy`
- * @returns A Signal object with get/set methods
  */
+// Declared first so a factory call wins the inference: `createSignal(() => 42,
+// {lazy: true})` is a `Signal<number>`, not a `Signal<() => number>`. The test
+// `takes a factory only where {lazy: true} says so` runs the call but checks
+// at runtime only — it would not go red on a swap.
 export function createSignal<Type = unknown>(
   initialValue: () => Type,
   params: SignalParams<Type> & {lazy: true},
@@ -236,39 +224,20 @@ export function createSignal<Type = unknown>(
  * The signal holds `undefined` until the first write, and the type says so:
  * `createSignal<number>()` is a `Signal<number | undefined>`, so
  * `const n: number = sig.value` is a compile error rather than a runtime
- * `undefined` wearing a `number` label. Under
- * `strictNullChecks: false` the union collapses back to `Type` and nothing
- * about this changes — the promise only exists for consumers who asked for it.
+ * `undefined` wearing a `number` label. Under `strictNullChecks: false` the
+ * union collapses back to `Type`.
  *
- * The parameter is `initialValue?: undefined` rather than absent because
- * `createSignal<T>(undefined, {attach: this})` is a real call — no value, but
- * a holder. `5` is not `undefined`, so this overload steals nothing from the
- * value overload below it.
- *
- * Without a type argument the result stays `Signal<unknown>`; `unknown |
- * undefined` *is* `unknown`.
- *
- * **Its params carry the same three clauses as the value overload below**, and
- * not for symmetry: without them this overload is the hole every one of them
- * falls through. `undefined` is the one value that reaches here, so
- * `createSignal(undefined, {lazy: true})` — a factory flag with no factory —
- * and `createSignal(undefined, someStrayOptions)` would be accepted while the
- * same params on a real value are refused. The first builds a signal whose
- * first read dies with `TypeError: this.valueFn is not a function`, which is
- * the damage the value overload's clause exists to prevent.
- *
- * A profile difference worth knowing when writing a witness for this:
- * `createSignal(undefined, {lazy: true})` is only refused under
- * `strictNullChecks: true`. With the flag off, `undefined` is assignable to
- * `() => Type` and the call lands on the factory overload above instead —
- * measured, both ways. The witness therefore lives in
- * `smoke/dist-smoke.test.ts`, which compiles as a consumer, not in `src/`.
+ * Why those two conditions sit on this overload too: `docs/api.md`,
+ * "Signals" → "createSignal<T>(initial?, params?)".
  *
  * @param initialValue - Nothing, or an explicit `undefined`
  * @param params - Optional configuration (compare, beforeRead, attach), with
- *   no `lazy: true` and no key beyond `SignalParams<Type>`
- * @returns A Signal object with get/set methods, possibly holding `undefined`
+ *   no statically `true` `lazy` and no key beyond `SignalParams<Type>`
  */
+// `initialValue?: undefined` rather than a missing parameter, so
+// `createSignal<T>(undefined, {attach: this})` stays a real call; `5` is not
+// `undefined`, so this takes nothing from the value overload. Only observable
+// under `strictNullChecks: true` — the witness is in `smoke/`, not in `src/`.
 export function createSignal<
   Type = unknown,
   P extends SignalParams<Type> = SignalParams<Type>,
@@ -290,106 +259,21 @@ export function createSignal<
  * If passed an existing signal, that signal is returned and no new one is
  * created — which is also why nothing in `params` configures it. `attach` is
  * the single exception, because it is applied behind the branch and belongs
- * to both paths; `lazy`, `compare` and `beforeRead` are dropped, and every
- * such call reports the ones it was given through `onSignalizeError()` with
- * `source: 'ignored-option'`. The line worth keeping is the
- * branch, not the three names: an option that configures a *new* signal has
- * nothing to configure when no new signal is made, and that stays true as
- * the options change. The same call also reaches here through the factory
- * overload above: `createSignal(sig.get, {lazy: true})` compiles there,
- * because a `SignalReader<T>` is both a `SignalLike<T>` and the `() => T`
- * that overload asks for, and `isSignal()` still recognises the same object
- * at runtime and routes it into this same passthrough — reported the same
- * way.
+ * to both paths; everything else is dropped, and every such call reports what
+ * it was given through `onSignalizeError()` with `source: 'ignored-option'`.
  *
- * A function reaching this overload is stored **as the value** — which is
- * only possible when `Type` is itself a function type, either because it was
- * named (`createSignal<() => number>(fn)`) or because it was inferred from
- * the argument (`createSignal(fn)` is a `Signal<() => R>`).
+ * A function reaching this overload is stored **as the value**, which is only
+ * possible when `Type` is itself a function type — named
+ * (`createSignal<() => number>(fn)`) or inferred from the argument
+ * (`createSignal(fn)` is a `Signal<() => R>`).
  *
- * **The params carry the same three clauses `SignalWriter<T>` carries**, and
- * for the same reasons — this is the constructor half of the same rule:
- *
- * - A statically `true` `lazy` is refused. A value is not a factory; the
- *   factory overload above is where `{lazy: true}` belongs. It used to
- *   compile, store the value where the factory belongs, and leave the first
- *   read to die with `TypeError: this.valueFn is not a function`. Four forms
- *   qualify as statically true: the literal, `{lazy: true} as const`, a
- *   variable annotated `SignalParams<T> & {lazy: true}`, and `{lazy: flag}`
- *   with `flag` already narrowed to `true` — a `const flag: boolean = true`
- *   does exactly that. A `SignalParams<T>` variable holding `{lazy: true}`
- *   still passes: `lazy?: boolean` is not a promise that it is `true`.
- *   Spreading (`{...params}`) does not change it.
- * - A key `SignalParams<Type>` does not declare is refused outright. Inferring
- *   `P` from the argument is what makes the `lazy` clause possible at all, and
- *   it costs the excess property check on the way — a type parameter is
- *   checked against its constraint, and freshness does not survive that step.
- *   Without the `Record<Exclude<…>, never>` clause, `createSignal(5, {lasy:
- *   true, compare})` compiles. `lasy` buying silence on the very branch this
- *   signature exists to close is the worst trade available here.
- * - The index-signature guard in front of it exempts a params type whose
- *   `keyof P` *is* `string`, `number` or `symbol` — for those the exactness
- *   clause would demand every key be `never` and refuse a caller with no
- *   stray key in sight. A *pattern* index signature (`data-${string}`) is not
- *   exempt; no branch fires for it.
- *
- * **What it costs, as a rule rather than a list.** The clause tests the key
- * set of the params type the compiler infers for `P`, so what a call gets
- * depends on what that inference produces — three outcomes, all measured
- * against the generated `.d.ts`:
- *
- * - **It resolves to a concrete key set** → refused if that set holds a key
- *   `SignalParams<Type>` does not declare, required or optional, declared or
- *   inferred. Whether the type *also* shares keys with the options makes no
- *   difference: a *pattern* index key such as `data-${string}` survives
- *   `Exclude` whole, so its entire key set counts as beyond and it is refused
- *   although it shares nothing. Examples, not an exhaustive list: an interface
- *   extending `SignalParams<T>`; a variable whose inferred type carries a
- *   stray key; an annotated foreign type with an optional stray key; an
- *   intersection; a class instance with a field of its own; the rest object of
- *   a destructuring that kept a valid key; the pattern index key above.
- * - **It resolves to nothing testable** → refused outright, and no stray key
- *   is needed. That is a bare type parameter, which is exactly what a wrapper
- *   generic in its own params hands over (`<Q extends SignalParams<T>>(q: Q)
- *   => createSignal(5, q)`): `keyof Q` is unknown, the conditional stays
- *   deferred, and no argument is assignable to a deferred conditional.
- * - **It never gets that far**, because the argument does not satisfy `P`'s
- *   constraint → inference falls back to `SignalParams<Type>`, the clause goes
- *   vacuous, and the call is accepted. For an all-optional options type that
- *   means a params type with no key in common *and* no index signature. This
- *   is the second cost, and it runs the other way: TypeScript's weak-type
- *   check ("has no properties in common with") used to refuse precisely that
- *   shape, and generic params give it up, because an intersection is never
- *   weak. So `createSignal(5, {label: 'x'})` is still an error — through
- *   freshness, reported as "Object literal may only specify known properties"
- *   — while a *variable* typed `{label: string}` is accepted in silence and
- *   does nothing at runtime. `SignalWriter<T>` paid the same price for the
- *   same reason when it turned generic; the loss is new
- *   for `createSignal` and shared by both from here on.
- *
- * A plain `string`, `number` or `symbol` index signature is exempt from the
- * first outcome — that is what the guard in front of the clause is for. The
- * repair for everything the first two outcomes refuse is to name the params
- * type: annotate the variable `SignalParams<T>`, assert it at the call site,
- * or — for the wrapper — drop the type parameter and type the argument
- * `SignalParams<T>`. A spread repairs none of them: it drops freshness, not
- * keys.
- *
- * **One gap, and it is structural.** Naming the type argument switches both
- * params conditions off: `createSignal<number>(5, {lazy: true})` still
- * compiles where `createSignal(5, {lazy: true})` does not. TypeScript has no
- * partial type argument inference — naming `Type` makes `P` fall back to its
- * default instead of being inferred from the argument, and a `P` that is not
- * inferred carries no information to test. The repair is to drop the type
- * argument; the value infers it anyway. Exactness is unaffected, because
- * freshness still applies there (`createSignal<number>(5, {lasy: true})`
- * remains an error).
+ * The shapes of `params` that fail, and their repairs: `docs/api.md`,
+ * "Signals" → "Signal<T> instance".
  *
  * @param initialValue - Initial value, or an existing signal to pass through
  *   (every option but `attach` is then dropped and reported)
  * @param params - Optional configuration (compare, beforeRead, attach), with
- *   no `lazy: true` and no key beyond `SignalParams<Type>`
- * @returns A Signal object with get/set methods
+ *   no statically `true` `lazy` and no key beyond `SignalParams<Type>`
  */
 export function createSignal<
   Type = unknown,

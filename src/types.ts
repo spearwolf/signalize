@@ -7,29 +7,20 @@ export type EffectCallback = VoidFunc | (() => VoidFunc);
 export type ValueChangedCallback<T> = (value: T) => VoidFunc | void;
 
 /**
- * A type that is not a `Promise`/thenable. Used to narrow the callbacks of
- * `batch()`, `beQuiet()` and `hibernate()` so an `async` function (or
- * anything else returning a thenable) is rejected by `tsc` before it ever
- * runs: each of those three frames is closed by a `finally` that fires when
- * the callback returns its pending promise at the first `await`, leaving
- * everything past that point outside the frame it appears to be in. See
- * each function's JSDoc for its own version of that. All three also check
- * for a duck-typed thenable at runtime and throw `TypeError`, which is what
- * catches an untyped caller.
+ * A type that is not a `Promise`/thenable. Narrows the callbacks of `batch()`,
+ * `beQuiet()` and `hibernate()`, so an `async` function — or anything else
+ * returning a thenable — is rejected by `tsc` before it ever runs. All three
+ * also check for a duck-typed thenable at runtime and throw `TypeError`, which
+ * is what catches an untyped caller.
  */
 export type NonThenable<T> = T extends PromiseLike<unknown> ? never : T;
 
 /**
- * Where an effect error with no caller left to throw at came from:
- * - `callback` — the promise returned by an `async` effect callback rejected
- * - `cleanup` — the promise returned by an `async` cleanup rejected, or a
- *   stale cleanup threw synchronously: one whose run was superseded, or
- *   whose effect was already destroyed by the time it ran
+ * Which half of an effect run produced an error with no caller left to throw
+ * at.
  *
- * A synchronous throw from a cleanup that is still part of a live `run()` or
- * `destroy()` normally keeps propagating to whoever triggered it instead of
- * being reported here — a stale cleanup has no such caller left, full stack
- * still present or not.
+ * Which failures land there at all: `docs/api.md`, "Effects" →
+ * "onEffectError(cb, priority?)".
  */
 export type EffectErrorPhase = 'callback' | 'cleanup';
 
@@ -37,11 +28,11 @@ export type EffectErrorPhase = 'callback' | 'cleanup';
  * What an error handler may rely on about the effect that failed.
  *
  * The value passed is the real effect instance — the same object
- * `onCreateEffect()` hands out — but it is typed down to the two members a
- * failure handler has any business touching. The implementation class stays
- * unexported on purpose: it is internal machinery under active change, and
- * publishing it as a type would freeze `run`, `shouldRun`, `callback`, the
- * static counters and the eventize surface into the public contract.
+ * `onCreateEffect()` hands out — typed down to the two members a failure
+ * handler has any business touching.
+ *
+ * How it relates to the `Effect` from `createEffect()`: `docs/api.md`,
+ * "Effects" → "onEffectError(cb, priority?)".
  */
 export interface FailingEffect {
   /** Unique effect id. */
@@ -58,10 +49,7 @@ export interface EffectErrorPayload {
   readonly effect: FailingEffect;
   /** Unique id of that effect, handy for log lines. */
   readonly effectId: symbol;
-  /**
-   * Which callback failed — `cleanup` also covers a stale synchronous throw
-   * with no legitimate owner to catch it.
-   */
+  /** Which callback failed. */
   readonly phase: EffectErrorPhase;
 }
 
@@ -78,20 +66,11 @@ export interface SignalizeErrorPayload {
    */
   readonly level: 'error' | 'warn';
   /**
-   * Where the diagnostic came from:
-   * - `effect` — an effect failure nobody picked up via `onEffectError()`
-   * - `group-finalizer` / `link-finalizer` / `automap-finalizer` — a teardown
-   *   threw inside a `FinalizationRegistry` callback, where a rethrow would
-   *   end the process
-   * - `link-count` — the 1000-links-on-one-source threshold, once per source
-   * - `deprecation` — a deprecated call, usually once per process
-   * - `multiple-instances` — more than one copy of the library in one
-   *   process, reported once, when the second one loads
-   * - `ignored-option` — an option that does nothing in the combination it
-   *   was passed in, reported on every such call
+   * Where the diagnostic came from. New members may appear in a minor
+   * release: a `switch` over this needs a `default`.
    *
-   * New members may appear in a minor release: a `switch` over this needs a
-   * `default`.
+   * What raises each of them: `docs/api.md`, "Effects" →
+   * "onSignalizeError(cb, priority?)".
    */
   readonly source:
     | 'effect'
@@ -102,15 +81,11 @@ export interface SignalizeErrorPayload {
     | 'deprecation'
     | 'multiple-instances'
     | 'ignored-option';
-  /**
-   * Always present, and exactly the text the console would have shown without
-   * a handler.
-   */
+  /** Exactly the text the console would have shown. Always present. */
   readonly message: string;
   /**
    * The failure, whatever was thrown. Absent for a notice (`level: 'warn'`) —
-   * no `Error` is invented just to fill the field, so test for `undefined`
-   * rather than assuming an object.
+   * test for `undefined` rather than assuming an object.
    */
   readonly error?: unknown;
 }
@@ -124,19 +99,12 @@ export type BeforeReadFunc = () => void;
  * The type parameter defaults to `unknown`: a bare `SignalLike` makes no claim
  * about its value type. Name the type you mean — `SignalLike<number>`.
  *
- * Where "some signal, any value type" is the actual meaning — a parameter
- * position, or a heterogeneous collection — `SignalLike<any>` is the right
- * spelling, for callers as much as for this library. `SignalLike<Type>` is
- * invariant in `Type` (`compare?: CompareFunc<Type>` is checked
- * contravariantly under `strictFunctionTypes`), so `SignalLike<unknown>`
- * there rejects every concrete `Signal<T>` handed to it.
- *
  * The brand is internal and stays that way: `$signal` is exported from no
  * entry point, so this interface is inspectable from the outside but not
- * implementable. Only `createSignal()` produces one. Rebuilding the key by
- * hand does not satisfy the type either — `Symbol.for(…)` in a class member
- * position earns `TS1166`, and the class then still fails `TS2420` for the
- * missing `[$signal]`. Use `isSignal(v)` to recognise one.
+ * implementable. Only `createSignal()` produces one; `isSignal(v)` is the way
+ * to recognise one.
+ *
+ * Why a parameter position wants `SignalLike<any>`: `docs/api.md`, "Types".
  */
 export interface SignalLike<Type = unknown> {
   [$signal]: ISignalImpl<Type>;
@@ -145,20 +113,20 @@ export interface SignalLike<Type = unknown> {
 /**
  * What a link lets a consumer see of the signal it reads from.
  *
- * The value passed is the real signal implementation — the same object
- * the library works with — but it is typed down to the four read-only
- * members an observer has any business touching. The implementation
- * interface stays unpublished for the same reason the effect one does
- * (see {@link FailingEffect}): `valueFn`, `reader`, `writer` and
- * `object` are the machinery, and handing them out through a link would
- * make a one-way read connection a second way to drive its own source.
- * Whoever needs to write holds the `Signal` the link was made from.
- *
- * Keep every member read-only and function-free. `Type` appears in `value`
- * and nowhere else — a covariant position only — which is what makes
- * `SignalLink<Type>` covariant. Adding `compare`, `beforeRead` or `writer`
- * here takes both the encapsulation and that covariance back.
+ * The value passed is the real signal implementation — the same object the
+ * library works with — typed down to the four read-only members an observer
+ * has any business touching. Whoever needs to write holds the `Signal` the
+ * link was made from.
  */
+// Keep every member read-only and function-free: `Type` appears in `value` and
+// nowhere else, a covariant position only, which is what makes
+// `SignalLink<Type>` covariant — and the machinery (`valueFn`, `reader`,
+// `writer`, `object`) stays out, or a one-way read becomes a second way to
+// drive the source. Cover in `types.public-surface.spec.ts` is uneven: adding
+// `writer` reddens both `keeps the implementation layer out of the entry point
+// and off the link` and `makes a bare SignalLike / SignalLink / ValueCallback
+// annotation say what it carries`, `compare` only the second, `beforeRead`
+// neither — it rests on this rule alone.
 export interface LinkSource<Type = unknown> {
   /** Unique signal id — the key both global queues route on. */
   readonly id: symbol;
@@ -166,16 +134,8 @@ export interface LinkSource<Type = unknown> {
    * The source's current value, untracked: the stored property, read
    * without running the source's `beforeRead` hook.
    *
-   * Only a source that computes on read is affected — a `createMemo(fn,
-   * {lazy: true})`, whose recompute hangs off that hook, or a
-   * `createSignal(v, {beforeRead})` of the caller's own. For a lazy memo
-   * this is what the last recompute stored: `undefined` while none has
-   * run, the previous value once a dependency has changed. Calling the
-   * source's own reader runs the hook; `value()` reads the property raw,
-   * exactly as this does. A plain signal is always current — `set()`
-   * stores at once, only the notification waits. An eager memo is too,
-   * outside a batch: inside an open one it recomputes from this same hook
-   * at the read, so the property trails until something reads it.
+   * When that differs from a read through the source: `docs/api.md`,
+   * "Links" → "SignalLink<T> instance".
    */
   readonly value: Type | undefined;
   /** Whether the source is muted — see `muteSignal()`. */
@@ -187,9 +147,10 @@ export interface LinkSource<Type = unknown> {
 /**
  * Same default as {@link SignalLike}: `unknown`, not `any`.
  *
- * Implementation layer: this interface is exported inside the module graph
- * but not from any entry point (see `src/index.ts`). Consumers who used to
- * reach it through `SignalLink#source` take {@link LinkSource} instead.
+ * Implementation layer: exported inside the module graph, from no entry
+ * point — pinned by `keeps the implementation layer out of the entry point
+ * and off the link` in `types.public-surface.spec.ts`. The public view of a
+ * signal behind a link is {@link LinkSource}.
  */
 export interface ISignalImpl<Type = unknown> extends SignalLike<Type> {
   id: symbol;
@@ -208,13 +169,12 @@ export interface ISignalImpl<Type = unknown> extends SignalLike<Type> {
 /**
  * The callable form of `signal.get`, as an overload pair.
  *
- * **The deprecated callback signature comes first, and that order is load
- * bearing.** A generic inference over an overloaded function type picks the
+ * The deprecated callback signature comes first, and that order is load
+ * bearing: a generic inference over an overloaded function type picks the
  * *last* signature, so with the plain read last, `vi.fn(reader)` and every
- * higher-order wrapper keep inferring a zero-argument call. Put the good one
- * first and the same code breaks with `TS2554: Expected 1 arguments, but got
- * 0` — measured, both ways. Whoever tidies this order up breaks consumer
- * code no suite here covers.
+ * higher-order wrapper keep inferring a zero-argument call. Witnessed by
+ * `infers the zero-argument read from a SignalReader` in
+ * `types.public-surface.spec.ts`, which turns a swap into a compile error.
  */
 export interface SignalReader<T> extends SignalLike<T> {
   /**
@@ -234,110 +194,25 @@ export interface SignalReader<T> extends SignalLike<T> {
  *
  * - `set(value, params?)` stores the value. Its params are the published
  *   `SignalWriterParams<T>` and nothing wider: a statically `true` `lazy`
- *   closes this branch, and a key the type does not declare is
- *   refused outright. A literal, a `SignalWriterParams<T>` variable and a
- *   pass-through argument of that type all pass it; see "What it costs"
- *   below for the shapes that do not.
+ *   is refused, and so is a key the type does not declare.
  * - `set(factory, {lazy: true})` stores the factory and evaluates it on the
  *   next read.
  *
- * **The discrimination is on the value argument, not on the params.** A
- * factory is not a `T` (unless `T` is itself a function type), so it misses
- * the value overload; and it only reaches the factory overload with a
- * `lazy` that is statically `true`. That is what makes a bare `set(fn)` a
- * compile error instead of a silent store-the-function. The one
- * condition the value branch does put on its params is the mirror of that
- * flag and nothing beyond it — a wider one there breaks every caller holding
- * a `SignalWriterParams<T>` variable.
+ * The discrimination is on the value argument, not on the params — which is
+ * what makes a bare `set(fn)` a compile error instead of a silent
+ * store-the-function. `TS2769` on either branch names no option: read it as
+ * "a factory needs `{lazy: true}`", or as "a value is not stored lazily, a
+ * factory is".
  *
- * The value overload comes first on purpose. A signal whose `T` is itself a
- * function type keeps taking its functions as values, not as factories.
- *
- * Three consequences worth knowing:
- *
- * - `set(fn, params)` where `params` is typed `SignalWriterParams<T>` does
- *   **not** compile, because that type says `lazy?: boolean` and boolean is
- *   not a promise that it is `true`. Write the literal (`set(fn, {lazy:
- *   true})`), pin it (`{lazy: true} as const`), or annotate the variable
- *   `SignalWriterParams<T> & {lazy: true}`. A fourth form qualifies without
- *   looking like it: `{lazy: flag}` where control flow has already narrowed
- *   `flag` to `true` — a `const flag: boolean = true` does exactly that,
- *   declared `boolean` or not. Spreading (`{...params}`) does *not* help —
- *   the spread keeps `lazy?: boolean`.
- * - `set(fn, {lazy: false})` matches no overload and is reported as
- *   `TS2769: No overload matches this call` without naming `lazy`. Read it
- *   as "a factory needs `{lazy: true}`".
- * - `set(v, {lazy: true})` — a plain value carrying the factory flag — is
- *   `TS2769` as well, to be read as "a value is not stored lazily, a factory
- *   is". It used to compile, put the value where the factory belongs, and
- *   leave the next read to die with `TypeError: this.valueFn is not a
- *   function`. Only a *statically* true `lazy` is refused; a
- *   `SignalWriterParams<T>` variable that happens to hold `{lazy: true}`
- *   still passes, which is the boundary above seen from the other
- *   side.
- *
- * **The `Record<Exclude<…>, never>` on the value params is load bearing, and
- * it is not free.** Inferring `P` from the argument costs the excess property
- * check — a type parameter is checked against its constraint, and freshness
- * does not survive that step — so without the clause `set(5, {lasy: true})`
- * and `set(5, {comapre: fn})` compile: measured against the generated
- * `.d.ts`, both were `TS2769` before this overload turned generic, and
- * `createSignal` rejects them to this day. A misspelled `lazy` buying silence
- * on the branch this signature exists to close is the worst of the two. The
- * clause forbids the stray keys directly instead of relying on freshness, and
- * an intersection of the params type with `P` does **not** restore the check
- * — also measured.
- *
- * **The index-signature guard in front of it is load bearing too.** For a
- * params type carrying an index signature, `keyof P` *is* `string` (or
- * `number`, or `symbol`), so `Record<Exclude<keyof P, …>, never>` demands
- * that every key be `never` and the call fails without a single stray key in
- * it — `{[k: string]: unknown}`, `SignalWriterParams<T> & Record<string,
- * unknown>` and `x as Record<string, any>` all broke that way, and all three
- * are callers doing nothing wrong. The `string extends keyof P` test spots
- * that shape and exempts it; its `number` and `symbol` twins were measured to
- * have the same hole and carry the same test. The exemption buys a typo no
- * silence, which is measured rather than argued — a fresh literal *can* carry
- * an index signature, through a computed key or the spread of such a
- * variable, and `set(5, {[k]: 1, lasy: true})` is `TS2769` either way: with
- * the exactness clause deleted outright as much as with it, because the
- * constraint check catches that shape on its own.
- *
- * Only those three key kinds are tested, so a *pattern* index signature — one
- * whose key is a template literal type such as `data-${string}` — is not
- * exempt: `string` does not extend that pattern, no branch fires, and the
- * clause refuses it. Deliberate: a fourth branch for a shape this rare is not
- * worth the length it adds here. It is the ninth entry in the list below.
- *
- * **What it costs.** Nine shapes, all legal before the narrowing, all a loud
- * `TS2769`, and all repaired by naming the params type — annotate the
- * variable `SignalWriterParams<T>` or assert it at the call site. A spread
- * repairs none of them: `{...opts}` drops freshness, not keys (measured).
- *
- * From the exactness clause, eight. The rule behind them is not "extends" or
- * "inferred" but simply: a params type whose key set reaches past `keyof
- * SignalWriterParams<T>`, whether the extra key is required or optional,
- * declared or inferred.
- *
- * - an interface that *extends* `SignalWriterParams<T>` with fields of its own
- * - a variable whose inferred type carries a stray key (`const o = {touch:
- *   true, comapre: fn}`)
- * - an unrelated annotated type with an *optional* stray key (`{touch?:
- *   boolean; label?: string}`)
- * - an intersection (`SignalWriterParams<T> & {mine: string}`)
- * - a class instance with a field beyond the options
- * - the rest object of a destructuring
- * - a pass-through wrapper generic in its own params (`<Q extends
- *   SignalWriterParams<T>>(q: Q) => sig.set(v, q)`) — here the repair is to
- *   drop the type parameter and call the argument `SignalWriterParams<T>`
- * - a *pattern* index signature — a key typed as a template literal, e.g.
- *   `data-${string}` or `on${string}` — the one index shape the guard above
- *   does not reach, as an annotation, an intersection or a `Record` alike
- *
- * From the `lazy` clause, one: `{lazy: flag}` with `flag` narrowed to `true`,
- * the fourth statically-true form named above. `{lazy: flag as boolean}`
- * widens it back, or name the params type like everywhere else.
+ * The shapes of `params` that fail, and their repairs: `docs/api.md`,
+ * "Signals" → "Signal<T> instance".
  */
+// The value overload comes first: a signal whose `T` is itself a function
+// type must keep taking its functions as values, not as factories. Nothing
+// re-checks that order. The two params clauses below are load-bearing too,
+// and those are witnessed — `keeps a stray key out of the value branch` and
+// `lets a params object with an index signature through` in
+// `types.public-surface.spec.ts`.
 export interface SignalWriter<T> {
   <P extends SignalWriterParams<T>>(
     value: T,
@@ -370,15 +245,14 @@ export interface SignalWriterParams<T>
     SignalValueParams {}
 
 /**
- * The structural subset of the standard `AbortSignal` that `nextValue()`
- * and `asyncValues()` actually touch.
- *
- * Named as its own type rather than referencing the global `AbortSignal`:
- * that global lives in `lib.dom.d.ts` or in `@types/node`, and a consumer
- * compiling against plain `"lib": ["ES2023"]` has neither — the published
- * declarations would not resolve for them. Every real
- * `AbortSignal`, DOM or Node, satisfies this shape.
+ * The structural subset of the standard `AbortSignal` that `nextValue()` and
+ * `asyncValues()` actually touch. Every real `AbortSignal`, DOM or Node,
+ * satisfies this shape.
  */
+// Not the global `AbortSignal`: it lives in `lib.dom.d.ts` or `@types/node`,
+// and a consumer compiling against plain `"lib": ["ES2023"]` has neither, so
+// the published declarations would not resolve for them. No compile run here
+// covers that — `smoke/` inherits `DOM` from the root config.
 export interface AbortSignalLike {
   readonly aborted: boolean;
   readonly reason?: unknown;
