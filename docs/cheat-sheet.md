@@ -38,6 +38,7 @@ c.destroyed;       // true once destroyed — still a value container, just sile
 c.onChange(cb);    // → unsubscribe(); cb returns a cleanup fn or nothing —
                    // a value or an async callback does not compile;
                    // a return type of any does — inline or pre-declared
+                   // cb gets the tracked read: beforeRead fires, a {lazy: true} memo recomputes first
 
 isSignal(x); getSignalsCount();   // live = created, not destroyed, still reachable
 value(c); value([obj, 'prop']);  // untracked
@@ -120,6 +121,7 @@ import {link, unlink, getLinksCount} from '@spearwolf/signalize';
 
 const con = link(src, target, {attach: obj});  // target: signal | callback (callback param inferred from src)
 unlink(src, target);  unlink(src);
+// unlink(src) throws TypeError for a source that is not a signal — the refusal link() gives
 // unlink(src) tears every link down, then reports — several failures as an AggregateError
 // held until destroy()/unlink()/{attach} clears/source|target dies — a link on a still-live source is never reclaimed by GC alone
 

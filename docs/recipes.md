@@ -13,8 +13,9 @@ createEffect(() => {
 ```
 
 `beforeRead` (a `createSignal` option) fires on every read that goes through
-the reader — `sig.get()` and the deprecated `signal.get(callback)` form —
-whether that read is tracked or not: a `get()` inside `beQuiet()` or
+the reader — `sig.get()`, the value `sig.onChange(cb)` hands its callback,
+and the deprecated `signal.get(callback)` form — whether that read is
+tracked or not: a `get()` inside `beQuiet()` or
 `hibernate()` still triggers it, because those suppress the subscription, not
 the hook. What skips it is bypassing the reader: `.value`, `value(sig)` and a
 `@signal({readAsValue: true})` accessor. A destroyed signal fires nothing.

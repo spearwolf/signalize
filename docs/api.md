@@ -76,7 +76,7 @@ see the passthrough box below the table). Omitted, or passed an explicit
 | `set(v, params?)` | Write. `v` may be a value or, with `{lazy: true}`, a factory — and only with it; a bare factory is a compile error, and so is a plain value carrying `{lazy: true}`. |
 | `value = v`       | Setter shortcut for `set(v)`.                                                              |
 | `touch()`         | Emit a change without changing the value.                                                  |
-| `onChange(cb)`    | Subscribe to changes. `cb` is a `ValueChangedCallback<T>` — it returns a cleanup function or nothing; returning a value, or the `Promise` of an `async` callback, is a compile error; a return type of `any` compiles — annotated (`(v): any => …`) or inferred from a body that is itself `any`, inline or pre-declared alike. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect, so it does **not** fire on subscribe — an effect created inside it is a child effect and is destroyed on the next change (see below). |
+| `onChange(cb)`    | Subscribe to changes. `cb` is a `ValueChangedCallback<T>` — it returns a cleanup function or nothing; returning a value, or the `Promise` of an `async` callback, is a compile error; a return type of `any` compiles — annotated (`(v): any => …`) or inferred from a body that is itself `any`, inline or pre-declared alike. Returns `() => void` unsubscribe. `cb` runs as a static-deps effect, so it does **not** fire on subscribe — an effect created inside it is a child effect and is destroyed on the next change (see below). The value handed to `cb` is the tracked read: a `beforeRead` hook fires for it, so a `{lazy: true}` memo recomputes before the callback sees it, and the read registers no dependency of its own. |
 | `muted`           | `boolean` getter/setter — pause/resume notifications. Writes still store their value.      |
 | `destroyed`       | `boolean` getter — `true` once the signal has been destroyed. It stays usable as a plain value container; it just no longer notifies. |
 | `destroy()`       | Destroy the signal (alias for `destroySignal(this)`).                                      |
@@ -220,7 +220,7 @@ see the passthrough box below the table). Omitted, or passed an explicit
 | `value(sig \| [obj, key])`     | Untracked read (signal or `[host, name]`). Throws `TypeError` on anything else. Skips `beforeRead`; `beQuiet(() => sig.get())` does not. |
 | `touch(sig \| [obj, key])`     | Force a notify. Throws `TypeError` on anything else.                   |
 
-> **A non-signal argument.** Three functions object to one: `link()`, `touch()` and `value()` throw a `TypeError` prefixed with `[signalize] <fn>:`. Four do not: `destroySignal()`, `muteSignal()`, `unmuteSignal()` and `unlink()` do nothing and report nothing — they are teardown-shaped, and a teardown that refuses an argument it does not recognise is harder to use than one that shrugs. `getLinksCount(notASignal)` answers `0`, the same answer a signal without links gives. Do not read that silence as confirmation that the argument was a signal; `isSignal(v)` is the way to ask.
+> **A non-signal argument.** Four functions object to one: `link()`, `unlink()`, `touch()` and `value()` throw a `TypeError` prefixed with `[signalize] <fn>:` — `unlink()` among them because it is `link()`'s counterpart on the same source argument, and the pair answers it the same way. Three do not: `destroySignal()`, `muteSignal()` and `unmuteSignal()` do nothing and report nothing — they are teardown-shaped, and a teardown that refuses an argument it does not recognise is harder to use than one that shrugs. `getLinksCount(notASignal)` answers `0`, the same answer a signal without links gives. Do not read that silence as confirmation that the argument was a signal; `isSignal(v)` is the way to ask.
 
 ---
 
@@ -646,6 +646,10 @@ limit: nothing is thrown and nothing is refused.
 
 Drop a specific `(source, target)` link, or all links from `source` if no
 target is given.
+
+`source` must be a signal — anything else is a `TypeError`
+(`[signalize] unlink: source must be a signal`). `target` is not
+checked: a target that was never linked from `source` stays a no-op.
 
 > **Teardown errors.** Every matching link is torn down, even if an earlier
 > one's `DESTROY` listener throws. The failures are collected and raised

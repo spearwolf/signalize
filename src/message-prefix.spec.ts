@@ -57,7 +57,7 @@ const ERROR_CONSTRUCTORS = new Set([
 ]);
 
 /**
- * One floor per scan, each **one below what that scan finds today** (A 25,
+ * One floor per scan, each **one below what that scan finds today** (A 26,
  * B 10, C 3, D 2). That is the whole rule, and it is a compromise between two
  * failure modes:
  *
@@ -73,10 +73,10 @@ const ERROR_CONSTRUCTORS = new Set([
  * lands at or near zero and is caught. A floor is never an equality, and it
  * is never the thing that catches a *dropped prefix*: (a) and (b) do that.
  */
-const MINIMUM_FINDINGS = {A: 24, B: 9, C: 2, D: 1};
+const MINIMUM_FINDINGS = {A: 25, B: 9, C: 2, D: 1};
 
 /**
- * And one floor over all four together, one below the current total of 40.
+ * And one floor over all four together, one below the current total of 41.
  *
  * The per-scan floors each grant a step of slack, so three scans can each give
  * up one finding and every individual floor still holds — measured during
@@ -84,7 +84,7 @@ const MINIMUM_FINDINGS = {A: 24, B: 9, C: 2, D: 1};
  * aliased gate import, a destructured `console`). The sum is what refuses
  * that: slack is affordable once, not simultaneously across the file.
  */
-const MINIMUM_FINDINGS_TOTAL = 39;
+const MINIMUM_FINDINGS_TOTAL = 40;
 
 /**
  * The only two files allowed to name `console` (f). Everything else reports

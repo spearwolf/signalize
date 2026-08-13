@@ -429,4 +429,11 @@ describe('unlink()', () => {
       }
     });
   });
+
+  it('refuses a source that is not a signal', () => {
+    expect(() => unlink({} as any)).toThrow(
+      '[signalize] unlink: source must be a signal',
+    );
+    expect(() => unlink(undefined as any)).toThrow(TypeError);
+  });
 });

@@ -328,6 +328,7 @@ export function link<ValueType>(
  *
  * @param source - The source signal
  * @param target - Optional specific target to unlink (if omitted, all targets are unlinked)
+ * @throws TypeError if source is not a signal
  *
  * Every matching link is torn down, even if an earlier one's `DESTROY`
  * listener throws. A single failure is rethrown unchanged; several
@@ -338,6 +339,13 @@ export function unlink<ValueType>(
   target?: LinkableTarget<ValueType>,
 ): void {
   const sourceSignal = signalImpl(source);
+
+  // The same refusal `link()` gives, at the other end of the pair: a
+  // source that is not a signal reaches `gLinks.has(undefined)`, which is
+  // `false`, and the call returns as if a teardown had run.
+  if (sourceSignal == null) {
+    throw new TypeError('[signalize] unlink: source must be a signal');
+  }
 
   if (gLinks.has(sourceSignal)) {
     const links = gLinks.get(sourceSignal)!;

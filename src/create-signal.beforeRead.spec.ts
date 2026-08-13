@@ -4,6 +4,8 @@ import {
   assertLinksCount,
   assertSignalsCount,
 } from './__testing__/assert-helpers.js';
+import {beQuiet} from './be-quiet.js';
+import {createMemo} from './create-memo.js';
 import {createSignal} from './create-signal.js';
 import {destroySignal} from './signal-core.js';
 
@@ -95,6 +97,55 @@ describe('createSignal({beforeRead})', () => {
       expect(beforeRead).toHaveBeenCalledTimes(1);
     } finally {
       destroySignal(sig);
+    }
+  });
+
+  it('hands the onChange callback a value the hook has refreshed', () => {
+    let external = 1;
+    const sig = createSignal(0, {
+      beforeRead: () => {
+        // A refresh at the read that announces nothing of its own — the
+        // notification under test comes from the touch() below.
+        beQuiet(() => {
+          sig.set(external);
+        });
+      },
+    });
+    const seen: number[] = [];
+    const unsubscribe = sig.onChange((v) => {
+      seen.push(v);
+    });
+
+    try {
+      external = 42;
+      sig.touch();
+
+      expect(seen).toEqual([42]);
+    } finally {
+      unsubscribe();
+      destroySignal(sig);
+    }
+  });
+
+  it('recomputes a lazy memo before the onChange callback reads it', () => {
+    const a = createSignal(1);
+    const memoReader = createMemo(() => a.get() * 2, {lazy: true});
+    // The passthrough hands back the memo signal itself as a `Signal`
+    // object — the way to reach `onChange()` on a memo.
+    const memo = createSignal(memoReader);
+    const seen: number[] = [];
+    const unsubscribe = memo.onChange((v) => {
+      seen.push(v);
+    });
+
+    try {
+      a.set(5);
+      memo.touch();
+
+      expect(seen[0]).toBe(10);
+    } finally {
+      unsubscribe();
+      destroySignal(a, memoReader);
     }
   });
 });

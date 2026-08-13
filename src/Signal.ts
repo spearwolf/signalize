@@ -97,13 +97,22 @@ export class Signal<ValueType> implements SignalLike<ValueType> {
    * synchronous by design; use `createEffect()` to drive an `async` callback
    * and keep that cleanup.
    *
+   * The callback is handed the tracked read. A `beforeRead` hook fires for
+   * it like for any other `get()`, so a `{lazy: true}` memo recomputes
+   * before the callback sees the value; the read registers no dependency,
+   * because static deps switch subscribe-on-read off for the callback.
+   *
    * @param action - Receives the new value on every change; returns a cleanup
    *   function or nothing
    * @returns Unsubscribe function
    */
   onChange(action: ValueChangedCallback<ValueType>): VoidFunc {
     const {destroy} = requireCreateEffect()(() => {
-      return action(this.value);
+      // The reader, not `.value`: the callback reads like every other reader,
+      // so a `beforeRead` hook fires for it and a `{lazy: true}` memo
+      // recomputes first. Static deps suppress subscribe-on-read for the whole
+      // callback, so this registers no dependency of its own.
+      return action(this.get());
     }, [this.get]);
     return destroy;
   }
