@@ -6,404 +6,464 @@
 <title>Projekt-Audit — @spearwolf/signalize</title>
 <style>
 :root{
-  --bg:#0f172a; --bg-2:#141f38; --bg-3:#1a2740;
-  --fg:#e2e8f0; --fg-2:#aebbcd; --fg-3:#8595ab;
-  --line:#2b3a55; --line-2:#38496a;
-  --accent:#a5b4fc; --accent-2:#818cf8; --accent-dim:#4c5aa8;
-  --sev-critical:#f87171; --sev-high:#fb9a4f; --sev-medium:#e3b341;
+  --bg:#0d1424; --panel:#151d31; --panel-2:#1d273e;
+  --line:#2e3a52; --line-2:#3f4e6b; --line-3:#55668a;
+  --fg:#e6ecf5; --fg-2:#b3c0d3; --fg-3:#8b9ab1;
+  --accent:#a5b4fc; --accent-2:#8b9bfb; --accent-dim:#3f4a86;
+  --sev-critical:#f87171; --sev-high:#f59e5b; --sev-medium:#e0b83f;
   --sev-low:#60a5fa; --sev-info:#94a3b8;
-  --ok:#4ade80;
   --gutter:clamp(16px,4vw,64px);
+  --r:14px;
 }
-*{box-sizing:border-box}
-html,body{max-width:100%;overflow-x:hidden}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
 body{
   margin:0;background:var(--bg);color:var(--fg);
   font-family:ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
-  font-size:16px;line-height:1.65;-webkit-text-size-adjust:100%;
+  font-size:clamp(1rem,.96rem + .16vw,1.06rem);line-height:1.65;
 }
-.wrap{padding:clamp(24px,5vw,56px) var(--gutter) 96px;margin:0 auto;max-width:1900px}
+.wrap{max-width:1760px;margin:0 auto;padding:clamp(26px,4vw,52px) var(--gutter) 120px}
 .prose{max-width:72ch}
-h1,h2,h3{font-weight:600;line-height:1.25;margin:0}
-h1{font-size:clamp(1.6rem,1.1rem + 2vw,2.4rem);letter-spacing:-.02em}
-h2{font-size:clamp(1.15rem,1rem + .7vw,1.45rem);margin:56px 0 6px}
-h3{font-size:1.02rem;margin:0}
-p{margin:.7em 0}
+h1,h2,h3,h4{font-weight:600;line-height:1.25;margin:0}
+h1{font-size:clamp(1.75rem,1.15rem + 2.2vw,2.55rem);letter-spacing:-.025em}
+h2{font-size:clamp(1.12rem,1rem + .55vw,1.38rem);letter-spacing:-.01em}
+h3{font-size:1.06rem}
+h4{font-size:.95rem}
+p{margin:.75em 0}
+p:first-child{margin-top:0}
+p:last-child{margin-bottom:0}
 code,pre{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-code{font-size:.875em;background:var(--bg-3);padding:.1em .38em;border-radius:4px;color:#cbd5e1;overflow-wrap:anywhere}
+code{font-size:.86em;background:var(--panel-2);padding:.12em .4em;border-radius:5px;
+  color:#d3dcea;overflow-wrap:anywhere}
 a{color:var(--accent)}
-.sub{color:var(--fg-3);font-size:.9rem}
-.rule{height:1px;background:var(--line);border:0;margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sub{color:var(--fg-3);font-size:.88rem}
+.nums{font-variant-numeric:tabular-nums}
+
+/* ── section frame ── */
+section.block{margin-top:clamp(46px,5vw,76px)}
+.sec-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;
+  gap:4px 20px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.sec-head .meta{font-size:.82rem;color:var(--fg-3);font-variant-numeric:tabular-nums}
+.lead{color:var(--fg-2);font-size:.93rem;margin-top:14px;max-width:72ch}
+.subhead{font-size:.72rem;text-transform:uppercase;letter-spacing:.13em;color:var(--fg-3);
+  font-weight:600;margin:30px 0 0}
 
 /* ── header ── */
-header .eyebrow{color:var(--fg-3);font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px}
-.badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
-.badge{font-size:.76rem;color:var(--fg-2);background:var(--bg-3);border:1px solid var(--line);
+.hero{display:grid;gap:clamp(26px,3.4vw,44px);grid-template-columns:minmax(0,1fr);align-items:end}
+.eyebrow{color:var(--fg-3);font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;margin-bottom:12px}
+.badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
+.badge{font-size:.75rem;color:var(--fg-2);background:var(--panel);border:1px solid var(--line);
   border-radius:999px;padding:3px 11px;white-space:nowrap}
-.scorebar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:clamp(18px,4vw,44px);margin-top:34px}
-.score-big{font-size:clamp(3rem,2rem + 5vw,4.6rem);font-weight:600;line-height:.95;letter-spacing:-.03em}
-.score-of{color:var(--fg-3);font-size:1rem;font-weight:400;margin-left:6px}
-.subscores{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:.92rem;color:var(--fg-2);padding-bottom:10px}
-.subscores b{font-weight:600;color:var(--fg)}
-.delta{font-size:.95rem;color:var(--fg-2);padding-bottom:12px}
+.scoreline{display:flex;flex-wrap:wrap;align-items:flex-end;gap:clamp(18px,3vw,38px);
+  margin-top:clamp(24px,3vw,36px)}
+.score-num{font-size:clamp(3.4rem,2.2rem + 5.6vw,5rem);font-weight:600;line-height:.9;
+  letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.score-num i{font-style:normal;font-size:.9rem;font-weight:400;color:var(--fg-3);
+  letter-spacing:0;margin-left:9px}
+.score-cap{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--fg-3);margin-top:10px}
+.delta{font-size:.95rem;color:var(--fg-2);font-variant-numeric:tabular-nums;padding-bottom:2px}
 .delta .flat{color:var(--fg-3)}
-.diffline{margin-top:18px;font-size:.94rem;color:var(--fg-2);
-  background:var(--bg-2);border:1px solid var(--line);border-left:3px solid var(--accent-dim);
-  border-radius:8px;padding:12px 16px;max-width:72ch}
+.subscores{display:flex;flex-wrap:wrap;gap:10px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 15px;min-width:9.5rem}
+.stat .k{font-size:.7rem;letter-spacing:.11em;text-transform:uppercase;color:var(--fg-3);white-space:nowrap}
+.stat .v{font-size:1.32rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.35}
+.stat .v i{font-style:normal;font-size:.68rem;font-weight:400;color:var(--fg-3);margin-left:4px}
+.diffline{margin-top:22px;font-size:.92rem;color:var(--fg-2);background:var(--panel);
+  border:1px solid var(--line);border-left:3px solid var(--accent-2);
+  border-radius:10px;padding:13px 17px;max-width:72ch}
 .diffline b{color:var(--fg);font-weight:600}
 
-/* ── cards / grids ── */
-.card{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:clamp(16px,2.4vw,24px)}
-.grid2{display:grid;gap:18px;grid-template-columns:1fr}
-.gridN{display:grid;gap:14px;grid-template-columns:1fr}
-.dom-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:10px}
-.dom-score{font-size:1.9rem;font-weight:600;letter-spacing:-.02em;line-height:1}
-.dom-score span{font-size:.8rem;color:var(--fg-3);font-weight:400;margin-left:4px}
+/* ── chart ── */
+.chart{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px 18px 13px;max-width:500px}
+.chart svg{width:100%;height:auto;display:block}
+figcaption{font-size:.78rem;color:var(--fg-3);margin-top:9px;line-height:1.5}
+
+/* ── cards ── */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:clamp(18px,2.2vw,26px)}
+.grid2{display:grid;gap:16px;grid-template-columns:minmax(0,1fr);margin-top:20px}
+.gridN{display:grid;gap:12px;grid-template-columns:minmax(0,1fr);margin-top:16px}
+.dom-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.dom-score{font-size:1.9rem;font-weight:600;line-height:1;letter-spacing:-.025em;
+  font-variant-numeric:tabular-nums;text-align:right}
+.dom-score i{display:block;font-style:normal;font-size:.68rem;font-weight:400;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--fg-3);margin-top:6px}
+.dom-sum{font-size:.93rem;color:var(--fg-2)}
+.mh{font-size:.7rem;text-transform:uppercase;letter-spacing:.13em;color:var(--fg-3);
+  font-weight:600;margin:24px 0 12px;padding-top:18px;border-top:1px solid var(--line)}
 
 /* ── bars ── */
-.bars{margin-top:20px;display:flex;flex-direction:column;gap:9px}
-.bar-row{display:grid;grid-template-columns:78px 1fr 34px;align-items:center;gap:10px;font-size:.82rem}
-.bar-track{display:block;background:var(--bg-3);border-radius:3px;height:9px;overflow:hidden}
-.bar-fill{display:block;height:100%;border-radius:3px;min-width:0}
-.bar-n{text-align:right;color:var(--fg-2);font-variant-numeric:tabular-nums}
-.bar-l{color:var(--fg-2)}
-.cats{margin-top:20px;display:flex;flex-direction:column;gap:5px;font-size:.86rem}
-.cat-row{display:flex;justify-content:space-between;gap:12px;color:var(--fg-2);
-  padding:3px 0;border-bottom:1px dotted var(--line)}
-.cat-row:last-child{border-bottom:0}
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:grid;grid-template-columns:5.4rem minmax(0,1fr) 2.2rem;align-items:center;
+  gap:12px;font-size:.82rem}
+.bar-l{grid-column:1;grid-row:1;color:var(--fg-2);letter-spacing:.02em}
+.bar-track{grid-column:2;grid-row:1;background:var(--panel-2);border-radius:999px;height:8px;overflow:hidden}
+.bar-fill{display:block;height:100%;border-radius:999px}
+.bar-n{grid-column:3;grid-row:1;text-align:right;color:var(--fg-2);font-variant-numeric:tabular-nums}
+.bar-row.zero .bar-l,.bar-row.zero .bar-n{color:var(--fg-3)}
+
+/* ── categories ── */
+.cats{display:flex;flex-direction:column}
+.cat-row{display:flex;justify-content:space-between;gap:14px;color:var(--fg-2);
+  font-size:.86rem;padding:6px 0;border-bottom:1px solid var(--line)}
+.cat-row:last-child{border-bottom:0;padding-bottom:0}
 .cat-row b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
 
-/* ── domain (fachlich) list ── */
-.dm{background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-.dm h3{font-size:.97rem;margin-bottom:4px}
-.dm p{margin:0 0 9px;font-size:.9rem;color:var(--fg-2)}
+/* ── fachliche Domänen ── */
+.dm{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.dm h4{margin-bottom:6px}
+.dm p{margin:0 0 11px;font-size:.88rem;color:var(--fg-2)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{font-family:ui-monospace,monospace;font-size:.73rem;color:var(--fg-3);
-  background:var(--bg-3);border-radius:5px;padding:2px 7px;overflow-wrap:anywhere}
+.chip{font-family:ui-monospace,monospace;font-size:.72rem;color:var(--fg-2);
+  background:var(--panel-2);border-radius:6px;padding:2px 8px;overflow-wrap:anywhere}
+
+/* ── diagram ── */
+.diagram{margin-top:16px;overflow-x:auto;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--r);padding:18px}
+.diagram svg{min-width:620px;max-width:900px;width:100%;height:auto;display:block;margin:0 auto}
 
 /* ── filters ── */
-.filters{display:flex;flex-wrap:wrap;gap:10px 14px;margin:18px 0 14px;align-items:center}
+.filters{display:flex;flex-wrap:wrap;gap:10px 20px;margin:20px 0 16px;align-items:center}
 .fgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.flabel{font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-3);margin-right:2px}
-.fbtn{font:inherit;font-size:.82rem;color:var(--fg-2);background:var(--bg-2);
-  border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer;
+.flabel{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--fg-3);margin-right:4px}
+.fbtn{font:inherit;font-size:.82rem;color:var(--fg-2);background:transparent;
+  border:1px solid var(--line-3);border-radius:999px;padding:7px 15px;cursor:pointer;
   min-height:40px;display:inline-flex;align-items:center}
-.fbtn:hover{border-color:var(--line-2);color:var(--fg)}
-.fbtn[aria-pressed="true"]{background:var(--accent-dim);border-color:var(--accent-2);color:#f1f5f9}
-select.fbtn{min-width:150px;padding:7px 12px;-webkit-appearance:none;appearance:none}
-.fcount{font-size:.85rem;color:var(--fg-3);margin-left:auto}
+.fbtn:hover{border-color:var(--accent-2);color:var(--fg)}
+.fbtn[aria-pressed="true"]{background:var(--accent-dim);border-color:var(--accent);color:#f2f5fb}
+select.fbtn{min-width:11rem;max-width:100%;padding:7px 13px;color:var(--fg-2);background:var(--panel)}
+.fcount{font-size:.85rem;color:var(--fg-3);margin-left:auto;font-variant-numeric:tabular-nums}
 
 /* ── backlog ── */
+.tblwrap{overflow-x:auto}
 .tbl{width:100%;border-collapse:collapse;font-size:.9rem}
-.tbl thead th{text-align:left;font-size:.73rem;text-transform:uppercase;letter-spacing:.1em;
-  color:var(--fg-3);font-weight:600;padding:0 12px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl thead th{text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--fg-3);font-weight:600;padding:0 12px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
 .tbl tbody tr.head{cursor:pointer;border-bottom:1px solid var(--line)}
-.tbl tbody tr.head:hover{background:var(--bg-2)}
-.tbl td{padding:11px 12px;vertical-align:top}
-.tbl td.id{font-family:ui-monospace,monospace;font-size:.8rem;color:var(--fg-3);white-space:nowrap}
-.tbl td.title{color:var(--fg);min-width:16ch}
-.tbl td.loc{font-family:ui-monospace,monospace;font-size:.76rem;color:var(--fg-3);overflow-wrap:anywhere;max-width:30ch}
-.tbl td.meta{color:var(--fg-3);font-size:.82rem;white-space:nowrap}
-.detail td{background:var(--bg-2);border-bottom:1px solid var(--line);padding:2px 12px 20px}
+.tbl tbody tr.head:hover{background:var(--panel)}
+.tbl tbody tr.head.open{background:var(--panel)}
+.tbl td{padding:12px;vertical-align:top}
+.tbl tr.head>td:first-child,.tbl tr.detail>td{border-left:3px solid var(--sev,transparent)}
+.tbl td.sevcell{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--sev);white-space:nowrap;font-weight:600;padding-left:13px}
+.tbl td.id{font-family:ui-monospace,monospace;font-size:.79rem;color:var(--fg-2);white-space:nowrap}
+.tbl td.title{color:var(--fg);min-width:18ch}
+.tbl td.loc{font-family:ui-monospace,monospace;font-size:.75rem;color:var(--fg-3);
+  overflow-wrap:break-word;min-width:24ch;max-width:34ch}
+.tbl td.meta{color:var(--fg-3);font-size:.81rem}
+.tbl td.nowrap{white-space:nowrap}
+.tbl tr.detail>td{background:var(--panel);border-bottom:1px solid var(--line);padding:2px 16px 22px}
 .detail .prose{font-size:.9rem;color:var(--fg-2)}
-.detail h4{margin:14px 0 2px;font-size:.73rem;text-transform:uppercase;letter-spacing:.1em;
+.detail h4{margin:16px 0 4px;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;
   color:var(--fg-3);font-weight:600}
-.sev{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;white-space:nowrap;color:var(--fg-2)}
-.dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
-.dbadge,.sbadge{font-size:.7rem;border-radius:5px;padding:2px 7px;white-space:nowrap;
-  border:1px solid var(--line);color:var(--fg-3);background:var(--bg-3)}
-.sbadge.new{border-color:var(--accent-2);color:var(--accent);background:transparent}
-.sbadge.improved{border-color:#3f8f5f;color:var(--ok);background:transparent}
-.tbl tbody tr.head td{border-top:0}
+.dbadge,.sbadge{font-size:.7rem;border-radius:6px;padding:2px 8px;white-space:nowrap;
+  border:1px solid var(--line-3);color:var(--fg-2);display:inline-block;line-height:1.5}
+.sbadge.new{border-color:var(--accent-2);color:var(--accent)}
+.sbadge.improved{border-color:#4e9b70;color:#5ec98a}
+.sbadge.carried-over{border-color:var(--line);color:var(--fg-3)}
+.empty{color:var(--fg-3);font-size:.9rem;padding:26px 4px}
 .card-only{display:none}
 
-/* ── open questions / potential ── */
-.q{border-left:3px solid var(--accent-dim);padding:2px 0 2px 16px;margin:20px 0}
-.q h3{font-size:.98rem;margin-bottom:2px}
-.q p{margin:.35em 0;font-size:.92rem;color:var(--fg-2);max-width:72ch}
-ol.pot{padding-left:1.2em;margin:12px 0 0}
-ol.pot li{margin:.7em 0;color:var(--fg-2);max-width:72ch}
+/* ── open questions ── */
+.q{border-left:2px solid var(--line-3);padding:0 0 0 18px;margin:26px 0}
+.q h3{font-size:1rem;margin-bottom:4px}
+.q p{margin:.4em 0;font-size:.92rem;color:var(--fg-2);max-width:72ch}
+
+/* ── potential ── */
+ol.pot{list-style:none;counter-reset:p;padding:0;margin:20px 0 0;display:grid;gap:16px}
+ol.pot li{counter-increment:p;position:relative;padding-left:46px;color:var(--fg-2);max-width:calc(72ch + 46px)}
+ol.pot li::before{content:counter(p);position:absolute;left:0;top:1px;width:30px;height:30px;
+  border-radius:50%;background:var(--panel-2);border:1px solid var(--line-3);color:var(--accent);
+  font-size:.82rem;display:grid;place-items:center;font-variant-numeric:tabular-nums}
 ol.pot b{color:var(--fg);font-weight:600}
 
-/* ── details sections ── */
-details.sec{border:1px solid var(--line);border-radius:12px;background:var(--bg-2);margin-top:16px}
-details.sec>summary{cursor:pointer;padding:15px 20px;font-weight:600;font-size:.98rem;list-style:none;
-  display:flex;align-items:center;gap:10px;min-height:44px}
+/* ── collapsed sections ── */
+details.sec{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);margin-top:22px}
+details.sec>summary{cursor:pointer;padding:16px 20px;font-weight:600;font-size:.96rem;list-style:none;
+  display:flex;align-items:center;gap:11px;min-height:44px}
 details.sec>summary::-webkit-details-marker{display:none}
-details.sec>summary::before{content:"▸";color:var(--fg-3);font-size:.85em}
-details.sec[open]>summary::before{content:"▾"}
-details.sec .body{padding:0 20px 20px;font-size:.92rem;color:var(--fg-2)}
+details.sec>summary::before{content:"";width:7px;height:7px;border-right:1.6px solid var(--fg-3);
+  border-bottom:1.6px solid var(--fg-3);transform:rotate(-45deg);margin-left:3px;flex:0 0 auto}
+details.sec[open]>summary::before{transform:rotate(45deg);margin-top:-4px}
+details.sec .body{padding:0 20px 22px;font-size:.91rem;color:var(--fg-2)}
 details.sec .body p,details.sec .body li{max-width:72ch}
 details.sec .body ul{padding-left:1.15em}
 details.sec .body li{margin:.4em 0}
 
-/* ── chart ── */
-.chart{margin-top:26px;max-width:660px}
-.chart svg{width:100%;height:auto;display:block}
-figcaption{font-size:.8rem;color:var(--fg-3);margin-top:6px}
-
-/* ── diagram ── */
-.diagram{margin-top:22px;overflow-x:auto}
-.diagram svg{min-width:600px;width:100%;height:auto;display:block}
-
+/* ── breakpoint 1: ≥900px ── */
 @media (min-width:900px){
-  .grid2{grid-template-columns:1fr 1fr;gap:22px}
-  .gridN{grid-template-columns:repeat(auto-fit,minmax(310px,1fr))}
+  .hero{grid-template-columns:minmax(0,1.05fr) minmax(340px,.95fr)}
+  .grid2{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+  .gridN{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
 }
+
+/* ── breakpoint 2: <720px — Backlog als Kartenliste ── */
 @media (max-width:719px){
   .tbl,.tbl thead,.tbl tbody,.tbl tr,.tbl td{display:block;width:100%}
   .tbl thead,.tbl tr[hidden]{display:none}
-  .tbl tbody tr.head{border:1px solid var(--line);border-radius:10px;background:var(--bg-2);
-    padding:13px 14px;margin-bottom:10px;min-height:44px}
+  .tbl tbody tr.head td.sevcell,.tbl td.id,.tbl td.domcell{width:auto}
+  .tbl tbody tr.head{border:1px solid var(--line);border-left:3px solid var(--sev);
+    border-radius:12px;background:var(--panel);padding:13px 15px;margin-bottom:10px;min-height:44px}
+  .tbl tbody tr.head.open{border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0}
   .tbl tbody tr.head td{padding:0;border:0}
-  .tbl td.id{display:inline-block;margin-left:10px}
-  .tbl td.sevcell{display:inline-block}
-  .tbl td.domcell{display:inline-block;margin-left:8px}
-  .tbl td.title{display:block;margin-top:7px;font-size:.95rem}
-  .tbl td.loc,.tbl td.meta{display:inline;margin-right:10px;font-size:.76rem;
-    white-space:normal;max-width:none;line-height:2}
-  .tbl tbody tr.head td.loc{display:block;margin:7px 0 4px}
-  .detail{margin:-6px 0 12px}
-  .detail td{border:1px solid var(--line);border-radius:0 0 10px 10px;padding:14px}
+  .tbl tbody tr.head td.sevcell{display:inline-block;padding-left:0}
+  .tbl td.id{display:inline-block;margin-left:11px}
+  .tbl td.domcell{display:inline-block;margin-left:9px}
+  .tbl td.title{display:block;margin-top:8px;font-size:.96rem}
+  .tbl td.loc{display:block;margin:9px 0 5px;min-width:0;max-width:none;overflow-wrap:anywhere}
+  .tbl td.meta{display:inline;margin-right:12px;font-size:.78rem;line-height:2.1}
+  .tbl td.meta.nowrap{white-space:normal}
+  .card-only{display:inline;color:var(--fg-3)}
+  .tbl tr.detail>td{border:1px solid var(--line);border-left:3px solid var(--sev);
+    border-radius:0 0 12px 12px;padding:4px 15px 18px;margin-bottom:10px}
+  /* Fließtext bleibt mobil bei 16px; Labels und Metazeilen dürfen kleiner bleiben */
+  .lead,.sub,.dm p,.dom-sum,.q p,ol.pot li,.detail .prose,details.sec .body{font-size:1rem}
+  .bar-row{grid-template-columns:minmax(0,1fr) auto;gap:3px 10px}
+  .bar-track{grid-column:1/-1;grid-row:2}
   .fcount{margin-left:0;width:100%}
+  .filters{gap:12px 16px}
 }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<header>
-  <div class="eyebrow">Projekt-Audit · 13. August 2026</div>
-  <h1>@spearwolf/signalize</h1>
-  <div class="badges">
-    <span class="badge">TypeScript 7</span><span class="badge">ESM-only</span>
-    <span class="badge">Node ≥22</span><span class="badge">pnpm 11</span>
-    <span class="badge">Vitest 4</span><span class="badge">Rollup 4</span>
-    <span class="badge">Biome 2</span><span class="badge">v1.0.0-dev</span>
-  </div>
-
-  <div class="scorebar">
-    <div>
-      <div class="score-big" id="scoreBig">88,5<span class="score-of">/ 100</span></div>
+<header class="hero">
+  <div>
+    <div class="eyebrow" id="eyebrow">Projekt-Audit · Stand 14. August 2026</div>
+    <h1>@spearwolf/signalize</h1>
+    <div class="badges">
+      <span class="badge">TypeScript 7</span><span class="badge">ESM-only</span>
+      <span class="badge">Node ≥22</span><span class="badge">pnpm 11</span>
+      <span class="badge">Vitest 4</span><span class="badge">Rollup 4</span>
+      <span class="badge">Biome 2</span><span class="badge">v1.0.0-dev</span>
     </div>
-    <div class="subscores" id="subScores"></div>
-    <div class="delta" id="deltaLine"></div>
-  </div>
 
-  <div class="diffline" id="diffLine"></div>
+    <div class="scoreline">
+      <div>
+        <div class="score-num" id="scoreBig"></div>
+        <div class="score-cap">Health-Score</div>
+      </div>
+      <div class="delta" id="deltaLine"></div>
+      <div class="subscores" id="subScores"></div>
+    </div>
+
+    <div class="diffline" id="diffLine"></div>
+  </div>
 
   <figure class="chart" id="chartWrap"></figure>
 </header>
 
-<h2>Portrait</h2>
-<div class="prose">
-  <p><code>@spearwolf/signalize</code> ist eine Reaktivitätsbibliothek für JavaScript und
-  TypeScript: Signals, Effects, Memos und Links, alle synchron. Das Unterscheidungsmerkmal
-  steht im README und trägt bis in jede Zeile des Kerns: Effekte laufen inline auf demselben
-  Call-Stack wie der Schreibvorgang, in deterministischer Prioritätsreihenfolge, ohne
-  Scheduler und ohne Microtask. Nach <code>set()</code> hat jeder Beobachter bereits
-  gearbeitet.</p>
-  <p>Die Bibliothek ist framework-agnostisch und hat zur Laufzeit genau eine
-  Peer-Dependency, <code>@spearwolf/eventize</code>, das Event-Fundament, auf dem die vier
-  globalen Queues sitzen. 7.449 Zeilen Quelltext in 31 Modulen, 679 Tests in 60 Spec-Dateien,
-  99,5 % Statement-Coverage. Version <code>1.0.0-dev</code>: das Suffix ist die Sicherung,
-  die zwischen dem letzten Merge nach <code>main</code> und <code>npm publish</code> steht.</p>
-</div>
+<section class="block">
+  <div class="sec-head"><h2>Portrait</h2>
+    <span class="meta">7.449 Zeilen · 31 Module · 679 Tests</span></div>
+  <div class="prose" style="margin-top:16px">
+    <p><code>@spearwolf/signalize</code> ist eine Reaktivitätsbibliothek für JavaScript und
+    TypeScript: Signals, Effects, Memos und Links, alle synchron. Das Unterscheidungsmerkmal
+    steht im README und trägt bis in jede Zeile des Kerns: Effekte laufen inline auf demselben
+    Call-Stack wie der Schreibvorgang, in deterministischer Prioritätsreihenfolge, ohne
+    Scheduler und ohne Microtask. Nach <code>set()</code> hat jeder Beobachter bereits
+    gearbeitet.</p>
+    <p>Die Bibliothek ist framework-agnostisch und hat zur Laufzeit genau eine
+    Peer-Dependency, <code>@spearwolf/eventize</code>, das Event-Fundament, auf dem die vier
+    globalen Queues sitzen. 7.449 Zeilen Quelltext in 31 Modulen, 679 Tests in 60 Spec-Dateien,
+    99,5 % Statement-Coverage. Version <code>1.0.0-dev</code>: das Suffix ist die Sicherung,
+    die zwischen dem letzten Merge nach <code>main</code> und <code>npm publish</code> steht.</p>
+  </div>
 
-<h2>Fachliche Domänen</h2>
-<div class="gridN" style="margin-top:14px">
-  <div class="dm"><h3>Signal-Kern</h3><p>Wert, Identität, Lese- und Schreibpfad, die globale
-    Zählung und der Typvertrag der gesamten Oberfläche.</p>
-    <div class="chips"><span class="chip">signal-core.ts</span><span class="chip">create-signal.ts</span><span class="chip">Signal.ts</span><span class="chip">types.ts</span></div></div>
-  <div class="dm"><h3>Effekt-Subsystem</h3><p>Abhängigkeitsverfolgung, Re-Entrancy mit Tiefenkappe,
-    Cleanup-Lebenszyklus über Generationen, Fehlerkanäle.</p>
-    <div class="chips"><span class="chip">EffectImpl.ts</span><span class="chip">effects.ts</span><span class="chip">Effect.ts</span><span class="chip">global-effect-stack.ts</span></div></div>
-  <div class="dm"><h3>Lifecycle-Container</h3><p>Gruppen, Auto-Maps, Objekt-Signale: wer wen
-    am Leben hält, wer wen mitnimmt, und wo drei FinalizationRegistries den Rest aufräumen.</p>
-    <div class="chips"><span class="chip">SignalGroup.ts</span><span class="chip">SignalAutoMap.ts</span><span class="chip">object-signals.ts</span></div></div>
-  <div class="dm"><h3>Links &amp; Ableitungen</h3><p>Einseitige Verbindungen zwischen Signalen
-    und Callbacks, Async-Iteration über Werte, memoisierte Berechnungen.</p>
-    <div class="chips"><span class="chip">link.ts</span><span class="chip">SignalLink.ts</span><span class="chip">create-memo.ts</span></div></div>
-  <div class="dm"><h3>Ausführungs-Frames</h3><p>Die drei Kontextklammern, die das Verhalten
-    temporär umstellen: Sammeln, Verstummen, Vergessen.</p>
-    <div class="chips"><span class="chip">batch.ts</span><span class="chip">be-quiet.ts</span><span class="chip">hibernate.ts</span></div></div>
-  <div class="dm"><h3>Diagnose</h3><p>Was gemeldet wird, wenn niemand mehr da ist, dem man
-    werfen könnte: Registry-Callbacks, Deprecations, zwei geladene Kopien im selben Prozess.</p>
-    <div class="chips"><span class="chip">signalize-error.ts</span><span class="chip">collect-errors.ts</span><span class="chip">effect-error-handlers.ts</span><span class="chip">instances.ts</span></div></div>
-  <div class="dm"><h3>Decorator-Einstieg</h3><p>Der <code>@signal accessor</code>-Pfad als
-    eigener Subpath-Export, mit eigener Lowering-Anforderung an jeden Bundler.</p>
-    <div class="chips"><span class="chip">decorators.ts</span><span class="chip">./decorators</span></div></div>
-</div>
+  <h3 class="subhead">Fachliche Domänen</h3>
+  <div class="gridN">
+    <div class="dm"><h4>Signal-Kern</h4><p>Wert, Identität, Lese- und Schreibpfad, die globale
+      Zählung und der Typvertrag der gesamten Oberfläche.</p>
+      <div class="chips"><span class="chip">signal-core.ts</span><span class="chip">create-signal.ts</span><span class="chip">Signal.ts</span><span class="chip">types.ts</span></div></div>
+    <div class="dm"><h4>Effekt-Subsystem</h4><p>Abhängigkeitsverfolgung, Re-Entrancy mit Tiefenkappe,
+      Cleanup-Lebenszyklus über Generationen, Fehlerkanäle.</p>
+      <div class="chips"><span class="chip">EffectImpl.ts</span><span class="chip">effects.ts</span><span class="chip">Effect.ts</span><span class="chip">global-effect-stack.ts</span></div></div>
+    <div class="dm"><h4>Lifecycle-Container</h4><p>Gruppen, Auto-Maps, Objekt-Signale: wer wen
+      am Leben hält, wer wen mitnimmt, und wo drei FinalizationRegistries den Rest aufräumen.</p>
+      <div class="chips"><span class="chip">SignalGroup.ts</span><span class="chip">SignalAutoMap.ts</span><span class="chip">object-signals.ts</span></div></div>
+    <div class="dm"><h4>Links &amp; Ableitungen</h4><p>Einseitige Verbindungen zwischen Signalen
+      und Callbacks, Async-Iteration über Werte, memoisierte Berechnungen.</p>
+      <div class="chips"><span class="chip">link.ts</span><span class="chip">SignalLink.ts</span><span class="chip">create-memo.ts</span></div></div>
+    <div class="dm"><h4>Ausführungs-Frames</h4><p>Die drei Kontextklammern, die das Verhalten
+      temporär umstellen: Sammeln, Verstummen, Vergessen.</p>
+      <div class="chips"><span class="chip">batch.ts</span><span class="chip">be-quiet.ts</span><span class="chip">hibernate.ts</span></div></div>
+    <div class="dm"><h4>Diagnose</h4><p>Was gemeldet wird, wenn niemand mehr da ist, dem man
+      werfen könnte: Registry-Callbacks, Deprecations, zwei geladene Kopien im selben Prozess.</p>
+      <div class="chips"><span class="chip">signalize-error.ts</span><span class="chip">collect-errors.ts</span><span class="chip">effect-error-handlers.ts</span><span class="chip">instances.ts</span></div></div>
+    <div class="dm"><h4>Decorator-Einstieg</h4><p>Der <code>@signal accessor</code>-Pfad als
+      eigener Subpath-Export, mit eigener Lowering-Anforderung an jeden Bundler.</p>
+      <div class="chips"><span class="chip">decorators.ts</span><span class="chip">./decorators</span></div></div>
+  </div>
 
-<h2>Modulschichtung</h2>
-<div class="diagram">
-<svg viewBox="0 0 820 292" role="img" aria-label="Fünf Modulschichten, Wertimporte zeigen ausschließlich nach unten">
-  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-    <path d="M0 0 L10 5 L0 10 z" fill="#8595ab"/></marker></defs>
-  <g font-family="ui-sans-serif,sans-serif" font-size="12.5">
-    <rect x="88" y="10"  width="666" height="44" rx="8" fill="#1a2740" stroke="#38496a"/>
-    <rect x="88" y="66"  width="666" height="44" rx="8" fill="#141f38" stroke="#2b3a55"/>
-    <rect x="88" y="122" width="666" height="44" rx="8" fill="#141f38" stroke="#2b3a55"/>
-    <rect x="88" y="178" width="666" height="44" rx="8" fill="#141f38" stroke="#2b3a55"/>
-    <rect x="88" y="234" width="666" height="48" rx="8" fill="#1a2740" stroke="#38496a"/>
+  <h3 class="subhead">Modulschichtung</h3>
+  <div class="diagram">
+  <svg viewBox="0 0 820 292" role="img" aria-label="Fünf Modulschichten, Wertimporte zeigen ausschließlich nach unten">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#8b9ab1"/></marker></defs>
+    <g font-family="ui-sans-serif,sans-serif" font-size="12.5">
+      <rect x="88" y="10"  width="666" height="44" rx="8" fill="#1d273e" stroke="#3f4e6b"/>
+      <rect x="88" y="66"  width="666" height="44" rx="8" fill="#151d31" stroke="#2e3a52"/>
+      <rect x="88" y="122" width="666" height="44" rx="8" fill="#151d31" stroke="#2e3a52"/>
+      <rect x="88" y="178" width="666" height="44" rx="8" fill="#151d31" stroke="#2e3a52"/>
+      <rect x="88" y="234" width="666" height="48" rx="8" fill="#1d273e" stroke="#3f4e6b"/>
 
-    <text x="78" y="37"  text-anchor="end" fill="#aebbcd">Einstieg</text>
-    <text x="78" y="93"  text-anchor="end" fill="#aebbcd">Subsysteme</text>
-    <text x="78" y="149" text-anchor="end" fill="#aebbcd">Signal-Ebene</text>
-    <text x="78" y="205" text-anchor="end" fill="#aebbcd">Kern</text>
-    <text x="78" y="255" text-anchor="end" fill="#aebbcd">Blätter</text>
+      <text x="78" y="37"  text-anchor="end" fill="#b3c0d3">Einstieg</text>
+      <text x="78" y="93"  text-anchor="end" fill="#b3c0d3">Subsysteme</text>
+      <text x="78" y="149" text-anchor="end" fill="#b3c0d3">Signal-Ebene</text>
+      <text x="78" y="205" text-anchor="end" fill="#b3c0d3">Kern</text>
+      <text x="78" y="255" text-anchor="end" fill="#b3c0d3">Blätter</text>
 
-    <g font-family="ui-monospace,monospace" font-size="11.5" fill="#cbd5e1">
-      <text x="104" y="37">index.ts · decorators.ts</text>
-      <text x="104" y="93">effects · EffectImpl · SignalGroup · SignalAutoMap · link · SignalLink · create-memo</text>
-      <text x="104" y="149">create-signal · Signal · object-signals · value · touch</text>
-      <text x="104" y="205">signal-core · batch · be-quiet · hibernate · global-effect-stack</text>
-      <text x="104" y="256">collect-errors · constants · global-queues · effect-hook · effect-error-handlers</text>
-      <text x="104" y="272">signalize-error · instances · deprecation-warnings · UniqIdGen</text>
+      <g font-family="ui-monospace,monospace" font-size="11.5" fill="#d3dcea">
+        <text x="104" y="37">index.ts · decorators.ts</text>
+        <text x="104" y="93">effects · EffectImpl · SignalGroup · SignalAutoMap · link · SignalLink · create-memo</text>
+        <text x="104" y="149">create-signal · Signal · object-signals · value · touch</text>
+        <text x="104" y="205">signal-core · batch · be-quiet · hibernate · global-effect-stack</text>
+        <text x="104" y="256">collect-errors · constants · global-queues · effect-hook · effect-error-handlers</text>
+        <text x="104" y="272">signalize-error · instances · deprecation-warnings · UniqIdGen</text>
+      </g>
+
+      <line x1="782" y1="18" x2="782" y2="274" stroke="#8b9ab1" stroke-width="1.4" marker-end="url(#ar)"/>
+      <text x="800" y="150" fill="#8b9ab1" font-size="11.5" transform="rotate(90 800 150)" text-anchor="middle">Wertimporte</text>
     </g>
+  </svg>
+  </div>
+  <p class="sub prose" style="margin-top:10px">Fünf Bänder, ein Pfeil: Wertimporte zeigen
+  ausschließlich nach unten, Typimporte dürfen in jede Richtung. <code>signal-core.ts</code>
+  ist die Burg im Kern und ruft nichts über sich auf; <code>effect-hook.ts</code> ist der
+  Platzhalter, über den die Signal-Ebene das Effekt-Subsystem erreicht, ohne eine Importkante
+  dorthin zu ziehen. Was diese Ordnung heute hält, ist der Rollup-Build, und der sieht nur
+  Zyklen, keine Richtung: siehe ARCH-006.</p>
+</section>
 
-    <line x1="782" y1="18" x2="782" y2="274" stroke="#8595ab" stroke-width="1.4" marker-end="url(#ar)"/>
-    <text x="800" y="150" fill="#8595ab" font-size="11.5" transform="rotate(90 800 150)" text-anchor="middle">Wertimporte</text>
-  </g>
-</svg>
-</div>
-<p class="sub prose" style="margin-top:8px">Fünf Bänder, ein Pfeil: Wertimporte zeigen
-ausschließlich nach unten, Typimporte dürfen in jede Richtung. <code>signal-core.ts</code>
-ist die Burg im Kern und ruft nichts über sich auf; <code>effect-hook.ts</code> ist der
-Platzhalter, über den die Signal-Ebene das Effekt-Subsystem erreicht, ohne eine Importkante
-dorthin zu ziehen. Was diese Ordnung heute hält, ist der Rollup-Build, und der sieht nur
-Zyklen, keine Richtung: siehe ARCH-006.</p>
+<section class="block">
+  <div class="sec-head"><h2>Zusammenfassung</h2>
+    <span class="meta" id="sumMeta"></span></div>
+  <div class="grid2">
+    <section class="card">
+      <div class="dom-head"><h3 id="titleCode">Code &amp; Laufzeit</h3>
+        <div class="dom-score" id="scoreCode"></div></div>
+      <div class="prose dom-sum" id="sumCode"></div>
+      <div class="mh">Severity</div>
+      <div class="bars" data-bars="code"></div>
+      <div class="mh">Kategorien</div>
+      <div class="cats" data-cats="code"></div>
+    </section>
 
-<h2>Zusammenfassung</h2>
-<div class="grid2" style="margin-top:14px">
-  <section class="card">
-    <div class="dom-head"><h3>Code &amp; Laufzeit</h3>
-      <div class="dom-score" id="scoreCode">98<span>/ 100</span></div></div>
-    <div class="prose" style="font-size:.93rem;color:var(--fg-2)">
-      <p>Der Laufzeitkern ist an dieser Stelle sehr weit: von den vier Befunden des Vorlaufs
-      sind drei erledigt, <code>unsubscribeSignal()</code> sammelt seine Handles jetzt,
-      <code>unlink()</code> weist ein Nicht-Signal zurück, <code>onChange()</code> liest
-      durch den Reader. Was dieser Lauf neu findet, sind vier Randschärfen und keine davon
-      sitzt in der Kernmechanik: zwei Teardowns lassen je einen Schritt außerhalb des
-      <code>collect()</code>-Musters stehen, das der Rest des Baums lückenlos trägt,
-      <code>hibernate()</code> überspringt seinen eigenen Callback, wenn der wiederhergestellte
-      Batch beim Flush wirft, und <code>beQuiet()</code> verlässt sich für den Thenable-Fall
-      allein auf den Typ, wo <code>batch()</code> zusätzlich zur Laufzeit prüft. Kein Bug in
-      der Reaktivität, keine Nebenläufigkeitslücke, keine Sicherheitslage.</p>
+    <section class="card">
+      <div class="dom-head"><h3 id="titleHarness">Projekt-Harness</h3>
+        <div class="dom-score" id="scoreHarness"></div></div>
+      <div class="prose dom-sum" id="sumHarness"></div>
+      <div class="mh">Severity</div>
+      <div class="bars" data-bars="harness"></div>
+      <div class="mh">Kategorien</div>
+      <div class="cats" data-cats="harness"></div>
+    </section>
+  </div>
+</section>
+
+<section class="block">
+  <div class="sec-head"><h2>Backlog</h2>
+    <span class="meta" id="backlogMeta"></span></div>
+  <p class="lead">Keiner der Punkte ist kritisch oder hoch. Zeile anklicken für Problem
+  und Empfehlung.</p>
+
+  <div class="filters">
+    <div class="fgroup"><span class="flabel">Bereich</span>
+      <button class="fbtn" data-f="domain" data-v="" aria-pressed="true">alle</button>
+      <button class="fbtn" data-f="domain" data-v="code" aria-pressed="false">Code &amp; Laufzeit</button>
+      <button class="fbtn" data-f="domain" data-v="harness" aria-pressed="false">Projekt-Harness</button>
     </div>
-    <div class="bars" data-bars="code"></div>
-    <div class="cats" data-cats="code"></div>
-  </section>
-
-  <section class="card">
-    <div class="dom-head"><h3>Projekt-Harness</h3>
-      <div class="dom-score" id="scoreHarness">90,5<span>/ 100</span></div></div>
-    <div class="prose" style="font-size:.93rem;color:var(--fg-2)">
-      <p>Hier liegt der Rückstand, und er liegt seit drei Läufen an derselben Stelle: fünf
-      Skripte entscheiden über Build und Veröffentlichung, keines davon kennt Typcheck oder
-      Test, und <code>check-doc-refs.mjs</code> besteht bis heute still, wenn seine Globs
-      nichts treffen. Der Rest ist Pflege in Einzelteilen, eine tote Dependency, drei
-      Verzeichnisse in <code>clean</code>, die es nicht gibt, sechs unreferenzierte
-      Hero-Dateien im Root, ein fester Property-Seed, der seit dem 7. August keinen neuen
-      Fall mehr zieht. Neu dazugekommen sind zwei Beobachtungen über das, was tatsächlich
-      ausgeliefert wird: 751 kB entpacktes Tarball für 76 kB Laufzeit-JS, und ein Paar
-      <code>main</code>/<code>module</code> neben einer vollständigen <code>exports</code>-Map,
-      das kein Gate im Repo je anfasst.</p>
+    <div class="fgroup"><span class="flabel">Severity</span>
+      <button class="fbtn" data-f="severity" data-v="" aria-pressed="true">alle</button>
+      <button class="fbtn" data-f="severity" data-v="medium" aria-pressed="false">medium</button>
+      <button class="fbtn" data-f="severity" data-v="low" aria-pressed="false">low</button>
+      <button class="fbtn" data-f="severity" data-v="info" aria-pressed="false">info</button>
     </div>
-    <div class="bars" data-bars="harness"></div>
-    <div class="cats" data-cats="harness"></div>
-  </section>
-</div>
-
-<h2>Backlog</h2>
-<p class="sub prose">27 Punkte, keiner davon kritisch oder hoch. Zeile anklicken für Problem
-und Empfehlung.</p>
-
-<div class="filters">
-  <div class="fgroup"><span class="flabel">Bereich</span>
-    <button class="fbtn" data-f="domain" data-v="" aria-pressed="true">alle</button>
-    <button class="fbtn" data-f="domain" data-v="code" aria-pressed="false">Code &amp; Laufzeit</button>
-    <button class="fbtn" data-f="domain" data-v="harness" aria-pressed="false">Projekt-Harness</button>
+    <div class="fgroup"><span class="flabel">Status</span>
+      <button class="fbtn" data-f="status" data-v="" aria-pressed="true">alle</button>
+      <button class="fbtn" data-f="status" data-v="new" aria-pressed="false">neu</button>
+      <button class="fbtn" data-f="status" data-v="carried-over" aria-pressed="false">übernommen</button>
+    </div>
+    <div class="fgroup"><span class="flabel">Kategorie</span>
+      <label for="catSel" class="flabel" hidden>Kategorie</label>
+      <select class="fbtn" id="catSel" aria-label="Kategorie"><option value="">alle</option></select>
+    </div>
+    <span class="fcount" id="fcount"></span>
   </div>
-  <div class="fgroup"><span class="flabel">Severity</span>
-    <button class="fbtn" data-f="severity" data-v="" aria-pressed="true">alle</button>
-    <button class="fbtn" data-f="severity" data-v="medium" aria-pressed="false">medium</button>
-    <button class="fbtn" data-f="severity" data-v="low" aria-pressed="false">low</button>
-    <button class="fbtn" data-f="severity" data-v="info" aria-pressed="false">info</button>
-  </div>
-  <div class="fgroup"><span class="flabel">Status</span>
-    <button class="fbtn" data-f="status" data-v="" aria-pressed="true">alle</button>
-    <button class="fbtn" data-f="status" data-v="new" aria-pressed="false">neu</button>
-    <button class="fbtn" data-f="status" data-v="carried-over" aria-pressed="false">übernommen</button>
-  </div>
-  <div class="fgroup"><span class="flabel">Kategorie</span>
-    <select class="fbtn" id="catSel"><option value="">alle</option></select>
-  </div>
-  <span class="fcount" id="fcount"></span>
-</div>
 
-<table class="tbl"><thead><tr>
-  <th>Sev</th><th>ID</th><th>Bereich</th><th>Titel</th><th>Ort</th><th>Kategorie</th><th>Status</th><th>Aufwand</th>
-</tr></thead><tbody id="tbody"></tbody></table>
+  <div class="tblwrap">
+    <table class="tbl"><thead><tr>
+      <th>Sev</th><th>ID</th><th>Bereich</th><th>Titel</th><th>Ort</th><th>Kategorie</th><th>Status</th><th>Aufwand</th>
+    </tr></thead><tbody id="tbody"></tbody></table>
+  </div>
+</section>
 
-<h2>Offene Fragen</h2>
-<div class="q">
-  <h3>Wann fällt das <code>-dev</code> aus <code>1.0.0-dev</code>?</h3>
-  <p>Unverändert offen und mit jedem Lauf schwerer. Der <code>## Unreleased</code>-Block
-  trägt inzwischen 285 Einträge, davon 55 unter <code>### Breaking Changes</code>, einer mehr
-  als am 13. August früh. <code>scripts/publishPackage.cjs</code> verweigert die
-  Veröffentlichung, solange die Version auf <code>-dev</code> endet, und
-  <code>main.yml</code> veröffentlicht bei jedem Push auf <code>main</code>. Das Suffix fallen
-  zu lassen ist der Release, ohne Tag und ohne Freigabe dazwischen. Die Mechanik steht seit
-  dem Remediation-Lauf in <code>CONTRIBUTING.md</code>; die Entscheidung bleibt beim
-  Maintainer.</p>
-</div>
-<div class="q">
-  <h3>Womit authentifiziert sich der Deploy-Job?</h3>
-  <p><code>main.yml</code> vergibt <code>id-token: write</code> auf Workflow-Ebene und richtet
-  <code>setup-node</code> mit <code>registry-url</code> und <code>always-auth: true</code>
-  ein, setzt aber kein <code>NODE_AUTH_TOKEN</code> in der Job-Umgebung, und
-  <code>npm publish</code> läuft ohne <code>--provenance</code>. Diese drei Angaben passen nur
-  zusammen, wenn für das Paket auf npmjs.com Trusted Publishing über OIDC eingerichtet ist;
-  aus dem Repo ist das nicht zu sehen. Ist es nicht eingerichtet, ist <code>id-token: write</code>
-  ein ungenutztes Recht am einzigen Job, der veröffentlicht. Da <code>1.0.0-dev</code> das
-  Veröffentlichen ohnehin abbricht, ist der Pfad in dieser Konfiguration noch nie
-  durchgelaufen. Ein Satz in <code>CONTRIBUTING.md</code> unter „Releasing" beantwortet es
-  dauerhaft.</p>
-</div>
-<div class="q">
-  <h3>Bleiben die 21 MB Hero-Assets in der Historie?</h3>
-  <p>Der HEAD-Baum ist seit der git-lfs-Umstellung sauber, sieben Pointer, 28 KB.
-  <code>.git</code> steht bei 64 MB, die Originale liegen also weiter in der Historie. Ob das
-  eine Historien-Umschreibung wert ist, ist eine Projektentscheidung, keine technische;
-  BUILD-012 deckt nur den Teil ab, der ohne sie geht.</p>
-</div>
+<section class="block">
+  <div class="sec-head"><h2>Offene Fragen</h2><span class="meta">3 offen</span></div>
+  <div class="q">
+    <h3>Wann fällt das <code>-dev</code> aus <code>1.0.0-dev</code>?</h3>
+    <p>Unverändert offen und mit jedem Lauf schwerer. Der <code>## Unreleased</code>-Block
+    trägt inzwischen 294 Einträge, davon 58 unter <code>### Breaking Changes</code>, einer mehr
+    als am 13. August früh. <code>scripts/publishPackage.cjs</code> verweigert die
+    Veröffentlichung, solange die Version auf <code>-dev</code> endet, und
+    <code>main.yml</code> veröffentlicht bei jedem Push auf <code>main</code>. Das Suffix fallen
+    zu lassen ist der Release, ohne Tag und ohne Freigabe dazwischen. Die Mechanik steht seit
+    dem Remediation-Lauf in <code>CONTRIBUTING.md</code>; die Entscheidung bleibt beim
+    Maintainer.</p>
+  </div>
+  <div class="q">
+    <h3>Womit authentifiziert sich der Deploy-Job?</h3>
+    <p><code>main.yml</code> vergibt <code>id-token: write</code> auf Workflow-Ebene und richtet
+    <code>setup-node</code> mit <code>registry-url</code> und <code>always-auth: true</code>
+    ein, setzt aber kein <code>NODE_AUTH_TOKEN</code> in der Job-Umgebung, und
+    <code>npm publish</code> läuft ohne <code>--provenance</code>. Diese drei Angaben passen nur
+    zusammen, wenn für das Paket auf npmjs.com Trusted Publishing über OIDC eingerichtet ist;
+    aus dem Repo ist das nicht zu sehen. Ist es nicht eingerichtet, ist <code>id-token: write</code>
+    ein ungenutztes Recht am einzigen Job, der veröffentlicht. Da <code>1.0.0-dev</code> das
+    Veröffentlichen ohnehin abbricht, ist der Pfad in dieser Konfiguration noch nie
+    durchgelaufen. Ein Satz in <code>CONTRIBUTING.md</code> unter „Releasing" beantwortet es
+    dauerhaft.</p>
+  </div>
+  <div class="q">
+    <h3>Bleiben die 21 MB Hero-Assets in der Historie?</h3>
+    <p>Der HEAD-Baum ist seit der git-lfs-Umstellung sauber, sieben Pointer, 28 KB.
+    <code>.git</code> steht bei 64 MB, die Originale liegen also weiter in der Historie. Ob das
+    eine Historien-Umschreibung wert ist, ist eine Projektentscheidung, keine technische;
+    BUILD-012 deckt nur den Teil ab, der ohne sie geht.</p>
+  </div>
+</section>
 
-<h2>Optimierungspotenzial</h2>
-<p class="sub prose">Kein Defekt, keine Backlog-Zeile: Dinge, die das Projekt besser machen
-könnten, wenn jemand Lust hat.</p>
-<ol class="pot">
-  <li><b>Die Messwerte aus den Kommentaren heben.</b> In <code>src/</code> stehen Dutzende
-  belastbarer Zahlen mit Datum, Node-Version und Methode: 59 µs warm gegen 55 ms bei 1000
-  Links, 17,2 % Kosten für ein Subscriber-Count-Gate, 200 von 200 Maps überleben mit
-  starkem <code>this</code>. Das ist das wertvollste Material im Repo und existiert nur als
-  Fließtext neben dem Code. Ein <code>docs/measurements.md</code> mit Tabelle würde es
-  zitierbar machen, und die Kommentare könnten verweisen statt wiederholen.</li>
-  <li><b>Aus <code>bench/</code> einen Trend machen.</b> Die Suite läuft in CI informativ und
-  <code>continue-on-error</code>, was auf geteilten Runnern richtig ist. Eine eingecheckte
-  Baseline plus ein Diff dagegen (mit großzügiger Toleranz, ohne Blocken) würde aus fünf
-  Bench-Dateien eine Verlaufskurve machen, ohne die Rauschentscheidung von damals
-  zurückzunehmen.</li>
-  <li><b>Den <code>## Unreleased</code>-Block teilen.</b> 285 Einträge, davon 55 Breaking
-  Changes, sind kein Changelog-Abschnitt mehr, sondern ein Migrationsleitfaden im Wartestand.
-  Der Block trägt bereits eine <code>### Migration Guide</code>-Überschrift; die 55 Zeilen
-  dorthin zu ordnen, wäre die halbe Release-Vorbereitung.</li>
-  <li><b>Den Layering-Wächter aus ARCH-006 als Muster nutzen.</b> Das Repo hat mit
-  <code>check-doc-refs.mjs</code> und <code>check-banner.mjs</code> bereits die Form für
-  Invarianten, die kein Standardwerkzeug prüft. Ein dritter Wächter in derselben Form
-  schließt nicht nur ARCH-006, sondern etabliert die Stelle, an der solche Regeln künftig
-  landen.</li>
-</ol>
+<section class="block">
+  <div class="sec-head"><h2>Optimierungspotenzial</h2><span class="meta">4 Ideen</span></div>
+  <p class="lead">Kein Defekt, keine Backlog-Zeile: Dinge, die das Projekt besser machen
+  könnten, wenn jemand Lust hat.</p>
+  <ol class="pot">
+    <li><b>Die Messwerte aus den Kommentaren heben.</b> In <code>src/</code> stehen Dutzende
+    belastbarer Zahlen mit Datum, Node-Version und Methode: 59 µs warm gegen 55 ms bei 1000
+    Links, 17,2 % Kosten für ein Subscriber-Count-Gate, 200 von 200 Maps überleben mit
+    starkem <code>this</code>. Das ist das wertvollste Material im Repo und existiert nur als
+    Fließtext neben dem Code. Ein <code>docs/measurements.md</code> mit Tabelle würde es
+    zitierbar machen, und die Kommentare könnten verweisen statt wiederholen.</li>
+    <li><b>Aus <code>bench/</code> einen Trend machen.</b> Die Suite läuft in CI informativ und
+    <code>continue-on-error</code>, was auf geteilten Runnern richtig ist. Eine eingecheckte
+    Baseline plus ein Diff dagegen (mit großzügiger Toleranz, ohne Blocken) würde aus fünf
+    Bench-Dateien eine Verlaufskurve machen, ohne die Rauschentscheidung von damals
+    zurückzunehmen.</li>
+    <li><b>Den <code>## Unreleased</code>-Block teilen.</b> 285 Einträge, davon 55 Breaking
+    Changes, sind kein Changelog-Abschnitt mehr, sondern ein Migrationsleitfaden im Wartestand.
+    Der Block trägt bereits eine <code>### Migration Guide</code>-Überschrift; die 55 Zeilen
+    dorthin zu ordnen, wäre die halbe Release-Vorbereitung.</li>
+    <li><b>Den Layering-Wächter aus ARCH-006 als Muster nutzen.</b> Das Repo hat mit
+    <code>check-doc-refs.mjs</code> und <code>check-banner.mjs</code> bereits die Form für
+    Invarianten, die kein Standardwerkzeug prüft. Ein dritter Wächter in derselben Form
+    schließt nicht nur ARCH-006, sondern etabliert die Stelle, an der solche Regeln künftig
+    landen.</li>
+  </ol>
+</section>
 
 <details class="sec">
   <summary>Methodik &amp; Prüfumfang</summary>
@@ -434,24 +494,41 @@ könnten, wenn jemand Lust hat.</p>
     Tarball.</p>
     <p><b>Score:</b> Start bei 100, Abzug 10 pro <code>critical</code>, 5 pro
     <code>high</code>, 2 pro <code>medium</code>, 0,5 pro <code>low</code>, 0 pro
-    <code>info</code>, Untergrenze 0. Hier: 100 − (1 × 2) − (19 × 0,5) = 88,5. Dieselbe
+    <code>info</code>, Untergrenze 0. Hier: 100 − (1 × 2) − (17 × 0,5) = 89,5. Dieselbe
     Formel läuft dreimal, einmal über alle Findings und einmal je Bereich. Die beiden
     Teilscores sind keine Summanden des Gesamtscores und teilen die 100 nicht unter sich auf:
-    Code &amp; Laufzeit 100 − (4 × 0,5) = 98,0, Projekt-Harness 100 − (1 × 2) − (15 × 0,5)
-    = 90,5.</p>
-    <p><b>Folgelauf.</b> Vorheriges Audit vom 13. August 2026 (Score 88,5), Datensatz aus der
-    JSON-Insel der alten <code>audit.html</code> übernommen. Gematcht wurde primär über
-    Kategorie plus überlappende Location, sekundär über Titelähnlichkeit. Der frische Audit
-    lief vor dem Vergleich und ohne Kenntnis der alten Datei; jedes übernommene Finding wurde
-    einzeln am Code nachgeprüft, bevor es wieder ins Backlog durfte. Entfallen sind vier
-    Findings (MEM-014, CONS-018, API-019, SEC-002), alle vier durch die Commits
-    <code>489f979</code>, <code>500152c</code>, <code>844a759</code> nach dem letzten Audit
-    behoben und hier am Code verifiziert; kontextbedingt entfernt wurde keines. DX-009 ist
-    zur Hälfte erledigt (<code>CONTRIBUTING.md</code> nennt <code>typecheck</code> jetzt,
-    <code>README.md</code> noch nicht) und wird mit verengter Location weitergeführt. Das
-    Delta beträgt 0,0 Punkte, also unter der ±15-Schwelle, die eine Einordnung verlangen
-    würde; es entsteht aus vier behobenen und sieben neuen Punkten, die sich in der Summe
-    aufheben.</p>
+    Code &amp; Laufzeit 100 − (1 × 0,5) = 99,5, Projekt-Harness 100 − (1 × 2) − (16 × 0,5)
+    = 90,0.</p>
+    <p><b>Folgelauf.</b> Vorheriges Audit vom 13. August 2026 (Score 88,5), Datensatz
+    aus der JSON-Insel der alten <code>audit.html</code> übernommen. Gematcht wurde
+    primär über Kategorie plus überlappende Location, sekundär über Titelähnlichkeit.
+    Der frische Audit lief vor dem Vergleich und ohne Kenntnis der alten Datei; jedes
+    übernommene Finding wurde einzeln am Code nachgeprüft. Entfallen waren vier
+    Findings (MEM-014, CONS-018, API-019, SEC-002), alle am Code verifiziert.</p>
+
+    <p><b>Dieser Stand entstand nicht durch eine neue Prüfung.</b> Am 14. August 2026
+    lief ein Remediation-Lauf über vier namentlich beauftragte Findings: CONS-019,
+    BUG-016, ASYNC-001 und READ-017. Zehn Pakete, zehn Commits von <code>2d442f7</code>
+    bis <code>64893a0</code>, jedes mit eigenem Detailplan, eigenem Implementierer,
+    eigenem Review und einem Verify-Lauf über <code>pnpm world</code>, den der
+    Orchestrator selbst gefahren und gelesen hat. Geschlossen wurde ausschließlich, was
+    ein Reviewer-Urteil mit Fundstelle <em>und</em> einen Commit-Hash trägt — alle vier.
+    Fünf Nebenbefunde des Laufs sind mit Fundstelle neu ins Backlog eingetragen.</p>
+
+    <p><b>Der Code ist seit dem 13. August nicht neu geprüft worden.</b> Die 23
+    übernommenen Findings tragen den Stand jenes Audits; der Score ist dessen Formel
+    auf ein verändertes Backlog, kein neues Urteil über den Code. Was der Lauf am Baum
+    verändert hat, sieht erst der nächste Audit-Lauf — er prüft frisch, verifiziert
+    jeden übernommenen Punkt an der Fundstelle und schreibt die Historie fort. Der
+    Eintrag vom 14. August im Verlauf trägt deshalb <code>source: "remediation"</code>.</p>
+
+    <p><b>Was der Lauf bewusst nicht mitgenommen hat</b> und was deshalb im Backlog
+    steht: zwei ältere Lücken in der Tabelle »Source layout« von
+    <code>docs/architecture.md</code>, die JSDoc einer nicht exportierten Klasse in den
+    ausgelieferten Deklarationen, ein Test-Seam, dessen Kommentar kein JSDoc ist,
+    Rumpfkommentare mit Rückblicken auf frühere Fassungen, und acht Verweise auf
+    Paketnummern früherer Läufe. Alle fünf mit Fundstelle, keiner davon durch den Lauf
+    verursacht — bis auf die eine Lücke, die er selbst geschlossen hat.</p>
     <p><b>Theme:</b> dunkel, übernommen aus <code>summary.theme</code> des Vorlaufs, damit
     die Optik über Folgeläufe stabil bleibt. Fest ausgeliefert, nicht über
     <code>prefers-color-scheme</code>.</p>
@@ -463,66 +540,110 @@ könnten, wenn jemand Lust hat.</p>
   "summary": {
     "project": "@spearwolf/signalize",
     "version": "1.0.0-dev",
-    "stack": ["TypeScript 7","ESM-only","Node >=22","pnpm 11","Vitest 4","Rollup 4","Biome 2"],
-    "date": "2026-08-13",
+    "stack": [
+      "TypeScript 7",
+      "ESM-only",
+      "Node >=22",
+      "pnpm 11",
+      "Vitest 4",
+      "Rollup 4",
+      "Biome 2"
+    ],
+    "date": "2026-08-14",
     "previousDate": "2026-08-13",
     "previousScore": 88.5,
-    "score": 88.5,
-    "scoreDelta": 0,
+    "score": 89.5,
+    "scoreDelta": 1,
     "theme": "dark",
     "scoreHistory": [
-      {"date":"2026-08-07","score":0},
-      {"date":"2026-08-08","score":0},
-      {"date":"2026-08-12","score":68},
-      {"date":"2026-08-12","score":84.5},
-      {"date":"2026-08-13","score":88.5},
-      {"date":"2026-08-13","score":88.5}
+      {
+        "date": "2026-08-07",
+        "score": 0
+      },
+      {
+        "date": "2026-08-08",
+        "score": 0
+      },
+      {
+        "date": "2026-08-12",
+        "score": 68
+      },
+      {
+        "date": "2026-08-12",
+        "score": 84.5
+      },
+      {
+        "date": "2026-08-13",
+        "score": 88.5
+      },
+      {
+        "date": "2026-08-13",
+        "score": 88.5
+      },
+      {
+        "date": "2026-08-14",
+        "score": 89.5,
+        "source": "remediation"
+      }
     ],
-    "counts": {"critical":0,"high":0,"medium":1,"low":19,"info":7},
+    "counts": {
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "low": 17,
+      "info": 10
+    },
     "categories": {
-      "Projektaufbau & Build": 8,
-      "Developer Experience": 7,
+      "Projektaufbau & Build": 10,
+      "Architektur & Struktur": 2,
+      "Typsicherheit (TS)": 1,
+      "Bugs & Korrektheitsrisiken": 1,
+      "Developer Experience": 8,
       "Dependencies": 2,
       "Testabdeckung & Teststrategie": 2,
-      "Bugs & Korrektheitsrisiken": 2,
-      "Architektur & Struktur": 2,
-      "Konsistenz": 1,
-      "Lesbarkeit & Clean Code": 1,
-      "Async & Concurrency": 1,
-      "Typsicherheit (TS)": 1
+      "Lesbarkeit & Clean Code": 2
     },
     "resolvedCount": 4,
     "improvedCount": 0,
-    "newCount": 7,
+    "newCount": 5,
     "unchangedCount": 0,
-    "carriedOverCount": 20,
+    "carriedOverCount": 23,
     "domains": {
       "code": {
         "label": "Code & Laufzeit",
-        "score": 98,
-        "bySeverity": {"critical":0,"high":0,"medium":0,"low":4,"info":2},
+        "score": 99.5,
+        "bySeverity": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 1,
+          "info": 3
+        },
         "byCategory": {
           "Architektur & Struktur": 2,
-          "Async & Concurrency": 1,
-          "Bugs & Korrektheitsrisiken": 1,
-          "Konsistenz": 1,
-          "Lesbarkeit & Clean Code": 1
+          "Lesbarkeit & Clean Code": 2
         },
-        "executiveSummary": "Der Laufzeitkern ist an dieser Stelle sehr weit: von den vier Befunden des Vorlaufs sind drei erledigt, unsubscribeSignal() sammelt seine Handles jetzt, unlink() weist ein Nicht-Signal zurück, onChange() liest durch den Reader. Was dieser Lauf neu findet, sind vier Randschärfen und keine davon sitzt in der Kernmechanik: zwei Teardowns lassen je einen Schritt außerhalb des collect()-Musters stehen, das der Rest des Baums lückenlos trägt, hibernate() überspringt seinen eigenen Callback, wenn der wiederhergestellte Batch beim Flush wirft, und beQuiet() verlässt sich für den Thenable-Fall allein auf den Typ, wo batch() zusätzlich zur Laufzeit prüft. Kein Bug in der Reaktivität, keine Nebenläufigkeitslücke, keine Sicherheitslage."
+        "executiveSummary": "Die drei Korrektheitsbefunde sind geschlossen und am Diff verifiziert: beide Teardowns melden ihre Fehler jetzt bis zum Ende, `hibernate()` führt seinen Callback auch nach einem gescheiterten Flush aus, und alle drei Kontextklammern weisen einen thenable Callback zur Laufzeit ab statt still falsch zu laufen. Übrig bleiben zwei Punkte ohne Laufzeitwirkung — die Schichtung ist weiterhin nur gegen Zyklen gesichert, nicht gegen Richtung, und ein Scratch-Beispiel liegt im Repo-Root — plus zwei neue aus der Kommentar-Hygiene: Rumpfkommentare, die den Vorzustand erzählen, und acht Verweise auf Paketnummern eines Laufs, dessen Plan niemand mehr hat."
       },
       "harness": {
         "label": "Projekt-Harness",
-        "score": 90.5,
-        "bySeverity": {"critical":0,"high":0,"medium":1,"low":15,"info":5},
-        "byCategory": {
-          "Projektaufbau & Build": 8,
-          "Developer Experience": 7,
-          "Dependencies": 2,
-          "Testabdeckung & Teststrategie": 2,
-          "Bugs & Korrektheitsrisiken": 1,
-          "Typsicherheit (TS)": 1
+        "score": 90,
+        "bySeverity": {
+          "critical": 0,
+          "high": 0,
+          "medium": 1,
+          "low": 16,
+          "info": 7
         },
-        "executiveSummary": "Hier liegt der Rückstand, und er liegt seit drei Läufen an derselben Stelle: fünf Skripte entscheiden über Build und Veröffentlichung, keines davon kennt Typcheck oder Test, und check-doc-refs.mjs besteht bis heute still, wenn seine Globs nichts treffen. Der Rest ist Pflege in Einzelteilen, eine tote Dependency, drei Verzeichnisse in clean, die es nicht gibt, sechs unreferenzierte Hero-Dateien im Root, ein fester Property-Seed, der seit dem 7. August keinen neuen Fall mehr zieht. Neu dazugekommen sind zwei Beobachtungen über das, was tatsächlich ausgeliefert wird: 751 kB entpacktes Tarball für 76 kB Laufzeit-JS, und ein Paar main/module neben einer vollständigen exports-Map, das kein Gate im Repo je anfasst."
+        "byCategory": {
+          "Projektaufbau & Build": 10,
+          "Typsicherheit (TS)": 1,
+          "Bugs & Korrektheitsrisiken": 1,
+          "Developer Experience": 8,
+          "Dependencies": 2,
+          "Testabdeckung & Teststrategie": 2
+        },
+        "executiveSummary": "Hier liegt der Rückstand unverändert, denn dieser Lauf hat ihn nicht angefasst: fünf Skripte entscheiden über Build und Veröffentlichung, keines kennt Typcheck oder Test, und `check-doc-refs.mjs` besteht still, wenn seine Globs nichts treffen. Neu dazugekommen sind drei Beobachtungen über das, was tatsächlich ausgeliefert wird: eine Doku-Tabelle, die zwei Module verschweigt, die JSDoc einer nicht exportierten Klasse in den Deklarationen, und ein Test-Seam, das die Deklarationen erreicht, weil sein Kommentar kein JSDoc ist."
       }
     }
   },
@@ -538,42 +659,6 @@ könnten, wenn jemand Lust hat.</p>
       "location": "scripts/check-doc-refs.mjs",
       "description": "Unverändert. `globSync(DOC_GLOBS)` liefert bei einem umbenannten Pfad eine leere Liste, die Schleife läuft null Mal, `hits` bleibt leer, Exit 0. Ein Verzeichnis umbenennen und das Gate ist Dekoration, ohne ein Wort. Genau diese Falle ist im Projekt zweimal erkannt und geschlossen: `vitest.config.ts` fährt `assertThresholdGlobsMatch()` und bricht ab, wenn eine Coverage-Glob-Gruppe keine Datei trifft, und `test:smoke` trägt eine Wache mit mehrzeiliger Fehlermeldung für genau denselben Fall. Nur das dritte Gate hat sie nicht.",
       "recommendation": "Nach dem `globSync` prüfen, dass die Liste nicht leer ist und die vier namentlich erwarteten Wurzeldokumente (`AGENTS.md`, `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`) darin vorkommen, sonst mit Exit 1 abbrechen und die nicht getroffenen Globs benennen. Die Formulierung der Meldung kann sich an der in `vitest.config.ts` orientieren, die dasselbe erklärt. Zusammen mit BUILD-020 ist das eine Spec-Datei: eine Doku mit `datei:zeile` erzeugen und Exit 1 erwarten, dann die Globs verbiegen und Exit 1 erwarten."
-    },
-    {
-      "id": "CONS-019",
-      "category": "Konsistenz",
-      "domain": "code",
-      "severity": "low",
-      "status": "new",
-      "effort": "S",
-      "title": "Zwei Teardowns lassen je einen Schritt außerhalb des collect()-Musters stehen",
-      "location": "src/SignalGroup.ts (clear) · src/SignalLink.ts (destroy)",
-      "description": "Beide Methoden versprechen in ihrer eigenen JSDoc, bis zum Ende abzubauen und erst danach zu werfen, und beide halten das für jeden Schritt außer einem. In `SignalGroup#clear()` steht `emit(this, DESTROY, this)` unter `collect()`, das darauffolgende `off(this)` nicht: wirft es, bricht `clear()` ab, bevor Kindgruppen, Effekte, Signale und Links abgebaut sind, und der bereits gesammelte DESTROY-Fehler geht mit verloren. In `SignalLink#destroy()` liegen `off(this)`, das Zurücksetzen von `lastValue` und `Object.freeze(this)` hinter der Sammelphase und vor `throwCollectedErrors()`, also verliert ein Wurf dort zusätzlich jeden schon gesammelten Fehler und lässt den Link ungefroren zurück, während `isDestroyed` bereits `true` meldet. `EffectImpl#destroy()` macht es an derselben Stelle anders und richtig: `collect(errors, () => off(this))`.",
-      "recommendation": "Beide `off(this)`-Aufrufe in `collect()` fassen, wie `EffectImpl#destroy()` es tut. In `SignalLink#destroy()` zusätzlich `Object.freeze(this)` und das Zurücksetzen von `lastValue` vor `throwCollectedErrors()` in ein `finally` ziehen, damit der Endzustand des Links unabhängig davon steht, ob unterwegs etwas geworfen hat. Kein Verhaltenswechsel im Erfolgsfall, und ein Test je Methode mit einem werfenden DESTROY-Listener nagelt es fest."
-    },
-    {
-      "id": "BUG-016",
-      "category": "Bugs & Korrektheitsrisiken",
-      "domain": "code",
-      "severity": "low",
-      "status": "new",
-      "effort": "S",
-      "title": "hibernate() überspringt seinen Callback, wenn der wiederhergestellte Batch beim Flush wirft",
-      "location": "src/hibernate.ts",
-      "description": "`savedBatch.flush()` steht im selben `try` wie `return callback()` und davor. Wirft ein Effekt während dieses Flushs, läuft der hibernierte Callback nie, und der Aufrufer bekommt einen Fehler, der aussieht, als käme er aus seinem eigenen Code. Der Flush gehört dort hin, das ist die Korrektur eines früheren Befunds und richtig: sonst kostet ein werfender Effekt die drei `restore*`-Aufrufe. Nur sagt die JSDoc genau diese Hälfte und nicht die andere. Sie erklärt, dass der Restore geschützt ist, und schweigt darüber, dass der Callback dabei ausfällt. Praktische Reichweite: nur ein `hibernate()` innerhalb eines offenen `batch()`, dessen aufgestaute Effekte werfen.",
-      "recommendation": "Entscheiden und aufschreiben. Bleibt die Reihenfolge, gehört ein Satz in die JSDoc und nach `docs/api.md`: ein werfender Flush verhindert den Callback. Soll der Callback in jedem Fall laufen, den Flush-Fehler sammeln, den Callback ausführen und beide über `throwCollectedErrors()` melden, dieselbe Form, die `batch()` für Callback plus Flush bereits trägt. Ein Test mit einem werfenden Effekt in einem offenen Batch pinnt, welche der beiden Varianten gilt."
-    },
-    {
-      "id": "ASYNC-001",
-      "category": "Async & Concurrency",
-      "domain": "code",
-      "severity": "low",
-      "status": "new",
-      "effort": "S",
-      "title": "beQuiet() und hibernate() prüfen den Thenable-Fall nur im Typ, batch() auch zur Laufzeit",
-      "location": "src/be-quiet.ts · src/hibernate.ts · src/batch.ts",
-      "description": "Alle drei Funktionen leiden am selben Problem: ein `async` Callback gibt beim ersten `await` sein Promise zurück, das `finally` schließt den Frame sofort, und alles danach läuft außerhalb der Klammer, in der es zu stehen scheint. `batch()` fängt das doppelt ab, über `NonThenable<T>` für tsc und über eine strukturelle `then`-Prüfung mit `TypeError` zur Laufzeit. `beQuiet()` und `hibernate()` haben nur die Typseite, und beide JSDoc-Blöcke halten das ausdrücklich fest. Für JS-Konsumenten, und das Paket wird ausdrücklich auch aus JS heraus benutzt, bleibt der Fehler damit still: die Reads sind wieder getrackt, die Writes wieder laut, und nichts sagt es.",
-      "recommendation": "Die drei Zeilen aus `batch()` in eine gemeinsame Stelle heben und in allen drei Funktionen aufrufen. `isThenable` existiert bereits zweimal, in `EffectImpl.ts` und, absichtlich dupliziert, in `batch.ts`; ein Blattmodul dafür passt in die Schichtung und nimmt die Duplikation gleich mit. Der Wurf ist ein Breaking Change für Code, der heute stillschweigend falsch läuft, und gehört als solcher in den `## Unreleased`-Block."
     },
     {
       "id": "ARCH-006",
@@ -768,18 +853,6 @@ könnten, wenn jemand Lust hat.</p>
       "recommendation": "Entscheiden und festnageln. Bleibt `===`, ein Test, der die Doppelbenachrichtigung bei `NaN` festhält, plus ein Satz in `docs/api.md` bei `compare`. Wird es `Object.is`, ist es ein Breaking Change und gehört als solcher in den `## Unreleased`-Block."
     },
     {
-      "id": "READ-017",
-      "category": "Lesbarkeit & Clean Code",
-      "domain": "code",
-      "severity": "info",
-      "status": "carried-over",
-      "effort": "M",
-      "title": "An zwei Stellen ist die Begründung länger als der Typ, den sie erklärt, und sie wird ausgeliefert",
-      "location": "src/types.ts (SignalWriter) · src/create-signal.ts (Overloads)",
-      "description": "Unverändert, mit einer Zahl dahinter. `SignalWriter<T>` trägt rund 150 Zeilen JSDoc über 14 Zeilen Signatur, die drei `createSignal`-Overloads zusammen rund 190 über 40. Über den ganzen Baum gerechnet sind 3.862 von 7.449 Nicht-Spec-Zeilen Kommentar, also 52 %; `types.ts` liegt bei 70 %, `effects.ts` bei 73 %. Das ist Hausstil und in `docs/conventions.md` festgeschrieben, und der Inhalt ist gemessen und wertvoll. Nur steht er dort, wo jemand die Signatur sucht, und `tsconfig.types.json` setzt `removeComments: false`, also wandert er vollständig in `lib/types.d.ts`, 18 kB, und von dort in jeden Editor-Tooltip.",
-      "recommendation": "Belassen, solange niemand über die Signaturen stolpert. Wenn doch: den Messteil, die Aufzählung der neun Params-Formen und der drei Inferenz-Ausgänge, nach `docs/api.md` verschieben und im JSDoc die Regel in drei Sätzen plus einen Verweis stehen lassen. Die Entscheidung ist eine Stilentscheidung und keine technische; sie steht hier, damit sie einmal getroffen wird statt Datei für Datei."
-    },
-    {
       "id": "ARCH-005",
       "category": "Architektur & Struktur",
       "domain": "code",
@@ -850,13 +923,73 @@ könnten, wenn jemand Lust hat.</p>
       "location": "package.json (devDependencies)",
       "description": "Unverändert. `pnpm outdated` meldet weiterhin genau ein Paket: `@types/node` bei 24.13.3 gegen 26.2.0, zwei Majors. `pnpm audit --prod` findet nichts. Der Typ-Rückstand ist folgenlos, solange nichts aus `node:`-Modulen genutzt wird, was erst 25 oder 26 bringt; im Baum sind es `node:fs`, `node:path`, `node:url` und `node:child_process` in ihren stabilen Formen. Zur Laufzeit hat das Paket ohnehin nur eine einzige Peer-Dependency.",
       "recommendation": "Mit dem nächsten Dependency-Durchgang mitnehmen. Eigenständige Dringlichkeit hat es keine; die Zeile steht hier, damit der nächste Lauf sieht, dass der Rückstand geprüft und nicht übersehen wurde."
+    },
+    {
+      "id": "DX-010",
+      "category": "Developer Experience",
+      "domain": "harness",
+      "severity": "low",
+      "status": "new",
+      "effort": "S",
+      "title": "Die Tabelle »Source layout« in docs/architecture.md führt zwei Module nicht",
+      "location": "docs/architecture.md (Source layout)",
+      "description": "Die Tabelle listet die Module von `src/` einzeln auf und lässt `effect-error-handlers.ts` und `deprecation-warnings.ts` aus. Beide sind interne Blattmodule mit eigener Rolle in der Schichtung, und beide werden anderswo namentlich erklärt: `AGENTS.md` führt sie, `CONTRIBUTING.md` führt sie. Drei Dateilisten beschreiben denselben Baum, eine davon unvollständig — wer sich auf sie verlässt, hält die Schichtung für kürzer, als sie ist. Der Remediation-Lauf vom 14. August hat eine dritte Lücke derselben Tabelle geschlossen (`thenable-guard.ts`); diese zwei sind älter und blieben stehen, weil sie nicht aus dem Lauf stammen.",
+      "recommendation": "Beide Zeilen ergänzen, in der Form der Nachbarn. Danach ist die Frage wert gestellt zu werden, ob drei handgepflegte Dateilisten über denselben Baum eine zu viel sind — `AGENTS.md`, `CONTRIBUTING.md` und `docs/architecture.md` driften unabhängig voneinander, und genau so ist diese Lücke entstanden."
+    },
+    {
+      "id": "BUILD-025",
+      "category": "Projektaufbau & Build",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "effort": "S",
+      "title": "Die JSDoc einer nicht exportierten Klasse wird ausgeliefert",
+      "location": "src/batch.ts (Batch) · lib/batch.d.ts",
+      "description": "`class Batch` ist modulintern und wird von keinem Entry-Point re-exportiert. `tsc` emittiert sie trotzdem als `declare class Batch` nach `lib/batch.d.ts`, weil sie im Typ von `getCurrentBatch()` auftaucht — mitsamt der JSDoc ihrer Methoden `unbatch()` und `run()`, rund 1,5 kB, die kein Konsument über einen Import erreichen kann. Dieselbe Lage hat `EffectImpl` in `lib/EffectImpl.d.ts`. `stripInternal` greift nicht, weil die Blöcke kein `@internal` tragen.",
+      "recommendation": "Die Methoden-JSDoc mit `@internal` markieren, dann räumt `stripInternal` sie ab; die Klasse selbst muss in der Deklaration bleiben, weil ein öffentlicher Rückgabetyp sie nennt. Vorher an `lib/*.d.ts` messen, was tatsächlich verschwindet — dasselbe für `EffectImpl`."
+    },
+    {
+      "id": "BUILD-026",
+      "category": "Projektaufbau & Build",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "effort": "S",
+      "title": "Ein @internal-Symbol erreicht die ausgelieferten Deklarationen, weil sein Kommentar keiner ist",
+      "location": "src/constants.ts ($autoMapResources) · lib/constants.d.ts",
+      "description": "`$autoMapResources` ist als internes Test-Seam gedacht und trägt seine Begründung als `//`-Kommentar statt als JSDoc mit `@internal`. `stripInternal` sieht deshalb nichts und emittiert `export declare const $autoMapResources: unique symbol;` nach `lib/constants.d.ts`. Folgenlos für Konsumenten — weder `src/index.ts` noch die `exports`-Map führen dorthin, die Datei ist von außen unerreichbar —, aber die Absicht und das Ergebnis gehen auseinander, und die anderen fünf Symbole derselben Art werden korrekt abgeräumt.",
+      "recommendation": "Entweder `@internal` an die Deklaration, oder den Fall bewusst stehen lassen und in `docs/architecture.md` festhalten, dass `constants.ts` nicht gestrippt wird. Die zweite Variante ist billiger und ehrlicher, solange die Datei kein Entry-Point erreicht."
+    },
+    {
+      "id": "READ-018",
+      "category": "Lesbarkeit & Clean Code",
+      "domain": "code",
+      "severity": "info",
+      "status": "new",
+      "effort": "S",
+      "title": "Rumpfkommentare erzählen den Vorzustand der Bibliothek",
+      "location": "src/SignalLink.ts · src/link.ts · src/batch.ts",
+      "description": "Diese Kommentare beschreiben, was eine frühere Fassung tat: welche Zeile hier stand, was sie kostete, warum sie ging. Für jemanden, der den Vorzustand nie gesehen hat, erklären sie etwas, das es für ihn nie gab. Die veröffentlichte Prosa unter `docs/` und `skills/` ist am 14. August durchgängig auf Gegenwart gezogen worden; die Rumpfkommentare blieben ausgespart, weil die Entscheidung jenes Laufs sie ausdrücklich außerhalb hielt.",
+      "recommendation": "Beim nächsten Anfassen der jeweiligen Stelle mitziehen, nicht als eigener Durchgang. `docs/conventions.md` trägt die Regel seit dem 14. August — sie greift für neue Zeilen, und der Bestand kommt beim Ändern nach."
+    },
+    {
+      "id": "READ-019",
+      "category": "Lesbarkeit & Clean Code",
+      "domain": "code",
+      "severity": "info",
+      "status": "new",
+      "effort": "S",
+      "title": "Acht Kommentare in src/ nennen Paketnummern früherer Remediation-Läufe",
+      "location": "src/ (acht Fundstellen, u. a. index.public-surface.spec.ts, effects.noAutorun.spec.ts)",
+      "description": "Formulierungen wie »seit Paket 5« oder »Package 1 hat das geändert« verweisen auf die Nummerierung eines Laufs, dessen Plan niemand mehr hat. Für jeden späteren Leser ist die Nummer bedeutungslos; was sie meinte, steht im git-Verlauf, der ohnehin die bessere Quelle ist.",
+      "recommendation": "Die acht Stellen in einem Zug auf die Sache umschreiben, ohne Nummer. Einzeln repariert sähe der Rest wie Absicht aus — deshalb entweder alle oder keine."
     }
   ],
   "acknowledged": [],
   "openQuestions": [
     {
       "q": "Wann fällt das -dev aus 1.0.0-dev?",
-      "ctx": "Der `## Unreleased`-Block trägt 285 Einträge, davon 55 unter `### Breaking Changes`. `scripts/publishPackage.cjs` verweigert die Veröffentlichung, solange die Version auf `-dev` endet, und `main.yml` veröffentlicht bei jedem Push auf `main`. Das Suffix fallen zu lassen ist der Release, ohne Tag und ohne Freigabe dazwischen. Die Mechanik steht in CONTRIBUTING.md; die Entscheidung bleibt beim Maintainer."
+      "ctx": "Der `## Unreleased`-Block trägt 294 Einträge, davon 58 unter `### Breaking Changes`. `scripts/publishPackage.cjs` verweigert die Veröffentlichung, solange die Version auf `-dev` endet, und `main.yml` veröffentlicht bei jedem Push auf `main`. Das Suffix fallen zu lassen ist der Release, ohne Tag und ohne Freigabe dazwischen. Die Mechanik steht in CONTRIBUTING.md; die Entscheidung bleibt beim Maintainer."
     },
     {
       "q": "Womit authentifiziert sich der Deploy-Job?",
@@ -879,118 +1012,143 @@ könnten, wenn jemand Lust hat.</p>
                 low:'var(--sev-low)',info:'var(--sev-info)'};
   const DL = {code:S.domains.code.label, harness:S.domains.harness.label};
   const STL = {new:'neu','carried-over':'übernommen',unchanged:'unverändert',improved:'verbessert'};
+  const MON = ['Januar','Februar','März','April','Mai','Juni','Juli','August',
+               'September','Oktober','November','Dezember'];
   const n = v => String(v).replace('.', ',');
+  const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const md = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+  const long = iso => { const [y,m,d] = iso.split('-'); return `${+d}. ${MON[+m-1]} ${y}`; };
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
 
-  /* header */
-  document.getElementById('scoreBig').innerHTML =
-    n(S.score) + '<span class="score-of">/ 100</span>';
-  document.getElementById('subScores').innerHTML =
-    `<span>${DL.code} <b>${n(S.domains.code.score)}</b></span>` +
-    `<span>${DL.harness} <b>${n(S.domains.harness.score)}</b></span>`;
+  /* ── header ── */
+  set('eyebrow', `Projekt-Audit · Stand ${long(S.date)}`);
+  set('scoreBig', n(S.score) + '<i>/ 100</i>');
+  set('subScores',
+    `<div class="stat"><div class="k">${DL.code}</div>` +
+      `<div class="v">${n(S.domains.code.score)}<i>/ 100</i></div></div>` +
+    `<div class="stat"><div class="k">${DL.harness}</div>` +
+      `<div class="v">${n(S.domains.harness.score)}<i>/ 100</i></div></div>`);
+
   const d = S.score - S.previousScore;
-  const arrow = d > 0 ? '▲ +' + n(d) : d < 0 ? '▼ −' + n(Math.abs(d)) : '<span class="flat">– ±0</span>';
-  document.getElementById('deltaLine').innerHTML =
-    `${arrow} <span class="flat">(vorher ${n(S.previousScore)}, ${S.previousDate})</span>`;
-  document.getElementById('diffLine').innerHTML =
+  const arrow = d > 0 ? '▲ +' + n(d) : d < 0 ? '▼ −' + n(Math.abs(d)) : '<span class="flat">± 0</span>';
+  set('deltaLine', `${arrow} <span class="flat">(vorher ${n(S.previousScore)}, ${S.previousDate})</span>`);
+  set('diffLine',
     `<b>${S.resolvedCount} behoben</b> · <b>${S.improvedCount} verbessert</b> · ` +
-    `<b>${S.newCount} neu</b> · ${S.carriedOverCount} übernommen — seit dem Audit vom ${S.previousDate}. ` +
-    `Behobene Punkte erscheinen nur noch als Zähler; die Einzelheiten stehen im git-Verlauf dieser Datei.`;
+    `<b>${S.newCount} neu</b> · ${S.carriedOverCount} übernommen — durch einen Remediation-Lauf am ${S.date}, nicht durch einen neuen Audit. ` +
+    `Behobene Punkte erscheinen nur noch als Zähler; die Einzelheiten stehen im git-Verlauf dieser Datei.`);
 
-  /* score chart */
+  /* ── Score-Verlauf ── */
   const H = S.scoreHistory;
   if (H.length >= 3) {
-    const W = 640, HT = 200, PL = 38, PR = 16, PT = 18, PB = 30;
+    const W = 420, HT = 168, PL = 30, PR = 14, PT = 22, PB = 28;
     const x = i => PL + i * (W - PL - PR) / Math.max(1, H.length - 1);
     const y = v => PT + (100 - v) / 100 * (HT - PT - PB);
     let g = '';
     for (const v of [0, 50, 100])
-      g += `<line x1="${PL}" y1="${y(v)}" x2="${W-PR}" y2="${y(v)}" stroke="#2b3a55" stroke-width="1"/>` +
-           `<text x="${PL-8}" y="${y(v)+4}" text-anchor="end" fill="#8595ab" font-size="10">${v}</text>`;
+      g += `<line x1="${PL}" y1="${y(v)}" x2="${W - PR}" y2="${y(v)}" stroke="#2e3a52" stroke-width="1"/>` +
+           `<text x="${PL - 7}" y="${y(v) + 4}" text-anchor="end" fill="#8b9ab1" font-size="11">${v}</text>`;
     const pts = H.map((h, i) => `${x(i)},${y(h.score)}`).join(' ');
     let dots = '';
     H.forEach((h, i) => {
       const last = i === H.length - 1;
-      dots += `<circle cx="${x(i)}" cy="${y(h.score)}" r="${last?5:3.5}" fill="${last?'#a5b4fc':'#0f172a'}" stroke="#a5b4fc" stroke-width="1.6"/>`;
-      if (last || i === 0 || H.length <= 7)
-        dots += `<text x="${x(i)}" y="${y(h.score)-11}" text-anchor="middle" fill="${last?'#e2e8f0':'#8595ab'}" font-size="10">${n(h.score)}</text>`;
-      if (i === 0 || last || i === H.length - 2)
-        dots += `<text x="${x(i)}" y="${HT-8}" text-anchor="${i===0?'start':'middle'}" fill="#8595ab" font-size="9.5">${h.date.slice(5)}</text>`;
+      const anchor = i === 0 ? 'start' : last ? 'end' : 'middle';
+      dots += `<circle cx="${x(i)}" cy="${y(h.score)}" r="${last ? 5 : 3.5}" ` +
+        `fill="${last ? '#a5b4fc' : '#0d1424'}" stroke="#a5b4fc" stroke-width="1.7"/>`;
+      dots += `<text x="${x(i)}" y="${y(h.score) - 11}" text-anchor="${anchor}" ` +
+        `fill="${last ? '#e6ecf5' : '#8b9ab1'}" font-size="13">${n(h.score)}</text>`;
+      if (i === 0 || last || h.date !== H[i - 1].date)
+        dots += `<text x="${x(i)}" y="${HT - 8}" text-anchor="${anchor}" fill="#8b9ab1" ` +
+          `font-size="11.5">${h.date.slice(5)}</text>`;
     });
-    document.getElementById('chartWrap').innerHTML =
+    const note = H[H.length - 1].source === 'remediation'
+      ? ' Der letzte Punkt stammt aus einem Remediation-Lauf, nicht aus einer neuen Prüfung.' : '';
+    set('chartWrap',
       `<svg viewBox="0 0 ${W} ${HT}" role="img" aria-label="Verlauf der Health-Scores">` +
-      g + `<polyline points="${pts}" fill="none" stroke="#818cf8" stroke-width="2" stroke-linejoin="round"/>` +
-      dots + `</svg><figcaption>Verlauf der Health-Scores seit ${H[0].date}.</figcaption>`;
+      g + `<polyline points="${pts}" fill="none" stroke="#8b9bfb" stroke-width="2.2" ` +
+      `stroke-linejoin="round" stroke-linecap="round"/>` + dots + '</svg>' +
+      `<figcaption>Verlauf der Health-Scores seit ${H[0].date}.${note}</figcaption>`);
   }
 
-  /* bars + categories per domain */
+  /* ── Domain-Blöcke: Score, Zusammenfassung, Balken, Kategorien ── */
+  const scale = Math.max(1, ...['code','harness'].flatMap(k => Object.values(S.domains[k].bySeverity)));
   for (const k of ['code','harness']) {
-    const dom = S.domains[k], tot = Object.values(dom.bySeverity).reduce((a,b)=>a+b,0) || 1;
+    const dom = S.domains[k];
+    const cap = k[0].toUpperCase() + k.slice(1);
+    set('title' + cap, esc(dom.label));
+    set('score' + cap, n(dom.score) + '<i>Teilscore / 100</i>');
+    set('sum' + cap, `<p>${md(dom.executiveSummary)}</p>`);
     document.querySelector(`[data-bars="${k}"]`).innerHTML = SEV.map(s => {
       const v = dom.bySeverity[s] || 0;
-      return `<div class="bar-row"><span class="bar-l">${s}</span>` +
-        `<span class="bar-track"><span class="bar-fill" style="width:${(v/tot*100).toFixed(1)}%;background:${SEVC[s]}"></span></span>` +
-        `<span class="bar-n">${v}</span></div>`;
+      return `<div class="bar-row${v ? '' : ' zero'}"><span class="bar-l">${s}</span>` +
+        `<span class="bar-track"><span class="bar-fill" style="width:${(v / scale * 100).toFixed(1)}%;` +
+        `background:${SEVC[s]}"></span></span><span class="bar-n">${v}</span></div>`;
     }).join('');
-    const cats = Object.entries(dom.byCategory).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+    const cats = Object.entries(dom.byCategory).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
     document.querySelector(`[data-cats="${k}"]`).innerHTML =
-      cats.map(([c,v]) => `<div class="cat-row"><span>${c}</span><b>${v}</b></div>`).join('');
+      cats.map(([c, v]) => `<div class="cat-row"><span>${esc(c)}</span><b>${v}</b></div>`).join('');
   }
+  set('sumMeta', `Zwei Bereiche · Teilscores auf derselben 100er-Skala`);
 
-  /* category select */
+  /* ── Backlog ── */
+  const sevMeta = SEV.filter(s => S.counts[s]).map(s => `${S.counts[s]} ${s}`).join(' · ');
+  set('backlogMeta', `${F.length} Punkte · ${sevMeta}`);
+
   const sel = document.getElementById('catSel');
   const state = {domain:'', severity:'', status:'', category:''};
   const fillCats = () => {
     const cur = sel.value;
-    const set = [...new Set(F.filter(f => !state.domain || f.domain === state.domain).map(f => f.category))].sort();
+    const list = [...new Set(F.filter(f => !state.domain || f.domain === state.domain)
+      .map(f => f.category))].sort();
     sel.innerHTML = '<option value="">alle</option>' +
-      set.map(c => `<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join('');
+      list.map(c => `<option value="${esc(c)}"${c === cur ? ' selected' : ''}>${esc(c)}</option>`).join('');
     if (sel.value !== cur) { sel.value = ''; state.category = ''; }
   };
 
-  /* backlog */
   const tb = document.getElementById('tbody');
-  const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-  const md = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
-
   const render = () => {
     const rows = F.filter(f =>
       (!state.domain || f.domain === state.domain) &&
       (!state.severity || f.severity === state.severity) &&
       (!state.status || f.status === state.status) &&
       (!state.category || f.category === state.category));
-    tb.innerHTML = rows.map((f, i) => {
-      const sb = f.status ? `<span class="sbadge ${f.status}">${STL[f.status] || f.status}</span>` : '';
-      const prev = f.status === 'improved' && f.previousSeverity
-        ? ` <span class="sub">(${f.previousSeverity} → ${f.severity})</span>` : '';
-      return `<tr class="head" data-i="${i}" tabindex="0">
-        <td class="sevcell"><span class="sev"><span class="dot" style="background:${SEVC[f.severity]}"></span>${f.severity}</span></td>
-        <td class="id">${f.id}</td>
-        <td class="domcell"><span class="dbadge">${DL[f.domain]}</span></td>
-        <td class="title">${md(f.title)}</td>
-        <td class="loc">${esc(f.location)}</td>
-        <td class="meta">${f.category}</td>
-        <td class="meta">${sb}${prev}</td>
-        <td class="meta">${f.effort}</td></tr>
-      <tr class="detail" data-d="${i}" hidden><td colspan="8">
-        <h4>Problem</h4><div class="prose">${md(f.description)}</div>
-        <h4>Empfehlung</h4><div class="prose">${md(f.recommendation)}</div>
-      </td></tr>`;
-    }).join('');
-    document.getElementById('fcount').textContent =
-      `${rows.length} von ${F.length} Punkten`;
+    tb.innerHTML = rows.length === 0
+      ? `<tr><td colspan="8"><div class="empty">Keine Punkte für diese Auswahl.</div></td></tr>`
+      : rows.map((f, i) => {
+        const sb = f.status ? `<span class="sbadge ${f.status}">${STL[f.status] || f.status}</span>` : '';
+        const prev = f.status === 'improved' && f.previousSeverity
+          ? ` <span class="sub">(${f.previousSeverity} → ${f.severity})</span>` : '';
+        const sv = `style="--sev:${SEVC[f.severity]}"`;
+        return `<tr class="head" ${sv} data-i="${i}" tabindex="0" role="button" aria-expanded="false">
+          <td class="sevcell">${f.severity}</td>
+          <td class="id">${f.id}</td>
+          <td class="domcell"><span class="dbadge">${esc(DL[f.domain])}</span></td>
+          <td class="title">${md(f.title)}</td>
+          <td class="loc">${esc(f.location)}</td>
+          <td class="meta"><span class="card-only">Kategorie </span>${esc(f.category)}</td>
+          <td class="meta nowrap">${sb}${prev}</td>
+          <td class="meta nowrap"><span class="card-only">Aufwand </span>${esc(f.effort)}</td></tr>
+        <tr class="detail" ${sv} data-d="${i}" hidden><td colspan="8">
+          <h4>Problem</h4><div class="prose">${md(f.description)}</div>
+          <h4>Empfehlung</h4><div class="prose">${md(f.recommendation)}</div>
+        </td></tr>`;
+      }).join('');
+    document.getElementById('fcount').textContent = `${rows.length} von ${F.length} Punkten`;
   };
 
-  tb.addEventListener('click', e => {
-    const tr = e.target.closest('tr.head'); if (!tr) return;
+  const toggle = tr => {
     const det = tb.querySelector(`tr.detail[data-d="${tr.dataset.i}"]`);
+    if (!det) return;
     det.hidden = !det.hidden;
+    tr.classList.toggle('open', !det.hidden);
+    tr.setAttribute('aria-expanded', String(!det.hidden));
+  };
+  tb.addEventListener('click', e => {
+    const tr = e.target.closest('tr.head'); if (tr) toggle(tr);
   });
   tb.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     const tr = e.target.closest('tr.head'); if (!tr) return;
-    e.preventDefault();
-    const det = tb.querySelector(`tr.detail[data-d="${tr.dataset.i}"]`);
-    det.hidden = !det.hidden;
+    e.preventDefault(); toggle(tr);
   });
 
   document.querySelectorAll('.fbtn[data-f]').forEach(b => {
