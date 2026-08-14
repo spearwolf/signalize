@@ -81,10 +81,10 @@ class Batch {
   flush() {
     // The queue is spent either way: `run()` delivers a RECALL to every id
     // in it and only then re-raises what the effects handed in, so a throw
-    // is never "we stopped halfway". Clearing after `run()` instead of in a
-    // `finally` used to leave the whole queue standing — and `hibernate()`,
-    // its only caller, then restored a batch that recalled every one of
-    // them a second time when it closed: two runs of the same callback for
+    // is never "we stopped halfway". Clearing after `run()` instead of in
+    // the `finally` would leave the whole queue standing — and `hibernate()`,
+    // its only caller, would then restore a batch that recalls every one of
+    // them a second time when it closes: two runs of the same callback for
     // one write, and the same failure reported at two different callers.
     //
     // The argument covers the delivery, not `run()`'s own setup: a throw out

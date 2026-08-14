@@ -219,14 +219,10 @@ describe('@signal is a class accessor decorator', () => {
   });
 
   it('carries a function-valued accessor and a freely chosen name', () => {
-    // The two behaviours the five casts used to cover up: a function-valued
-    // accessor goes through the *value* overload of `SignalWriter` and is
-    // stored, not called; a freely chosen name is a name, not a property of
-    // the class. This is a behaviour test, not a regression guard for the
-    // casts themselves — put them back and it stays green, because they never
-    // changed what runs. There is no type witness to write: the lie sat
-    // in the body, never in a shipped signature (`lib/decorators.d.ts` is
-    // unchanged by the fix).
+    // Two behaviours that no shipped signature carries, which is why they
+    // are pinned at runtime here: a function-valued accessor goes through
+    // the *value* overload of `SignalWriter` and is stored, not called; a
+    // freely chosen name is a name, not a property of the class.
     class Foo {
       @signal() accessor cb: () => number = () => 1;
       @signal({name: 'renamed'}) accessor other = 'x';

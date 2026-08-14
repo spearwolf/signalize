@@ -272,8 +272,8 @@ describe('the published type surface', () => {
       expect(muted).toBe(false);
       expect(gone).toBe(false);
 
-      // What the rebuild does *not* do: the runtime object is untouched, it
-      // is only typed down. `link.source` still *is* the implementation.
+      // The narrowing is type-level only: the runtime object is untouched,
+      // and `link.source` still *is* the implementation.
       expect(stillReachableInside).toBe(theLink.source);
       expect(typeof writer).toBe('function');
       expect(typeof reader).toBe('function');
@@ -428,15 +428,14 @@ describe('the published type surface', () => {
     // type parameter is checked against its constraint, and freshness does
     // not survive that. The exactness clause on the params puts the check
     // back. It matters most for the typo it catches first — `lasy` is the
-    // neighbour of the very flag this package is about, and `createSignal`
-    // has always rejected both spellings.
+    // neighbour of `lazy` itself, and `createSignal` rejects both spellings.
     const count = createSignal(0);
 
     try {
       // @ts-expect-error `comapre` is not `compare`.
       count.set(5, {touch: true, comapre: (a: number, b: number) => a === b});
       // @ts-expect-error `lasy` is not `lazy` — the one typo that
-      // would otherwise buy silence on the branch this package closes.
+      // would otherwise buy silence on the branch the exactness clause closes.
       count.set(6, {lasy: true, touch: true});
 
       // Both wrote their value; only the misspelled option did nothing.
@@ -546,7 +545,7 @@ describe('the published type surface', () => {
     // that closes the branch for a statically true `lazy` takes the excess
     // property check with it, and the exactness clause puts it back. Without
     // the clause these two compile — with it they do not, and `createSignal`
-    // keeps the typo protection it has always had.
+    // keeps its typo protection.
     //
     // Both need a *valid* key beside the typo, or they witness the wrong
     // mechanism: a literal carrying nothing but stray keys is already refused
@@ -559,7 +558,7 @@ describe('the published type surface', () => {
     const cmp = (a: number, b: number) => a === b;
 
     // @ts-expect-error `lasy` is not `lazy` — the one typo that would
-    // otherwise buy silence on the branch this package closes.
+    // otherwise buy silence on the branch the exactness clause closes.
     const typoLazy = createSignal(5, {lasy: true, compare: cmp});
     // @ts-expect-error `comapre` is not `compare`.
     const typoCompare = createSignal(6, {comapre: cmp, lazy: false});
@@ -850,10 +849,9 @@ describe('the published type surface', () => {
     // Declared, never called. `{}` carries no `[$effect]`, so the unwrapping
     // takes it for an instance, and `undefined.destroyed` is not truthy —
     // the guard lets it in and the next `clear()` dies with `TypeError:
-    // effect.destroy is not a function`. Still true after this package: the
-    // type is the whole defence here, which is why the call lives in type
-    // position only. The runtime assertion below is there for
-    // `noUnusedLocals`, nothing more.
+    // effect.destroy is not a function`. The type is the whole defence here,
+    // which is why the call lives in type position only. The runtime
+    // assertion below is there for `noUnusedLocals`, nothing more.
     const rejected = () => {
       // @ts-expect-error a value that is neither shape stays out.
       group.attachEffect({});
@@ -915,8 +913,8 @@ describe('the published type surface', () => {
   });
 
   it('publishes the diagnostics channel and its payload', () => {
-    // Through the entry point, not the module: the re-export is half of what
-    // this package promises, and `src/index.ts` carries a by-name list that
+    // Through the entry point, not the module: the re-export is part of the
+    // public surface, and `src/index.ts` carries a by-name list that
     // no step of `pnpm world` checks for completeness. That holds for the type
     // list only — `index.public-surface.spec.ts` is the witness for the value
     // list.

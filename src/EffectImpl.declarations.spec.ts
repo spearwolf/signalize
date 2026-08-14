@@ -8,16 +8,16 @@ import {EffectImpl} from './EffectImpl.js';
 import {createEffect, onCreateEffect} from './effects.js';
 import type {FailingEffect} from './types.js';
 
-// `run` and `destroy` move from arrow properties to prototype
-// methods; the user decision of 2026-08-12 takes `runImmediately` with them,
-// though the finding only names the first two. `childEffects`
-// moves from TS-erasable `private` to a real `#`-field.
+// `EffectImpl` declares `run`, `runImmediately` and `destroy` as prototype
+// methods, and `childEffects` as a real `#`-field rather than a TS-erasable
+// `private`.
 //
-// Z3 is written and confirmed green first, against the code as it stands
-// *before* the refactor below — it is the only thing standing between
-// the declaration form and `Signal#onChange()`'s published unsubscribe contract, and a
-// witness written after the fact would never have proven it catches
-// anything.
+// Z3 measures what stands between that declaration form and a caller: the
+// `Effect` facade wraps those prototype methods in bound arrow properties,
+// so a destructured `run` or `destroy` survives a detached call.
+// `Signal#onChange()` hands such a destructured `destroy` back as its
+// published unsubscribe contract — a facade that lost the binding would
+// break that contract silently.
 describe('EffectImpl: how its members are declared', () => {
   beforeEach(() => {
     assertEffectsCount(0, 'beforeEach');
@@ -31,7 +31,7 @@ describe('EffectImpl: how its members are declared', () => {
     assertLinksCount(0, 'afterEach');
   });
 
-  describe('Z3 — the Effect facade stays bound; this package must not touch it', () => {
+  describe('Z3 — the Effect facade stays bound', () => {
     it('run() and destroy() on the facade still work when destructured off it', () => {
       const seen: number[] = [];
       const {run, destroy} = createEffect(
@@ -122,11 +122,11 @@ describe('EffectImpl: how its members are declared', () => {
         const handle = createEffect(() => {}, {autorun: false});
 
         try {
-          // Before the fix, `childEffects` is a plain (TS-erasable
-          // `private`) instance property: this overwrites the real array
-          // with a string. After the fix it is a `#`-field, invisible and
-          // unreachable from here — the assignment lands on a harmless own
-          // property that `destroy()` never looks at.
+          // `childEffects` is a `#`-field, invisible and unreachable from
+          // here: this assignment lands on a harmless own property that
+          // `destroy()` never looks at. As a plain (TS-erasable `private`)
+          // instance property it would overwrite the real array with a
+          // string, and the teardown would walk into it.
           (seen as any).childEffects = 'pwned';
 
           expect(() => handle.destroy()).not.toThrow();

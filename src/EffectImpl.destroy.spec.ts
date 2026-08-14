@@ -263,8 +263,8 @@ describe('EffectImpl.destroy() teardown order', () => {
       );
     } finally {
       // The cleanup throws by design, and destroy() re-raises it. Left
-      // unguarded here it would replace the failure the test is reporting
-      // (rule (d)) — and swallow destroySignal() with it.
+      // unguarded here it would replace the failure the test is reporting —
+      // and swallow destroySignal() with it.
       try {
         effect.destroy();
       } catch {
@@ -626,10 +626,10 @@ describe('EffectImpl.destroy() teardown order', () => {
 
   describe('every teardown step is guarded on its own', () => {
     it('runs the cleanup callback even when an onDestroyEffect handler throws', () => {
-      // The finding's own scenario, reachable through fully public API: the
-      // four steps used to share one `try`, so a throwing reporter took the
-      // cleanup — the one place userland releases its resources — with it,
-      // on an effect that counts as destroyed and gets no second attempt.
+      // Reachable through fully public API: the four steps used to share one
+      // `try`, so a throwing reporter took the cleanup — the one place
+      // userland releases its resources — with it, on an effect that counts
+      // as destroyed and gets no second attempt.
       const {get: a} = createSignal(0);
       let cleanupRuns = 0;
 

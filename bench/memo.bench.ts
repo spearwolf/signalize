@@ -13,13 +13,11 @@ import {createEffect, createMemo, createSignal} from '../src/index.js';
  * (`source.get()`), not `.value` (the untracked read, see `Signal.ts`) — an
  * untracked read means the memo never subscribes to `source` at all,
  * `source.set()` then triggers no RECALL, and the memo body is never
- * entered by the "write source" case below. An earlier version of this
- * suite used `.value` here and silently benchmarked a no-op write instead
- * of a recompute — caught by comparing against
- * `signal-write.bench.ts > signal write, no consumers`, which reported the
- * same throughput as this suite's "recompute" case; a real recompute
- * (effect run + signal write) cannot be as fast as a write with zero
- * subscribers.
+ * entered by the "write source" case below. That mistake is silent in the
+ * numbers, and `signal-write.bench.ts > signal write, no consumers` is what
+ * exposes it: a real recompute (effect run + signal write) cannot be as fast
+ * as a write with zero subscribers, so equal throughput between the two
+ * means this suite is timing a no-op write.
  */
 
 describe('memo recompute, no dependent effect', () => {
@@ -36,10 +34,9 @@ describe('memo recompute, no dependent effect', () => {
     doubled();
   });
 
-  // Paired with {batchWrites: true} (reproduces the old unconditional
-  // batch()) so the delta is readable even without
-  // a dependent effect — see the baseline comment below for why it is small
-  // here.
+  // Paired with {batchWrites: true} (which wraps every recompute in a
+  // `batch()`) so the delta is readable even without a dependent effect —
+  // see the baseline comment below for why it is small here.
   const sourceBatched = createSignal(0);
   const doubledBatched = createMemo(() => sourceBatched.get() * 2, {
     batchWrites: true,
@@ -68,10 +65,9 @@ describe('memo recompute, no dependent effect', () => {
  * machinery only does anything when there is something to defer — a
  * downstream effect subscribed to the memo's own signal. The suite above
  * has none, so it never exercises that path (see the note in the baseline
- * comment below). This suite does: {batchWrites: true}
- * forces the old unconditional batch() back on and is paired against the
- * default so the deferred-dispatch overhead is directly readable as the
- * delta between the two numbers.
+ * comment below). This suite does: {batchWrites: true} wraps every recompute
+ * in a `batch()` and is paired against the default so the deferred-dispatch
+ * overhead is directly readable as the delta between the two numbers.
  */
 
 describe('memo recompute, with a dependent effect', () => {
@@ -132,8 +128,9 @@ describe('memo recompute, with a dependent effect', () => {
  *   real recompute now.)
  *
  * With a dependent effect (`memo recompute, with a dependent effect`) — the
- * case that is actually about, since only here does `Batch#run()` have a
- * delayed effect to redispatch through its two temporary queue listeners:
+ * case the conditional batch is actually about, since only here does
+ * `Batch#run()` have a delayed effect to redispatch through its two
+ * temporary queue listeners:
  *   batchWrites: true (old default, forced back on):   506,934 hz
  *   default (no batchWrites):                         1,333,333 hz  (~2.63x)
  *

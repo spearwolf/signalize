@@ -202,15 +202,15 @@ describe('SignalAutoMap', () => {
   });
 
   it('updateFromProps() with empty object does nothing', () => {
-    // NOTE this is not a regression test for the lazy-allocation guard itself: an
-    // empty `updateFromProps({})` behaved identically before the fix — it
-    // opened a `batch()` whose loop body never ran, so there was no write
-    // and no rerun either way. The guard's actual effect (skipping the
-    // `batch()` call, its `Batch` instance and its two temporary queue
-    // subscriptions entirely) is allocation-only and has no observable
-    // difference a functional test can catch — see bench/batch.bench.ts for
-    // the cost it now skips. This test documents the *outcome* the guard
-    // mirrors from update()'s existing `props.size` check, nothing more.
+    // NOTE this is not a regression test for the lazy-allocation guard
+    // itself: without it, an empty `updateFromProps({})` would open a
+    // `batch()` whose loop body never runs, so there is no write and no
+    // rerun either way. The guard's actual effect (skipping the `batch()`
+    // call, its `Batch` instance and its two temporary queue subscriptions
+    // entirely) is allocation-only and has no observable difference a
+    // functional test can catch — see bench/batch.bench.ts for the cost it
+    // skips. This test documents the *outcome* the guard mirrors from
+    // update()'s existing `props.size` check, nothing more.
     const sm = SignalAutoMap.fromProps({a: 1, b: 2});
 
     try {
@@ -396,10 +396,10 @@ describe('SignalAutoMap', () => {
       expect([...sm.keys()].length).toBe(0);
       assertSignalsCount(0, 'no entry survived either route');
     } finally {
-      // Counter-guard exception: both churn routes destroy their own entries as
-      // the thing under test, so there is nothing to move here. This
-      // finally only adds the idempotent safety net (rule b) in case an
-      // earlier assertion fails before a route finishes its own cleanup.
+      // Counter-guard exception: both churn routes destroy their own entries
+      // as the thing under test, so there is nothing to move here. This
+      // finally only adds the idempotent safety net in case an earlier
+      // assertion fails before a route finishes its own cleanup.
       sm.clear();
     }
   });
@@ -442,14 +442,14 @@ describe('SignalAutoMap', () => {
         destroySubscriptions,
       );
     } finally {
-      // Counter-guard exception (rule c + b): clear() is the act under test and
-      // stays exactly where it is. The finally still needs a handle on sm
-      // (rule a): fromProps() sits inside the try, so a failure before it
-      // completes would otherwise leave the corpse's subscription on
+      // Counter-guard exception: clear() is the act under test and stays
+      // exactly where it is. The finally still needs a handle on sm:
+      // fromProps() sits inside the try, so a failure before it completes
+      // would otherwise leave the corpse's subscription on
       // globalDestroySignalQueue hanging for good — the guards here only
       // count signals/effects/links, not subscriptions. The corpse itself
       // is arranged before the try for the same reason, and gets the
-      // idempotent belt of rule (b) in case its own destroy never ran.
+      // idempotent belt in case its own destroy never ran.
       destroySignal(corpse);
       sm?.clear();
     }
@@ -484,8 +484,7 @@ describe('SignalAutoMap', () => {
       sm.clear();
       assertSignalsCount(0, 'the second clear() takes the fresh entry too');
     } finally {
-      // Not in the plan's named exceptions, but the same shape: the second
-      // clear() above is itself followed by an assertion (rule c), so it
+      // The second clear() above is itself followed by an assertion, so it
       // stays in the try. Two calls here, not one: if the try fails before
       // that second clear() runs (e.g. right after the first one), the
       // re-entrant effect cleanup already laid down a fresh 'a' entry that
@@ -508,9 +507,9 @@ describe('SignalAutoMap', () => {
       expect(sm.has('b')).toBe(false);
       expect(sm.has('c')).toBe(false);
     } finally {
-      // Counter-guard exception (rule c + b): clear() is the act under
-      // test and stays exactly where it is; the finally only adds the
-      // idempotent safety net.
+      // Counter-guard exception: clear() is the act under test and stays
+      // exactly where it is; the finally only adds the idempotent safety
+      // net.
       sm.clear();
     }
   });
@@ -609,9 +608,9 @@ describe('SignalAutoMap', () => {
     });
 
     it('a single failing cleanup arrives unchanged, not wrapped', () => {
-      // Green before the fix as well — it pins the promise of
+      // Not a regression guard: it pins the promise of
       // `throwCollectedErrors()` that the lone case stays exactly what
-      // userland threw, against a fix that wraps unconditionally.
+      // userland threw, against any later change that wraps unconditionally.
       const sm = new SignalAutoMap();
       const a = sm.get('a');
       createEffect(() => {
@@ -735,9 +734,9 @@ describe('SignalAutoMap', () => {
           destroySubscriptions,
         );
       } finally {
-        // Counter-guard exception: every entry is destroyed from the outside as
-        // the thing under test, so there is nothing left to move here. This
-        // finally only adds the idempotent safety net (rule b).
+        // Counter-guard exception: every entry is destroyed from the outside
+        // as the thing under test, so there is nothing left to move here.
+        // This finally only adds the idempotent safety net.
         sm.clear();
       }
     });
@@ -956,9 +955,9 @@ describe('SignalAutoMap', () => {
         assertSignalsCount(0);
         expect(sm.has('a')).toBe(false);
       } finally {
-        // Counter-guard exception: the signal is destroyed from the outside as
-        // the thing under test, so there is nothing left to move here. This
-        // finally only adds the idempotent safety net (rule b).
+        // Counter-guard exception: the signal is destroyed from the outside
+        // as the thing under test, so there is nothing left to move here.
+        // This finally only adds the idempotent safety net.
         sm.clear();
       }
     });
@@ -992,13 +991,13 @@ describe('SignalAutoMap', () => {
           destroySubscriptions,
         );
       } finally {
-        // Counter-guard exception (rule c + b): delete() is the act under test
-        // and stays exactly where it is. The finally still needs a handle
-        // on sm (rule a) for the same reason as the clear() sister test
-        // above: fromProps() sits inside the try, and a failure before it
-        // completes would otherwise leave the corpse's subscription on
+        // Counter-guard exception: delete() is the act under test and stays
+        // exactly where it is. The finally still needs a handle on sm, for
+        // the same reason as the clear() sister test above: fromProps()
+        // sits inside the try, and a failure before it completes would
+        // otherwise leave the corpse's subscription on
         // globalDestroySignalQueue hanging for good. The corpse is arranged
-        // before the try and gets the idempotent belt of rule (b).
+        // before the try and gets the idempotent belt.
         destroySignal(corpse);
         sm?.clear();
       }
@@ -1065,9 +1064,7 @@ describe('SignalAutoMap', () => {
           destroySubscriptions,
         );
       } finally {
-        // Not one of the plan's named exceptions, and not itself under
-        // test here — this test was left unwrapped in the first pass
-        // because its own delete() loop already empties the map on the
+        // This test's own delete() loop already empties the map on the
         // happy path. But a failure anywhere above (e.g. mid-creation, or
         // mid-delete()) leaves whatever the loop hadn't gotten to yet
         // standing, with no neighbor after this test in the file to reveal

@@ -150,10 +150,10 @@ describe('createSignal(existingSignal, params) passthrough', () => {
     }
   });
 
-  it('sees lazy through a SignalParams variable — the door 4a leaves open', () => {
-    // createSignal(existing, {lazy: true}) is TS2769 since package 4a. Without
-    // this door — a variable typed SignalParams<T> rather than a literal — the
-    // `lazy` entry on PASSTHROUGH_IGNORED_OPTIONS would be a dead branch.
+  it('sees lazy through a SignalParams variable — the door the overload leaves open', () => {
+    // createSignal(existing, {lazy: true}) is TS2769. Without this door — a
+    // variable typed SignalParams<T> rather than a literal — the `lazy` entry
+    // on PASSTHROUGH_IGNORED_OPTIONS would be a dead branch.
     const seen: SignalizeErrorPayload[] = [];
     const unsubscribe = onSignalizeError((payload) => {
       seen.push(payload);

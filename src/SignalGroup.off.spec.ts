@@ -495,9 +495,9 @@ describe('SignalGroup#off()', () => {
 
       // The rerun fails again — and a deterministically failing callback never
       // has a successful run to heal on. The re-declaration therefore has to
-      // happen *before* the callback: moving it behind the call re-opens
-      // Reproduced for every effect in this shape, with all other tests still
-      // green.
+      // happen *before* the callback: behind it, the detached signal never
+      // gets its subscription back for any effect in this shape — and no
+      // other test in the suite notices.
       expect(() => otherSig.set(1)).toThrow('boom');
       expect(runs).toBe(2);
       expect(getSubscriptionCount(globalSignalQueue)).toBe(

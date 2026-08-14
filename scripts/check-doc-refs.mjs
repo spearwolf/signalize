@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Guard for package 29a: a `datei:zeile` reference in prose has a short
-// half-life in this repo (see AGENTS.md's module-layering section, whose
-// own EffectImpl.ts reference drifted twice before anyone touched it) and
-// nothing here re-derives it. So it is banned outright in the docs that
-// describe current behaviour; a symbol name doesn't go stale the same way.
-// remediation-plan.md and CHANGELOG.md are history and stay exempt — they
-// are allowed to point at where a line was, not where it is.
+// A `datei:zeile` reference in prose has a short half-life in this repo (see
+// AGENTS.md's module-layering section, whose own EffectImpl.ts reference
+// drifted twice before anyone touched it) and nothing here re-derives it. So
+// it is banned outright in the docs that describe current behaviour; a symbol
+// name doesn't go stale the same way. remediation-plan.md and CHANGELOG.md
+// are history and stay exempt — they are allowed to point at where a line
+// was, not where it is.
 
 import {globSync, readFileSync} from 'node:fs';
 import path from 'node:path';

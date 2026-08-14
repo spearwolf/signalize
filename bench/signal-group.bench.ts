@@ -10,15 +10,14 @@ import {SignalGroup} from '../src/index.js';
  * re-entering `findOrCreate` on one already attached), so both get their
  * own bench rather than only measuring the cheaper lookup.
  *
- * What "full allocation" means has changed twice. With eager fields the
- * initializers built eleven containers — five Sets, three Maps, a WeakMap,
- * a WeakSet and the `[$groupResources]` wrapper object — plus WeakRef,
- * FinalizationRegistry.register and eventize(this) in the constructor
- * body. (An older revision of this comment claimed "four Sets, two Maps, a
- * WeakMap"; that was already wrong when it was written.) Today
- * nine of those eleven fields start out pointing at a module-level shared
- * empty stand-in and only allocate on their first write, so a fresh group
- * builds three: `#signals`, `#effects` and the wrapper.
+ * What "full allocation" means here is less than the field list suggests.
+ * Eagerly initialized, those fields would build eleven containers — six
+ * Sets, three Maps, a WeakMap and a WeakSet — plus the `[$groupResources]`
+ * wrapper object, plus WeakRef, FinalizationRegistry.register and
+ * eventize(this) in the constructor body. Nine of the eleven instead start
+ * out pointing at a module-level shared empty stand-in and only allocate on
+ * their first write, so a fresh group builds three objects: `#signals`,
+ * `#effects` and the wrapper.
  *
  * The cache-hit check: `findOrCreate()` used to reach the lookup path
  * only *after* paying the fresh-object allocation cost — `new

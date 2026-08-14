@@ -395,9 +395,8 @@ describe('destroySignal', () => {
       // Subscription order on `globalDestroySignalQueue` is registration
       // order, and the effect registers first — so everything created after
       // it is exactly what a throwing cleanup used to skip. All three
-      // victims from the finding are here: the link stayed subscribed to a
-      // dead source, the group kept the dead SignalImpl, the auto map kept
-      // its entry.
+      // victims are here: the link stayed subscribed to a dead source, the
+      // group kept the dead SignalImpl, the auto map kept its entry.
       const a = createSignal(0);
       const host = {a};
       let propagated = 0;

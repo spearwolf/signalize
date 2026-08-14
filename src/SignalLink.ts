@@ -28,7 +28,7 @@ export type ValueCallback<ValueType = unknown> = (value: ValueType) => void;
 // `#nextValue()` for one that was already dead when the call arrived. From
 // the caller's side there is no meaningful difference between the two, so
 // they must not drift apart — a constant makes that structural instead of a
-// promise (side finding of package 6).
+// promise.
 const NEXT_VALUE_DESTROYED =
   '[signalize] SignalLink destroyed before the next value arrived';
 
@@ -92,11 +92,9 @@ class NextValueRead<ValueType> {
    * collected and clears the cancel hook that `#nextValue()` installed on
    * the shared `PendingRead` — a read that is over cannot be cancelled.
    *
-   * Clearing the hook is precaution, not load bearing, and the difference is
-   * measured. Package 6 removed the clearing and found nothing observable
-   * across seven scenarios: a hook left behind reaches only this read's own
-   * handles, which are spent by then (eventize unsubscribes are idempotent —
-   * measured again in package 8), and it would reject a promise that has
+   * Clearing the hook is precaution, not load bearing: a hook left behind
+   * reaches only this read's own handles, which are spent by then (eventize
+   * unsubscribes are idempotent), and it would reject a promise that has
    * already settled. It stays because the next thing added to a settle path
    * need not be inert.
    */
@@ -399,14 +397,11 @@ export abstract class SignalLink<ValueType = unknown> {
         read.add(() => signal.removeEventListener('abort', onAbort));
       }
 
-      // `on`, not `once` — which is what the line that used to
-      // stand here ("we can not just use 'once' here because the value is
-      // retained") was reaching for, three refactors ago. A retained VALUE is
-      // replayed synchronously inside this very call (see the K1 block
-      // above), and a replay of a generation this caller has already consumed
-      // is not a next value: it has to be ignored *while staying subscribed*.
-      // A `once` is spent by the replay, so ignoring it would leave this
-      // promise pending for good.
+      // `on`, not `once`: a retained VALUE is replayed synchronously inside
+      // this very call (see the K1 block above), and a replay of a generation
+      // this caller has already consumed is not a next value: it has to be
+      // ignored *while staying subscribed*. A `once` is spent by the replay,
+      // so ignoring it would leave this promise pending for good.
       // `hasSettled`, not `settledInline`: the listener sets it on *every*
       // resolution, including one that arrives minutes later. It answers the
       // inline question only because it is read exactly once, on the line
@@ -420,8 +415,8 @@ export abstract class SignalLink<ValueType = unknown> {
       if (read.hasSettled) {
         // Settled by the replay, i.e. from inside the `on()` call above:
         // `releaseAll()` ran before this handle existed, so it walked past
-        // it. Release it here instead — the one thing `once` used to do for
-        // us, since a spent obligation removes itself.
+        // it. Release it here instead — the one thing a `once` would do by
+        // itself, since a spent obligation removes itself.
         releaseValue();
       } else {
         read.add(releaseValue);
@@ -435,9 +430,8 @@ export abstract class SignalLink<ValueType = unknown> {
    * cursor is advanced.
    *
    * A cursor that takes a delivery moves to its generation in the same step,
-   * so a later replay of that same generation is refused. A
-   * plain `nextValue()` passes no cursor and therefore still settles on the
-   * replay, exactly as before.
+   * so a later replay of that same generation is refused. A plain
+   * `nextValue()` passes no cursor and therefore settles on the replay.
    *
    * Stays a method of the link rather than moving into {@link
    * NextValueRead}: it reads `#emittedGeneration`, a `#private` field no
@@ -526,8 +520,8 @@ export abstract class SignalLink<ValueType = unknown> {
     this.#activeAsyncValuesCount += 1;
     // This iterator's own cursor into the shared retained slot.
     // 0 accepts whatever is in the slot right now — a second iterator
-    // joining a running one still starts with the current value, as before —
-    // and from then on the same generation is never handed out twice.
+    // joining a running one starts with the current value — and from then on
+    // the same generation is never handed out twice.
     const cursor = {generation: 0};
     try {
       let i = 0;
@@ -626,11 +620,9 @@ export abstract class SignalLink<ValueType = unknown> {
     // same collect-and-carry-on pattern as the release loop above.
     collect(releaseErrors, () => emit(this, DESTROY, this));
 
-    // No `unretain(this, VALUE)` (and no `retainClear()`, which used to
-    // stand here) — `off(obj)` without a listener argument runs
-    // `keeper.removeAll()`, dropping every retain policy and every stored
-    // value in one go. The line that was here cleared a slot that the next
-    // line was about to remove outright.
+    // No `unretain(this, VALUE)` and no `retainClear()` — `off(obj)` without
+    // a listener argument runs `keeper.removeAll()`, dropping every retain
+    // policy and every stored value in one go.
     collect(releaseErrors, () => off(this));
 
     this.lastValue = undefined;
@@ -719,10 +711,9 @@ export class SignalLinkToSignal<
     super(source);
     this.target = signalImpl(target);
     // Weak self-reference, same reasoning as the base constructor:
-    // `globalDestroySignalQueue` is a permanent module-level
-    // root, so a plain `this` closure here would pin this link — and
-    // through it `source`/`target` — for the process lifetime, same as the
-    // base class's two subscriptions did before they were fixed.
+    // `globalDestroySignalQueue` is a permanent module-level root, so a
+    // plain `this` closure here would pin this link — and through it
+    // `source`/`target` — for the process lifetime.
     const selfRef = new WeakRef(this);
     this.releaseOnDestroy(
       once(globalDestroySignalQueue, this.target.id, () =>

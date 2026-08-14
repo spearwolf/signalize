@@ -52,7 +52,7 @@ describe('SignalAutoMap GC behavior (requires --expose-gc)', () => {
     );
     expect(getSignalsCount()).toBe(signalsBefore + 2 * MAP_COUNT);
 
-    // Two stop conditions, because this test proves both findings at once:
+    // Two stop conditions, because two counters have to come back down here:
     // the signals inside a collected map are never destroyed, so their
     // counter only comes back through the per-signal finalizer.
     for (
@@ -79,11 +79,10 @@ describe('SignalAutoMap GC behavior (requires --expose-gc)', () => {
     // the listener carries. The subscription lives on a module-level queue,
     // so "carried" means "for the rest of the process".
     //
-    // Sharpened the way the reviewer of this package sharpened it: the
-    // unsubscribe handles are taken out of `unsubs` before the maps are
-    // dropped, so the resource finalizer has nothing to release and the
-    // subscriptions cannot go away on their own. Whatever the closure holds
-    // now, it holds for good.
+    // The probe is sharpened past the obvious form: the unsubscribe handles
+    // are taken out of `unsubs` before the maps are dropped, so the resource
+    // finalizer has nothing to release and the subscriptions cannot go away
+    // on their own. Whatever the closure holds now, it holds for good.
     const ENTRY_COUNT = 50;
     const signalRefs: WeakRef<object>[] = [];
     const hostRefs: WeakRef<object>[] = [];

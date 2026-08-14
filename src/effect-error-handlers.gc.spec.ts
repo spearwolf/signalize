@@ -50,13 +50,13 @@ const assertHandlerCountMatchesQueue = () => {
 
 describe('effect-error-handlers GC behavior (requires --expose-gc)', () => {
   it('the module-local handler counter survives 600 groups torn down through the FinalizationRegistry (N13)', async () => {
-    // The path the reviewer of package 8 drove by hand: an `EffectImpl`
-    // destroyed via `SignalGroup.clear()` from the FinalizationRegistry
-    // callback, not via an explicit `effect.destroy()` call. Async, not
-    // sync, on purpose — a synchronous throw out of the first run goes
-    // straight to `createEffect()`'s own caller, and never reaches
-    // `onEffectError()` at all (see its JSDoc). Only the async path — no
-    // caller left to throw at once the microtask settles — routes here.
+    // The path this drives: an `EffectImpl` destroyed via
+    // `SignalGroup.clear()` from the FinalizationRegistry callback, not via
+    // an explicit `effect.destroy()` call. Async, not sync, on purpose — a
+    // synchronous throw out of the first run goes straight to
+    // `createEffect()`'s own caller, and never reaches `onEffectError()` at
+    // all (see its JSDoc). Only the async path — no caller left to throw at
+    // once the microtask settles — routes here.
     const unhandled: unknown[] = [];
     const onUnhandledRejection = (reason: unknown) => {
       unhandled.push(reason);

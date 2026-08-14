@@ -412,8 +412,8 @@ describe('hibernate', () => {
       //
       // Not a single `expect()` runs inside the batch callback: an assertion
       // failure in there is thrown away by `Batch.run()` in `batch()`'s
-      // `finally` (fixed in the same package). The observations are
-      // recorded and asserted afterwards, where nothing can overwrite them.
+      // `finally`. The observations are recorded and asserted afterwards,
+      // where nothing can overwrite them.
       const {get: a, set: setA} = createSignal(0);
       let boomRuns = 0;
       const boom = createEffect(() => {

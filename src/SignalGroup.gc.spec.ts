@@ -371,12 +371,14 @@ describe('SignalGroup GC behavior (requires --expose-gc)', () => {
   it('a host whose only back-reference is a signal value is reclaimed', async () => {
     // The everyday decorator shape, `@signal() accessor self = this`: the
     // host owns a group, the group owns a signal, and the signal's *value*
-    // is the host. Nothing else points at it. With any of the three roots held strongly, all three
-    // module-level roots of `SignalGroup.ts` — the `allGroups` set, the held
-    // value of the FinalizationRegistry, and the per-signal listener on
-    // `globalDestroySignalQueue` — held the group strongly, so the group was
-    // reachable from a GC root and the host through it. Measured on the
-    // fixed build, 1000 of 1000 hosts survived before and 0 of 1000 after.
+    // is the host. Nothing else points at it. All three module-level roots
+    // of `SignalGroup.ts` — the `allGroups` set, the held value of the
+    // FinalizationRegistry, and the per-signal listener on
+    // `globalDestroySignalQueue` — therefore have to hold the group through
+    // a WeakRef: any one of them holding it strongly keeps the group
+    // reachable from a GC root, and the host through it. A separate run at
+    // 1000 hosts reclaimed every one of them; this test drives the smaller
+    // sample below.
     const groupBaseline = getSignalGroupsCount();
     const signalBaseline = getSignalsCount();
     const destBaseline = getSubscriptionCount(globalDestroySignalQueue);

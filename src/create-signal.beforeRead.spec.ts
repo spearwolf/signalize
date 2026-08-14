@@ -51,7 +51,7 @@ describe('createSignal({beforeRead})', () => {
     }
   });
 
-  it('fires when reader is invoked with a callback (regression for #2.1)', () => {
+  it('fires when reader is invoked with a callback', () => {
     const beforeRead = vi.fn();
     const sig = createSignal(1, {beforeRead});
 

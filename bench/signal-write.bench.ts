@@ -88,12 +88,12 @@ for (const n of [1, 10, 100]) {
  *   write, fans out to 10         558,768 hz
  *   write, fans out to 100         62,100 hz
  *
- * All three fan-out cases sit 9-14 % above the Package 17 numbers above
+ * All three fan-out cases sit 9-14 % above the `8cc46e9` numbers above
  * (2,287,486 / 510,935 / 54,633 hz). `write, no consumers` stayed inside its
  * own five-run spread here (11.59M-12.20M, ~5 %), consistent with the >10 %
  * cross-session drift already called out for that case above. Whether the
- * gap on the other three reflects the commits since Package 17 or plain
+ * gap on the other three reflects the commits since `8cc46e9` or plain
  * session noise on this machine is not established by one five-run pass —
- * that needs the same alternating-runs protocol Package 17 used, not this
+ * that needs the alternating-runs protocol that block used, not this
  * one.
  */

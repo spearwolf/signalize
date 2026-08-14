@@ -641,18 +641,17 @@ describe('SignalLink', () => {
           // event-loop ordering, not runner speed.
           //
           // Against a release *one iterator too early* — the failure mode
-          // this test is named for — the assertion bites only since the
-          // retain policy. With iter1's cleanup calling `retainClear()`,
-          // an early release was invisible here: the policy survived it, so
-          // `sigA.set(3)` refilled the slot either way and iter2's read was
-          // replayed regardless. Now the cleanup calls `unretain()` and takes
-          // the policy with it — an early release leaves `sigA.set(3)`
-          // nowhere to land, iter2 hangs, and the sentinel wins. Measured
-          // against exactly that mutant (`#activeAsyncValuesCount === 0` →
-          // `>= 0`): green before the fix, `expected 'TIMEOUT' to deeply
-          // equal {value: 3, done: false}` after it. Other damage to the
-          // retain machinery — dropping the `retain(this, VALUE)` on entry,
-          // say — this test caught before the fix too.
+          // this test is named for — the assertion bites because the last
+          // cleanup calls `unretain()` and takes the retain policy with it:
+          // an early release leaves `sigA.set(3)` nowhere to land, iter2
+          // hangs, and the sentinel wins. A `retainClear()` in its place
+          // would leave the policy standing, so `sigA.set(3)` would refill
+          // the slot either way and iter2's read would be replayed
+          // regardless — the early release invisible here. Measured against
+          // exactly that mutant (`#activeAsyncValuesCount === 0` → `>= 0`):
+          // `expected 'TIMEOUT' to deeply equal {value: 3, done: false}`.
+          // Other damage to the retain machinery — dropping the
+          // `retain(this, VALUE)` on entry, say — this test catches too.
           new Promise((resolve) => setImmediate(() => resolve('TIMEOUT'))),
         ]);
 
@@ -751,9 +750,7 @@ describe('SignalLink', () => {
     // installed from a subclass — these exist solely to give the spec that
     // hook. Two variants, one per error-count path: `destroy()` rethrows a
     // single collected error unchanged, and bundles several into an
-    // `AggregateError` — this is the proof that the `throwCollectedErrors()`
-    // refactor of `destroy()`'s tail is behavior-preserving, not a
-    // regression test for a bug.
+    // `AggregateError`.
     class SingleThrowingLink extends SignalLinkToCallback<number> {
       constructor(source: SignalLike<number>, target: (value: number) => void) {
         super(source, target);

@@ -22,8 +22,8 @@ describe('effect lifecycle', () => {
 });
 
 /*
- * Baseline (reference point for package 12), measured on commit 5cb75f4,
- * single run, one dev laptop — not a gate:
+ * Baseline, measured on commit 5cb75f4, single run, one dev laptop — not a
+ * gate:
  *
  *   create + destroy (1 dependency)   ~329,956 hz
  */

@@ -66,7 +66,7 @@ describe('Effect -> autorun: false', () => {
     }
   });
 
-  describe('an explicitly requested run inside a batch (audit 2026-08-08)', () => {
+  describe('an explicitly requested run inside a batch', () => {
     it('carries the requested run out when the batch closes, instead of dropping it', () => {
       const {get: signal, set: setValue} = createSignal(0);
       const seen: number[] = [];
@@ -86,7 +86,8 @@ describe('Effect -> autorun: false', () => {
         expect(seen).toEqual([0]);
 
         // No `expect()` inside the batch callback — an assertion that fails in
-        // there can be replaced by the flush in `batch()`'s `finally` (// Paket 12). The observation is copied out and checked afterwards.
+        // there can be replaced by the flush in `batch()`'s `finally`. The
+        // observation is copied out and checked afterwards.
         let seenInsideTheBatch: number[] = [];
         batch(() => {
           effect.run();

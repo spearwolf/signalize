@@ -409,7 +409,7 @@ describe('createEffect', () => {
 
   it('onCreateEffect/onDestroyEffect deliver in priority order', () => {
     // The promise `CHANGELOG.md` makes as a breaking change: priority sits in
-    // second place, exactly where `onEffectError()` has always had it. Both
+    // second place, exactly where `onEffectError()` has it. Both
     // handlers of a pair subscribe in low-then-high order, so registration
     // order alone would produce `['low', 'high']` — only the priority
     // argument actually reaching `on()` flips it. Drop that argument in

@@ -22,8 +22,8 @@ describe('the entry point publishes a named surface, not a star', () => {
 
     // Biome's `performance/noReExportAll` catches the value form
     // (`export * from …`) but not `export type * from …` — measured, not
-    // assumed (see the plan for Paket 5). This regex covers both, which is
-    // why the file inspects source text instead of the compiled module.
+    // assumed. This regex covers both, which is why the file inspects source
+    // text instead of the compiled module.
     expect(indexSource).not.toMatch(/^export\s+(?:type\s+)?\*/m);
   });
 
@@ -67,10 +67,10 @@ describe('the entry point publishes a named surface, not a star', () => {
     expect(Object.keys(api).sort()).toEqual([...publishedValues].sort());
   });
 
-  // The two type names this package moves off the link/automap stars and
-  // onto a by-name line (steps 1 and 2 of the plan). Presence, not rejection
-  // — no `@ts-expect-error` here, because what is being asserted is that the
-  // name is still reachable through the entry point, not that it is refused.
+  // The two type names `index.ts` publishes by name rather than through a
+  // star. Presence, not rejection — no `@ts-expect-error` here, because what
+  // is being asserted is that the name is still reachable through the entry
+  // point, not that it is refused.
   const _opts: import('./index.js').LinkOptions = {};
   const _key: import('./index.js').SignalAutoMapKeyType = 'a';
 

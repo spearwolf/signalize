@@ -1,12 +1,12 @@
 // Leaf module — it may import `./constants.js`, `./global-queues.js` and,
 // **type-only**, `./types.js`. Nothing else, and `./effects.js` or
-// `./EffectImpl.js` least of all: both read from this module (the counter it
-// keeps replaces the linear scan `emitEffectError()` used to run), and
-// `effects.ts` → `EffectImpl.ts` → `SignalGroup.ts` → `signalize-error.ts` is
-// already a chain of value imports — a value import back into either of them
-// from here would close a ring. Measured on a prototype that put the counter
-// directly in `effects.ts` instead: `tsc --noEmit` stays silent, `pnpm
-// compile` succeeds, and `pnpm bundle` fails with `Circular dependency: lib/
+// `./EffectImpl.js` least of all: both read the counter this module keeps
+// instead of scanning the queue linearly, and `effects.ts` → `EffectImpl.ts`
+// → `SignalGroup.ts` → `signalize-error.ts` is already a chain of value
+// imports — a value import back into either of them from here would close a
+// ring. Measured on a prototype that put the counter directly in
+// `effects.ts` instead: `tsc --noEmit` stays silent, `pnpm compile`
+// succeeds, and `pnpm bundle` fails with `Circular dependency: lib/
 // effects.js -> lib/EffectImpl.js -> lib/effects.js` (`rollup.config.mjs`'s
 // `CIRCULAR_DEPENDENCY` branch).
 

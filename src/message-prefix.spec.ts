@@ -64,9 +64,9 @@ const ERROR_CONSTRUCTORS = new Set([
  * - Set to the current count, the numbers become a second inventory: deleting
  *   a single legitimate call site turns the suite red with nothing but a
  *   count to explain it.
- * - Set generously below it, they stop catching what they exist for. Measured
- *   during review: with B at 8 against 10 actual findings, two messages could
- *   be moved out of the scanner's view and the floor still passed.
+ * - Set generously below it, they stop catching what they exist for: with B
+ *   at 8 against 10 actual findings, two messages could be moved out of the
+ *   scanner's view and the floor still passed.
  *
  * One step of slack absorbs the ordinary edit — a removed `throw`, a
  * deprecation that reaches its removal — while a scan that has gone blind
@@ -79,9 +79,9 @@ const MINIMUM_FINDINGS = {A: 25, B: 9, C: 2, D: 1};
  * And one floor over all four together, one below the current total of 41.
  *
  * The per-scan floors each grant a step of slack, so three scans can each give
- * up one finding and every individual floor still holds — measured during
- * review with three silent bypasses at once (an aliased reporter import, an
- * aliased gate import, a destructured `console`). The sum is what refuses
+ * up one finding and every individual floor still holds — measured with
+ * three silent bypasses at once (an aliased reporter import, an aliased gate
+ * import, a destructured `console`). The sum is what refuses
  * that: slack is affordable once, not simultaneously across the file.
  */
 const MINIMUM_FINDINGS_TOTAL = 40;
@@ -382,7 +382,7 @@ function scanFile(file: string, src: string): Occurrence[] {
   // the *call*, not on the object literal behind it: an argument that is not a
   // literal — an untyped variable built two lines earlier — is recorded as an
   // unreadable occurrence and fails under (b), rather than being invisible.
-  // Measured during review: anchored on `reportSignalizeError({` alone, two
+  // Measured: anchored on `reportSignalizeError({` alone, two
   // messages could be moved into untyped variables, lose their prefix, and
   // leave the suite green. The second anchor covers the annotated literal
   // `instances.ts` builds and hands to a *foreign* copy's reporter instead of
@@ -470,7 +470,7 @@ function scanConsoleReferences(file: string, src: string): string[] {
  * `tsconfig.lib.json` excludes from `lib/` outright, so nothing in it is a
  * message this library ships. A listing that stopped at the top level would
  * let the first new subdirectory carry its messages out of this check without
- * anything turning red — verified during review against an `src/internal/`.
+ * anything turning red — verified against an `src/internal/`.
  */
 const sourceFiles = readdirSync(SRC_DIR, {recursive: true})
   .map(String)

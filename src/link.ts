@@ -50,11 +50,8 @@ import type {ISignalImpl, SignalLike, SignalReader} from './types.js';
 // apart is the whole point: 59 µs warm; 96 µs for a signal written
 // for the first time in an otherwise warm process; ~0.5 ms as the first
 // thing a fresh process does. With 1000 callback links: 55 ms warm, 60 ms
-// cold. The three figures this file used to carry — 75 µs "warm", 116 µs
-// "cold", 0.60 ms "with no links" — are one per regime, in that order, each
-// 20–30 % above what its own regime measures again today. They never
-// contradicted each other; they answered three questions while all claiming
-// to answer one, which is why only the warm number belongs near a hot path.
+// cold. A single figure in place of the three answers three questions while
+// claiming to answer one, and only the warm number belongs near a hot path.
 // See `link()`'s "Lifetime" JSDoc below and `getLinksCount()` for the
 // counter that makes this measurable in application code.
 const gLinks = new WeakMap<
@@ -62,8 +59,8 @@ const gLinks = new WeakMap<
   Map<object | Function, SignalLink<any>>
 >();
 
-// `getLinksCount()` without an argument used to iterate `gLinks.values()`,
-// which a WeakMap cannot support. This tracks the same total explicitly.
+// A WeakMap cannot be iterated, so the total `getLinksCount()` reports
+// without an argument is tracked explicitly here.
 let gLinksCount = 0;
 
 // A link that is only dropped and garbage-collected — never explicitly
@@ -94,8 +91,9 @@ let gLinksCount = 0;
 // emits no DESTROY, does not call `destroy()`, detaches nothing from a group
 // (a group-attached link is held strongly by `SignalGroup#links` and is
 // never collectible in the first place) and does not touch the target. It is
-// neither schedulable nor observable — only the backlog it used to leave on
-// the global queues is gone.
+// not schedulable, and the corrected count is the only trace it leaves for a
+// caller to see — what it does do is keep a dropped link from leaving its
+// subscriptions on the two global queues.
 const gLinkFinalizer = new FinalizationRegistry<(() => void)[]>(
   (queueUnsubscribes) => {
     for (const unsubscribe of queueUnsubscribes) {

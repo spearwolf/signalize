@@ -91,16 +91,16 @@ const groupResourceFinalizer = new FinalizationRegistry<GroupResources>(
 // reclaimed. FR firing is non-deterministic — explicit cleanup remains
 // preferred — but this prevents the worst-case leak.
 //
-// Since Package 1, `clear()` finishes the whole teardown before it throws,
-// and it throws into a FinalizationRegistry job — a context with no caller.
-// An `uncaughtException` there takes the whole process down. Re-throwing
-// here would just be that crash again, and swallowing silently would be
-// worse still: a throwing cleanup would stay invisible forever. So it goes
-// out on the named diagnostics channel instead, never re-thrown — an
+// `clear()` finishes the whole teardown before it throws, and it throws into
+// a FinalizationRegistry job — a context with no caller. An
+// `uncaughtException` there takes the whole process down. Re-throwing here
+// would just be that crash again, and swallowing silently would be worse
+// still: a throwing cleanup would stay invisible forever. So it goes out on
+// the named diagnostics channel instead, never re-thrown — an
 // `onSignalizeError()` handler can route it, and without one it lands on
-// `console.error` as it always did. This is the one path in the package
-// where `clear()` runs without a caller at all — everywhere else the caller
-// gets its error unchanged.
+// `console.error`. This is the one path in the package where `clear()` runs
+// without a caller at all — everywhere else the caller gets its error
+// unchanged.
 /**
  * @internal Exported for the regression test in `SignalGroup.teardown.spec.ts`.
  */

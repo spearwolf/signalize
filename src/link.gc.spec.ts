@@ -75,13 +75,12 @@ describe('link() GC behavior (requires --expose-gc)', () => {
   });
 
   it('orphaned callback-target links (SignalLinkToCallback) are reclaimed by GC once their source signal is dropped too', async () => {
-    // Probe E from the audit: create 100 links, drop every external
-    // reference (signals, links, callbacks), force GC, and expect
-    // getLinksCount() to fall all the way back to 0, not just "some". The
-    // source signal falling away in the same sweep is load-bearing here
-    //: a link on a *live* source is held by the strong inner
-    // `Map` in `src/link.ts` and is not reclaimed by GC at all — see the
-    // "held until unlink()" test below.
+    // Create 100 links, drop every external reference (signals, links,
+    // callbacks), force GC, and expect getLinksCount() to fall all the way
+    // back to 0, not just "some". The source signal falling away in the same
+    // sweep is load-bearing here: a link on a *live* source is held by the
+    // strong inner `Map` in `src/link.ts` and is not reclaimed by GC at all —
+    // see the "held until unlink()" test below.
     const LINK_COUNT = 100;
 
     try {

@@ -104,10 +104,10 @@ export interface EffectOptionsWithNameDeps {
  * is worse than the crash we came from, so it falls back to the general
  * diagnostics channel — `onSignalizeError()` handlers get it with
  * `source: 'effect'`, and with nobody listening there either it reaches
- * `console.error` as before. That fallback carries the effect id and the
- * phase inside the message text, not as fields; only `onEffectError()` hands
- * them out structured. A handler that throws is treated the same way:
- * reported, never re-raised.
+ * `console.error`. That fallback carries the effect id and the phase inside
+ * the message text, not as fields; only `onEffectError()` hands them out
+ * structured. A handler that throws is treated the same way: reported, never
+ * re-raised.
  *
  * Whether a handler is subscribed is read from `hasEffectErrorHandler()`, a
  * module-local counter in `effect-error-handlers.ts`, not probed on the
@@ -143,11 +143,11 @@ export interface EffectOptionsWithNameDeps {
  * in the constructor and drops out in `destroy()`; `onSignalizeError()`; and
  * `batch.ts`'s catch-all listener, which registers as `*`.
  *
- * `reportSignalizeError()` in `signalize-error.ts` ran the same probe
- * against the same queue for `$signalizeError`, on the fallback path this
- * function falls to when nobody listens here — a report with no
- * `onEffectError` handler used to scan twice. It got a counter of its own
- * too, module-local rather than sharing this module's — see its own JSDoc.
+ * `reportSignalizeError()` in `signalize-error.ts` sits on the fallback path
+ * this function falls to when nobody listens here, and would run the same
+ * probe against the same queue for `$signalizeError` — two scans for a single
+ * report with no `onEffectError` handler. It keeps a counter of its own,
+ * module-local rather than sharing this module's — see its own JSDoc.
  */
 const emitEffectError = (
   effect: EffectImpl,

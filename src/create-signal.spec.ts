@@ -100,7 +100,7 @@ describe('createSignal', () => {
   });
 
   it('isSignal rejects fake signals with generic Symbol.for keys', () => {
-    // A fake object using the old unnamespaced Symbol.for keys should not pass isSignal
+    // A fake object using unnamespaced Symbol.for keys should not pass isSignal
     const fakeSignal = {
       [Symbol.for('signal')]: {id: Symbol('fake')},
     };
@@ -310,7 +310,7 @@ describe('createSignal', () => {
     const sig = createSignal(1);
 
     // onChange passes whatever the callback returns on as the effect's
-    // cleanup. The signature no longer accepts that — the callback
+    // cleanup. The signature does not accept that — the callback
     // below returns `number`, so it needs a directive; a return type of
     // `any`, annotated or inferred, does still slip through, inline or
     // pre-declared alike — but the runtime still tolerates it: a returned

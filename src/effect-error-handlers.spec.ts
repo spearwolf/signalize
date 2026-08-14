@@ -41,12 +41,11 @@ const assertHandlerCountMatchesQueue = () => {
 // without going through `trackEffectErrorHandler()` are deliberately not
 // their own test case here:
 //
-// - A `*` catch-all listener (`batch.ts` registers one) already made
-//   today's probe lie before this package: `getSubscribedEventNames()`
-//   would report `['*']`, and `.includes($effectError)` reads `false`
-//   regardless of a real `$effectError` subscriber. The counter behaves
-//   the same way it always did on that path — no behaviour change to
-//   pin.
+// - A `*` catch-all listener (`batch.ts` registers one) makes today's probe
+//   lie: `getSubscribedEventNames()` reports `['*']`, and
+//   `.includes($effectError)` reads `false` regardless of a real
+//   `$effectError` subscriber. The counter is untouched by that path, so
+//   there is nothing to pin.
 // - A direct `off(globalEffectQueue, callback)` — bypassing the
 //   unsubscribe `onEffectError()` hands back — is the one path that could
 //   *overcount* the handler, and it is not reachable through the public,
@@ -397,10 +396,9 @@ describe('effect-error-handlers', () => {
       // attached to the group) on its own, so the three calls after it are
       // each a no-op on an already-torn-down target — `SignalGroup.delete()`
       // on a group already cleared, `attached.destroy()` on an effect
-      // already destroyed. Checking after every step, not just the last,
-      // is what would have caught the handler count drifting on the
-      // `group.clear()` path specifically, which this test did not exercise
-      // before.
+      // already destroyed. Checking after every step, not just the last, is
+      // what pins a drift in the handler count to the step that caused it —
+      // the `group.clear()` path included.
       group.clear();
       assertHandlerCountMatchesQueue();
       expect(getEffectErrorHandlerCount()).toBe(1);

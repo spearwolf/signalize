@@ -414,10 +414,10 @@ describe('unlink()', () => {
         ).toEqual(['boom-a', 'boom-b']);
         assertLinksCount(0, 'after the double failure');
       } finally {
-        // Rule (d) from package 7a: on the unfixed code `unlink()` leaves
-        // links standing that still carry their throwing listeners, so an
-        // unguarded teardown here would fail a second time and replace the
-        // assertion that brought us here. Each link goes down on its own.
+        // Each link goes down on its own, and guarded: an `unlink()` that
+        // leaves links standing with their throwing listeners still attached
+        // would make a shared teardown here fail a second time and replace
+        // the assertion that brought us here.
         for (const l of created) {
           try {
             l.destroy();

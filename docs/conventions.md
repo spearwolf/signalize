@@ -96,7 +96,9 @@ is English.
 
 Comments are held to a tighter standard here than code, because a wrong comment
 outlives the code it described. The rules are worth reading in full; they are
-the ones most often broken.
+the ones most often broken. Unlike the naming rules above, they hold for every
+comment that lands in the repository — `scripts/`, `bench/` and `smoke/`
+included.
 
 **Comment only where the code cannot speak.** If a fact can be carried by a
 function name, a variable name or a type, it needs no comment. Rename first,
@@ -105,8 +107,11 @@ then decide whether anything is left to say.
 **Say the thing, not where the thing is written down.** Never reference an
 issue, ticket, audit finding or bug number — no `PERF-002`, no `BUG-007`, no
 tracker URL standing in for an explanation. A reader of the code has the code,
-not the tracker. If a piece of code is shaped by a specific hazard, name the
-hazard:
+not the tracker. The number of a work package, a plan step, a rule in that plan
+or a review round is the same borrowed authority one step further out — "package
+7a", "Paket 12", "rule (d) from the plan", "Probe E from the audit" — and the
+reader has a finished plan even less than the tracker. If a piece of code is
+shaped by a specific hazard, name the hazard:
 
 ```ts
 // Bad — the reader has to leave the file, and may find nothing.

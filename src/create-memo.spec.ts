@@ -645,7 +645,7 @@ describe('createMemo', () => {
       }
     });
 
-    it('{batchWrites: true} restores the old grouping: side-effect write and memo write dedupe into one downstream run', () => {
+    it('{batchWrites: true} groups the two writes: side-effect write and memo write dedupe into one downstream run', () => {
       const source = createSignal(0);
       const sideEffectSignal = createSignal('idle');
 
@@ -698,7 +698,7 @@ describe('createMemo', () => {
     // the read regardless of an open batch, so both settings read the same
     // fresh value. The recompute's own write still goes into the batch.
 
-    it('{batchWrites: true}: reading a dirty lazy memo from within a batched outer memo returns its fresh value (audit 2026-08-08)', () => {
+    it('{batchWrites: true}: reading a dirty lazy memo from within a batched outer memo returns its fresh value', () => {
       const dep = createSignal(1);
 
       const inner = createMemo(() => dep.get() * 10, {lazy: true});

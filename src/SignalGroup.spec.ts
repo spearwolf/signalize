@@ -733,11 +733,10 @@ describe('SignalGroup', () => {
     });
 
     it('attachEffect() lets go of an attached wrapper when it is destroyed', () => {
-      // The half no compiler sees: without the unwrapping, a
-      // wrapper pushed in with `as any` was stored as-is, and the DESTROY
-      // hook waited on an object that never fires it — the group kept the
-      // dead effect until `clear()`. Measured against the old code this
-      // assertion read 1.
+      // The half no compiler sees: without the unwrapping, a wrapper pushed
+      // in with `as any` is stored as-is and the DESTROY hook waits on an
+      // object that never fires it — the group keeps the dead effect until
+      // `clear()`, and this assertion reads 1.
       const group = SignalGroup.findOrCreate({});
       const signal = createSignal(0);
 
@@ -1708,11 +1707,11 @@ describe('SignalGroup', () => {
 
         group.attachSignal(signal);
 
-        // The effect the group just took must not survive its teardown. Until
-        // Before this test had a `finally`, it was policed by the
-        // `afterEach` counter alone — a detector by accident. Here it is a
-        // promise: drop the effect loop from `SignalGroup#clear()` and this
-        // line goes red, not the rest of the file.
+        // The effect the group just took must not survive its teardown, and
+        // this line is where that is promised rather than left to the
+        // `afterEach` counter: drop the effect loop from
+        // `SignalGroup#clear()` and this line goes red, not the rest of the
+        // file.
         group.clear();
         assertEffectsCount(0, 'clear() destroyed the attached effect');
       } finally {

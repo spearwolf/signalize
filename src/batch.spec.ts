@@ -636,7 +636,7 @@ describe('batch', () => {
     });
   });
 
-  describe('a memo read inside a batch is current (audit 2026-08-08)', () => {
+  describe('a memo read inside a batch is current', () => {
     it('a memo whose dependency was written in the same batch reads the new value', () => {
       const dep = createSignal(10);
       const memo = createMemo(() => dep.get() * 2);
@@ -729,9 +729,9 @@ describe('batch', () => {
           memo();
         });
 
-        // One recompute for the batch, exactly as before the fix — the read
-        // pulls the queued run forward and takes it out of the queue, instead
-        // of running the callback a second time when the batch closes.
+        // One recompute for the batch — the read pulls the queued run
+        // forward and takes it out of the queue, instead of running the
+        // callback a second time when the batch closes.
         expect(computes, 'one write, one recompute').toEqual([2]);
         expect(memo()).toBe(4);
       } finally {
@@ -873,9 +873,9 @@ describe('batch', () => {
         // write marks `outer` dirty again — a moment after `outer` read the
         // very value it produced. `unbatch()` cannot help: it took the first
         // entry out before the run, and the second one is a genuine "a
-        // dependency was written" as far as the effect can tell. Before
-        // The whole cascade runs inside the flush and comes to one
-        // recompute; an unbatched write plus read has always cost two.
+        // dependency was written" as far as the effect can tell. The batch
+        // is not what costs the second one: an unbatched write plus read
+        // costs two as well.
         //
         // It takes *both* reads to get here: `outer` reads `dep`, which is
         // what marks it dirty and gets it pulled forward at all, and it reads

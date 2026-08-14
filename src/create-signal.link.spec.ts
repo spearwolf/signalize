@@ -340,9 +340,9 @@ describe('connect signals', () => {
       expect(destroyMock).toHaveBeenCalledTimes(2);
     } finally {
       // Counter-guard exception: destroying the signals is itself under test
-      // above and stays exactly where it was (rule c). This finally only
-      // adds the idempotent safety net (rule b) in case an assertion fails
-      // before the body's own teardown runs.
+      // above and stays exactly where it was. This finally only adds the
+      // idempotent safety net in case an assertion fails before the body's
+      // own teardown runs.
       destroySignal(sigA, sigB, sigC);
     }
   });

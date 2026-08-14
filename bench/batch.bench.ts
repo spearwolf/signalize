@@ -85,9 +85,9 @@ describe('batch() around a single write', () => {
  * not go *down*. The cases that skip is about — an empty `batch()`, and a
  * batch whose writes reach no effect — do not exist in this file or anywhere
  * in `bench/`. They were measured (629 ns -> 50 ns and 712 ns -> 120 ns) in a
- * throwaway copy outside the repo and are **not** reproducible from here; the
- * decision not to add them permanently belongs to the review of this suite's
- * scope, not to a performance fix.
+ * throwaway copy outside the repo and are **not** reproducible from here.
+ * Whether they belong in this file permanently is a question about the scope
+ * of the suite, not one a performance change answers.
  *
  * The pairing this file exists for widens as a side effect: `batch()` around
  * a single write went from ~3.7x to ~4.5x the cost of the raw write, because
