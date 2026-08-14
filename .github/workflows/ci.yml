@@ -38,7 +38,7 @@ jobs:
         name: Install dependencies
 
       - run: pnpm check
-        name: Run biome checks (lint + format)
+        name: Run checks (biome + doc refs + banner + layering)
 
       - run: pnpm typecheck
         name: Type-check everything, including specs and benchmarks

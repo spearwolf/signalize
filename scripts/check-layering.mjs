@@ -15,10 +15,15 @@ import {globSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const projectDir = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-);
+// The root is overridable so the spec can point this scan at a fixture
+// tree; `pnpm check:layering` never sets it. Gated on `VITEST` too — Vitest
+// sets it for every child process it spawns, a stray `CHECK_LAYERING_ROOT`
+// left in a real shell cannot, so this override cannot silently soften the
+// gate outside a test run just because the variable happens to be set.
+const projectDir =
+  process.env.VITEST && process.env.CHECK_LAYERING_ROOT
+    ? path.resolve(process.env.CHECK_LAYERING_ROOT)
+    : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const srcDir = path.join(projectDir, 'src');
 
 // The scope is the one `tsconfig.lib.json` compiles: everything that can end
@@ -136,17 +141,33 @@ for (const module of scope) {
 
 const named = (rank) => `rank ${rank} \`${LAYERS[rank].name}\``;
 
-// Reads a file into the two views the scan needs. `code` has the comments
-// removed — a `from "…"` inside a JSDoc sentence is not an import, and a
-// commented-out one is not a live edge. `bare` additionally empties every
-// string literal, keeping its quotes: the specifier of a real import
-// survives as `from ''`, while an error message quoting the words `from
-// './x.js'` does not. Only the statement counter reads `bare`, so the
-// specifiers themselves stay intact in `code`.
+// Reads a file into the two views the scan needs. `code` has the
+// comments removed — a `from "…"` inside a JSDoc sentence is not an
+// import, and a commented-out one is not a live edge — and the literal
+// text of every template literal emptied, because a message that quotes
+// an import line is prose, not an edge. A `${ … }` interpolation is left
+// standing in both views instead: it is code, not prose, and a dynamic
+// `import(…)` can live inside one. `bare` empties ordinary strings on top
+// of that, keeping their quotes: the specifier of a real import survives
+// as `from ''`, while an error message quoting the words `from './x.js'`
+// does not. Only the statement counter reads `bare`; the specifiers
+// themselves stay intact in `code`, which is where an edge is read from.
 function readViews(text) {
+  const {code, bare} = scanCode(text, 0, false);
+  return {code, bare};
+}
+
+// Recursive because a template literal's interpolation can itself hold a
+// template literal with interpolations of its own. `insideInterpolation`
+// is true only while scanning a `${ … }`: scanning then stops at the `}`
+// that closes it, `braceDepth` counting the interpolation's own `{`/`}`
+// pairs so an object literal inside it doesn't close the interpolation
+// early. A string or a nested template consumes its own braces in its own
+// branch before either can reach the depth count below.
+function scanCode(text, i, insideInterpolation) {
   let code = '';
   let bare = '';
-  let i = 0;
+  let braceDepth = 0;
   while (i < text.length) {
     const two = text.slice(i, i + 2);
     if (two === '//') {
@@ -167,20 +188,80 @@ function readViews(text) {
       continue;
     }
     const char = text[i];
-    if (char === "'" || char === '"' || char === '`') {
+    if (char === "'" || char === '"') {
       code += char;
       bare += char;
       i++;
       while (i < text.length && text[i] !== char) {
+        // An escape carries its second character with it, a newline
+        // included: both views keep one line per line, so the reported
+        // line numbers stay the file's own.
+        const chunk = text[i] === '\\' ? text.slice(i, i + 2) : text[i];
+        i += chunk.length;
+        bare += '\n'.repeat(chunk.split('\n').length - 1);
+        code += chunk;
+      }
+      code += char;
+      bare += char;
+      i++;
+      continue;
+    }
+    if (char === '`') {
+      code += char;
+      bare += char;
+      i++;
+      while (i < text.length && text[i] !== '`') {
         if (text[i] === '\\') {
-          code += text.slice(i, i + 2);
+          // An escaped newline in the literal text still counts as a line
+          // for both views, the same as everywhere else in this scan.
+          const isNewline = text[i + 1] === '\n';
+          code += isNewline ? '\n' : '';
+          bare += isNewline ? '\n' : '';
           i += 2;
           continue;
         }
-        if (text[i] === '\n') bare += '\n';
-        code += text[i];
+        if (text.slice(i, i + 2) === '${') {
+          // The interpolation is code, not prose: scanned recursively so a
+          // nested template literal's own interpolations are handled the
+          // same way, and left standing in both views so a dynamic import
+          // inside one still reads as a real edge.
+          code += '${';
+          bare += '${';
+          i += 2;
+          const interpolated = scanCode(text, i, true);
+          code += interpolated.code;
+          bare += interpolated.bare;
+          i = interpolated.i;
+          continue;
+        }
+        // Literal template text is prose, not code: emptied in both views,
+        // a newline kept whenever the character was one, so the reported
+        // line numbers stay the file's own.
+        const isNewline = text[i] === '\n';
+        code += isNewline ? '\n' : '';
+        bare += isNewline ? '\n' : '';
         i++;
       }
+      code += '`';
+      bare += '`';
+      i++;
+      continue;
+    }
+    if (insideInterpolation && char === '{') {
+      braceDepth++;
+      code += char;
+      bare += char;
+      i++;
+      continue;
+    }
+    if (insideInterpolation && char === '}') {
+      if (braceDepth === 0) {
+        code += char;
+        bare += char;
+        i++;
+        return {code, bare, i};
+      }
+      braceDepth--;
       code += char;
       bare += char;
       i++;
@@ -190,7 +271,7 @@ function readViews(text) {
     bare += char;
     i++;
   }
-  return {code, bare};
+  return {code, bare, i};
 }
 
 // `import … from '…'` and `export … from '…'`, clause captured, statement

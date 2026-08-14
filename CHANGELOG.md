@@ -316,6 +316,7 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - The two early guards of `SignalLink.nextValue()` and the link-side release in its abort path are pinned: swapping the guards (an already-aborted signal on an already-destroyed link would reject with the destroy error instead of the abort reason) or dropping the shared `unsubscribe()` from the abort path (an aborted read would leave its DESTROY and VALUE subscriptions on the link) each now fails exactly one test instead of passing unnoticed (READ-014)
 - The overload order of `SignalWriter<T>` and of `link()` is pinned by type witnesses in `src/types.public-surface.spec.ts`: reversing either now fails `pnpm typecheck` instead of quietly changing which signature a consumer's call resolves to
 - `scripts/check-doc-refs.spec.mjs` and `scripts/assert-smoke-build.spec.mjs` run both guard scripts against a temporary fixture tree; the `unit` Vitest project now also matches `scripts/**/*.spec.mjs` (BUILD-022, DX-007)
+- `scripts/check-layering.spec.mjs` runs the layering guard against a copy of `src/` with one module altered, over the `CHECK_LAYERING_ROOT` seam (BUILD-028)
 
 ### Build System
 
@@ -345,6 +346,8 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - New `pnpm check:layering` (`scripts/check-layering.mjs`), wired into `pnpm check` and therefore into `pnpm world` and CI: it ranks the library modules of `src/` in a written-down ladder and fails the build on a value import that reaches sideways or up, which `rollup.config.mjs` only ever notices once some later edge closes a cycle (ARCH-006)
 - `pnpm check:refs` fails when one of its document globs matches no file, or when `AGENTS.md`, `CLAUDE.md`, `README.md` or `CONTRIBUTING.md` is not among the matched documents — a renamed or emptied document is named in the failure instead of leaving the gate silently green (BUILD-022)
 - `pnpm test:smoke` runs its glob guard from `scripts/assert-smoke-build.mjs`, where Biome and a spec can see it (DX-007)
+- `pnpm check:layering` reads a template literal as prose: a message that quotes an `import … from '…'` no longer counts as a value edge, and the statement counter no longer reports a syntax it cannot parse (BUILD-028)
+- The CI step that runs `pnpm check` is named after the whole chain (biome, doc refs, banner, layering) instead of one of its four links (BUILD-027)
 
 ## `v0.31.1` (2026-07-25)
 
