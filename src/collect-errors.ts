@@ -13,6 +13,7 @@
  * @param errors - The failures collected during the teardown, in teardown order
  * @param what - What was being torn down, phrased to follow "errors while ",
  *   e.g. `'destroying an effect'` or `'clearing a signal group'`
+ * @internal
  */
 export const throwCollectedErrors = (errors: unknown[], what: string): void => {
   if (errors.length === 0) return;

@@ -181,6 +181,7 @@ export abstract class SignalLink<ValueType = unknown> {
   // where `destroy()`'s one-shot teardown sequence puts it; the guard at the
   // top of that method (`if (this.isDestroyed) return`) is what actually
   // rules out a second run pushing anything new.
+  /** @internal */
   readonly [$queueUnsubscribes]: (() => void)[] = [];
 
   // How many `asyncValues()` generators are currently iterating

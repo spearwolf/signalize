@@ -487,6 +487,8 @@ export class EffectImpl {
    * `globalDestroySignalQueue` fires once per signal and already has — and
    * it keeps `hasNoLiveSignals()` false forever, so the effect no longer
    * notices when its last *live* dependency goes.
+   *
+   * @internal
    */
   private saveSignalsFromDeps() {
     for (const sig of this.#dependencies!) {
@@ -747,6 +749,8 @@ export class EffectImpl {
    * Run the callback on the effect stack with subscribe-on-read turned off —
    * the static-deps counterpart to the plain `runWithinEffect()` call in the
    * dynamic branch. See the `#suppressAutoTracking` field.
+   *
+   * @internal
    */
   private runWithoutAutoTracking(): unknown {
     const wasSuppressed = this.#suppressAutoTracking;
@@ -905,6 +909,8 @@ export class EffectImpl {
    * re-checked against the dependency set the callback actually built. An
    * effect that really did lose everything still dies — one run later, not
    * never.
+   *
+   * @internal
    */
   private destroyWhenUntriggerable(): void {
     if (this.#runDepth > 0) {
@@ -931,6 +937,8 @@ export class EffectImpl {
    * marked in `#destroyedSignals`), so a soft-detach arriving afterwards for
    * a different signal would never see `#signals` empty even though nothing
    * live remains to trigger the effect.
+   *
+   * @internal
    */
   private hasNoLiveSignals(): boolean {
     return this.#signalSubscriptions.size === 0;
@@ -970,6 +978,8 @@ export class EffectImpl {
    * method on *every* rerun while the overwhelming majority of effects never
    * have a child — without it, each rerun allocated an error array and paid
    * a call for nothing.
+   *
+   * @internal
    */
   private destroyChildEffects(): void {
     if (this.#childEffects.length === 0) return;
@@ -983,6 +993,8 @@ export class EffectImpl {
    * The body of {@link destroyChildEffects}, but appending to a caller-owned
    * error list instead of throwing. Lets `destroy()` merge the child errors
    * with an error from its own cleanup into a single report.
+   *
+   * @internal
    */
   private collectDestroyChildEffects(errors: unknown[]): void {
     for (const effect of this.#childEffects) {
@@ -1045,6 +1057,8 @@ export class EffectImpl {
    *
    * A rejection of the *callback* promise is reported through
    * {@link emitEffectError} with phase `callback`, current run or not.
+   *
+   * @internal
    */
   private storeCleanupCallback(result: unknown, generation: number): void {
     if (!isThenable(result)) {
@@ -1100,6 +1114,8 @@ export class EffectImpl {
    * stale, which is the best available: nobody else holds that run's
    * resource, so this is not a double release, and it is the only thing
    * that will ever release it.
+   *
+   * @internal
    */
   private acceptCleanupCallback(cleanup: VoidFunc, generation: number): void {
     if (this.#destroyed || generation !== this.#generation) {
@@ -1144,6 +1160,8 @@ export class EffectImpl {
    * A synchronous throw and a rejected async cleanup therefore take the
    * same route as every other error without a stack to land on —
    * {@link emitEffectError} with phase `cleanup`.
+   *
+   * @internal
    */
   private runOrphanedCleanupCallback(cleanup: VoidFunc): void {
     try {

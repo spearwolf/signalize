@@ -7,6 +7,8 @@
  * That costs one integer and nothing else — the generator keeps no
  * reference to anything it hands out, so there is no growth behind the
  * number, only the theoretical ceiling at `Number.MAX_SAFE_INTEGER`.
+ *
+ * @internal
  */
 export class UniqIdGen {
   readonly #prefix: string;

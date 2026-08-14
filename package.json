@@ -45,6 +45,7 @@
     "check:refs": "node scripts/check-doc-refs.mjs",
     "check:banner": "node scripts/check-banner.mjs",
     "check:layering": "node scripts/check-layering.mjs",
+    "check:dts": "node scripts/check-dts.mjs",
     "fix": "biome check --write",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
@@ -55,7 +56,7 @@
     "cbt": "run-s -sn clean compile bundle test",
     "dist": "run-s -sn clean compile bundle",
     "smoke": "run-s -sn dist test:smoke",
-    "world": "run-s -sn clean check typecheck compile bundle test:smoke checkPkgTypes test test:gc"
+    "world": "run-s -sn clean check typecheck compile check:dts bundle test:smoke checkPkgTypes test test:gc"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

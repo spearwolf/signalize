@@ -44,7 +44,7 @@ pnpm install
 | Command | Runs |
 | --- | --- |
 | `pnpm cbt` | **The local gate** — clean + compile + bundle + test |
-| `pnpm world` | clean + check + typecheck + compile + bundle + test:smoke + checkPkgTypes + test + test:gc — the full blocking CI scope |
+| `pnpm world` | clean + check + typecheck + compile + check:dts + bundle + test:smoke + checkPkgTypes + test + test:gc — the full blocking CI scope |
 | `pnpm test` | Vitest with the coverage gate. Runs the `unit` and `gc` projects together, so every `src/**/*.gc.spec.ts` runs here too |
 | `pnpm test <file>` | A single spec, e.g. `pnpm test create-signal.spec.ts` |
 | `pnpm test -t "<name>"` | Only tests whose name matches |
@@ -54,6 +54,7 @@ pnpm install
 | `pnpm smoke` | `pnpm dist` + `pnpm test:smoke` — builds first, no stale artifact |
 | `pnpm bench` | The microbenchmark suite in `bench/`. Informative; CI runs it `continue-on-error` |
 | `pnpm check` | Biome lint+format check plus the three guard scripts (`check:refs`, `check:banner`, `check:layering`) |
+| `pnpm check:dts` | Type-checks the emitted `lib/**/*.d.ts` with `skipLibCheck` off, so a `@internal` marker that strips a symbol another `.d.ts` still references is caught. Needs `pnpm compile` to have run; not part of `pnpm check` because that runs before `compile` in `pnpm world` |
 | `pnpm fix` | Biome with auto-fix |
 | `pnpm typecheck` | `tsc --noEmit` over the whole project — the only stage that type-checks `src/**/*.spec.ts`, which `compile` excludes |
 | `pnpm compile` | Two `tsc` passes → `lib/`: JS + sourcemaps, and `@internal`-free `.d.ts` |

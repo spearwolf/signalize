@@ -43,12 +43,15 @@ jobs:
       - run: pnpm typecheck
         name: Type-check everything, including specs and benchmarks
 
-      # Both checks below need the artifact they check, and `pnpm dist` is
-      # `clean + compile + bundle` — `clean` deletes `coverage/`. All three
+      # All three checks below need the artifact they check, and `pnpm dist`
+      # is `clean + compile + bundle` — `clean` deletes `coverage/`. All four
       # steps therefore run *before* `pnpm test`; behind it, the final
       # "Publish coverage summary" step would find nothing left to publish.
       - run: pnpm dist
         name: Build the shipped artifact (lib/ + dist/)
+
+      - run: pnpm check:dts
+        name: Type-check the emitted lib/*.d.ts with skipLibCheck off
 
       - run: pnpm test:smoke
         name: Smoke-test dist/ on plain Node (tsc-lowered decorator)

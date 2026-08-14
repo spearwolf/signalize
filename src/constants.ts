@@ -15,6 +15,7 @@ export const $signalizeError = Symbol.for(
 // `FinalizationRegistry` as its held value, and a private field is
 // unreachable from another module — while a public named field would be a
 // new API surface.
+/** @internal */
 export const $queueUnsubscribes = Symbol.for(
   '@spearwolf/signalize/queueUnsubscribes',
 );
@@ -29,6 +30,7 @@ export const $queueUnsubscribes = Symbol.for(
 // constraint: `src/index.ts` names every export, so neither file would
 // publish it, and `SignalGroup.ts` keeps its own `$groupResources` in
 // place.
+/** @internal */
 export const $autoMapResources = Symbol.for(
   '@spearwolf/signalize/autoMapResources',
 );

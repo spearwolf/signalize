@@ -66,6 +66,8 @@ class Batch {
    * then a duplicate of a run that has already happened. A later write
    * re-queues the effect through `batch()` as before — this takes the
    * pending run away, not the effect's place in the priority order.
+   *
+   * @internal
    */
   unbatch(effectId: symbol, priority: number) {
     const len = this.delayedEffects.length;
@@ -116,6 +118,8 @@ class Batch {
    * effect, and every defensive `batch()` in application code. Without it
    * each of those pays for a `Set`, an array and two subscriptions to
    * deliver nothing.
+   *
+   * @internal
    */
   run() {
     if (this.delayedEffects.length === 0) return;

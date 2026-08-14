@@ -318,6 +318,7 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - The overload order of `SignalWriter<T>` and of `link()` is pinned by type witnesses in `src/types.public-surface.spec.ts`: reversing either now fails `pnpm typecheck` instead of quietly changing which signature a consumer's call resolves to
 - `scripts/check-doc-refs.spec.mjs` and `scripts/assert-smoke-build.spec.mjs` run both guard scripts against a temporary fixture tree; the `unit` Vitest project now also matches `scripts/**/*.spec.mjs` (BUILD-022, DX-007)
 - `scripts/check-layering.spec.mjs` runs the layering guard against a copy of `src/` with one module altered, over the `CHECK_LAYERING_ROOT` seam (BUILD-028)
+- `scripts/check-dts.spec.mjs` runs the declaration gate against a fixture `lib/`, over the `CHECK_DTS_ROOT` seam: a declaration importing what its neighbour does not declare (in the root and one directory down), a `lib/` that is missing or holds no declaration, and a `tsc` that cannot be spawned (BUILD-025, BUILD-026)
 - `smoke/dist-smoke.test.ts` imports `@spearwolf/signalize/package.json` and asserts its `name`: `attw` checks that the entry resolves to JSON, not which file it names, so a target pointing at another shipped JSON file passes it unnoticed (BUILD-014)
 
 ### Build System
@@ -353,6 +354,9 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - The eight exceptions to the 100 % coverage rule in `vitest.config.ts` are listed as paths instead of file names, so a same-named file in a subdirectory of `src/` no longer inherits the exception (BUILD-019)
 - `vitest.config.ts` refuses to start when one of those exceptions points at a file coverage does not report on (BUILD-019)
 - `"./package.json": "./package.json"` added to `package.json#exports` — a consumer or tool resolving `@spearwolf/signalize/package.json` (e.g. to read the version at runtime) now gets the manifest instead of `ERR_PACKAGE_PATH_NOT_EXPORTED` (BUILD-014)
+- `Batch#unbatch()` and `Batch#run()` drop out of `declare class Batch` in the published types, nine `private` `EffectImpl` members go with them, and `lib/collect-errors.d.ts`/`lib/UniqIdGen.d.ts` shrink to `export {};` — the implementation-layer JSDoc `stripInternal` used to ship untouched now goes with the declarations it was attached to (BUILD-025)
+- `$autoMapResources` and `$queueUnsubscribes` no longer reach the published types — both are internal `Symbol.for` keys with no entry point that could ever name them. The published `SignalLink` class loses the `[$queueUnsubscribes]` member as a result (BUILD-026)
+- New `pnpm check:dts` (`scripts/check-dts.mjs`), wired into `pnpm world` right after `compile` and into CI right after `pnpm dist`: type-checks the emitted `lib/**/*.d.ts` with `skipLibCheck` off, so a `@internal` marker that strips a symbol another `.d.ts` still references is caught (`TS2305`/`TS2304`) instead of passing `pnpm check`, `pnpm test:smoke` and `pnpm checkPkgTypes` unnoticed. Exits 1, naming the reason, when `lib/**/*.d.ts` matches no file or when the `tsc` binary cannot be spawned — in both cases nothing read a single declaration, which is not the same as the declarations being correct (BUILD-025, BUILD-026)
 
 ## `v0.31.1` (2026-07-25)
 
