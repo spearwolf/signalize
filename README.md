@@ -365,7 +365,7 @@ pnpm install
 | `pnpm smoke` | Builds (`pnpm dist`) and then runs `test:smoke` — one command, no stale artifact |
 | `pnpm checkPkgTypes` | `attw --pack --profile esm-only` — checks the `exports` map and shipped `.d.ts` across the resolution modes that apply to an ESM-only package |
 | `pnpm bench` | Runs the microbenchmark suite in `bench/` |
-| `pnpm check` / `pnpm fix` | Biome lint+format plus the two guard scripts (`check:refs`, `check:banner`) — check only / Biome auto-fix |
+| `pnpm check` / `pnpm fix` | Biome lint+format plus the three guard scripts (`check:refs`, `check:banner`, `check:layering`) — check only / Biome auto-fix |
 | `pnpm compile` | two `tsc` passes → `lib/` (`compile:js` for JS + sourcemaps, `compile:types` for documented, `@internal`-free `.d.ts`) |
 | `pnpm bundle` | rollup → `dist/` |
 | `pnpm clean` | Remove build artifacts |

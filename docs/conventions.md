@@ -49,6 +49,11 @@ is English.
   `import {x} from './foo.js'` even though the source is `foo.ts`. Always.
 - **No import cycles.** `rollup.config.mjs` treats `CIRCULAR_DEPENDENCY` as an
   error, so a cycle fails `pnpm bundle`.
+- **The layering is ranked, and the rank is checked.** A value import may
+  only reach a strictly lower layer; sideways and upwards both fail
+  `check:layering`, and with it `pnpm check`. The ladder itself lives in
+  `scripts/check-layering.mjs`, and a new module in `src/` has to be given a
+  rank there before the check passes.
 - **`import type` for anything used only as a type.** Biome's
   `style/useImportType` is set to `error`, and it is what keeps the *value*
   import graph acyclic while type-only edges may point anywhere.

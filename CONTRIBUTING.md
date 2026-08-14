@@ -53,7 +53,7 @@ pnpm install
 | `pnpm test:smoke` | `smoke/dist-smoke.test.ts` on plain Node (`node --test`) against the built `dist/`, type-checked against the shipped `lib/*.d.ts`. Needs `pnpm dist` to have run |
 | `pnpm smoke` | `pnpm dist` + `pnpm test:smoke` — builds first, no stale artifact |
 | `pnpm bench` | The microbenchmark suite in `bench/`. Informative; CI runs it `continue-on-error` |
-| `pnpm check` | Biome lint+format check plus the two guard scripts (`check:refs`, `check:banner`) |
+| `pnpm check` | Biome lint+format check plus the three guard scripts (`check:refs`, `check:banner`, `check:layering`) |
 | `pnpm fix` | Biome with auto-fix |
 | `pnpm typecheck` | `tsc --noEmit` over the whole project — the only stage that type-checks `src/**/*.spec.ts`, which `compile` excludes |
 | `pnpm compile` | Two `tsc` passes → `lib/`: JS + sourcemaps, and `@internal`-free `.d.ts` |
@@ -131,13 +131,16 @@ The responsibility of each file, and the layering that must not be broken, is in
 | --- | --- |
 | New `Signal` method | `types.ts` interface → `SignalImpl` in `create-signal.ts` → the `Signal` wrapper → tests in the adjacent spec |
 | New effect option | `EffectOptions` in `EffectImpl.ts` → handle it in the constructor or in `createEffect()` → export the type from `index.ts` → document it in the Types table of `docs/api.md` → tests in `effects.spec.ts` or a new `effects.<feature>.spec.ts` |
-| New utility function | `src/<name>.ts` → re-export from `src/index.ts` → adjacent `<name>.spec.ts` |
+| New utility function | `src/<name>.ts` → **give it a rank in the ladder in `scripts/check-layering.mjs`** → re-export from `src/index.ts` → adjacent `<name>.spec.ts` |
 | New published type | `types.ts` → add the name to the type-export list in `index.ts` → a `@ts-expect-error` witness in `types.public-surface.spec.ts` if the type carries a promise no other test would catch |
 | New published value | the module → add the name to that module's export line in `index.ts` → add the name to the list in `index.public-surface.spec.ts` |
 | Core reactivity | `EffectImpl.ts` (subscribe paths) + `signal-core.ts` (emit paths) + `global-queues.ts`; add subscription-count assertions to the tests |
 
 A new file in `src/` does nothing for consumers until it is wired through
-`src/index.ts` or `src/decorators.ts`.
+`src/index.ts` or `src/decorators.ts`. And it fails `check:layering` — and with
+it `pnpm check` — until the ladder in `scripts/check-layering.mjs` gives it a
+rank. The rank is what decides which modules it may import: strictly lower ones,
+never a sibling and never one above it.
 
 ## Testing
 
