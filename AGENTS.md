@@ -184,13 +184,13 @@ Also avoid reading an imported binding at module-eval time across module boundar
 | --- | --- |
 | `pnpm cbt` | `clean + compile + bundle + test` — local "done" gate |
 | `pnpm world` | `clean + check + typecheck + compile + bundle + test:smoke + checkPkgTypes + test + test:gc` — the full blocking CI scope |
-| `pnpm test` | Vitest (SWC transform, v8 coverage); roots = `src/`. Runs two projects — `unit` and `gc` (`--expose-gc`, `fileParallelism: false`) — as a single run with one combined coverage map; per-file thresholds in `vitest.config.ts`, which refuses to start if a threshold glob group matches no file |
+| `pnpm test` | Vitest (SWC transform, v8 coverage). Runs two projects — `unit` (`src/**/*.{spec,test}.ts` plus `scripts/**/*.spec.mjs`) and `gc` (`src/**/*.gc.spec.ts`, `--expose-gc`, `fileParallelism: false`) — as a single run with one combined coverage map; per-file thresholds in `vitest.config.ts`, which refuses to start if a threshold glob group matches no file |
 | `pnpm test <pattern>` | single spec, e.g. `pnpm test create-signal.spec.ts` |
 | `pnpm test -t "<name>"` | filter by test name |
 | `pnpm test:watch` | Vitest in watch mode, no coverage gate |
 | `pnpm test:gc` | runs every file serially (`fileParallelism: false`, `vitest.gc.config.ts`) with `--expose-gc` applied to the whole suite; not what makes all `src/**/*.gc.spec.ts` execute — `pnpm test` already does that, via the `gc` project, on the same default `forks` pool |
 | `pnpm test:debug` | Vitest under `--inspect-brk`, one file at a time |
-| `pnpm test:smoke` | Clears `smoke/build`, compiles `smoke/*.ts` (`tsc --project smoke/tsconfig.json`), then hard-fails if no `smoke/build/*.test.js` matched — a renamed test file or a stale leftover masking that — before `node --test` runs it; exact command in `package.json`. Runs (does not build the shipped artifact) `dist/`, type-checked against the `lib/*.d.ts`; plain Node, no Vitest |
+| `pnpm test:smoke` | Clears `smoke/build`, compiles `smoke/*.ts` (`tsc --project smoke/tsconfig.json`), then hard-fails if no `smoke/build/*.test.js` matched — a renamed test file or a stale leftover masking that — before `node --test` runs it (`scripts/assert-smoke-build.mjs`); exact command in `package.json`. Runs (does not build the shipped artifact) `dist/`, type-checked against the `lib/*.d.ts`; plain Node, no Vitest |
 | `pnpm smoke` | `pnpm dist` + `pnpm test:smoke` — builds first, then smoke-tests; the single-command entry point for a human or for iterating on `smoke/dist-smoke.test.ts` |
 | `pnpm bench` | Vitest Bench over `bench/*.bench.ts`; informative in CI, no regression gate |
 | `pnpm compile` | `run-s compile:js compile:types` — two `tsc` passes into `lib/` |
@@ -240,7 +240,7 @@ edge cases attached.
 
 - **Edit only `src/`.** `lib/` (tsc) and `dist/` (rollup) are generated artifacts.
 - **Imports use `.js` extension** within `src/` (NodeNext resolution): `import {x} from './foo.js'` even when source is `foo.ts`. Required.
-- **Test files**: `*.spec.ts` adjacent to implementation. Vitest matches `src/**/*.{spec,test}.ts`. Globals (`describe`, `it`, `expect`, `vi`) are enabled — no imports needed, except `import type {MockInstance} from 'vitest'` when you type a spy.
+- **Test files**: `*.spec.ts` adjacent to implementation. Vitest matches `src/**/*.{spec,test}.ts`. Globals (`describe`, `it`, `expect`, `vi`) are enabled — no imports needed, except `import type {MockInstance} from 'vitest'` when you type a spy. The guard scripts under `scripts/` carry `*.spec.mjs` next to them, matched by the same `unit` project; they spawn the script against a temporary fixture tree and assert its exit code.
 - **Filenames in `src/` are kebab-case; the class module is the exception.** A module whose carrying export is a class is named after that class, so PascalCase (`SignalGroup.ts`, `EffectImpl.ts`, `UniqIdGen.ts`). Everything else — functions, infrastructure, types, constants — is kebab-case (`create-signal.ts`, `global-effect-stack.ts`, `signal-core.ts`). The filename is not a transliteration of the export: `be-quiet.ts` exports `beQuiet()`, the hyphen sits where the camel hump was.
 - **A spec file inherits its module's name** (`create-signal.spec.ts`, `SignalGroup.spec.ts`). The segments after the first dot name a symbol or a behaviour and keep that symbol's casing (`create-signal.beforeRead.spec.ts`, `effects.noAutorun.spec.ts`) — they are not module names. A spec with no module of its own is kebab-case throughout its head segment (`nested-effects-isolation.spec.ts`).
 - **The rule applies to `src/`.** `rollup/` and `scripts/` sit outside it; their names are a separate decision and are not pulled in here.

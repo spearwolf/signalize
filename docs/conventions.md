@@ -191,8 +191,10 @@ led to it is internal.
 
 ## Tests
 
-- **`*.spec.ts`, adjacent to the implementation.** Vitest is rooted at `src/`
-  and matches `src/**/*.{spec,test}.ts`.
+- **`*.spec.ts`, adjacent to the implementation.** Vitest matches
+  `src/**/*.{spec,test}.ts`. The guard scripts under `scripts/` carry
+  `*.spec.mjs` next to them, matched by the same `unit` project; they spawn
+  the script against a temporary fixture tree instead of importing it.
 - **Globals are on** — `describe`, `it`, `expect` and `vi` need no import. The
   exception is `import type {MockInstance} from 'vitest'` when typing a spy.
 - **Every public function has tests.** A new option, overload or error path

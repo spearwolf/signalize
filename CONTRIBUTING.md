@@ -144,8 +144,10 @@ never a sibling and never one above it.
 
 ## Testing
 
-Tests are `*.spec.ts` files next to the implementation; Vitest is rooted at
-`src/` and globals are on, so `describe` / `it` / `expect` / `vi` need no import.
+Tests are `*.spec.ts` files next to the implementation; globals are on, so
+`describe` / `it` / `expect` / `vi` need no import. The guard scripts in
+`scripts/` are the one addition: their `*.spec.mjs` files sit next to them
+and run in the same `unit` project.
 
 The conventions that a reviewer will check — counter guards in the hooks,
 teardown in a `finally`, subscription-leak assertions, what a test name looks

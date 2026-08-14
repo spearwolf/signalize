@@ -117,7 +117,11 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/**/*.{spec,test}.ts'],
+          // The guard scripts in `scripts/` are plain `.mjs` and are checked by
+          // spawning them against a fixture tree, so their specs sit next to them
+          // instead of in `src/`. No new project: they need nothing the unit
+          // project doesn't already give them.
+          include: ['src/**/*.{spec,test}.ts', 'scripts/**/*.spec.mjs'],
           exclude: ['src/**/*.gc.spec.ts'],
         },
       },
