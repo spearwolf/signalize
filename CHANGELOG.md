@@ -348,6 +348,8 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - `pnpm test:smoke` runs its glob guard from `scripts/assert-smoke-build.mjs`, where Biome and a spec can see it (DX-007)
 - `pnpm check:layering` reads a template literal as prose: a message that quotes an `import … from '…'` no longer counts as a value edge, and the statement counter no longer reports a syntax it cannot parse (BUILD-028)
 - The CI step that runs `pnpm check` is named after the whole chain (biome, doc refs, banner, layering) instead of one of its four links (BUILD-027)
+- The eight exceptions to the 100 % coverage rule in `vitest.config.ts` are listed as paths instead of file names, so a same-named file in a subdirectory of `src/` no longer inherits the exception (BUILD-019)
+- `vitest.config.ts` refuses to start when one of those exceptions points at a file coverage does not report on (BUILD-019)
 
 ## `v0.31.1` (2026-07-25)
 

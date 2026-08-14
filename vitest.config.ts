@@ -9,14 +9,31 @@ const coverageExclude = [
   'src/__testing__/**',
 ];
 
+// Paths, not file names: a same-named file in a subdirectory of `src/` is a
+// different file and stays under the 100 % rule below.
+const fullCoverageExceptions = [
+  'src/EffectImpl.ts',
+  'src/SignalGroup.ts',
+  'src/SignalLink.ts',
+  'src/SignalAutoMap.ts',
+  'src/collect-errors.ts',
+  'src/create-signal.ts',
+  'src/link.ts',
+  'src/signal-core.ts',
+];
+
 const coverageThresholds = {
   perFile: true,
   statements: 97,
   branches: 85,
   functions: 96,
   lines: 98,
-  'src/**/!(EffectImpl|SignalGroup|SignalLink|SignalAutoMap|collect-errors|create-signal|link|signal-core).ts':
-    {statements: 100, branches: 100, functions: 100, lines: 100},
+  [`!{${fullCoverageExceptions.join(',')}}`]: {
+    statements: 100,
+    branches: 100,
+    functions: 100,
+    lines: 100,
+  },
   'src/{SignalLink,SignalAutoMap,collect-errors}.ts': {
     statements: 100,
     branches: 95,
@@ -43,7 +60,7 @@ const NON_GLOB_THRESHOLD_KEYS = new Set([
  * the whole group passes. A typo in the path or a glob written against the
  * wrong root turns a 100 % rule into a decoration, without a word of warning.
  * So every glob group is matched here against the files coverage will
- * actually report on, and a group with no match refuses the run (BUILD-015).
+ * actually report on, and a group with no match refuses the run.
  */
 function assertThresholdGlobsMatch(thresholds: Record<string, unknown>): void {
   const cwd = import.meta.dirname;
@@ -61,11 +78,29 @@ function assertThresholdGlobsMatch(thresholds: Record<string, unknown>): void {
 
   const dead = Object.keys(thresholds)
     .filter((key) => !NON_GLOB_THRESHOLD_KEYS.has(key))
+    // `globSync` cannot resolve a leading `!` — measured, it returns zero
+    // matches for the negated key — so the generic dead-glob check below
+    // would misreport it; the negated group gets its own check underneath.
+    .filter((glob) => !glob.startsWith('!'))
     .filter((glob) => !globSync(glob, {cwd}).some((file) => covered.has(file)));
 
   if (dead.length > 0) {
     throw new Error(
       `[vitest.config.ts] coverage threshold glob group(s) match none of the ${covered.size} files coverage reports on: ${dead.join(' · ')}. Vitest passes an empty group silently, so the rule would not be enforced. Globs are matched relative to the project root.`,
+    );
+  }
+
+  const staleExceptions = fullCoverageExceptions.filter(
+    (path) => !globSync(path, {cwd}).some((file) => covered.has(file)),
+  );
+  if (staleExceptions.length > 0) {
+    throw new Error(
+      `[vitest.config.ts] the 100 % rule excuses path(s) coverage does not report on: ${staleExceptions.join(' · ')}. Nothing is exempt under that name, so the file it was renamed to now stands under the 100 % rule unannounced. Paths are matched relative to the project root.`,
+    );
+  }
+  if (covered.size === fullCoverageExceptions.length) {
+    throw new Error(
+      `[vitest.config.ts] the 100 % rule excuses all ${covered.size} files coverage reports on, so it enforces nothing.`,
     );
   }
 }
@@ -106,11 +141,11 @@ export default defineConfig({
     /*
      * Two projects, one run. The GC suites need `--expose-gc`, and that flag
      * only survives in a forked worker — so they get their own project here
-     * instead of a second config that is invoked separately and, until now,
+     * rather than living outside this config, where their coverage would be
      * measured separately. `pnpm test` runs both projects in one pass and
      * produces a single coverage map over both, which is what makes the per-file
-     * thresholds below mean anything: the FinalizationRegistry callbacks in
-     * link.ts and SignalGroup.ts are reachable from the gc project alone.
+     * thresholds below mean anything: every FinalizationRegistry callback in
+     * `src/` is reachable from the gc project alone.
      */
     projects: [
       {
@@ -149,17 +184,17 @@ export default defineConfig({
        * Tier 1 (the plain numbers) is the floor under every file. It is set by
        * the weakest cell in the tree, integer-rounded at or below the current
        * value minus 0.5.
-       * Tier 2 (the negated glob) pins every file no remaining audit package
-       * touches at 100 % — including files that do not exist yet, which is the
-       * point: new code arrives covered or it arrives named in an error.
-       * Tier 3 covers the three files that are at 100 % today but are still on
-       * the worklist; they keep statements, functions and lines at 100 and get
-       * two uncovered branches of slack for defensive guards.
+       * Tier 2 (the negated path list) pins every file outside that list at
+       * 100 % — including files that do not exist yet, which is the point: new
+       * code arrives covered or it arrives named in an error.
+       * Tier 3 holds statements, functions and lines of the files it names at
+       * 100 but states branches as a percentage, leaving room for a defensive
+       * guard that scales with the file's branch count — under twenty, none.
        *
        * Glob groups can only add constraints, never relax them (see Vitest's
        * resolveThresholds: the global tier applies to every file regardless of
-       * glob membership). So tier 1 cannot be raised above the weakest file —
-       * that is signal-core.ts at 12/14 branches.
+       * glob membership). So tier 1 cannot be raised above whichever file has
+       * the weakest branch coverage in the tree — today that is SignalGroup.ts.
        */
       thresholds: coverageThresholds,
     },
