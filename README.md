@@ -331,6 +331,7 @@ The full list lives in [Recipes & quirks](./docs/recipes.md).
 | [Architecture](./docs/architecture.md)    | Concepts, internals, source map, the decisions behind them. |
 | [API reference](./docs/api.md)            | Every export, every option.                 |
 | [Recipes & quirks](./docs/recipes.md)     | Patterns, gotchas, lifecycle.               |
+| [The diamond problem](./docs/diamond-example.md) | How converging derivation paths behave — glitches, extra runs, what fixes them. |
 | [Cheat sheet](./docs/cheat-sheet.md)      | One-page lookup.                            |
 | [Conventions](./docs/conventions.md)      | How code is written here — for contributors and coding agents. |
 | [Contributing](./CONTRIBUTING.md)         | Setup, commands, pull requests, releasing.  |

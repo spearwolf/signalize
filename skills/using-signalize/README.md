@@ -27,7 +27,10 @@ The skill describes how signalize behaves; it deliberately avoids prescribing
 an application architecture, so it should not fight your project's own
 conventions.
 
-For the human-facing documentation see the project [`docs/`](../../docs) folder.
+For the human-facing documentation see the `docs/` folder of the
+[signalize repository](https://github.com/spearwolf/signalize). No link on
+these pages ever leaves the skill folder: it is installed on its own, and a
+relative path out of it resolves to nothing.
 
 ## Installation
 

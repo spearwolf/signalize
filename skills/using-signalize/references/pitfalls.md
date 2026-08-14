@@ -65,13 +65,15 @@ createEffect(() => {
 
 ## Memos
 
-**12 — Eager vs lazy changes downstream behaviour.** Default `lazy: false` makes the memo a computed signal: dependent effects re-run when its deps change. With `lazy: true` dependents are **not** notified — the memo is only recomputed when read.
+**12 — Eager vs lazy changes downstream behaviour.** Default `lazy: false` makes the memo a computed signal: dependent effects re-run when its deps change. With `lazy: true` dependents are **not** notified — the memo is only recomputed when read. Neither setting merges two derivations of the same source into one downstream run (13b).
 
 ## Batching and context modes
 
 **13 — `batch()` is a hint, not a guarantee.** Most flushes are deduplicated and priority-ordered, but internal consistency rules can still cause partial propagation. "Exactly one effect run per batch" is not a correctness invariant to build on.
 
 **13a — `batch(async () => ...)` throws, it does not silently stop batching.** An `async` callback stops being batched at its first `await` — writes before it are still batched, writes after it run completely unbatched — a failure that would look exactly like working code, which is why `batch()` throws `TypeError` if the callback returns a thenable and why the signature rejects `async` callbacks at `tsc` time too. `beQuiet()` and `hibernate()` refuse an `async` callback the same way, for their own version of the same failure: the quiet frame closes at the first `await`, and the hibernated contexts are restored there. In `hibernate()` the `TypeError` is collected rather than thrown straight out, so a flush that failed too arrives with it (11d). Unlike 11b's rejecting `async` *effect* callback — which cannot be thrown at any caller and goes to `onEffectError()` — this is a synchronous throw at the `batch()` call site, because its caller is still on the stack. A refused `async` callback has already started running, and the promise it handed back reaches nobody — the frame throws the `TypeError` instead. A rejection inside that promise therefore surfaces as an unhandled rejection, the kind that ends the process under Node's default. Catching the `TypeError` and carrying on is the wrong repair in all three frames; take the async work out of the frame instead.
+
+**13b — Two derivations of one source give the effect that reads both one run per path.** The diamond: `a` feeds the memos `b` and `c`, an effect reads both. Propagation is inline, so the effect runs when `b` writes and again when `c` writes — and on the first of those runs `c` has not been notified yet, so it answers with its old value while `b` is already new. That torn pass is what `batch()` repairs, and only that: inside a batch every dependent is marked before anything runs, so a memo read during the pass knows it is stale and recomputes on the spot, and both runs see the settled graph. The second run stays — the batch deduplicates the effect it queued itself, not the runs the memos' own writes trigger while the flush is under way, which is one concrete shape of 13. Where the redundant pass costs something, funnel both derivations through a single memo returning one object: one dependency, one notification, one run. Lazy memos are not the repair — they notify nobody, so the effect does not re-run at all and keeps the values of its last pass (12).
 
 ## Lifecycles
 

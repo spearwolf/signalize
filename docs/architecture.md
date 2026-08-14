@@ -49,6 +49,10 @@ an effect that synchronously writes to a signal it depends on re-enters
 beyond that, `run()` throws a descriptive `Error` instead of overflowing the
 JS stack.
 
+What an inline pass costs where two derivation paths converge on one consumer
+— a run per path, the first of them on a half-updated graph — is worked
+through in [The diamond problem](./diamond-example.md).
+
 ## Global event buses
 
 All cross-cutting communication uses four global eventize buses

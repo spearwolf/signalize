@@ -77,4 +77,6 @@ it). Use the `accessor` keyword on signal fields.
 - [Architecture](architecture.md) — how it works under the hood.
 - [API reference](api.md) — every export, every option.
 - [Recipes](recipes.md) — patterns, gotchas, lifecycle.
+- [The diamond problem](diamond-example.md) — what happens when two
+  derivation paths converge on one effect.
 - [Cheat sheet](cheat-sheet.md) — one-page lookup.

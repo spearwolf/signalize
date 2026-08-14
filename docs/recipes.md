@@ -469,7 +469,9 @@ batch(() => {
   delayed effects still run, and the failure reaches the `batch()` caller
   afterwards.
 - `batch()` is a hint, not a guarantee — internal consistency may still
-  cause partial propagation.
+  cause partial propagation. Where two derivation paths converge on one
+  effect, a batch settles the values but not the run count; see
+  [The diamond problem](./diamond-example.md).
 - `batch()`'s callback must be synchronous. An `async` callback stops being
   batched at its first `await` — everything before that point still runs
   batched, everything after runs completely unbatched, with no error. To
