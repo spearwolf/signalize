@@ -335,8 +335,10 @@ details.sec .body li{margin:.4em 0}
   ausschließlich nach unten, Typimporte dürfen in jede Richtung. <code>signal-core.ts</code>
   ist die Burg im Kern und ruft nichts über sich auf; <code>effect-hook.ts</code> ist der
   Platzhalter, über den die Signal-Ebene das Effekt-Subsystem erreicht, ohne eine Importkante
-  dorthin zu ziehen. Was diese Ordnung heute hält, ist der Rollup-Build, und der sieht nur
-  Zyklen, keine Richtung: siehe ARCH-006.</p>
+  dorthin zu ziehen. Was diese Ordnung hält, ist seit dem 14. August
+  <code>scripts/check-layering.mjs</code>: ein Wächter in <code>pnpm check</code>, der jede
+  Wertimport-Kante gegen die Rangtabelle hält. Der Rollup-Build sieht daneben weiterhin nur
+  Zyklen, keine Richtung.</p>
 </section>
 
 <section class="block">
@@ -438,7 +440,7 @@ details.sec .body li{margin:.4em 0}
 </section>
 
 <section class="block">
-  <div class="sec-head"><h2>Optimierungspotenzial</h2><span class="meta">4 Ideen</span></div>
+  <div class="sec-head"><h2>Optimierungspotenzial</h2><span class="meta">3 Ideen</span></div>
   <p class="lead">Kein Defekt, keine Backlog-Zeile: Dinge, die das Projekt besser machen
   könnten, wenn jemand Lust hat.</p>
   <ol class="pot">
@@ -457,11 +459,6 @@ details.sec .body li{margin:.4em 0}
     Changes, sind kein Changelog-Abschnitt mehr, sondern ein Migrationsleitfaden im Wartestand.
     Der Block trägt bereits eine <code>### Migration Guide</code>-Überschrift; die 55 Zeilen
     dorthin zu ordnen, wäre die halbe Release-Vorbereitung.</li>
-    <li><b>Den Layering-Wächter aus ARCH-006 als Muster nutzen.</b> Das Repo hat mit
-    <code>check-doc-refs.mjs</code> und <code>check-banner.mjs</code> bereits die Form für
-    Invarianten, die kein Standardwerkzeug prüft. Ein dritter Wächter in derselben Form
-    schließt nicht nur ARCH-006, sondern etabliert die Stelle, an der solche Regeln künftig
-    landen.</li>
   </ol>
 </section>
 
@@ -494,11 +491,11 @@ details.sec .body li{margin:.4em 0}
     Tarball.</p>
     <p><b>Score:</b> Start bei 100, Abzug 10 pro <code>critical</code>, 5 pro
     <code>high</code>, 2 pro <code>medium</code>, 0,5 pro <code>low</code>, 0 pro
-    <code>info</code>, Untergrenze 0. Hier: 100 − (1 × 2) − (17 × 0,5) = 89,5. Dieselbe
+    <code>info</code>, Untergrenze 0. Hier: 100 − (1 × 2) − (16 × 0,5) = 90,0. Dieselbe
     Formel läuft dreimal, einmal über alle Findings und einmal je Bereich. Die beiden
     Teilscores sind keine Summanden des Gesamtscores und teilen die 100 nicht unter sich auf:
-    Code &amp; Laufzeit 100 − (1 × 0,5) = 99,5, Projekt-Harness 100 − (1 × 2) − (16 × 0,5)
-    = 90,0.</p>
+    Code &amp; Laufzeit trägt keinen Abzug mehr und steht bei 100, Projekt-Harness
+    100 − (1 × 2) − (16 × 0,5) = 90,0.</p>
     <p><b>Folgelauf.</b> Vorheriges Audit vom 13. August 2026 (Score 88,5), Datensatz
     aus der JSON-Insel der alten <code>audit.html</code> übernommen. Gematcht wurde
     primär über Kategorie plus überlappende Location, sekundär über Titelähnlichkeit.
@@ -515,20 +512,34 @@ details.sec .body li{margin:.4em 0}
     ein Reviewer-Urteil mit Fundstelle <em>und</em> einen Commit-Hash trägt — alle vier.
     Fünf Nebenbefunde des Laufs sind mit Fundstelle neu ins Backlog eingetragen.</p>
 
-    <p><b>Der Code ist seit dem 13. August nicht neu geprüft worden.</b> Die 23
-    übernommenen Findings tragen den Stand jenes Audits; der Score ist dessen Formel
-    auf ein verändertes Backlog, kein neues Urteil über den Code. Was der Lauf am Baum
-    verändert hat, sieht erst der nächste Audit-Lauf — er prüft frisch, verifiziert
-    jeden übernommenen Punkt an der Fundstelle und schreibt die Historie fort. Der
-    Eintrag vom 14. August im Verlauf trägt deshalb <code>source: "remediation"</code>.</p>
+    <p><b>Am selben 14. August folgte ein zweiter Remediation-Lauf</b> über vier weitere
+    Findings: ARCH-006, ARCH-005, READ-018 und READ-019. Zwei Commits, <code>060b054</code>
+    und <code>cabf83b</code>. Der erste bringt <code>scripts/check-layering.mjs</code> samt
+    Anschluss an die <code>check</code>-Kette und legt <code>GEMINI.md</code> und
+    <code>foo.mjs</code> aus <code>.gitignore</code> nach <code>.git/info/exclude</code>; die
+    erste Hälfte von ARCH-005 stand bereits in <code>f1f4b3d</code>. Der zweite zieht die
+    Rumpfkommentare und rund sechzig Stellen mit Verweisen auf Paketnummern auf die
+    Gegenwart. Es galt dieselbe Schwelle: geschlossen wurde nur, was ein Reviewer-Urteil mit
+    Fundstelle <em>und</em> einen Commit-Hash trägt — alle vier. Vier Nebenbefunde stehen mit
+    Fundstelle neu im Backlog. <b>Der Code ist auch für diesen Stand nicht neu geprüft
+    worden</b>: der Score ist die Formel auf ein verändertes Backlog, kein neues Urteil.</p>
 
-    <p><b>Was der Lauf bewusst nicht mitgenommen hat</b> und was deshalb im Backlog
-    steht: zwei ältere Lücken in der Tabelle »Source layout« von
+    <p><b>Kein Teil dieses Stands beruht auf einer neuen Prüfung.</b> Die 18
+    übernommenen Findings tragen den Stand des Audits vom 13. August; beide Läufe haben
+    das Backlog verändert, nicht das Urteil. Was sie am Baum verändert haben, sieht erst
+    der nächste Audit-Lauf — er prüft frisch, verifiziert jeden übernommenen Punkt an der
+    Fundstelle und schreibt die Historie fort. Die beiden Einträge vom 14. August im
+    Verlauf tragen deshalb <code>source: "remediation"</code>.</p>
+
+    <p><b>Was die beiden Läufe bewusst nicht mitgenommen haben</b> und was deshalb im
+    Backlog steht: zwei ältere Lücken in der Tabelle »Source layout« von
     <code>docs/architecture.md</code>, die JSDoc einer nicht exportierten Klasse in den
-    ausgelieferten Deklarationen, ein Test-Seam, dessen Kommentar kein JSDoc ist,
-    Rumpfkommentare mit Rückblicken auf frühere Fassungen, und acht Verweise auf
-    Paketnummern früherer Läufe. Alle fünf mit Fundstelle, keiner davon durch den Lauf
-    verursacht — bis auf die eine Lücke, die er selbst geschlossen hat.</p>
+    ausgelieferten Deklarationen, ein Test-Seam, dessen Kommentar kein JSDoc ist, eine
+    Aufzählung in einer Spec-Datei, die fünf Punkte ankündigt und bei <code>(b)</code>
+    beginnt, drei Testtitel, die einen Vorzustand voraussetzen, und ein CI-Schritt, der
+    nach Biome heißt und drei Wächter fährt. Alle mit Fundstelle, keiner davon durch
+    einen der Läufe verursacht — bis auf die eine Lücke, die der erste selbst geschlossen
+    hat, und die Phantom-Kante im neuen Wächter, die der zweite mitgebracht hat.</p>
     <p><b>Theme:</b> dunkel, übernommen aus <code>summary.theme</code> des Vorlaufs, damit
     die Optik über Folgeläufe stabil bleibt. Fest ausgeliefert, nicht über
     <code>prefers-color-scheme</code>.</p>
@@ -552,8 +563,8 @@ details.sec .body li{margin:.4em 0}
     "date": "2026-08-14",
     "previousDate": "2026-08-13",
     "previousScore": 88.5,
-    "score": 89.5,
-    "scoreDelta": 1,
+    "score": 90,
+    "scoreDelta": 1.5,
     "theme": "dark",
     "scoreHistory": [
       {
@@ -584,18 +595,22 @@ details.sec .body li{margin:.4em 0}
         "date": "2026-08-14",
         "score": 89.5,
         "source": "remediation"
+      },
+      {
+        "date": "2026-08-14",
+        "score": 90,
+        "source": "remediation"
       }
     ],
     "counts": {
       "critical": 0,
       "high": 0,
       "medium": 1,
-      "low": 17,
-      "info": 10
+      "low": 16,
+      "info": 11
     },
     "categories": {
-      "Projektaufbau & Build": 10,
-      "Architektur & Struktur": 2,
+      "Projektaufbau & Build": 12,
       "Typsicherheit (TS)": 1,
       "Bugs & Korrektheitsrisiken": 1,
       "Developer Experience": 8,
@@ -603,27 +618,26 @@ details.sec .body li{margin:.4em 0}
       "Testabdeckung & Teststrategie": 2,
       "Lesbarkeit & Clean Code": 2
     },
-    "resolvedCount": 4,
+    "resolvedCount": 9,
     "improvedCount": 0,
-    "newCount": 5,
+    "newCount": 10,
     "unchangedCount": 0,
-    "carriedOverCount": 23,
+    "carriedOverCount": 18,
     "domains": {
       "code": {
         "label": "Code & Laufzeit",
-        "score": 99.5,
+        "score": 100,
         "bySeverity": {
           "critical": 0,
           "high": 0,
           "medium": 0,
-          "low": 1,
-          "info": 3
+          "low": 0,
+          "info": 2
         },
         "byCategory": {
-          "Architektur & Struktur": 2,
           "Lesbarkeit & Clean Code": 2
         },
-        "executiveSummary": "Die drei Korrektheitsbefunde sind geschlossen und am Diff verifiziert: beide Teardowns melden ihre Fehler jetzt bis zum Ende, `hibernate()` führt seinen Callback auch nach einem gescheiterten Flush aus, und alle drei Kontextklammern weisen einen thenable Callback zur Laufzeit ab statt still falsch zu laufen. Übrig bleiben zwei Punkte ohne Laufzeitwirkung — die Schichtung ist weiterhin nur gegen Zyklen gesichert, nicht gegen Richtung, und ein Scratch-Beispiel liegt im Repo-Root — plus zwei neue aus der Kommentar-Hygiene: Rumpfkommentare, die den Vorzustand erzählen, und acht Verweise auf Paketnummern eines Laufs, dessen Plan niemand mehr hat."
+        "executiveSummary": "Der Bereich trägt keinen Punkt mit Laufzeitwirkung mehr. Die drei Korrektheitsbefunde waren schon am Diff verifiziert, und seit dem 14. August ist auch die Schichtung gesichert: `scripts/check-layering.mjs` hält jede Wertimport-Kante gegen die Rangtabelle und hängt in `pnpm check`; das Scratch-Beispiel aus dem Repo-Root ist zur dokumentierten Seite geworden, und die Rumpfkommentare erzählen den Vorzustand nicht mehr. Übrig bleiben zwei Beobachtungen an selbstgeschriebener Prosa im Testbaum: eine Aufzählung, die bei `(b)` anfängt, und drei Testtitel, die einen Vorzustand voraussetzen. Beide sind älter als der Lauf und ohne Wirkung auf das, was ausgeliefert wird."
       },
       "harness": {
         "label": "Projekt-Harness",
@@ -633,17 +647,17 @@ details.sec .body li{margin:.4em 0}
           "high": 0,
           "medium": 1,
           "low": 16,
-          "info": 7
+          "info": 9
         },
         "byCategory": {
-          "Projektaufbau & Build": 10,
+          "Projektaufbau & Build": 12,
           "Typsicherheit (TS)": 1,
           "Bugs & Korrektheitsrisiken": 1,
           "Developer Experience": 8,
           "Dependencies": 2,
           "Testabdeckung & Teststrategie": 2
         },
-        "executiveSummary": "Hier liegt der Rückstand unverändert, denn dieser Lauf hat ihn nicht angefasst: fünf Skripte entscheiden über Build und Veröffentlichung, keines kennt Typcheck oder Test, und `check-doc-refs.mjs` besteht still, wenn seine Globs nichts treffen. Neu dazugekommen sind drei Beobachtungen über das, was tatsächlich ausgeliefert wird: eine Doku-Tabelle, die zwei Module verschweigt, die JSDoc einer nicht exportierten Klasse in den Deklarationen, und ein Test-Seam, das die Deklarationen erreicht, weil sein Kommentar kein JSDoc ist."
+        "executiveSummary": "Hier liegt der Rückstand unverändert, denn auch dieser Lauf hat ihn nicht angefasst: die Skripte, die über Build und Veröffentlichung entscheiden, kennen weder Typcheck noch Test, und `check-doc-refs.mjs` besteht still, wenn seine Globs nichts treffen. Daneben stehen drei Beobachtungen über das tatsächlich Ausgelieferte — eine Doku-Tabelle, die zwei Module verschweigt, die JSDoc einer nicht exportierten Klasse, ein Test-Seam ohne JSDoc — und zwei neue am dritten Wächter: Er liest ein mehrzeiliges Template-Literal als Importkante, und der CI-Schritt, der ihn mitfährt, ist weiterhin allein nach Biome benannt."
       }
     }
   },
@@ -659,18 +673,6 @@ details.sec .body li{margin:.4em 0}
       "location": "scripts/check-doc-refs.mjs",
       "description": "Unverändert. `globSync(DOC_GLOBS)` liefert bei einem umbenannten Pfad eine leere Liste, die Schleife läuft null Mal, `hits` bleibt leer, Exit 0. Ein Verzeichnis umbenennen und das Gate ist Dekoration, ohne ein Wort. Genau diese Falle ist im Projekt zweimal erkannt und geschlossen: `vitest.config.ts` fährt `assertThresholdGlobsMatch()` und bricht ab, wenn eine Coverage-Glob-Gruppe keine Datei trifft, und `test:smoke` trägt eine Wache mit mehrzeiliger Fehlermeldung für genau denselben Fall. Nur das dritte Gate hat sie nicht.",
       "recommendation": "Nach dem `globSync` prüfen, dass die Liste nicht leer ist und die vier namentlich erwarteten Wurzeldokumente (`AGENTS.md`, `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`) darin vorkommen, sonst mit Exit 1 abbrechen und die nicht getroffenen Globs benennen. Die Formulierung der Meldung kann sich an der in `vitest.config.ts` orientieren, die dasselbe erklärt. Zusammen mit BUILD-020 ist das eine Spec-Datei: eine Doku mit `datei:zeile` erzeugen und Exit 1 erwarten, dann die Globs verbiegen und Exit 1 erwarten."
-    },
-    {
-      "id": "ARCH-006",
-      "category": "Architektur & Struktur",
-      "domain": "code",
-      "severity": "low",
-      "status": "new",
-      "effort": "M",
-      "title": "Die Modulschichtung ist nur gegen Zyklen gesichert, nicht gegen Richtung",
-      "location": "rollup.config.mjs · src/signal-core.ts · src/effect-hook.ts · src/collect-errors.ts",
-      "description": "Fünf Modulköpfe verteidigen die Schichtung in ganzen Absätzen: `collect-errors.ts` importiert nichts, `effect-hook.ts` und `effect-error-handlers.ts` nennen namentlich, was sie importieren dürfen, `signalize-error.ts` und `instances.ts` ebenso, und `signal-core.ts` beschreibt sich als Burg, die nichts über sich aufruft. Gehalten wird davon nur die Zyklusfreiheit, durch die `CIRCULAR_DEPENDENCY`-Branch in `rollup.config.mjs`. Eine Kante, die die Richtung verletzt, ohne einen Ring zu schließen, passiert jedes Gate: `pnpm check`, `pnpm typecheck`, `pnpm test`, `pnpm bundle`. Die Kommentare sagen es selbst, `tsc` schweigt dazu; nur merkt man es erst, wenn die Verletzung zufällig einen Zyklus baut, und dann ist die Fehlermeldung eine ganz andere.",
-      "recommendation": "Ein Wächter in der Form von `check-doc-refs.mjs`: eine Rangtabelle der Module (Blätter 0, Kern 1, Signal-Ebene 2, Subsysteme 3, Einstieg 4), die Wertimporte aus `src/**/*.ts` per Regex oder über die vorhandenen `import`-Zeilen einliest und jede Kante ablehnt, deren Ziel einen höheren oder gleichen Rang trägt. Typimporte (`import type`) bleiben außen vor, dafür sorgt `style/useImportType` als `error` bereits. Anschluss an `pnpm check` neben den beiden vorhandenen Wächtern."
     },
     {
       "id": "TYPE-007",
@@ -742,7 +744,7 @@ details.sec .body li{margin:.4em 0}
       "title": "Die README beschreibt pnpm world weiterhin ohne den typecheck-Schritt",
       "location": "README.md (Development, Kommandotabelle)",
       "description": "Zur Hälfte erledigt. `CONTRIBUTING.md` nennt in seiner Kommandotabelle inzwischen `clean + check + typecheck + compile + bundle + test:smoke + checkPkgTypes + test + test:gc`, also die Kette, die `package.json` tatsächlich ausführt, und stimmt damit mit `CLAUDE.md` und `AGENTS.md` überein. Die README ist nicht mitgezogen worden und listet weiter `clean + check + compile + bundle + …`, ohne `typecheck`. Damit beschreiben vier Dateien dieselbe Kette gleich und eine anders, und es ist ausgerechnet die, die ein Außenstehender zuerst liest.",
-      "recommendation": "Die eine Zeile auf den Wortlaut ziehen, der in den anderen drei steht. Danach ist der Punkt erreicht, an dem ein Gate lohnt: ein fünfter Wächter neben `check:refs`, `check:banner` und dem aus ARCH-006, der `package.json#scripts.world` gegen die Aufzählung in den vier Dokumenten hält."
+      "recommendation": "Die eine Zeile auf den Wortlaut ziehen, der in den anderen drei steht. Danach ist der Punkt erreicht, an dem ein Gate lohnt: ein weiterer Wächter neben `check:refs`, `check:banner` und `check:layering`, der `package.json#scripts.world` gegen die Aufzählung in den vier Dokumenten hält."
     },
     {
       "id": "DX-002",
@@ -853,18 +855,6 @@ details.sec .body li{margin:.4em 0}
       "recommendation": "Entscheiden und festnageln. Bleibt `===`, ein Test, der die Doppelbenachrichtigung bei `NaN` festhält, plus ein Satz in `docs/api.md` bei `compare`. Wird es `Object.is`, ist es ein Breaking Change und gehört als solcher in den `## Unreleased`-Block."
     },
     {
-      "id": "ARCH-005",
-      "category": "Architektur & Struktur",
-      "domain": "code",
-      "severity": "info",
-      "status": "carried-over",
-      "effort": "S",
-      "title": "Ein Scratch-Beispiel liegt weiterhin im Repo-Root",
-      "location": "diamond-example.mjs · .gitignore",
-      "description": "Unverändert. `diamond-example.mjs` ist getrackt und wird von nichts referenziert, kein Test, keine Doku, kein Skript; die Prüfung über alle `.md`, `.json`, `.ts` und `.mjs` im Baum findet keine einzige Nennung. Die Datei trägt außerdem ein `/* eslint-disable no-console */` in Zeile 1, für einen Linter, den das Projekt in v0.28 durch Biome ersetzt hat: eine tote Direktive, die dem nächsten Leser eine Toolchain vorspiegelt, die es hier nicht gibt. `foo.mjs` liegt daneben im Arbeitsbaum und ist per Namenseintrag in `.gitignore` ausgenommen, zwischen `build`, `dist` und `node_modules`, also zwischen Einträgen ganz anderer Art. Dieselbe Datei trägt `GEMINI.md` aus demselben Grund.",
-      "recommendation": "`diamond-example.mjs` löschen oder, wenn das Diamond-Problem ein Beispiel wert ist, und das ist es, als lauffähiges Snippet nach `docs/recipes.md` heben; die `eslint-disable`-Zeile fällt dabei weg. Die Einträge `foo.mjs` und `GEMINI.md` aus `.gitignore` nehmen und stattdessen in `.git/info/exclude` oder eine globale Ignore-Datei legen, wo persönliche Kritzeldateien hingehören."
-    },
-    {
       "id": "BUILD-024",
       "category": "Projektaufbau & Build",
       "domain": "harness",
@@ -961,28 +951,52 @@ details.sec .body li{margin:.4em 0}
       "recommendation": "Entweder `@internal` an die Deklaration, oder den Fall bewusst stehen lassen und in `docs/architecture.md` festhalten, dass `constants.ts` nicht gestrippt wird. Die zweite Variante ist billiger und ehrlicher, solange die Datei kein Entry-Point erreicht."
     },
     {
-      "id": "READ-018",
-      "category": "Lesbarkeit & Clean Code",
-      "domain": "code",
+      "id": "BUILD-027",
+      "category": "Projektaufbau & Build",
+      "domain": "harness",
       "severity": "info",
       "status": "new",
       "effort": "S",
-      "title": "Rumpfkommentare erzählen den Vorzustand der Bibliothek",
-      "location": "src/SignalLink.ts · src/link.ts · src/batch.ts",
-      "description": "Diese Kommentare beschreiben, was eine frühere Fassung tat: welche Zeile hier stand, was sie kostete, warum sie ging. Für jemanden, der den Vorzustand nie gesehen hat, erklären sie etwas, das es für ihn nie gab. Die veröffentlichte Prosa unter `docs/` und `skills/` ist am 14. August durchgängig auf Gegenwart gezogen worden; die Rumpfkommentare blieben ausgespart, weil die Entscheidung jenes Laufs sie ausdrücklich außerhalb hielt.",
-      "recommendation": "Beim nächsten Anfassen der jeweiligen Stelle mitziehen, nicht als eigener Durchgang. `docs/conventions.md` trägt die Regel seit dem 14. August — sie greift für neue Zeilen, und der Bestand kommt beim Ändern nach."
+      "title": "Der CI-Schritt heißt nach Biome und fährt drei Wächter mit",
+      "location": ".github/workflows/ci.yml (Schritt »Run biome checks (lint + format)«)",
+      "description": "Der Schritt, der `pnpm check` fährt, trägt den Namen »Run biome checks (lint + format)«. `pnpm check` ist aber `run-s check:biome check:refs check:banner check:layering`: neben Biome laufen dort drei eigene Wächterskripte, zwei davon seit Längerem, `check-layering.mjs` seit dem 14. August. Wer in der Actions-Oberfläche einen roten Schritt sieht, sucht den Fehler zuerst in Formatierung oder Lint-Regeln, während er ebenso gut aus `check-doc-refs.mjs`, `check-banner.mjs` oder `check-layering.mjs` stammen kann. Vorbestehend, nicht durch den Remediation-Lauf verursacht; der hat den Abstand zwischen Name und Inhalt nur um einen Wächter vergrößert.",
+      "recommendation": "Den Schritt auf einen Namen ziehen, der die Kette meint statt eines ihrer Glieder, etwa »Run checks (biome + doc refs + banner + layering)«. Eine Zeile, und es ist der einzige Ort, an dem ein Außenstehender überhaupt einen Namen für diesen Schritt liest."
     },
     {
-      "id": "READ-019",
+      "id": "BUILD-028",
+      "category": "Projektaufbau & Build",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "effort": "S",
+      "title": "Der Schichtungs-Wächter liest ein Template-Literal als Import",
+      "location": "scripts/check-layering.mjs (readViews · FROM_STATEMENT)",
+      "description": "`readViews()` entfernt Kommentare, lässt Zeichenketten im `code`-View aber stehen, und `FROM_STATEMENT` greift danach auf jede Zeile, die mit `import` oder `export` beginnt und ein `from '…'` trägt. In einem mehrzeiligen Template-Literal — einer Fehlermeldung etwa, die eine Importzeile zitiert — ist das eine Phantom-Kante. Der `bare`-View, den der Selbstsicherungs-Zähler liest, leert Zeichenketten dagegen aus und zählt die Stelle nicht mit; gemeldet wird dann »… but the scanner recognised N statement(s) — it does not understand a syntax used here«, obwohl der Scanner eine Stelle zu viel verstanden hat statt eine zu wenig. Der Wächter fällt damit laut aus statt still, und die Form existiert im Baum heute nicht; der Reviewer hat sie als klein eingestuft.",
+      "recommendation": "Template-Literale im `code`-View genauso ausleeren wie in `bare`, dann sehen Scanner und Zähler dasselbe. Bis dahin ist die Meldung des Zählers der einzige Hinweis, und sie zeigt in die falsche Richtung — ein Satz im Kopf der Datei, der den Fall benennt, ist die billigere Hälfte."
+    },
+    {
+      "id": "READ-020",
       "category": "Lesbarkeit & Clean Code",
       "domain": "code",
       "severity": "info",
       "status": "new",
       "effort": "S",
-      "title": "Acht Kommentare in src/ nennen Paketnummern früherer Remediation-Läufe",
-      "location": "src/ (acht Fundstellen, u. a. index.public-surface.spec.ts, effects.noAutorun.spec.ts)",
-      "description": "Formulierungen wie »seit Paket 5« oder »Package 1 hat das geändert« verweisen auf die Nummerierung eines Laufs, dessen Plan niemand mehr hat. Für jeden späteren Leser ist die Nummer bedeutungslos; was sie meinte, steht im git-Verlauf, der ohnehin die bessere Quelle ist.",
-      "recommendation": "Die acht Stellen in einem Zug auf die Sache umschreiben, ohne Nummer. Einzeln repariert sähe der Rest wie Absicht aus — deshalb entweder alle oder keine."
+      "title": "Eine selbstdefinierte Aufzählung kündigt fünf Punkte an und beginnt bei (b)",
+      "location": "src/message-prefix.spec.ts (Kopfkommentar)",
+      "description": "Der Kopfkommentar sagt »Five things stand against that here« und läuft dann von `(b)` bis `(f)`. Fünf Punkte sind es, nur fehlt der erste Buchstabe: ein `(a)` gibt es nicht, obwohl der Text es später zitiert (»(a) and (b) do that«). Die Buchstaben sind in dieser Datei Anker und werden an mehreren weiteren Stellen als Verweis benutzt, also sucht der Leser einen Punkt, den niemand geschrieben hat. Steht so seit der Erstfassung `74c85b3` und stammt nicht aus einem Aufräumlauf; der Lauf vom 14. August hat die Datei bewusst ausgenommen.",
+      "recommendation": "Entweder das fehlende `(a)` schreiben, falls ein Punkt verlorengegangen ist, oder die fünf vorhandenen auf `(a)` bis `(e)` umbuchstabieren und die Verweise im selben Zug mitziehen. Die zweite Variante ist die kleinere Änderung, die erste die ehrlichere — welche stimmt, weiß nur, wer den Kommentar geschrieben hat."
+    },
+    {
+      "id": "READ-021",
+      "category": "Lesbarkeit & Clean Code",
+      "domain": "code",
+      "severity": "info",
+      "status": "new",
+      "effort": "S",
+      "title": "Drei Testtitel setzen einen Vorzustand voraus, den der Leser nie gesehen hat",
+      "location": "src/EffectImpl.declarations.spec.ts · src/nested-effects-static-deps.spec.ts",
+      "description": "»Object.keys() on the FailingEffect instance no longer lists childEffects«, »an outside write to childEffects no longer derails destroy()« und »Signal.onChange callbacks no longer orphan nested effects«: Diese drei Titel beschreiben nicht, was der Test feststellt, sondern den Unterschied zu einer Fassung, die es für den heutigen Leser nie gab. Im Reporter steht damit, dass etwas einmal anders war, nicht was jetzt gilt. Die übrigen »no longer« im Baum meinen den Ablauf zur Laufzeit — nach dem Destroy, nach dem Cleanup — und sind an ihrer Stelle richtig.",
+      "recommendation": "Die drei Titel in die Gegenwart ziehen, in der Form der Nachbarn im selben `describe`. `docs/conventions.md` trägt die Regel seit dem 14. August; sie greift für neue Zeilen, diese drei sind Bestand und kommen beim nächsten Anfassen der Datei nach."
     }
   ],
   "acknowledged": [],
