@@ -21,6 +21,7 @@ import {
   SignalGroup,
 } from '@spearwolf/signalize';
 import {signal} from '@spearwolf/signalize/decorators';
+import pkg from '@spearwolf/signalize/package.json' with {type: 'json'};
 
 test('the "." subpath resolves and the bundle works', () => {
   const sig: Signal<number> = createSignal(1);
@@ -92,6 +93,11 @@ test('the "./decorators" subpath resolves and tsc lowers the accessor', () => {
   fooEffect.destroy();
   barEffect.destroy();
   SignalGroup.delete(obj);
+});
+
+test('the "./package.json" subpath resolves to the manifest', () => {
+  // `attw` checks that this entry resolves to JSON, not which file it names.
+  assert.equal(pkg.name, '@spearwolf/signalize');
 });
 
 test('both entry points share one module instance', () => {

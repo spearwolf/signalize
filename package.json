@@ -3,9 +3,6 @@
   "version": "1.0.0-dev",
   "description": "signals and effects for all",
   "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "lib/index.d.ts",
   "sideEffects": false,
   "files": [
     "dist",
@@ -24,7 +21,8 @@
     "./decorators": {
       "types": "./lib/decorators.d.ts",
       "import": "./dist/decorators.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "engines": {
     "node": ">=22"

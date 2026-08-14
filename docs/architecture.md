@@ -440,6 +440,37 @@ module-evaluation time as well as at call time. The guard reaches only the two
 banner modules it imports directly; a module-level read buried in something *they*
 import would need its own coverage.
 
+### The exports map is the only entry-point declaration
+
+**Context.** A package can declare its entry points twice: once through the
+`exports` map, and once more through the legacy top-level `main`, `module` and
+`types` fields. Where both exist, a resolver that understands `exports` uses it
+exclusively and a resolver that does not falls back to the legacy fields — for
+`./decorators`, which has no legacy equivalent, that fallback resolves `.`
+correctly and fails on the subpath in a way none of this repo's gates would
+catch, producing a package that works for some imports and not others
+depending on which resolver picked it up.
+
+**Decision.** The manifest carries no `main`, `module` or `types` field.
+`exports` is the sole declaration of what this package exposes and how; a
+resolver without `exports`-map support fails to find an entry point at all,
+rather than finding half of one.
+
+**Consequence.** No gate in this repo checks that failure directly, and the two
+modes `attw --profile esm-only` ignores fail for different reasons. `node10`
+has no `exports`-map support at all — checking it would mean promising a
+resolution path this package does not offer. `node16 (from CJS)` does read the
+map: `attw`'s `CJSResolvesToESM` verdict and Node's own
+`ERR_PACKAGE_PATH_NOT_EXPORTED` both presuppose that the resolver read it — the
+runtime error is a lookup that failed inside a map it had parsed
+(`No "exports" main defined`). It is ignored because the map deliberately
+carries no `require` condition, and the two verdicts sit on different levels:
+`attw` reports a `require` call resolving to an ESM file, while Node, finding no
+`require` condition to match, refuses the call and serves nothing at all. A
+missing condition, not a missing map (see `AGENTS.md`'s `checkPkgTypes` entry).
+The decision rests on the `esm-only` profile's own scope, not on a passing check
+for it.
+
 ## Source layout
 
 | File                       | Responsibility                                              |

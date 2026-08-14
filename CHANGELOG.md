@@ -66,6 +66,7 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - `hibernate(callback)` throws an `AggregateError` when the flush of the saved batch *and* `callback` both fail, flush error as `errors[0]`, where the flush error used to arrive alone and `callback` never ran. A `catch` that reads `.message` or does an `instanceof` check on the thrown value sees the wrapper in that case now; a failure on only one side is unchanged and still rethrows that error unchanged
 - `beQuiet(action)` throws a `TypeError` when `action` returns a thenable — the same structural check `batch()` carries, for the same reason: the quiet frame ends at the first `await`, every read after it is tracked again and every write loud again. Code that hands in an `async` action today and runs silently wrong gets the error at the call site; the frame is closed before it arrives. Mind the migration path: the refused action has already started, and the promise it returned is now unobserved — `await beQuiet(async () => …)` caught a rejection at its `await`, the synchronous `TypeError` does not, and the rejection arrives as an unhandled one that ends the process under Node's default. Move the async work out of the frame instead of catching the `TypeError`
 - `hibernate(callback)` likewise throws a `TypeError` when `callback` returns a thenable, and that `TypeError` is collected like any other callback failure — if the flush of the saved batch fails as well, both arrive as an `AggregateError`, flush error as `errors[0]` and the `TypeError` as `errors[1]`. The same migration path as for `beQuiet()` above: the promise of a refused `async` callback goes unobserved and its rejection arrives as an unhandled one, so move the async work out of the frame instead of catching the `TypeError`
+- `package.json` no longer carries `main`, `module` or `types` — the `exports` map is the package's sole entry-point declaration. A resolver without `exports`-map support (`node10`-style resolution, e.g. TypeScript's `moduleResolution: "node"` or webpack 4) no longer finds `.` through the `main` fallback and fails to resolve the package at all; `./decorators` had no such fallback and was already unreachable there (BUILD-024)
 
 ### Features
 
@@ -317,6 +318,7 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - The overload order of `SignalWriter<T>` and of `link()` is pinned by type witnesses in `src/types.public-surface.spec.ts`: reversing either now fails `pnpm typecheck` instead of quietly changing which signature a consumer's call resolves to
 - `scripts/check-doc-refs.spec.mjs` and `scripts/assert-smoke-build.spec.mjs` run both guard scripts against a temporary fixture tree; the `unit` Vitest project now also matches `scripts/**/*.spec.mjs` (BUILD-022, DX-007)
 - `scripts/check-layering.spec.mjs` runs the layering guard against a copy of `src/` with one module altered, over the `CHECK_LAYERING_ROOT` seam (BUILD-028)
+- `smoke/dist-smoke.test.ts` imports `@spearwolf/signalize/package.json` and asserts its `name`: `attw` checks that the entry resolves to JSON, not which file it names, so a target pointing at another shipped JSON file passes it unnoticed (BUILD-014)
 
 ### Build System
 
@@ -350,6 +352,7 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - The CI step that runs `pnpm check` is named after the whole chain (biome, doc refs, banner, layering) instead of one of its four links (BUILD-027)
 - The eight exceptions to the 100 % coverage rule in `vitest.config.ts` are listed as paths instead of file names, so a same-named file in a subdirectory of `src/` no longer inherits the exception (BUILD-019)
 - `vitest.config.ts` refuses to start when one of those exceptions points at a file coverage does not report on (BUILD-019)
+- `"./package.json": "./package.json"` added to `package.json#exports` — a consumer or tool resolving `@spearwolf/signalize/package.json` (e.g. to read the version at runtime) now gets the manifest instead of `ERR_PACKAGE_PATH_NOT_EXPORTED` (BUILD-014)
 
 ## `v0.31.1` (2026-07-25)
 
