@@ -288,6 +288,8 @@ see [Versioning & stability](./README.md#versioning--stability). Entries under
 - `SignalLink.nextValue()` is split into a read object that owns the promise callbacks, the collected unsubscribe handles and the four ways a read can end, plus a cursor predicate of its own; the subscribe order and both early guards stay where they were. Behaviour and API are unchanged, measured against the same 20 mutations before and after — each one takes down the same named tests (READ-014)
 - Renamed four non-class modules in `src/` to kebab-case — `bequiet.ts` → `be-quiet.ts`, `createMemo.ts` → `create-memo.ts`, `createSignal.ts` → `create-signal.ts`, `globalEffectStack.ts` → `global-effect-stack.ts` — plus their spec files and two module-less specs with a camelCase head, for one filename convention across `src/` (class modules stay PascalCase, everything else kebab-case). No export, symbol or behaviour changed (CONS-003)
 - Refreshed the devDependency lock, closing the two advisories `pnpm audit` reported: `postcss` 8.5.22 → 8.5.26 (GHSA-fxqj-rqcc-2cmp, moderate) and `nanoid` 3.3.16 → 3.3.18 (GHSA-2v37-7h3g-55p8, high), both reachable only through `vite`'s transitive graph. `vite` 8.1.5 → 8.2.1 came along and requires `postcss@^8.5.25` itself, so no `overrides` entry is needed to hold the patched versions
+- Removed the `tslib` devDependency — nothing in the tree sets `importHelpers` or imports from it (DEP-002)
+- `@types/node` `^24.13.3` → `^26.2.0`, `unplugin-swc` `^1.5.9` → `^1.5.11` (DEP-004)
 
 ### Tests
 
