@@ -4,10 +4,11 @@ Which of these changes you may rely on depends on the version they ship in —
 see [Versioning & stability](./README.md#versioning--stability). Entries under
 `## Unreleased` have not shipped in any version yet.
 
-## Unreleased
+## `v1.0.0-beta.0` (2026-08-15)
 
-The `1.0.0` release — the first to carry a compatibility promise. Upgrading from `0.x`:
-the repair for every breaking change below, with the reasoning, is in
+The first cut of the `1.0.0` line — the release that will carry a compatibility promise,
+published under the `beta` dist-tag while it settles, so `latest` stays on `0.31.1`.
+Upgrading from `0.x`: the repair for every breaking change below, with the reasoning, is in
 `skills/using-signalize/references/migration-v1.md`.
 
 ### Breaking Changes
