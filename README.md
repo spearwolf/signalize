@@ -83,9 +83,9 @@ In complex interactive front-ends—such as **3D configurators, real-time dashbo
   `getSignalsCount()` make leaks assertable in tests — they track what is
   still reachable, correcting themselves when an object is dropped rather
   than destroyed.
-- **Context modes** — `batch()` to coalesce writes, `beQuiet()` for silent
-  mutation, `hibernate()` to pause reactivity, `value()` / `.value` for
-  untracked reads.
+- **Context modes** — `batch()` to coalesce writes, `beQuiet()` so reads do
+  not subscribe and writes do not emit, `hibernate()` to suspend the enclosing
+  batch, quiet and effect context, `value()` / `.value` for an untracked read.
 - **Optional class API** — the TC39 standard `@signal` decorator on
   a separate subpath; the core has no class dependency.
 - **TypeScript-first** — every primitive, option, and decorator is fully
@@ -95,7 +95,7 @@ Runs anywhere modern JavaScript runs. Targets ES2023, requires Node `>=22`.
 
 ## Install
 
-[`@spearwolf/eventize`](https://github.com/spearwolf/eventize) 🏹 is a peer dependency — install it alongside, since pnpm and yarn do not add peers automatically:
+[`@spearwolf/eventize`](https://github.com/spearwolf/eventize) 🏹 is a peer dependency — name it in your own `package.json` rather than relying on your package manager to add it for you:
 
 ```shell
 # pick one
@@ -187,6 +187,9 @@ the new value — no risk of seeing a stale FPS counter one frame later.
 ```typescript
 import {createSignal, createMemo, createEffect} from '@spearwolf/signalize';
 
+declare const hud: HTMLElement;                  // yours
+declare function measureFps(now: number): number; // yours
+
 const fps   = createSignal(60);
 const label = createMemo(() => `FPS: ${fps.get().toFixed(0)}`);
 
@@ -254,6 +257,8 @@ them have to know about each other.
 
 ```typescript
 import {createSignal, createMemo, createEffect} from '@spearwolf/signalize';
+
+type Item = {price: number; qty: number};
 
 export function createCart() {
   const items = createSignal<Item[]>([]);
@@ -372,12 +377,14 @@ pnpm install
 | `pnpm checkPkgTypes` | `attw --pack --profile esm-only` — checks the `exports` map and shipped `.d.ts` across the resolution modes that apply to an ESM-only package |
 | `pnpm bench` | Runs the microbenchmark suite in `bench/` |
 | `pnpm check` / `pnpm fix` | Biome lint+format plus the three guard scripts (`check:refs`, `check:banner`, `check:layering`) — check only / Biome auto-fix |
+| `pnpm typecheck` | `tsc --noEmit` over `tsconfig.json` — the only stage that type-checks `src/**/*.spec.ts`, `bench/` and the vitest configs; `compile` runs on `tsconfig.lib.json`, which excludes them |
 | `pnpm check:dts` | Type-checks the emitted `lib/**/*.d.ts` with `skipLibCheck` off — catches an `@internal` marker that strips a symbol another `.d.ts` still references. Needs a fresh `pnpm compile`; runs after it, not inside `pnpm check` |
 | `pnpm compile` | two `tsc` passes → `lib/` (`compile:js` for JS + sourcemaps, `compile:types` for documented, `@internal`-free `.d.ts`) |
 | `pnpm bundle` | rollup → `dist/` |
+| `pnpm dist` | clean + compile + bundle — the shipped artifact, no tests |
 | `pnpm clean` | Remove build artifacts |
 | `pnpm cbt` | clean + compile + bundle + test |
-| `pnpm world` | clean + **check** + compile + check:dts + bundle + test:smoke + checkPkgTypes + test + test:gc — the full blocking CI scope |
+| `pnpm world` | clean + **check** + typecheck + compile + check:dts + bundle + test:smoke + checkPkgTypes + test + test:gc — the full blocking CI scope |
 
 A filtered run (`pnpm test <file>` or `pnpm test -t "<name>"`) always exits 1 —
 the per-file coverage gate fails for every file that did not run. That is the
@@ -385,9 +392,9 @@ gate, not a failing test; read the test result above it.
 
 **Which one to use:** `pnpm test` while iterating, and `pnpm world` before
 pushing — it is the only task that also runs Biome, and it covers the full
-blocking CI scope: `.github/workflows/ci.yml` runs `check`, `dist`,
-`check:dts`, `test:smoke`, `checkPkgTypes`, `test`, `test:gc` and `bench` (the
-last one informative, non-blocking).
+blocking CI scope: `.github/workflows/ci.yml` runs `check`, `typecheck`,
+`dist`, `check:dts`, `test:smoke`, `checkPkgTypes`, `test`, `test:gc` and
+`bench` (the last one informative, non-blocking), on Node 22 and 24.
 
 Tests are `*.spec.ts` files sitting next to the implementation in `src/`; only
 `src/` is edited by hand, `lib/` and `dist/` are generated. The process is in

@@ -121,6 +121,7 @@ the repair for every breaking change below, with the reasoning, is in
 - The JSDoc of every exported symbol was rewritten to what a caller needs — purpose, surprises, what it returns or throws — and it ships in the declarations, so this is what a consumer's editor tooltip shows. The measured edge cases and inference outcomes it used to spell out live in `docs/api.md`
 - Documented what the `FinalizationRegistry` backstop of a `SignalGroup` cannot do (an attached effect capturing the host blocks reclamation; a collected group never runs `clear()`), the actual lifetime of a `SignalLink`, which functions refuse a non-signal argument and which stay silent, and that the `@signal` decorator's `attach` option names an *additional* group rather than overriding the instance group
 - The three deprecated declarations carry an `@deprecated` tag: `SignalGroup.destroy()`, `SignalGroup#destroy` and the callback overload of `SignalReader`
+- `README.md` corrections ahead of `1.0.0`: `hibernate()` suspends the enclosing batch, quiet and effect context rather than pausing reactivity, `beQuiet()` covers reads and writes, the install note no longer claims which package managers add a peer dependency, `pnpm world` and the CI list name `typecheck`, the task table gained `typecheck` and `dist`, and the two examples that used an undeclared `Item` / `hud` now declare them
 
 ### Build System
 
