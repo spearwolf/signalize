@@ -290,6 +290,10 @@ superseded. Do not recreate them.
   refactor with no observable effect can be skipped.
 - **One line, one fact.** If context is needed, link a commit or a pull request
   rather than expanding the line.
+- **No issue, audit or finding identifiers.** A reader outside this repository
+  cannot resolve `BUG-012` or `BUILD-024`, and the tracker they came from
+  outlives neither the release nor the entry. Say what changed; link a commit or
+  a pull request when the trail matters.
 - **Never modify entries under a released heading.** Past releases are
   immutable; a correction becomes a new `## Unreleased` entry.
 - Group under the existing `### Build System` / `### Bug Fixes` / `### Tests` /

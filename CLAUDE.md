@@ -61,5 +61,6 @@ Older doc filenames (`introduction.md`, `guide.md`, `full-api.md`) were supersed
 Every user-visible change (features, fixes, deps, build system, breaking changes) gets an entry under `## Unreleased`. Pure internal refactors with no observable effect can be skipped.
 
 - One line, one fact. If context is needed, link a commit or PR rather than expanding the line.
+- No issue, audit or finding identifiers (`BUG-012`, `BUILD-024`) — a reader outside this repo cannot resolve them. Link a commit or PR instead.
 - **Never modify entries under released headings** (`## v0.x.y`) — past releases are immutable. Corrections become a new `## Unreleased` entry.
 - Group under the existing `### Build System` / `### Bug Fixes` / `### Tests` / `### Documentation` / `### Chores` headings; add a new one only when none fits.
