@@ -303,7 +303,11 @@ superseded. Do not recreate them.
 ## Versioning
 
 The `version` field in `package.json` is the release trigger — a push to `main`
-publishes it unless it ends in `-dev`. A pull request leaves that field alone
+publishes it unless it ends in `-dev`. A prerelease identifier (`alpha`, `beta`,
+`rc` or `next`) publishes under a dist-tag of that name and leaves `latest`
+where it is; an identifier outside that list fails the job rather than guessing
+at a tag, as does a release that would move `latest` backwards. A pull request
+leaves that field alone
 unless releasing is the point of the pull request. What a given version number
 promises a consumer is in
 [Versioning & stability](../README.md#versioning--stability); the details of the

@@ -179,15 +179,38 @@ that explain the *why* — the diff already shows the *what*.
 There is no separate release step. `.github/workflows/main.yml` runs the full CI
 workflow on every push to `main` and, if it passes, runs `pnpm publish:pkg` right
 after — so **the `version` field in `package.json` is the release trigger**.
-`scripts/publishPackage.cjs` publishes that version unless it ends in `-dev`
-(skipped as a development version) or already exists on npm (skipped as
-released).
+`scripts/publishPackage.cjs` reads that field and takes two decisions from it:
+whether to publish at all, and under which npm dist-tag.
+
+| `version` | What happens |
+| --- | --- |
+| `1.2.3` | published under `latest` |
+| `1.2.3-alpha.0`, `-beta.1`, `-rc.2`, `-next.7` | published under `alpha`, `beta`, `rc`, `next` — `latest` stays where it is |
+| `1.2.3-dev` | skipped as a development version |
+| anything else | the job fails, nothing is published |
+
+A version that already exists on npm is skipped as released, whichever tag it
+would have gone under. The tag list is closed on purpose: a prerelease
+identifier with no tag assigned to it is a typo, and both ways of guessing at
+it are worse than stopping. Publishing `1.2.3-btea.1` untagged would move
+`latest` onto a prerelease that every plain `npm install` then picks up;
+publishing it under its own name would create a dist-tag that outlives the
+mistake.
+
+`latest` only ever moves forward. A release older than the version that tag
+currently points at fails the job rather than publishing, because a patch on a
+superseded line would otherwise hand every plain `npm install` the older
+library. A prerelease is exempt, having no business with that tag in the first
+place — so a fix on an old line ships as `0.32.1-beta.1` and `latest` stays
+where it is. Releasing it as a plain `0.32.1` takes a manual `npm publish`, and
+then owning the tag by hand.
 
 Two consequences before you touch that field:
 
 - **The `-dev` suffix is the safety catch, and dropping it is the release.**
   There is no tag, no GitHub release and no manual approval between merging to
-  `main` and `npm publish`.
+  `main` and `npm publish`. Going to a prerelease identifier first keeps
+  `latest` where it is, but the publish itself is just as immediate.
 - **A version number is spent once.** Publishing cannot be taken back in any way
   a consumer would notice, and the guard against republishing only covers
   versions that already exist — never the one you just created.

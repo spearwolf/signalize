@@ -122,6 +122,12 @@ What you may rely on is decided by the version number you installed:
   `lib/decorators.d.ts`. The `lib/**/*.d.ts` glob in the shipped tarball is
   wider than that — `tsc` emits one declaration file per source file — but a
   declaration outside that import graph is not part of the promise.
+- **A prerelease is a release, just not the default one.** `1.2.3-beta.1` and
+  its `alpha`, `rc` and `next` siblings reach npm under a dist-tag of that
+  name, so a plain `npm install @spearwolf/signalize` keeps resolving to the
+  last stable version — taking one costs an explicit `@beta` or the exact
+  version number. What such a version promises is what its name says: nothing
+  is settled until the release it precedes.
 - **A `-dev` version is not a release.** It is what `main` carries between
   releases, it never reaches npm, and it promises nothing at all.
 

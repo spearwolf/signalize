@@ -131,6 +131,8 @@ the repair for every breaking change below, with the reasoning, is in
 - `"./package.json": "./package.json"` added to the `exports` map, so reading the version at runtime no longer fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`
 - `dist/` ships sourcemaps with the source embedded; `lib/` no longer ships a declaration map pointing at files the package does not contain
 - Two builds of the same commit produce byte-identical output: the bundle banner's `@version` line no longer carries a build date and the copyright year is frozen
+- A prerelease version publishes under its own npm dist-tag — `1.2.3-beta.1` reaches npm as `beta` and `latest` stays on the last stable release. `-dev` still skips publishing; an identifier outside `alpha`/`beta`/`rc`/`next`, and anything that is not semver, fails the job instead of guessing at a tag
+- The `latest` tag only moves forward: a release older than the version it points at fails the release job instead of handing every plain `npm install` the older library
 
 ## `v0.31.1` (2026-07-25)
 
