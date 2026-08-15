@@ -19,6 +19,7 @@ reference files the agent reads only when a task needs them:
 | `references/api.md` | Full signatures, options, and exports per entry point |
 | `references/pitfalls.md` | The complete annotated quirk list |
 | `references/patterns.md` | Idiomatic patterns and common rewrites |
+| `references/migration-v1.md` | `0.x` → `1.0.0`: every breaking change with its repair |
 
 Install the whole folder, not just `SKILL.md` — the references are resolved
 relative to it.

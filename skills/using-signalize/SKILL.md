@@ -83,6 +83,7 @@ Read these when the task needs them — they are not loaded upfront.
 | `references/api.md` | Looking up exact signatures, options, or what is exported from which entry point |
 | `references/pitfalls.md` | Behaviour is surprising, or reviewing code for subtle reactivity bugs — the full annotated list, of which the six above are the most common |
 | `references/patterns.md` | Structuring something new: lifecycle bundles, frame-paced effects, derivation chains, decorator classes, and the idiomatic rewrite of each anti-pattern |
+| `references/migration-v1.md` | Moving a codebase from `0.x` to `1.0.0` — what breaks, and the repair for each. Also the fastest way to see what a `TS2769` from `createSignal()`/`set()` or a fresh `AggregateError` is about |
 
 The project's own `docs/` folder (`api.md`, `recipes.md`, `architecture.md`, `cheat-sheet.md`) goes deeper still when it is available.
 
