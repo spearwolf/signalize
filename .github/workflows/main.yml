@@ -24,13 +24,18 @@ jobs:
 
       - uses: pnpm/action-setup@v6
 
+      # No `registry-url`, `scope` or `always-auth` here. `registry-url` is what
+      # makes setup-node write an .npmrc carrying
+      # `_authToken=${NODE_AUTH_TOKEN}` — a variable nothing in this workflow
+      # sets, because the publish authenticates through OIDC (`id-token: write`
+      # above, npm trusted publishing) rather than a token. Every pnpm call in
+      # the job then warned that it could not resolve it. The registry comes
+      # from `publishConfig` in package.json instead. `always-auth` was dropped
+      # from setup-node in v4 and only earned an "unexpected input" warning.
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
-          always-auth: true
-          registry-url: https://registry.npmjs.org
-          scope: '@spearwolf'
 
       - run: pnpm install --frozen-lockfile
         name: Install dependencies
