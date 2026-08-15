@@ -133,6 +133,8 @@ the repair for every breaking change below, with the reasoning, is in
 - Two builds of the same commit produce byte-identical output: the bundle banner's `@version` line no longer carries a build date and the copyright year is frozen
 - A prerelease version publishes under its own npm dist-tag — `1.2.3-beta.1` reaches npm as `beta` and `latest` stays on the last stable release. `-dev` still skips publishing; an identifier outside `alpha`/`beta`/`rc`/`next`, and anything that is not semver, fails the job instead of guessing at a tag
 - The `latest` tag only moves forward: a release older than the version it points at fails the release job instead of handing every plain `npm install` the older library
+- CI installs pnpm through `pnpm/setup@v2`, the successor `pnpm/action-setup` names for pnpm v11 and newer. The old action bootstrapped pnpm with `npm ci`, pointed `PNPM_HOME` at that `node_modules/.bin` and reached the pinned version via `pnpm self-update` — so every job logged "Detected a pnpm v10 installation layout at PNPM_HOME"
+- Toolchain raised to its current releases: pnpm 11.21.0, Biome 2.5.8, Rollup 4.62.4, npm-run-all2 9.0.3
 
 ## `v0.31.1` (2026-07-25)
 

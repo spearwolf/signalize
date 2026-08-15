@@ -26,9 +26,27 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # No `version:` — the action reads it from `packageManager` in package.json.
-      - uses: pnpm/action-setup@v6
+      # `pnpm/setup`, not `pnpm/action-setup`. Upstream points pnpm v11 and
+      # newer at the successor, and the old action is why every job logged
+      # "Detected a pnpm v10 installation layout at PNPM_HOME": it bootstraps
+      # pnpm through `npm ci`, sets PNPM_HOME to that `node_modules/.bin` —
+      # a directory carrying a `pnpm` shim at its top level, which is exactly
+      # what v11 reads as the v10 layout — and then reaches the pinned version
+      # via `pnpm self-update`, the one code path that emits the notice.
+      # `pnpm/setup` unpacks the self-contained binary instead and never calls
+      # `self-update`, so the check is never reached.
+      #
+      # No `version:` — it is read from `packageManager` in package.json.
+      # `install: false` because the install is its own step below and has to
+      # carry `--frozen-lockfile`; the action's built-in one takes no arguments.
+      - uses: pnpm/setup@v2
+        with:
+          install: false
 
+      # `actions/setup-node` stays, even though `pnpm/setup` can install the
+      # runtime itself via `runtime: node@…`. That route puts `node` on PATH
+      # but not `npm`, which the deploy job in main.yml publishes with — and
+      # both workflows running the same setup is worth more than a saved step.
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}

@@ -236,7 +236,7 @@ led to it is internal.
 
 ## Tooling
 
-- **pnpm only** (`pnpm@11.20.0`). `npm install` is not supported here. Settings
+- **pnpm only** (`pnpm@11.21.0`). `npm install` is not supported here. Settings
   live in `pnpm-workspace.yaml`; pnpm 11 ignores the `pnpm` field in
   `package.json`.
 - **Biome is the only linter and formatter.** ESLint and Prettier are gone.

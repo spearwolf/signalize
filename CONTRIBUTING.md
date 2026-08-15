@@ -29,7 +29,7 @@ Please read our [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
   devDependency is narrower than the floor — `npm-run-all2@9` declares
   `^22.22.2 || ^24.15.0 || >=26.0.0` — so on an older 22.x `pnpm install` prints
   an engine warning, and refuses outright with `engineStrict` turned on.
-- **pnpm** (`pnpm@11.20.0`). `npm install` is not supported here.
+- **pnpm** (`pnpm@11.21.0`). `npm install` is not supported here.
 
 ### Setup
 

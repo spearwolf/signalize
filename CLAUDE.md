@@ -17,7 +17,7 @@ Everything below is the short list that is expensive to discover by reading code
 
 ## Commands
 
-Package manager is **pnpm** (`pnpm@11.20.0`) — never `npm install`.
+Package manager is **pnpm** (`pnpm@11.21.0`) — never `npm install`.
 
 - `pnpm cbt` — clean + compile + bundle + test. The local "done" gate.
 - `pnpm world` — the full blocking CI scope: `clean`, `check`, `typecheck`, `compile`, `check:dts`, `bundle`, `test:smoke`, `checkPkgTypes`, `test` and `test:gc`. `typecheck` is the only stage that type-checks `src/**/*.spec.ts` — `compile` runs on `tsconfig.lib.json`, which excludes them. `check:dts` (`scripts/check-dts.mjs`) runs right after `compile`, not inside `check` — `check` runs before `compile` in this same chain, right after `clean` deletes `lib/`, so a `tsc` pass over `lib/**/*.d.ts` there would find nothing or check stale output; it type-checks the emitted `lib/**/*.d.ts` with `skipLibCheck` off, which nothing else in `pnpm world` does. `.github/workflows/ci.yml` additionally runs `bench`, informative and `continue-on-error`.

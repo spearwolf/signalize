@@ -350,7 +350,7 @@ The package ships an agent skill at [`skills/using-signalize/`](./skills/using-s
 
 ## Development
 
-The package manager is **pnpm** (`pnpm@11.20.0`); `npm install` is not supported
+The package manager is **pnpm** (`pnpm@11.21.0`); `npm install` is not supported
 here. Node `>=22` builds and tests the repo; see
 [CONTRIBUTING.md](./CONTRIBUTING.md) for what the toolchain expects.
 

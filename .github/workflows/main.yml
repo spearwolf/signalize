@@ -22,7 +22,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v6
+      # See ci.yml for why this is `pnpm/setup` and not `pnpm/action-setup`.
+      - uses: pnpm/setup@v2
+        with:
+          install: false
 
       # No `registry-url`, `scope` or `always-auth` here. `registry-url` is what
       # makes setup-node write an .npmrc carrying

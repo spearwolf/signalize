@@ -4,5 +4,3 @@
 # @swc/core builds the native binding used by the vitest decorator transform.
 allowBuilds:
   '@swc/core': true
-minimumReleaseAgeExclude:
-  - '@spearwolf/eventize@6.0.0'
