@@ -376,9 +376,9 @@ is why the per-call kind does not use one.
 
 ### Delivery is isolated per subscriber
 
-**Context.** eventize's dispatch loop abandons the remaining subscribers when one
-of them throws. For a signal write that means the effects behind the failing one
-never run, and the links behind it never update.
+**Context.** `emit()` abandons the remaining subscribers when one of them throws.
+For a signal write that means the effects behind the failing one never run, and
+the links behind it never update.
 
 **Decision.** Writes and destroy notifications open an isolated delivery frame:
 each subscriber's failure is caught at the listener that eventize actually calls,
@@ -387,6 +387,32 @@ collected, and re-raised after the whole set has been served.
 **Consequence.** One throwing effect no longer silences its siblings. Swallowing
 is confined to exactly those listener entry points — one frame further out it
 would be too late, and anywhere else it would hide a real failure.
+
+eventize offers two guarded dispatches of its own, and neither replaces this
+frame. `emitSafe()` (6.1) trades the error for the execution: the throw goes to
+`console.warn` and the call returns normally, so a write would report success
+while an effect failed. This library owes both halves — every subscriber served,
+every failure re-raised.
+
+`emitStrict()` (6.2) owes both halves too, down to the shape of the result: one
+failure unchanged, several as an `AggregateError` in dispatch order. What it
+cannot supply is the *span*. A frame here is not one `emit()`: `BatchFlush.run()`
+opens a single frame around a loop of emits, one per delayed effect, so a whole
+flush yields one report and no failing effect costs the effects behind it their
+notification. `emitStrict()` raises at the end of each emit and would end the
+flush at the first failure. The frame stays for that reason alone, and a second
+mechanism beside it would split one job in two.
+
+Three further prices come with it. It isolates *every* subscriber, while the
+listener-side catch isolates only the effects — a link callback on the same queue
+is application code without a `catch`, and its throw is meant to end the delivery
+it is part of, which `writeSignal()` in `signal-core.ts` says at the call site.
+The peer range would narrow from `^6.0.0` to `^6.2.0` for a semantic this library
+already has. And eventize's guarded dispatch is a second callback reaching one
+shared call site, so it surcharges every `emit()` in the consumer's process,
+including eventize use that has nothing to do with signals — measured here at
+about 2 % on a 64-listener dispatch, up to 29 % in eventize's `docs/emit.md`. A
+library imposing that on code it cannot see needs a better reason than parity.
 
 ### The shipped declarations resolve under `"lib": ["ES2023"]` alone
 

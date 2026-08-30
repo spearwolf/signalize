@@ -4,6 +4,16 @@ Which of these changes you may rely on depends on the version they ship in —
 see [Versioning & stability](./README.md#versioning--stability). Entries under
 `## Unreleased` have not shipped in any version yet.
 
+## `v1.0.0-beta.1` (2026-08-30)
+
+A dependency release: no behaviour change and no change to the public surface —
+what moved in `src/` is a comment. The second cut of the `1.0.0` line stays on
+the `beta` dist-tag, so `latest` remains on `0.31.1`.
+
+### Chores
+
+- Dev dependency `@spearwolf/eventize` moved to `6.2.0`; the peer range stays `^6.0.0` — nothing in `src/` uses the guarded dispatch variants `6.1.0` and `6.2.0` add. `docs/architecture.md` → "Delivery is isolated per subscriber" records why `emitStrict()` does not replace the delivery frame
+
 ## `v1.0.0-beta.0` (2026-08-15)
 
 The first cut of the `1.0.0` line — the release that will carry a compatibility promise,

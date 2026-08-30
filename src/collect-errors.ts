@@ -48,12 +48,29 @@ export const collect = (errors: unknown[], fn: () => void): void => {
  * The delivery frame.
  *
  * A signal write hands control to application code once per subscribed
- * effect, and eventize's dispatch loop has no `try` of its own: the first
- * throw ends the delivery and every effect behind it — every effect with a
- * lower priority — never learns that the value changed. So the failure is
- * caught at the listener (see `EffectImpl[RECALL]`) and parked here until
- * the write is done, which is the only moment at which throwing it costs
- * nobody else their notification.
+ * effect, and `emit()` has no `try` of its own: the first throw ends the
+ * delivery and every effect behind it — every effect with a lower priority
+ * — never learns that the value changed. So the failure is caught at the
+ * listener (see `EffectImpl[RECALL]`) and parked here until the write is
+ * done, which is the only moment at which throwing it costs nobody else
+ * their notification.
+ *
+ * eventize's two guarded dispatches are deliberately not used here.
+ * `emitSafe()` buys execution by spending the error: a throwing listener is
+ * reported to `console.warn` and the call returns normally, so `set()` would
+ * succeed while an effect silently failed. What this library owes its caller
+ * is both — every subscriber served *and* every failure re-raised, one
+ * unchanged or several as an `AggregateError` in delivery order.
+ *
+ * `emitStrict()` promises exactly that, in exactly that shape, and still
+ * does not fit: it reports per `emit()`, and a frame here spans more than
+ * one. `BatchFlush.run()` opens a single frame around a loop of emits, one
+ * per delayed effect, so that a whole flush yields one report and a failing
+ * effect costs nobody behind it their notification — the first `emitStrict()`
+ * to raise would end that loop. The frame is needed there whatever
+ * `writeSignal()` does, so the listener-side catch stays the one mechanism
+ * rather than the second one. `docs/architecture.md` → "Delivery is isolated
+ * per subscriber" carries the rest of the reasoning.
  *
  * Save-and-restore rather than a stack, and a counter rather than a flag,
  * for the same reason `#suppressAutoTracking` is saved and restored: an
