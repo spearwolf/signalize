@@ -4,6 +4,26 @@ Which of these changes you may rely on depends on the version they ship in —
 see [Versioning & stability](./README.md#versioning--stability). Entries under
 `## Unreleased` have not shipped in any version yet.
 
+## `v1.0.0` (2026-09-02)
+
+The `1.0.0` line leaves the `beta` dist-tag. Same code as `v1.0.0-beta.1` — no
+source change, no change to the public surface, only the version in the bundle
+banner moves — now published under `latest`, where every plain
+`npm install @spearwolf/signalize` picks it up.
+
+What changes is the promise, not the library: from here on the published
+surface follows semver, and breaking it takes a major bump. What that covers,
+and what stays exempt at every version, is in
+[Versioning & stability](./README.md#versioning--stability).
+
+Coming from `0.31.1`: every breaking change of this line is listed under
+`v1.0.0-beta.0` below, and the repair for each one, with the reasoning, is in
+`skills/using-signalize/references/migration-v1.md`.
+
+### Chores
+
+- The `latest` dist-tag moves from `0.31.1` to `1.0.0`; `beta` stays on `1.0.0-beta.1`
+
 ## `v1.0.0-beta.1` (2026-08-30)
 
 A dependency release: no behaviour change and no change to the public surface —
